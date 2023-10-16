@@ -1,0 +1,4 @@
+[workspace]
+license = "Apache-2.0 OR MIT"
+
+members = ["hacker-news-api", "hacker-news-tauri/src-tauri"]
