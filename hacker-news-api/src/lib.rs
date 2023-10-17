@@ -1,4 +1,5 @@
 use futures::TryFutureExt;
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::Duration};
 use tokio::sync::mpsc::{self, Receiver, Sender};
@@ -109,7 +110,7 @@ impl ApiClient {
 
         while let Some(item) = stream.next().await {
             let bytes = item?;
-            // println!("Chunk {:?}", bytes);
+
             if let Some(data) = parse_event(&bytes) {
                 sender.send(data).await?;
             }
@@ -131,7 +132,7 @@ fn parse_event(bytes: &[u8]) -> Option<EventData> {
     if let Some(event) = lines.next() {
         if event.starts_with(b"event: ") {
             let event_name = String::from_utf8_lossy(&event[7..]);
-            println!("event_name: {event_name}");
+            info!("event_name: {event_name}");
             if event_name != "put" {
                 return None;
             }
@@ -142,7 +143,7 @@ fn parse_event(bytes: &[u8]) -> Option<EventData> {
         if data.starts_with(b"data: ") {
             let event_data = serde_json::from_slice::<EventData>(&data[6..])
                 .map_err(|err| {
-                    eprintln!("Failed to deserialize event data {err}");
+                    error!("Failed to deserialize event data {err}");
                     err
                 })
                 .ok()?;
@@ -162,8 +163,9 @@ pub fn subscribe_top_stories() -> Receiver<EventData> {
                     client.top_stories_stream(tx.clone()).await.unwrap();
                 }
                 Err(err) => {
-                    eprintln!("Failed to create client {err}");
+                    error!("Failed to create client {err}");
                     tokio::time::sleep(Duration::from_secs(60 * 5)).await;
+                    info!("Restarted subscription");
                 }
             }
         }

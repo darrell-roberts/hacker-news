@@ -22,7 +22,7 @@ const state = reactive<State>({
 
 onMounted(() => {
     listen<TopStories>("top_stories", (topStories) => {
-        state.topStories = topStories.payload;
+        mergeViewed(topStories.payload);
     }).catch(err => state.error = `Failed to listen to top stories ${err}`)
     .then(unlisten => state.unlisten = unlisten);
 });
@@ -43,6 +43,17 @@ function applyFilter(item: Item) {
   } else {
     return true;
   }
+}
+
+function mergeViewed(items: TopStories) {
+    const viewed = state.topStories.items.filter(item => item.viewed).map(item => item.id);
+
+    for (const item of items.items) {
+        if (viewed.includes(item.id)) {
+            item.viewed = true;
+        }
+    }
+    state.topStories = items;
 }
 </script>
 

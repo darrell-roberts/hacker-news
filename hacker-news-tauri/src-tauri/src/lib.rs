@@ -1,10 +1,14 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use anyhow::Error;
 use chrono::{DateTime, Local, Utc};
+use flexi_logger::{FileSpec, Logger};
 use hacker_news_api::{subscribe_top_stories, ApiClient, Item};
+use log::{error, info};
 use std::{
     collections::HashMap,
+    path::PathBuf,
     sync::{Arc, RwLock},
 };
 use tauri::{async_runtime::spawn, Manager, State, Window};
@@ -72,6 +76,7 @@ fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
     spawn(async move {
         let mut rx = subscribe_top_stories();
         while let Some(event) = rx.recv().await {
+            info!("Received top stories event");
             let new_items = {
                 let s = app_state.read().unwrap();
 
@@ -87,6 +92,7 @@ fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
 
             // If the top stories are the same ignore event.
             if new_items.len() == 0 {
+                info!("No new items from top stories event");
                 continue;
             }
 
@@ -121,11 +127,11 @@ fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
                     };
 
                     if let Err(err) = window.emit("top_stories", to_view_items(app_state.clone())) {
-                        eprintln!("Failed to emit top stories: {err}");
+                        error!("Failed to emit top stories: {err}");
                     };
                 }
                 Err(err) => {
-                    eprintln!("Failed to get new items {err}");
+                    error!("Failed to get new items {err}");
                 }
             }
         }
@@ -141,16 +147,27 @@ pub fn launch() {
         .manage(app_state.clone())
         .manage(app_client.clone())
         .setup(move |app| {
-            let window = app.get_window("main").unwrap();
+            Logger::try_with_str("info")? // Write all error, warn, and info messages
+                // use a simple filename without a timestamp
+                .log_to_file(
+                    FileSpec::default().suppress_timestamp().directory(
+                        app.path_resolver()
+                            .app_log_dir()
+                            .unwrap_or_else(|| PathBuf::from("")),
+                    ),
+                )
+                // do not truncate the log file when the program is restarted
+                .append()
+                .start()?;
+
+            let window = app
+                .get_window("main")
+                .ok_or_else(|| Error::msg("Failed to get main window"))?;
             subscribe(window, app_state, app_client);
+
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            //     get_stories,
-            //     get_item,
-            get_items,
-            //     // subscribe
-        ])
+        .invoke_handler(tauri::generate_handler![get_items])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
