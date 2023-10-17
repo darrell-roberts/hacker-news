@@ -7,7 +7,6 @@ use flexi_logger::{FileSpec, Logger};
 use hacker_news_api::{subscribe_top_stories, ApiClient, Item};
 use log::{error, info};
 use std::{
-    collections::HashMap,
     path::PathBuf,
     sync::{Arc, RwLock},
 };
@@ -17,7 +16,7 @@ use types::{HNItem, TopStories};
 mod types;
 
 struct App {
-    top_stories: HashMap<u64, HNItem>,
+    top_stories: Vec<HNItem>,
 }
 
 type AppState = Arc<RwLock<App>>;
@@ -61,11 +60,11 @@ fn to_view_items(app_state: AppState) -> TopStories {
     let s = app_state.read().unwrap();
 
     TopStories {
-        items: s.top_stories.values().cloned().collect(),
+        items: s.top_stories.clone(),
         loaded: fetched_time(),
         rust_articles: s
             .top_stories
-            .values()
+            .iter()
             .filter_map(|item| item.title.as_deref())
             .filter(|title| has_rust(title))
             .count(),
@@ -76,55 +75,17 @@ fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
     spawn(async move {
         let mut rx = subscribe_top_stories();
         while let Some(event) = rx.recv().await {
-            info!("Received top stories event");
-            let new_items = {
-                let s = app_state.read().unwrap();
-
-                event
-                    .data
-                    .iter()
-                    .take(50)
-                    .copied()
-                    .filter(|id| !s.top_stories.contains_key(id))
-                    .map(|id| id as u64)
-                    .collect::<Vec<_>>()
-            };
-
-            // If the top stories are the same ignore event.
-            if new_items.len() == 0 {
-                info!("No new items from top stories event");
-                continue;
-            }
+            info!("Received top stories event {} items", event.data.len());
+            let mut new_items = event.data;
+            new_items.truncate(50);
 
             // Fetch details for new items.
             match app_client.items(new_items).await {
                 Ok(items) => {
-                    let mut new_items_map = items
-                        .into_iter()
-                        .map(|item| (item.id, item))
-                        .collect::<HashMap<_, _>>();
-
                     {
                         let mut s = app_state.write().unwrap();
-
-                        // Create a new mapping of id to item using
-                        // the order of the latest top stories.
-                        let new_top_stories = event
-                            .data
-                            .iter()
-                            .take(50)
-                            .copied()
-                            .filter_map(|id| {
-                                new_items_map
-                                    .remove(&id)
-                                    .map(Into::into)
-                                    .or_else(|| s.top_stories.remove(&id))
-                            })
-                            .map(|item| (item.id, item))
-                            .collect::<HashMap<_, _>>();
-
-                        s.top_stories = new_top_stories;
-                    };
+                        s.top_stories = items.into_iter().map(Into::into).collect();
+                    }
 
                     if let Err(err) = window.emit("top_stories", to_view_items(app_state.clone())) {
                         error!("Failed to emit top stories: {err}");
@@ -140,7 +101,7 @@ fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
 
 pub fn launch() {
     let app_state = Arc::new(RwLock::new(App {
-        top_stories: HashMap::new(),
+        top_stories: Vec::new(),
     }));
     let app_client = Arc::new(ApiClient::new().unwrap());
     tauri::Builder::default()
