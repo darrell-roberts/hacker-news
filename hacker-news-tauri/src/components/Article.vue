@@ -128,7 +128,7 @@ function hasRust() {
     padding: 10px;
     margin: 5px;
     border-radius: 8px;
-    background-color: #b3b1a0;
+    background-color: #fdfdfd;
     color: black;
 }
 
@@ -143,7 +143,7 @@ function hasRust() {
 }
 
 .commentFooter:hover {
-    color: yellow;
+    color: rgb(122, 14, 14);
     transform: scale(2, 2);
 }
 
@@ -165,7 +165,7 @@ function hasRust() {
     display: inline-block;
     position: relative;
     height: auto;
-    background-color: rgb(197, 198, 214);
+    background-color: #e4f7fb;
     border-radius: 8px;
     padding: 10px;
     box-shadow: -1px 1px 2px -1px;
@@ -195,10 +195,10 @@ function hasRust() {
     top: 0px;
     bottom: auto;
     border: 22px solid;
-    border-color: rgb(197, 198, 214) transparent transparent transparent;
+    border-color: #e4f7fb transparent transparent transparent;
 }
 
 .viewed {
-    background-color: #979688;
+    background-color: #e1e1e1;
 }
 </style>

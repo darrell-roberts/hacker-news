@@ -92,7 +92,7 @@ function toggleText() {
     display: inline-block;
     position: relative;
     height: auto;
-    background-color: rgb(183, 182, 158);
+    background-color: #f9fdc1;
     border-radius: 8px;
     padding: 10px;
     box-shadow: 1px 1px 2px -1px;
@@ -100,7 +100,7 @@ function toggleText() {
 }
 
 .commentFooter:hover {
-    color: fuchsia;
+    color: rgb(122, 14, 14);
     /* transform: scale(2, 2); */
     /* text-shadow: 1px 1px black; */
 }
@@ -128,7 +128,7 @@ function toggleText() {
     top: 0px;
     bottom: auto;
     border: 22px solid;
-    border-color: rgb(183, 182, 158) transparent transparent transparent;
+    border-color: #f9fdc1 transparent transparent transparent;
 }
 
 .pointer {

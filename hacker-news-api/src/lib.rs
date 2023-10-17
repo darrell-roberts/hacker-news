@@ -160,14 +160,16 @@ pub fn subscribe_top_stories() -> Receiver<EventData> {
         loop {
             match ApiClient::new() {
                 Ok(client) => {
-                    client.top_stories_stream(tx.clone()).await.unwrap();
+                    if let Err(err) = client.top_stories_stream(tx.clone()).await {
+                        error!("Event stream severed {err}");
+                    }
                 }
                 Err(err) => {
                     error!("Failed to create client {err}");
-                    tokio::time::sleep(Duration::from_secs(60 * 5)).await;
-                    info!("Restarted subscription");
                 }
             }
+            tokio::time::sleep(Duration::from_secs(60 * 5)).await;
+            info!("Restarted subscription");
         }
     });
 
