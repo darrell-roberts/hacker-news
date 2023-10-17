@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive } from "vue";
-import { Item, ViewItems } from "../types/article";
+import { Item } from "../types/article";
 import { invoke } from "@tauri-apps/api/tauri";
 import Comment from "./Comment.vue";
 import { shell } from "@tauri-apps/api";
@@ -14,14 +14,14 @@ interface State {
     commentsOpen: boolean;
     fetching: boolean;
     error?: string;
-    comments: ViewItems;
+    comments: Item[];
 }
 
 const props = defineProps<Props>();
 const state = reactive<State>({
     commentsOpen: false,
     fetching: false,
-    comments: { items: [] },
+    comments: [],
 });
 
 const emit = defineEmits(["viewed", "url"]);
@@ -48,7 +48,7 @@ function toggleComments() {
 
 async function getComments() {
     emit("viewed");
-    state.comments = await invoke<ViewItems>("get_items", { items: props.item.kids });
+    state.comments = await invoke<Item[]>("get_items", { items: props.item.kids });
 }
 
 function toggleText() {
@@ -116,7 +116,7 @@ function hasRust() {
         </div>
 
         <div v-if="state.commentsOpen"
-            v-for="comment of state.comments.items">
+            v-for="comment of state.comments">
             <Comment :comment="comment" />
         </div>
     </div>

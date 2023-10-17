@@ -131,7 +131,7 @@ fn parse_event(bytes: &[u8]) -> Option<EventData> {
     if let Some(event) = lines.next() {
         if event.starts_with(b"event: ") {
             let event_name = String::from_utf8_lossy(&event[7..]);
-            // println!("event_name: {event_name}");
+            println!("event_name: {event_name}");
             if event_name != "put" {
                 return None;
             }
@@ -155,12 +155,17 @@ fn parse_event(bytes: &[u8]) -> Option<EventData> {
 pub fn subscribe_top_stories() -> Receiver<EventData> {
     let (tx, rx) = mpsc::channel(100);
 
-    tokio::spawn(async move {
-        match ApiClient::new() {
-            Ok(client) => {
-                client.top_stories_stream(tx).await.unwrap();
+    let _ = tokio::spawn(async move {
+        loop {
+            match ApiClient::new() {
+                Ok(client) => {
+                    client.top_stories_stream(tx.clone()).await.unwrap();
+                }
+                Err(err) => {
+                    eprintln!("Failed to create client {err}");
+                    tokio::time::sleep(Duration::from_secs(60 * 5)).await;
+                }
             }
-            Err(_) => (),
         }
     });
 
