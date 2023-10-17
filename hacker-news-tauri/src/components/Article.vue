@@ -165,7 +165,7 @@ function hasRust() {
     display: inline-block;
     position: relative;
     height: auto;
-    background-color: aliceblue;
+    background-color: rgb(197, 198, 214);
     border-radius: 8px;
     padding: 10px;
     box-shadow: -1px 1px 2px -1px;
@@ -195,7 +195,7 @@ function hasRust() {
     top: 0px;
     bottom: auto;
     border: 22px solid;
-    border-color: aliceblue transparent transparent transparent;
+    border-color: rgb(197, 198, 214) transparent transparent transparent;
 }
 
 .viewed {

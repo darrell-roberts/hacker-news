@@ -92,7 +92,7 @@ function toggleText() {
     display: inline-block;
     position: relative;
     height: auto;
-    background-color: antiquewhite;
+    background-color: rgb(183, 182, 158);
     border-radius: 8px;
     padding: 10px;
     box-shadow: 1px 1px 2px -1px;
@@ -128,7 +128,7 @@ function toggleText() {
     top: 0px;
     bottom: auto;
     border: 22px solid;
-    border-color: antiquewhite transparent transparent transparent;
+    border-color: rgb(183, 182, 158) transparent transparent transparent;
 }
 
 .pointer {
