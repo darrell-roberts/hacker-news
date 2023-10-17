@@ -2,9 +2,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use chrono::{DateTime, Local, Utc};
-use hacker_news_api::{ApiClient, Item};
+use hacker_news_api::{subscribe_top_stories, ApiClient, EventData, Item};
 use serde::Serialize;
-use tauri::State;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
+use tauri::{async_runtime::spawn, Manager, State, Window};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,59 +48,126 @@ struct ViewItems {
     items: Vec<HNItem>,
     loaded: String,
     rust_articles: usize,
+    top_stories: HashMap<u64, HNItem>,
 }
 
 struct App {
-    app_client: ApiClient,
+    // app_client: ApiClient,
+    view_items: ViewItems,
 }
 
-#[tauri::command]
-async fn get_stories(state: State<'_, App>) -> Result<ViewItems, String> {
-    state
-        .app_client
-        .top_stories(50)
-        .await
-        .map(to_hn_items)
-        .map(|items| ViewItems {
-            rust_articles: items.iter().filter(|item| item.has_rust).count(),
-            items,
-            loaded: fetched_time(),
-        })
-        .map_err(|err| err.to_string())
-}
+type AppState = Arc<Mutex<App>>;
+
+// #[tauri::command]
+// async fn get_stories(state: State<'_, ApiClient>) -> Result<ViewItems, String> {
+//     state
+//         .top_stories(50)
+//         .await
+//         .map(to_hn_items)
+//         .map(|items| ViewItems {
+//             rust_articles: items.iter().filter(|item| item.has_rust).count(),
+//             items,
+//             loaded: fetched_time(),
+//         })
+//         .map_err(|err| err.to_string())
+// }
+
+// #[tauri::command]
+// async fn get_item(item_id: u64, state: State<'_, ApiClient>) -> Result<HNItem, String> {
+//     state
+//         .item(item_id)
+//         .await
+//         .map(Into::into)
+//         .map_err(|err| err.to_string())
+// }
 
 #[tauri::command]
-async fn get_item(item_id: u64, state: State<'_, App>) -> Result<HNItem, String> {
+async fn get_items(items: Vec<u64>, state: State<'_, ApiClient>) -> Result<Vec<HNItem>, String> {
     state
-        .app_client
-        .item(item_id)
-        .await
-        .map(Into::into)
-        .map_err(|err| err.to_string())
-}
-
-#[tauri::command]
-async fn get_items(items: Vec<u64>, state: State<'_, App>) -> Result<ViewItems, String> {
-    state
-        .app_client
         .items(items)
         .await
         .map(to_hn_items)
-        .map(|items| ViewItems {
-            rust_articles: items.iter().filter(|item| item.has_rust).count(),
-            items,
-            loaded: fetched_time(),
-        })
+        // .map(|items| ViewItems {
+        //     rust_articles: items.iter().filter(|item| item.has_rust).count(),
+        //     items,
+        //     loaded: fetched_time(),
+        // })
         .map_err(|err| err.to_string())
 }
 
 fn main() {
-    let app = App {
-        app_client: ApiClient::new().unwrap(),
-    };
+    let app_state = Arc::new(Mutex::new(App {
+        view_items: ViewItems {
+            items: Vec::new(),
+            loaded: "".to_string(),
+            rust_articles: 0,
+            top_stories: HashMap::new(),
+        },
+    }));
+    let app_client = Arc::new(ApiClient::new().unwrap());
     tauri::Builder::default()
-        .manage(app)
-        .invoke_handler(tauri::generate_handler![get_stories, get_item, get_items])
+        .manage(app_state.clone())
+        .manage(app_client.clone())
+        .setup(move |app| {
+            let window = app.get_window("main").unwrap();
+            spawn(async move {
+                let mut rx = subscribe_top_stories();
+                while let Some(data) = rx.recv().await {
+                    let new_items = {
+                        let s = app_state.lock().unwrap();
+
+                        data.data
+                            .iter()
+                            .copied()
+                            .filter(|id| !s.view_items.top_stories.contains_key(id))
+                            .map(|id| id as u64)
+                            .collect::<Vec<_>>()
+                    };
+
+                    match app_client.items(new_items).await {
+                        Ok(items) => {
+                            let mut new_items_map = items
+                                .into_iter()
+                                .map(|item| (item.id, item))
+                                .collect::<HashMap<_, _>>();
+                            let mut s = app_state.lock().unwrap();
+
+                            let new_top_stories = data
+                                .data
+                                .iter()
+                                .copied()
+                                .filter_map(|id| {
+                                    new_items_map
+                                        .remove(&id)
+                                        .map(Into::into)
+                                        .or_else(|| s.view_items.top_stories.remove(&id))
+                                })
+                                .map(|item| (item.id, item))
+                                .collect::<HashMap<_, _>>();
+
+                            s.view_items.top_stories = new_top_stories;
+
+                            if let Err(err) = window.emit(
+                                "top_stories",
+                                s.view_items.top_stories.values().collect::<Vec<_>>(),
+                            ) {
+                                eprintln!("Failed to emit top stories: {err}");
+                            };
+                        }
+                        Err(err) => {
+                            eprintln!("Failed to get new items {err}");
+                        }
+                    }
+                }
+            });
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            //     get_stories,
+            //     get_item,
+            get_items,
+            //     // subscribe
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

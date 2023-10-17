@@ -1,6 +1,7 @@
 use futures::TryFutureExt;
 use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::Duration};
+use tokio::sync::mpsc::{self, Receiver, Sender};
 
 /// Hacker news item.
 ///
@@ -38,7 +39,7 @@ impl ApiClient {
         Ok(Self {
             client: Arc::new(
                 reqwest::Client::builder()
-                    .timeout(Duration::from_secs(30))
+                    // .timeout(Duration::from_secs(30))
                     .build()?,
             ),
         })
@@ -95,4 +96,73 @@ impl ApiClient {
 
         Ok(result)
     }
+
+    pub async fn top_stories_stream(&self, sender: Sender<EventData>) -> Result<()> {
+        use futures::stream::StreamExt;
+        let mut stream = self
+            .client
+            .get(format!("{}/topstories.json", Self::API_END_POINT))
+            .header("Accept", "text/event-stream")
+            .send()
+            .await?
+            .bytes_stream();
+
+        while let Some(item) = stream.next().await {
+            let bytes = item?;
+            // println!("Chunk {:?}", bytes);
+            if let Some(data) = parse_event(&bytes) {
+                sender.send(data).await?;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct EventData {
+    pub path: String,
+    pub data: Vec<u64>,
+}
+
+fn parse_event(bytes: &[u8]) -> Option<EventData> {
+    let mut lines = bytes.split(|b| *b == b'\n');
+
+    if let Some(event) = lines.next() {
+        if event.starts_with(b"event: ") {
+            let event_name = String::from_utf8_lossy(&event[7..]);
+            // println!("event_name: {event_name}");
+            if event_name != "put" {
+                return None;
+            }
+        }
+    }
+
+    if let Some(data) = lines.next() {
+        if data.starts_with(b"data: ") {
+            let event_data = serde_json::from_slice::<EventData>(&data[6..])
+                .map_err(|err| {
+                    eprintln!("Failed to deserialize event data {err}");
+                    err
+                })
+                .ok()?;
+            return Some(event_data);
+        }
+    }
+    None
+}
+
+pub fn subscribe_top_stories() -> Receiver<EventData> {
+    let (tx, rx) = mpsc::channel(100);
+
+    tokio::spawn(async move {
+        match ApiClient::new() {
+            Ok(client) => {
+                client.top_stories_stream(tx).await.unwrap();
+            }
+            Err(_) => (),
+        }
+    });
+
+    rx
 }
