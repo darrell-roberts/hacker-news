@@ -4,6 +4,7 @@ import { TopStories, Item } from "./types/article";
 import { onMounted, onUnmounted, reactive } from "vue";
 import Tooltip from "./components/Tooltip.vue";
 import { UnlistenFn, listen } from '@tauri-apps/api/event'
+import { invoke } from "@tauri-apps/api";
 
 interface State {
   topStories: TopStories,
@@ -12,12 +13,14 @@ interface State {
   filtered: boolean,
   url?: string
   unlisten?: UnlistenFn | void | string ,
+  liveEvents: boolean,
 }
 
 const state = reactive<State>({
     topStories: { items: [] },
     fetching: false,
     filtered: false,
+    liveEvents: true,
 });
 
 onMounted(() => {
@@ -35,6 +38,10 @@ onUnmounted(() => {
 
 function toggleFilter() {
   state.filtered = !state.filtered;
+}
+
+async function toggleLiveEvents() {
+    state.liveEvents = await invoke("toggle_live_events");
 }
 
 function applyFilter(item: Item) {
@@ -76,11 +83,14 @@ function mergeViewed(items: TopStories) {
     <span class="url">{{ state.url }}</span>
 
     <div class="status-line">
-        <Tooltip content="Reload">
+        <Tooltip content="Live Events">
         <div>
             <div v-if="state.fetching">Loading...</div>
-            <div v-else class="status-action">
-                {{ state.topStories.loaded }}
+            <div v-else class="status-action" @click="toggleLiveEvents()">
+                <span>
+                    {{ state.topStories.loaded }}
+                </span>
+                <span v-if="state.liveEvents">⚡️</span>
             </div>
         </div>
         </Tooltip>

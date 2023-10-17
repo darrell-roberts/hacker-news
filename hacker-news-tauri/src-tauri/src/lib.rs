@@ -17,23 +17,10 @@ mod types;
 
 struct App {
     top_stories: Vec<HNItem>,
+    live_events: bool,
 }
 
 type AppState = Arc<RwLock<App>>;
-
-// #[tauri::command]
-// async fn get_stories(state: State<'_, ApiClient>) -> Result<ViewItems, String> {
-//     state
-//         .top_stories(50)
-//         .await
-//         .map(to_hn_items)
-//         .map(|items| ViewItems {
-//             rust_articles: items.iter().filter(|item| item.has_rust).count(),
-//             items,
-//             loaded: fetched_time(),
-//         })
-//         .map_err(|err| err.to_string())
-// }
 
 // #[tauri::command]
 // async fn get_item(item_id: u64, state: State<'_, ApiClient>) -> Result<HNItem, String> {
@@ -43,6 +30,13 @@ type AppState = Arc<RwLock<App>>;
 //         .map(Into::into)
 //         .map_err(|err| err.to_string())
 // }
+
+#[tauri::command]
+fn toggle_live_events(state: State<AppState>) -> bool {
+    let mut s = state.write().unwrap();
+    s.live_events = !s.live_events;
+    s.live_events
+}
 
 #[tauri::command]
 async fn get_items(
@@ -75,6 +69,14 @@ fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
     spawn(async move {
         let mut rx = subscribe_top_stories();
         while let Some(event) = rx.recv().await {
+            {
+                let s = app_state.read().unwrap();
+                if !s.live_events {
+                    info!("live events turned off");
+                    continue;
+                }
+            }
+
             info!("Received top stories event {} items", event.data.len());
             let mut new_items = event.data;
             new_items.truncate(50);
@@ -102,6 +104,7 @@ fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
 pub fn launch() {
     let app_state = Arc::new(RwLock::new(App {
         top_stories: Vec::new(),
+        live_events: true,
     }));
     let app_client = Arc::new(ApiClient::new().unwrap());
     tauri::Builder::default()
@@ -128,7 +131,7 @@ pub fn launch() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_items])
+        .invoke_handler(tauri::generate_handler![get_items, toggle_live_events])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
