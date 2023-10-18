@@ -56,7 +56,7 @@ impl ApiClient {
             .await?;
 
         ids.truncate(limit);
-        let results = self.items(ids).await?;
+        let results = self.items(&ids).await?;
 
         Ok(results)
     }
@@ -72,7 +72,7 @@ impl ApiClient {
     }
 
     /// Get multiple ids by item id.
-    pub async fn items(&self, ids: Vec<u64>) -> Result<Vec<Item>> {
+    pub async fn items(&self, ids: &[u64]) -> Result<Vec<Item>> {
         // The firebase api only provides the option to get each item one by
         // one.
         let mut handles = Vec::with_capacity(ids.len());

@@ -15,5 +15,6 @@ export interface Item {
   by: string,
   hasRust: boolean;
   viewed: boolean;
+  new: boolean;
 }
 

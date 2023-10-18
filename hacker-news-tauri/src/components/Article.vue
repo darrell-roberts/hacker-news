@@ -61,7 +61,7 @@ function hasRust() {
 </script>
 
 <template>
-    <div :class="{ article: true, rustArticle: hasRust(), viewed: props.item.viewed }">
+    <div :class="{ article: true, rustArticle: hasRust(), viewed: props.item.viewed, new: props.item.new }">
         <div class="title-container">
             <div class="title">
                 <span>{{ props.index + 1 }}. </span>
@@ -128,7 +128,7 @@ function hasRust() {
     padding: 10px;
     margin: 5px;
     border-radius: 8px;
-    background-color: #fdfdfd;
+    background-color: white;
     color: black;
     display: inline-block;
     width: 95%;
@@ -136,6 +136,10 @@ function hasRust() {
 
 .rustArticle {
     border: 10px solid #f4c949;
+}
+
+.new {
+    border: 5px solid red;
 }
 
 .title {

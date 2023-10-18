@@ -15,6 +15,7 @@ pub struct HNItem {
     pub by: String,
     pub has_rust: bool,
     pub viewed: bool,
+    pub new: bool,
 }
 
 impl From<Item> for HNItem {
@@ -30,6 +31,7 @@ impl From<Item> for HNItem {
             has_rust: item.title.as_deref().map(has_rust).unwrap_or(false),
             title: item.title,
             viewed: false,
+            new: false,
         }
     }
 }

@@ -18,6 +18,7 @@ mod types;
 struct App {
     top_stories: Vec<HNItem>,
     live_events: bool,
+    last_event_ids: Vec<u64>,
 }
 
 type AppState = Arc<RwLock<App>>;
@@ -44,7 +45,7 @@ async fn get_items(
     client: State<'_, Arc<ApiClient>>,
 ) -> Result<Vec<HNItem>, String> {
     client
-        .items(items)
+        .items(&items)
         .await
         .map(to_hn_items)
         .map_err(|err| err.to_string())
@@ -65,6 +66,18 @@ fn to_view_items(app_state: AppState) -> TopStories {
     }
 }
 
+fn difference(before: &[u64], after: &[u64]) -> Vec<u64> {
+    if before.is_empty() {
+        return Vec::new();
+    }
+
+    after
+        .into_iter()
+        .filter(|n| !before.contains(n))
+        .copied()
+        .collect()
+}
+
 fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
     spawn(async move {
         let mut rx = subscribe_top_stories();
@@ -82,11 +95,20 @@ fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
             new_items.truncate(50);
 
             // Fetch details for new items.
-            match app_client.items(new_items).await {
+            match app_client.items(&new_items).await {
                 Ok(items) => {
                     {
                         let mut s = app_state.write().unwrap();
-                        s.top_stories = items.into_iter().map(Into::into).collect();
+                        let new_keys = difference(&s.last_event_ids, &new_items);
+                        s.last_event_ids = new_items;
+                        s.top_stories = items
+                            .into_iter()
+                            .map(HNItem::from)
+                            .map(|item| HNItem {
+                                new: new_keys.contains(&item.id),
+                                ..item
+                            })
+                            .collect();
                     }
 
                     if let Err(err) = window.emit("top_stories", to_view_items(app_state.clone())) {
@@ -105,6 +127,7 @@ pub fn launch() {
     let app_state = Arc::new(RwLock::new(App {
         top_stories: Vec::new(),
         live_events: true,
+        last_event_ids: Vec::new(),
     }));
     let app_client = Arc::new(ApiClient::new().unwrap());
     tauri::Builder::default()
