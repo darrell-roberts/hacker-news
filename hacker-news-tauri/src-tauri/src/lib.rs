@@ -209,7 +209,7 @@ fn parse_date(time: u64) -> Option<String> {
 
 fn fetched_time() -> String {
     let now = Local::now();
-    format!("Loaded {}", now.format("%I:%M%P"))
+    format!("Updated {}", now.format("%I:%M%P"))
 }
 
 fn has_rust(title: &str) -> bool {
