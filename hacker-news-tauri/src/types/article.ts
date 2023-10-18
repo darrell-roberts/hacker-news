@@ -1,4 +1,4 @@
-export interface ViewItems {
+export interface TopStories {
   items: Item[];
   loaded?: string;
   rustArticles?: number;
@@ -15,5 +15,11 @@ export interface Item {
   by: string,
   hasRust: boolean;
   viewed: boolean;
+  new: boolean;
+  positionChange: PositionChange
+}
+
+export interface PositionChange {
+    type: "Up" | "Down" | "UnChanged"
 }
 

@@ -1,39 +1,47 @@
 <script setup lang="ts">
 import Article from "./components/Article.vue";
-import { ViewItems, Item } from "./types/article";
-import { onMounted, reactive } from "vue";
-import { invoke } from "@tauri-apps/api/tauri";
+import { TopStories, Item } from "./types/article";
+import { onMounted, onUnmounted, reactive } from "vue";
 import Tooltip from "./components/Tooltip.vue";
+import { UnlistenFn, listen } from '@tauri-apps/api/event'
+import { invoke } from "@tauri-apps/api";
 
 interface State {
-  viewItems: ViewItems,
+  topStories: TopStories,
   fetching: boolean,
-  error: string | undefined,
+  error?: string,
   filtered: boolean,
   url?: string
+  unlisten?: UnlistenFn | void | string ,
+  liveEvents: boolean,
 }
 
 const state = reactive<State>({
-    viewItems: { items: [] },
+    topStories: { items: [] },
     fetching: false,
-    error: undefined,
-    filtered: false
+    filtered: false,
+    liveEvents: true,
 });
 
 onMounted(() => {
-  getItems();
+    listen<TopStories>("top_stories", (topStories) => {
+        mergeViewed(topStories.payload);
+    }).catch(err => state.error = `Failed to listen to top stories ${err}`)
+    .then(unlisten => state.unlisten = unlisten);
 });
 
-function getItems() {
-  state.fetching = true;
-  invoke<ViewItems>("get_stories")
-    .then(mergeViewed)
-    .catch((err) => state.error = err)
-    .finally(() => state.fetching = false);
-}
+onUnmounted(() => {
+    if (typeof state.unlisten) {
+        (state.unlisten as UnlistenFn)();
+    }
+});
 
 function toggleFilter() {
   state.filtered = !state.filtered;
+}
+
+async function toggleLiveEvents() {
+    state.liveEvents = await invoke("toggle_live_events");
 }
 
 function applyFilter(item: Item) {
@@ -44,15 +52,16 @@ function applyFilter(item: Item) {
   }
 }
 
-function mergeViewed(items: ViewItems) {
-    const viewed = state.viewItems.items.filter(item => item.viewed).map(item => item.id);
+function mergeViewed(items: TopStories) {
+    const viewed = state.topStories.items.filter(item => item.viewed).map(item => item.id);
 
     for (const item of items.items) {
         if (viewed.includes(item.id)) {
             item.viewed = true;
         }
     }
-    state.viewItems = items;
+    console.info(items);
+    state.topStories = items;
 }
 </script>
 
@@ -60,34 +69,43 @@ function mergeViewed(items: ViewItems) {
   <div class="container">
     <div v-if="state.error">Failed to load stories: {{ state.error }}</div>
 
+
     <div class="articles">
-      <div v-for="(item, index) in state.viewItems.items" :key="item.id">
-        <Article
-            :item="item"
-            :index="index"
-            v-if="applyFilter(item)"
-            @viewed="() => item.viewed = true"
-            @url="(url) => state.url = url"
-        />
-      </div>
+        <div v-for="(item, index) in state.topStories.items" :key="item.id">
+            <Article
+                :item="item"
+                :index="index"
+                v-if="applyFilter(item)"
+                @viewed="() => item.viewed = true"
+                @url="(url) => state.url = url"
+            />
+        </div>
     </div>
 
-    <span class="url">{{ state.url }}</span>
+    <div class="footer">
+        <div class="status-line">
+                <Tooltip
+                    :content="state.liveEvents ? 'Disable Live Events' : 'Enable Live Events'"
+                    :large="true">
+                <div>
+                    <div v-if="state.fetching">Loading...</div>
+                    <div v-else class="status-action" @click="toggleLiveEvents()">
+                        <span>
+                            {{ state.topStories.loaded }}
+                        </span>
+                        <span v-if="state.liveEvents">⚡️</span>
+                    </div>
+                </div>
+                </Tooltip>
+                <Tooltip content="Filter Rust">
+                    <div @click="toggleFilter()" class="status-action">
+                        Rust articles: {{ state.topStories.rustArticles }}
+                    </div>
+                </Tooltip>
 
-    <div class="status-line">
-        <Tooltip content="Reload">
-        <div>
-            <div v-if="state.fetching">Loading...</div>
-            <div v-else @click="getItems()" class="status-action">
-                {{ state.viewItems.loaded }}
             </div>
-        </div>
-        </Tooltip>
-        <Tooltip content="Filter Rust">
-            <div @click="toggleFilter()" class="status-action">
-                Rust articles: {{ state.viewItems.rustArticles }}
-            </div>
-        </Tooltip>
+
+        <div class="url">{{ state.url }}</div>
     </div>
   </div>
 </template>
@@ -95,12 +113,22 @@ function mergeViewed(items: ViewItems) {
 <style scoped>
 .articles {
   overflow: auto;
-  height: calc(100vh - 65px);
+  column-count: 2;
+  column-width: 200px;
+  padding: 10px;
+  min-height: 95vh;
 }
 
-.footer {
-  margin-top: 10px;
-  height: 50px;
+@media only screen and (max-width: 850px) {
+  .articles {
+    column-count: 1;
+  }
+}
+
+@media only screen and (min-width: 1700px) {
+  .articles {
+    column-count: 3;
+  }
 }
 
 .status-line {
@@ -111,6 +139,13 @@ function mergeViewed(items: ViewItems) {
   justify-content: space-between;
   margin-left: 5px;
   margin-right: 5px;
+}
+
+.footer {
+    position: sticky;
+    bottom: 0;
+    background-color: #2f2f2f;
+    border-radius: 8px;
 }
 
 .status-action {

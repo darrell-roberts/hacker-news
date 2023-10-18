@@ -1,6 +1,7 @@
 <script setup lang="ts">
 interface Props {
   content?: string;
+  large?: boolean;
 }
 
 const props = defineProps<Props>();
@@ -9,7 +10,7 @@ const props = defineProps<Props>();
 <template>
   <div class="tooltip" v-if="props.content">
     <slot></slot>
-    <span class="tooltip-text">{{ props.content }}</span>
+    <span :class="{tooltipText: true, large}">{{ props.content }}</span>
   </div>
 
   <span v-else>
@@ -23,7 +24,12 @@ const props = defineProps<Props>();
   display: inline-block;
 }
 
-.tooltip .tooltip-text {
+
+.tooltip:hover .tooltipText {
+  visibility: visible;
+}
+
+.tooltip .tooltipText {
   visibility: hidden;
   width: auto;
   background-color: black;
@@ -36,11 +42,12 @@ const props = defineProps<Props>();
   position: absolute;
   z-index: 1;
   left: 0;
-  top: -40px;
+  top: -45px;
   font-size: small;
 }
 
-.tooltip:hover .tooltip-text {
-  visibility: visible;
+.tooltip .large {
+    width: 130px;
 }
+
 </style>

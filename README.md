@@ -1,7 +1,7 @@
 # hacker-news
 Hacker news client / UI.
 
-A simple api client and Tauri/Vue.js destkop UI.
+* Subscribes to firebase hacker news top stories api.
+* Highlights rust articles with border and badge.
 
-<img width="818" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/4040baf6-8e4e-4a02-9324-1d4874e3166f">
-
+<img width="1007" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/d5f76377-3c1b-4c5d-ab3c-9d521cd0dbb7">

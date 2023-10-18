@@ -6,13 +6,17 @@
     font-weight: 400;
 
     color: #0f0f0f;
-    background-color: black;
+    background-color: lightgray;
 
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
 }
 
 .container {
@@ -30,7 +34,7 @@
 
 a {
     font-weight: 500;
-    color: #646cff;
+    color: #175864;
     text-decoration: inherit;
 }
 

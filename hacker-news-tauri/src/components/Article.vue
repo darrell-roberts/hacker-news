@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive } from "vue";
-import { Item, ViewItems } from "../types/article";
+import { Item } from "../types/article";
 import { invoke } from "@tauri-apps/api/tauri";
 import Comment from "./Comment.vue";
 import { shell } from "@tauri-apps/api";
@@ -14,14 +14,14 @@ interface State {
     commentsOpen: boolean;
     fetching: boolean;
     error?: string;
-    comments: ViewItems;
+    comments: Item[];
 }
 
 const props = defineProps<Props>();
 const state = reactive<State>({
     commentsOpen: false,
     fetching: false,
-    comments: { items: [] },
+    comments: [],
 });
 
 const emit = defineEmits(["viewed", "url"]);
@@ -48,7 +48,7 @@ function toggleComments() {
 
 async function getComments() {
     emit("viewed");
-    state.comments = await invoke<ViewItems>("get_items", { items: props.item.kids });
+    state.comments = await invoke<Item[]>("get_items", { items: props.item.kids });
 }
 
 function toggleText() {
@@ -58,10 +58,28 @@ function toggleText() {
 function hasRust() {
     return props.item.hasRust
 }
+
+function positionChanged() {
+    if (props.item.new) {
+        return "🆕";
+    }
+    if (props.item.positionChange.type === "Up") {
+        return "🔺";
+    } else if (props.item.positionChange.type === "Down") {
+        return "🔻"
+    } else {
+        return ""
+    }
+}
 </script>
 
 <template>
-    <div :class="{ article: true, rustArticle: hasRust(), viewed: props.item.viewed }">
+    <div :class="{
+        article: true,
+        rustArticle: hasRust(),
+        viewed: props.item.viewed,
+        new: props.item.new
+        }">
         <div class="title-container">
             <div class="title">
                 <span>{{ props.index + 1 }}. </span>
@@ -81,6 +99,9 @@ function hasRust() {
             <div v-if="hasRust()">
                 <img src="/rust-logo-blk.svg" class="rustBadge" />
             </div>
+
+            <div class="positionChange">{{ positionChanged() }}</div>
+
         </div>
 
         <div class="bottom">
@@ -116,7 +137,7 @@ function hasRust() {
         </div>
 
         <div v-if="state.commentsOpen"
-            v-for="comment of state.comments.items">
+            v-for="comment of state.comments">
             <Comment :comment="comment" />
         </div>
     </div>
@@ -128,12 +149,19 @@ function hasRust() {
     padding: 10px;
     margin: 5px;
     border-radius: 8px;
-    background-color: #b3b1a0;
+    background-color: white;
     color: black;
+    display: inline-block;
+    width: 95%;
+    box-shadow: 2px 1px 1px;
 }
 
 .rustArticle {
     border: 10px solid #f4c949;
+}
+
+.new {
+    border: 5px solid red;
 }
 
 .title {
@@ -143,7 +171,7 @@ function hasRust() {
 }
 
 .commentFooter:hover {
-    color: yellow;
+    color: rgb(122, 14, 14);
     transform: scale(2, 2);
 }
 
@@ -158,6 +186,12 @@ function hasRust() {
     height: 32px;
 }
 
+.positionChange {
+    width: 10px;
+    height: 10px;
+    margin-right: 5px;
+}
+
 .text-talk-bubble {
     margin-right: 40px;
     margin-bottom: 5px;
@@ -165,7 +199,7 @@ function hasRust() {
     display: inline-block;
     position: relative;
     height: auto;
-    background-color: aliceblue;
+    background-color: #e4f7fb;
     border-radius: 8px;
     padding: 10px;
     box-shadow: -1px 1px 2px -1px;
@@ -195,10 +229,10 @@ function hasRust() {
     top: 0px;
     bottom: auto;
     border: 22px solid;
-    border-color: aliceblue transparent transparent transparent;
+    border-color: #e4f7fb transparent transparent transparent;
 }
 
 .viewed {
-    background-color: #979688;
+    background-color: #e1e1e1;
 }
 </style>

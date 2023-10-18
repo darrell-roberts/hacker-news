@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive } from "vue";
-import { Item, ViewItems } from "../types/article";
+import { Item } from "../types/article";
 import { invoke } from "@tauri-apps/api/tauri";
 
 interface Props {
@@ -9,13 +9,13 @@ interface Props {
 
 interface State {
     commentsOpen: boolean,
-    comments: ViewItems,
+    comments: Item[],
     fetching: boolean,
     error?: string,
 }
 
 const props = defineProps<Props>();
-const state = reactive<State>({ commentsOpen: false, comments: { items: [] }, fetching: false });
+const state = reactive<State>({ commentsOpen: false, comments: [], fetching: false });
 
 function toggleComments() {
     if (!state.commentsOpen) {
@@ -29,8 +29,8 @@ function toggleComments() {
 function getComments() {
     state.fetching = true;
     state.error = undefined;
-    invoke<ViewItems>("get_items", { items: props.comment.kids })
-        .then(items => state.comments = items)
+    invoke<Item[]>("get_items", { items: props.comment.kids })
+        .then(items =>state.comments = items)
         .catch(err => state.error = err)
         .finally(() => state.fetching = false);
 }
@@ -70,7 +70,7 @@ function toggleText() {
             👉
         </div>
 
-        <div v-if="state.commentsOpen" v-for="comment of state.comments.items">
+        <div v-if="state.commentsOpen" v-for="comment of state.comments">
             <Comment :comment="comment" />
         </div>
     </div>
@@ -92,7 +92,7 @@ function toggleText() {
     display: inline-block;
     position: relative;
     height: auto;
-    background-color: antiquewhite;
+    background-color: #f9fdc1;
     border-radius: 8px;
     padding: 10px;
     box-shadow: 1px 1px 2px -1px;
@@ -100,7 +100,7 @@ function toggleText() {
 }
 
 .commentFooter:hover {
-    color: fuchsia;
+    color: rgb(122, 14, 14);
     /* transform: scale(2, 2); */
     /* text-shadow: 1px 1px black; */
 }
@@ -128,7 +128,7 @@ function toggleText() {
     top: 0px;
     bottom: auto;
     border: 22px solid;
-    border-color: antiquewhite transparent transparent transparent;
+    border-color: #f9fdc1 transparent transparent transparent;
 }
 
 .pointer {

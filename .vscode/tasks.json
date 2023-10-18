@@ -1,0 +1,19 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "cargo",
+      "command": "tauri",
+      "args": ["dev"],
+      "problemMatcher": ["$rustc"],
+      "label": "rust: cargo tauri dev"
+    },
+    {
+      "type": "cargo",
+      "command": "tauri",
+      "args": ["build"],
+      "problemMatcher": ["$rustc"],
+      "label": "rust: cargo tauri build"
+    }
+  ]
+}
