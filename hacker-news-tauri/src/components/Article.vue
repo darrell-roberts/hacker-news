@@ -130,6 +130,8 @@ function hasRust() {
     border-radius: 8px;
     background-color: #fdfdfd;
     color: black;
+    display: inline-block;
+    width: 95%;
 }
 
 .rustArticle {

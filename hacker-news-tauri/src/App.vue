@@ -68,39 +68,43 @@ function mergeViewed(items: TopStories) {
   <div class="container">
     <div v-if="state.error">Failed to load stories: {{ state.error }}</div>
 
+
     <div class="articles">
-      <div v-for="(item, index) in state.topStories.items" :key="item.id">
-        <Article
-            :item="item"
-            :index="index"
-            v-if="applyFilter(item)"
-            @viewed="() => item.viewed = true"
-            @url="(url) => state.url = url"
-        />
-      </div>
+        <div v-for="(item, index) in state.topStories.items" :key="item.id">
+            <Article
+                :item="item"
+                :index="index"
+                v-if="applyFilter(item)"
+                @viewed="() => item.viewed = true"
+                @url="(url) => state.url = url"
+            />
+        </div>
     </div>
 
-    <span class="url">{{ state.url }}</span>
+    <div class="footer">
+        <div class="status-line">
+                <Tooltip
+                    :content="state.liveEvents ? 'Disable Live Events' : 'Enable Live Events'"
+                    :large="true">
+                <div>
+                    <div v-if="state.fetching">Loading...</div>
+                    <div v-else class="status-action" @click="toggleLiveEvents()">
+                        <span>
+                            {{ state.topStories.loaded }}
+                        </span>
+                        <span v-if="state.liveEvents">⚡️</span>
+                    </div>
+                </div>
+                </Tooltip>
+                <Tooltip content="Filter Rust">
+                    <div @click="toggleFilter()" class="status-action">
+                        Rust articles: {{ state.topStories.rustArticles }}
+                    </div>
+                </Tooltip>
 
-    <div class="status-line">
-        <Tooltip
-            :content="state.liveEvents ? 'Disable Live Events' : 'Enable Live Events'"
-            :large="true">
-        <div>
-            <div v-if="state.fetching">Loading...</div>
-            <div v-else class="status-action" @click="toggleLiveEvents()">
-                <span>
-                    {{ state.topStories.loaded }}
-                </span>
-                <span v-if="state.liveEvents">⚡️</span>
             </div>
-        </div>
-        </Tooltip>
-        <Tooltip content="Filter Rust">
-            <div @click="toggleFilter()" class="status-action">
-                Rust articles: {{ state.topStories.rustArticles }}
-            </div>
-        </Tooltip>
+
+        <div class="url">{{ state.url }}</div>
     </div>
   </div>
 </template>
@@ -108,12 +112,22 @@ function mergeViewed(items: TopStories) {
 <style scoped>
 .articles {
   overflow: auto;
-  height: calc(100vh - 65px);
+  column-count: 2;
+  column-width: 200px;
+  padding: 10px;
+  min-height: 95vh;
 }
 
-.footer {
-  margin-top: 10px;
-  height: 50px;
+@media only screen and (max-width: 850px) {
+  .articles {
+    column-count: 1;
+  }
+}
+
+@media only screen and (min-width: 2000px) {
+  .articles {
+    column-count: 3;
+  }
 }
 
 .status-line {
@@ -124,6 +138,13 @@ function mergeViewed(items: TopStories) {
   justify-content: space-between;
   margin-left: 5px;
   margin-right: 5px;
+}
+
+.footer {
+    position: sticky;
+    bottom: 0;
+    background-color: #2f2f2f;
+    border-radius: 8px;
 }
 
 .status-action {
