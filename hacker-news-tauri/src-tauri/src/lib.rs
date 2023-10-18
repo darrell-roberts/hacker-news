@@ -11,7 +11,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 use tauri::{async_runtime::spawn, Manager, State, Window};
-use types::{HNItem, TopStories};
+use types::{HNItem, PositionChange, TopStories};
 
 mod types;
 
@@ -78,6 +78,22 @@ fn difference(before: &[u64], after: &[u64]) -> Vec<u64> {
         .collect()
 }
 
+fn position_change(id: &u64, before: &[u64], after: &[u64]) -> PositionChange {
+    let before_pos = before.iter().position(|n| n == id);
+    let after_pos = after.iter().position(|n| n == id);
+
+    match (before_pos, after_pos) {
+        (None, None) => PositionChange::UnChanged,
+        (None, Some(_)) => PositionChange::Up,
+        (Some(_), None) => PositionChange::Down,
+        (Some(a), Some(b)) => match a.cmp(&b) {
+            std::cmp::Ordering::Less => PositionChange::Up,
+            std::cmp::Ordering::Equal => PositionChange::UnChanged,
+            std::cmp::Ordering::Greater => PositionChange::Down,
+        },
+    }
+}
+
 fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
     spawn(async move {
         let mut rx = subscribe_top_stories();
@@ -100,15 +116,21 @@ fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
                     {
                         let mut s = app_state.write().unwrap();
                         let new_keys = difference(&s.last_event_ids, &new_items);
-                        s.last_event_ids = new_items;
+
                         s.top_stories = items
                             .into_iter()
                             .map(HNItem::from)
                             .map(|item| HNItem {
                                 new: new_keys.contains(&item.id),
+                                position_change: position_change(
+                                    &item.id,
+                                    &s.last_event_ids,
+                                    &new_items,
+                                ),
                                 ..item
                             })
                             .collect();
+                        s.last_event_ids = new_items;
                     }
 
                     if let Err(err) = window.emit("top_stories", to_view_items(app_state.clone())) {

@@ -58,10 +58,25 @@ function toggleText() {
 function hasRust() {
     return props.item.hasRust
 }
+
+function positionChanged() {
+    if (props.item.positionChange.type === "Up") {
+        return "🔺";
+    } else if (props.item.positionChange.type === "Down") {
+        return "🔻"
+    } else {
+        return ""
+    }
+}
 </script>
 
 <template>
-    <div :class="{ article: true, rustArticle: hasRust(), viewed: props.item.viewed, new: props.item.new }">
+    <div :class="{
+        article: true,
+        rustArticle: hasRust(),
+        viewed: props.item.viewed,
+        new: props.item.new
+        }">
         <div class="title-container">
             <div class="title">
                 <span>{{ props.index + 1 }}. </span>
@@ -81,6 +96,9 @@ function hasRust() {
             <div v-if="hasRust()">
                 <img src="/rust-logo-blk.svg" class="rustBadge" />
             </div>
+
+            <div class="positionChange">{{ positionChanged() }}</div>
+
         </div>
 
         <div class="bottom">
@@ -162,6 +180,12 @@ function hasRust() {
 .rustBadge {
     width: 32px;
     height: 32px;
+}
+
+.positionChange {
+    width: 10px;
+    height: 10px;
+    margin-right: 5px;
 }
 
 .text-talk-bubble {

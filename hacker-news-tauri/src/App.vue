@@ -60,6 +60,7 @@ function mergeViewed(items: TopStories) {
             item.viewed = true;
         }
     }
+    console.info(items);
     state.topStories = items;
 }
 </script>

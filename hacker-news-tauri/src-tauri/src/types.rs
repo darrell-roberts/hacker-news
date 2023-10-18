@@ -16,6 +16,7 @@ pub struct HNItem {
     pub has_rust: bool,
     pub viewed: bool,
     pub new: bool,
+    pub position_change: PositionChange,
 }
 
 impl From<Item> for HNItem {
@@ -32,6 +33,7 @@ impl From<Item> for HNItem {
             title: item.title,
             viewed: false,
             new: false,
+            position_change: PositionChange::UnChanged,
         }
     }
 }
@@ -42,4 +44,12 @@ pub struct TopStories {
     pub items: Vec<HNItem>,
     pub loaded: String,
     pub rust_articles: usize,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(tag = "type")]
+pub enum PositionChange {
+    Up,
+    Down,
+    UnChanged,
 }

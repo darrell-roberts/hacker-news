@@ -16,5 +16,10 @@ export interface Item {
   hasRust: boolean;
   viewed: boolean;
   new: boolean;
+  positionChange: PositionChange
+}
+
+export interface PositionChange {
+    type: "Up" | "Down" | "UnChanged"
 }
 
