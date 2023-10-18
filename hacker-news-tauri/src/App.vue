@@ -83,7 +83,9 @@ function mergeViewed(items: TopStories) {
     <span class="url">{{ state.url }}</span>
 
     <div class="status-line">
-        <Tooltip content="Live Events">
+        <Tooltip
+            :content="state.liveEvents ? 'Disable Live Events' : 'Enable Live Events'"
+            :large="true">
         <div>
             <div v-if="state.fetching">Loading...</div>
             <div v-else class="status-action" @click="toggleLiveEvents()">
