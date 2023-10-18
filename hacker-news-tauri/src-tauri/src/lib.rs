@@ -79,6 +79,10 @@ fn difference(before: &[u64], after: &[u64]) -> Vec<u64> {
 }
 
 fn position_change(id: &u64, before: &[u64], after: &[u64]) -> PositionChange {
+    if before.is_empty() {
+        return PositionChange::UnChanged;
+    }
+
     let before_pos = before.iter().position(|n| n == id);
     let after_pos = after.iter().position(|n| n == id);
 
@@ -87,9 +91,9 @@ fn position_change(id: &u64, before: &[u64], after: &[u64]) -> PositionChange {
         (None, Some(_)) => PositionChange::Up,
         (Some(_), None) => PositionChange::Down,
         (Some(a), Some(b)) => match a.cmp(&b) {
-            std::cmp::Ordering::Less => PositionChange::Up,
+            std::cmp::Ordering::Less => PositionChange::Down,
             std::cmp::Ordering::Equal => PositionChange::UnChanged,
-            std::cmp::Ordering::Greater => PositionChange::Down,
+            std::cmp::Ordering::Greater => PositionChange::Up,
         },
     }
 }

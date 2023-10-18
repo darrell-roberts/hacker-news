@@ -60,6 +60,9 @@ function hasRust() {
 }
 
 function positionChanged() {
+    if (props.item.new) {
+        return "🆕";
+    }
     if (props.item.positionChange.type === "Up") {
         return "🔺";
     } else if (props.item.positionChange.type === "Down") {
