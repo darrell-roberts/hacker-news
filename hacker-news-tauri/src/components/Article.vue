@@ -153,6 +153,7 @@ function positionChanged() {
     color: black;
     display: inline-block;
     width: 95%;
+    box-shadow: 2px 1px 1px;
 }
 
 .rustArticle {
