@@ -76,7 +76,6 @@ function positionChanged() {
 <template>
     <div :class="{
         article: true,
-        rustArticle: hasRust(),
         viewed: props.item.viewed,
         new: props.item.new
         }">
@@ -96,7 +95,7 @@ function positionChanged() {
                 </span>
             </div>
 
-            <div v-if="hasRust()">
+            <div v-if="hasRust()" class="rustArticle">
                 <img src="/rust-logo-blk.svg" class="rustBadge" />
             </div>
 
@@ -157,8 +156,11 @@ function positionChanged() {
 }
 
 .rustArticle {
-    border: 10px solid #f4c949;
+    display: flex;
+    flex-grow: 1;
+    justify-content: end;
 }
+
 
 .new {
     border: 5px solid red;
