@@ -42,8 +42,9 @@ function toggleText() {
 
 <template>
     <div class="talk-bubble tri-right left-top">
-        <span v-html="comment.text" />
-
+        <div class="comment">
+            <span v-html="comment.text" />
+        </div>
         <div class="bottom">
             <div class="author">by {{ props.comment.by }} {{ props.comment.time }}</div>
             <div class="commentFooterContainer">
@@ -79,10 +80,8 @@ function toggleText() {
 <style scoped>
 .comment {
     padding: 10px;
-    background-color: antiquewhite;
-    border: 1px solid black;
-    border-radius: 8px;
-    margin: 10px;
+    overflow: auto;
+    max-width: 35rem;
 }
 
 .talk-bubble {
