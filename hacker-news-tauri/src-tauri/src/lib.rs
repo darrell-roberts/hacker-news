@@ -10,7 +10,10 @@ use std::{
     path::PathBuf,
     sync::{Arc, RwLock},
 };
-use tauri::{async_runtime::spawn, Manager, State, Window};
+use tauri::{
+    async_runtime::{spawn, TokioJoinHandle},
+    Manager, State, Window,
+};
 use types::{HNItem, PositionChange, TopStories};
 
 mod types;
@@ -19,9 +22,11 @@ struct App {
     top_stories: Vec<HNItem>,
     live_events: bool,
     last_event_ids: Vec<u64>,
+    event_handle: Option<TokioJoinHandle<()>>,
 }
 
 type AppState = Arc<RwLock<App>>;
+type AppClient = Arc<ApiClient>;
 
 // #[tauri::command]
 // async fn get_item(item_id: u64, state: State<'_, ApiClient>) -> Result<HNItem, String> {
@@ -33,17 +38,27 @@ type AppState = Arc<RwLock<App>>;
 // }
 
 #[tauri::command]
-fn toggle_live_events(state: State<AppState>) -> bool {
+fn toggle_live_events(
+    app_client: State<'_, AppClient>,
+    state: State<'_, AppState>,
+    window: Window,
+) -> bool {
     let mut s = state.write().unwrap();
     s.live_events = !s.live_events;
+
+    if s.live_events {
+        subscribe(window, state.inner().clone(), app_client.inner().clone());
+    } else {
+        if let Some(h) = s.event_handle.take() {
+            h.abort();
+        }
+    }
+
     s.live_events
 }
 
 #[tauri::command]
-async fn get_items(
-    items: Vec<u64>,
-    client: State<'_, Arc<ApiClient>>,
-) -> Result<Vec<HNItem>, String> {
+async fn get_items(items: Vec<u64>, client: State<'_, AppClient>) -> Result<Vec<HNItem>, String> {
     client
         .items(&items)
         .await
@@ -98,18 +113,15 @@ fn position_change(id: &u64, before: &[u64], after: &[u64]) -> PositionChange {
     }
 }
 
-fn subscribe(window: Window, app_state: AppState, app_client: Arc<ApiClient>) {
+fn subscribe(window: Window, app_state: AppState, app_client: AppClient) {
+    info!("Starting subscription");
     spawn(async move {
-        let mut rx = subscribe_top_stories();
+        let (mut rx, handle) = subscribe_top_stories();
+        {
+            let mut s = app_state.write().unwrap();
+            s.event_handle = Some(handle);
+        }
         while let Some(event) = rx.recv().await {
-            {
-                let s = app_state.read().unwrap();
-                if !s.live_events {
-                    info!("live events turned off");
-                    continue;
-                }
-            }
-
             info!("Received top stories event {} items", event.data.len());
             let mut new_items = event.data;
             new_items.truncate(50);
@@ -154,6 +166,7 @@ pub fn launch() {
         top_stories: Vec::new(),
         live_events: true,
         last_event_ids: Vec::new(),
+        event_handle: None,
     }));
     let app_client = Arc::new(ApiClient::new().unwrap());
     tauri::Builder::default()

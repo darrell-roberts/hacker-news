@@ -2,7 +2,10 @@ use futures::TryFutureExt;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::{sync::Arc, time::Duration};
-use tokio::sync::mpsc::{self, Receiver, Sender};
+use tokio::{
+    sync::mpsc::{self, Receiver, Sender},
+    task::JoinHandle,
+};
 
 /// Hacker news item.
 ///
@@ -153,10 +156,10 @@ fn parse_event(bytes: &[u8]) -> Option<EventData> {
     None
 }
 
-pub fn subscribe_top_stories() -> Receiver<EventData> {
+pub fn subscribe_top_stories() -> (Receiver<EventData>, JoinHandle<()>) {
     let (tx, rx) = mpsc::channel(100);
 
-    let _ = tokio::spawn(async move {
+    let handle = tokio::spawn(async move {
         loop {
             match ApiClient::new() {
                 Ok(client) => {
@@ -173,5 +176,5 @@ pub fn subscribe_top_stories() -> Receiver<EventData> {
         }
     });
 
-    rx
+    (rx, handle)
 }

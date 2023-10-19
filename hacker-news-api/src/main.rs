@@ -16,7 +16,7 @@ async fn main() -> Result<(), Error> {
     //     );
     // }
 
-    let mut rx = subscribe_top_stories();
+    let (mut rx, _) = subscribe_top_stories();
 
     let mut old_keys = Vec::new();
 
