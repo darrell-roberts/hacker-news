@@ -145,7 +145,8 @@ function mergeViewed(items: TopStories) {
     position: sticky;
     bottom: 0;
     background-color: #2f2f2f;
-    border-radius: 8px;
+    padding-left: 5px;
+    padding-right: 5px;
 }
 
 .status-action {
