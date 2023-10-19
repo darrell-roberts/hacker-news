@@ -45,6 +45,7 @@ function toggleText() {
         <div class="comment">
             <span v-html="comment.text" />
         </div>
+
         <div class="bottom">
             <div class="author">by {{ props.comment.by }} {{ props.comment.time }}</div>
             <div class="commentFooterContainer">
@@ -56,7 +57,6 @@ function toggleText() {
                     {{ props.comment.kids.length === 1 ? "comment" : "comments" }}
                 </span>
             </div>
-
         </div>
 
         <div v-if="state.fetching">
