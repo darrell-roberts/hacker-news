@@ -95,12 +95,10 @@ function hideComment() {
         <div v-if="state.error" class="error">
             Failed to load comments: {{ state.error }}
         </div>
+    </div>
 
-        <div v-if="state.commentsOpen" class="pointer">👉</div>
-
-        <div v-if="state.commentsOpen" v-for="comment of state.comments">
-            <Comment :comment="comment" />
-        </div>
+    <div v-if="state.commentsOpen" v-for="comment of state.comments" class="childComments">
+        <Comment :comment="comment" />
     </div>
 </template>
 
@@ -171,5 +169,10 @@ function hideComment() {
     display: flex;
     justify-content: end;
     cursor: pointer;
+}
+
+.childComments {
+    background-color: #e1e1e1;
+    margin-left: 20px;
 }
 </style>
