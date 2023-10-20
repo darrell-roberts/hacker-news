@@ -11,7 +11,7 @@ interface Props {
 const props = defineProps<Props>();
 const user = ref<User>();
 
-
+const emit = defineEmits(["close"]);
 
 watch(props, ({visible}) => {
     if (visible) {
@@ -29,10 +29,14 @@ function getUser() {
         .catch(err => console.error("Failed to get user", err));
 }
 
+function hideUser() {
+    emit("close");
+}
 </script>
 
 <template>
     <div v-if="props.visible" class="user arrow">
+        <div class="close" @click="hideUser()">X</div>
         <div v-if="user">
             <span id="myPopup" v-html="user?.about" class="about"/>
             <div class="karma">

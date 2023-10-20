@@ -134,3 +134,9 @@ button {
 .by {
     cursor: pointer;
 }
+
+.close {
+    display: flex;
+    justify-content: end;
+    cursor: pointer;
+}

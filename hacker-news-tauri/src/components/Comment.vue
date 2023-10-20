@@ -55,7 +55,6 @@ function toggleUserView() {
 function hideComment() {
     state.commentVisible = false;
 }
-
 </script>
 
 <template>
@@ -65,7 +64,7 @@ function hideComment() {
             <span v-html="comment.text" />
         </div>
 
-        <UserModal :visible="state.userVisible" :user-handle="props.comment.by"/>
+        <UserModal :visible="state.userVisible" :user-handle="props.comment.by" @close="toggleUserView()"/>
 
         <div class="bottom">
             <div class="author">
@@ -104,7 +103,6 @@ function hideComment() {
 
 <style scoped>
 .comment {
-    padding: 10px;
     overflow: auto;
     max-width: 35rem;
 }
@@ -125,8 +123,6 @@ function hideComment() {
 
 .commentFooter:hover {
     color: rgb(122, 14, 14);
-    /* transform: scale(2, 2); */
-    /* text-shadow: 1px 1px black; */
 }
 
 .triRight.leftTop:before {
@@ -163,12 +159,6 @@ function hideComment() {
 .hideComment {
     visibility: hidden;
     display: none;
-}
-
-.close {
-    display: flex;
-    justify-content: end;
-    cursor: pointer;
 }
 
 .childComments {

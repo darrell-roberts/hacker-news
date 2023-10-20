@@ -119,7 +119,7 @@ function toggleUserView() {
             <div class="positionChange">{{ positionChanged() }}</div>
         </div>
 
-        <UserModal :visible="state.userVisible" :user-handle="props.item.by"/>
+        <UserModal :visible="state.userVisible" :user-handle="props.item.by" @close="toggleUserView()"/>
 
         <div class="bottom">
             <div class="author">
