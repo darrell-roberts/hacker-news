@@ -14,6 +14,7 @@ interface State {
     fetching: boolean;
     error?: string;
     userVisible: boolean;
+    commentVisible: boolean;
 }
 
 const props = defineProps<Props>();
@@ -22,6 +23,7 @@ const state = reactive<State>({
     comments: [],
     fetching: false,
     userVisible: false,
+    commentVisible: true,
 });
 
 function toggleComments() {
@@ -50,10 +52,15 @@ function toggleUserView() {
     state.userVisible = !state.userVisible;
 }
 
+function hideComment() {
+    state.commentVisible = false;
+}
+
 </script>
 
 <template>
-    <div class="talk-bubble tri-right left-top">
+    <div :class="{talkBubble:true, triRight: true, leftTop: true, hideComment: !state.commentVisible}">
+        <div class="close" @click="hideComment()">X</div>
         <div class="comment">
             <span v-html="comment.text" />
         </div>
@@ -104,7 +111,7 @@ function toggleUserView() {
     max-width: 35rem;
 }
 
-.talk-bubble {
+.talkBubble {
     margin-left: 40px;
     margin-bottom: 5px;
     margin-top: 5px;
@@ -124,7 +131,7 @@ function toggleUserView() {
     /* text-shadow: 1px 1px black; */
 }
 
-.tri-right.left-top:before {
+.triRight.leftTop:before {
     content: " ";
     position: absolute;
     width: 0;
@@ -137,7 +144,7 @@ function toggleUserView() {
     border-color: #666 transparent transparent transparent;
 }
 
-.tri-right.left-top:after {
+.triRight.leftTop:after {
     content: " ";
     position: absolute;
     width: 0;
@@ -153,5 +160,16 @@ function toggleUserView() {
 .pointer {
     top: 40px;
     position: relative;
+}
+
+.hideComment {
+    visibility: hidden;
+    display: none;
+}
+
+.close {
+    display: flex;
+    justify-content: end;
+    cursor: pointer;
 }
 </style>

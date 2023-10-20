@@ -25,7 +25,6 @@ function getUser() {
     invoke<User>("get_user", {handle: props.userHandle})
         .then(u => {
             user.value = u;
-            console.info("user", user);
         })
         .catch(err => console.error("Failed to get user", err));
 }
