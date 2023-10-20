@@ -3,16 +3,16 @@ import Article from "./components/Article.vue";
 import { TopStories, Item } from "./types/article";
 import { onMounted, onUnmounted, reactive } from "vue";
 import Tooltip from "./components/Tooltip.vue";
-import { UnlistenFn, listen } from '@tauri-apps/api/event'
+import { UnlistenFn, listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api";
 
 interface State {
-  topStories: TopStories,
-  error?: string,
-  filtered: boolean,
-  url?: string
-  unlisten?: UnlistenFn | void | string ,
-  liveEvents: boolean,
+    topStories: TopStories;
+    error?: string;
+    filtered: boolean;
+    url?: string;
+    unlisten?: UnlistenFn | void | string;
+    liveEvents: boolean;
 }
 
 const state = reactive<State>({
@@ -24,8 +24,11 @@ const state = reactive<State>({
 onMounted(() => {
     listen<TopStories>("top_stories", (topStories) => {
         mergeViewed(topStories.payload);
-    }).catch(err => state.error = `Failed to listen to top stories ${err}`)
-    .then(unlisten => state.unlisten = unlisten);
+    })
+        .catch(
+            (err) => (state.error = `Failed to listen to top stories ${err}`),
+        )
+        .then((unlisten) => (state.unlisten = unlisten));
 });
 
 onUnmounted(() => {
@@ -35,7 +38,7 @@ onUnmounted(() => {
 });
 
 function toggleFilter() {
-  state.filtered = !state.filtered;
+    state.filtered = !state.filtered;
 }
 
 async function toggleLiveEvents() {
@@ -43,100 +46,110 @@ async function toggleLiveEvents() {
 }
 
 function applyFilter(item: Item) {
-  if (state.filtered) {
-    return item.hasRust;
-  } else {
-    return true;
-  }
+    if (state.filtered) {
+        return item.hasRust;
+    } else {
+        return true;
+    }
 }
 
 function mergeViewed(items: TopStories) {
-    const viewed = state.topStories.items.filter(item => item.viewed).map(item => item.id);
+    const viewed = state.topStories.items
+        .filter((item) => item.viewed)
+        .map((item) => item.id);
 
     for (const item of items.items) {
         if (viewed.includes(item.id)) {
             item.viewed = true;
         }
     }
-    console.info(items);
     state.topStories = items;
 }
 </script>
 
 <template>
-  <div class="container">
-    <div v-if="state.error">Failed to load stories: {{ state.error }}</div>
+    <div class="container">
+        <div v-if="state.error">Failed to load stories: {{ state.error }}</div>
 
-
-    <div class="articles">
-        <div v-for="(item, index) in state.topStories.items" :key="item.id">
-            <Article
-                :item="item"
-                :index="index"
-                v-if="applyFilter(item)"
-                @viewed="() => item.viewed = true"
-                @url="(url) => state.url = url"
-            />
+        <div class="articles">
+            <div v-for="(item, index) in state.topStories.items" :key="item.id">
+                <Article
+                    :item="item"
+                    :index="index"
+                    v-if="applyFilter(item)"
+                    @viewed="() => (item.viewed = true)"
+                    @url="(url) => (state.url = url)"
+                />
+            </div>
         </div>
-    </div>
 
-    <div class="footer">
-        <div class="status-line">
+        <div class="footer">
+            <div class="status-line">
                 <Tooltip
-                    :content="state.liveEvents ? 'Disable Live Events' : 'Enable Live Events'"
-                    :large="true">
-                <div>
-                    <div v-if="state.topStories.items.length === 0">Loading...</div>
-                    <div v-else class="status-action" @click="toggleLiveEvents()">
-                        <span>
-                            {{ state.topStories.loaded }}
-                        </span>
-                        <span v-if="state.liveEvents">⚡️</span>
+                    :content="
+                        state.liveEvents
+                            ? 'Disable Live Events'
+                            : 'Enable Live Events'
+                    "
+                    :large="true"
+                >
+                    <div>
+                        <div v-if="state.topStories.items.length === 0">
+                            Loading...
+                        </div>
+                        <div
+                            v-else
+                            class="status-action"
+                            @click="toggleLiveEvents()"
+                        >
+                            <span>
+                                {{ state.topStories.loaded }}
+                            </span>
+                            <span v-if="state.liveEvents">⚡️</span>
+                        </div>
                     </div>
-                </div>
                 </Tooltip>
                 <Tooltip content="Filter Rust">
                     <div @click="toggleFilter()" class="status-action">
                         Rust articles: {{ state.topStories.rustArticles ?? 0 }}
                     </div>
                 </Tooltip>
-
             </div>
 
-        <div class="url">{{ state.url }}</div>
+            <div class="url">{{ state.url }}</div>
+        </div>
     </div>
-  </div>
 </template>
 
 <style scoped>
 .articles {
-  overflow: auto;
-  column-count: 2;
-  column-width: 200px;
-  padding: 10px;
-  min-height: 95vh;
+    overflow: auto;
+    column-count: 2;
+    column-width: 200px;
+    padding: 10px;
+    min-height: 95vh;
 }
 
 @media only screen and (max-width: 850px) {
-  .articles {
-    column-count: 1;
-  }
+    .articles {
+        column-count: 1;
+    }
 }
 
 @media only screen and (min-width: 1700px) {
-  .articles {
-    column-count: 3;
-  }
+    .articles {
+        column-count: 3;
+    }
 }
 
 .status-line {
-  color: gray;
-  font-size: small;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  margin-left: 5px;
-  margin-right: 5px;
+    color: gray;
+    font-size: small;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin-left: 5px;
+    margin-right: 5px;
 }
 
 .footer {
@@ -148,12 +161,11 @@ function mergeViewed(items: TopStories) {
 }
 
 .status-action {
-  cursor: pointer;
-
+    cursor: pointer;
 }
 
 .status-action:hover {
-  color: white;
+    color: white;
 }
 
 .url {

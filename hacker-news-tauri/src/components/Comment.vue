@@ -8,14 +8,18 @@ interface Props {
 }
 
 interface State {
-    commentsOpen: boolean,
-    comments: Item[],
-    fetching: boolean,
-    error?: string,
+    commentsOpen: boolean;
+    comments: Item[];
+    fetching: boolean;
+    error?: string;
 }
 
 const props = defineProps<Props>();
-const state = reactive<State>({ commentsOpen: false, comments: [], fetching: false });
+const state = reactive<State>({
+    commentsOpen: false,
+    comments: [],
+    fetching: false,
+});
 
 function toggleComments() {
     if (!state.commentsOpen) {
@@ -30,9 +34,9 @@ function getComments() {
     state.fetching = true;
     state.error = undefined;
     invoke<Item[]>("get_items", { items: props.comment.kids })
-        .then(items =>state.comments = items)
-        .catch(err => state.error = err)
-        .finally(() => state.fetching = false);
+        .then((items) => (state.comments = items))
+        .catch((err) => (state.error = err))
+        .finally(() => (state.fetching = false));
 }
 
 function toggleText() {
@@ -47,29 +51,31 @@ function toggleText() {
         </div>
 
         <div class="bottom">
-            <div class="author">by {{ props.comment.by }} {{ props.comment.time }}</div>
+            <div class="author">
+                by {{ props.comment.by }} {{ props.comment.time }}
+            </div>
             <div class="commentFooterContainer">
-                <span @click="toggleComments"
+                <span
+                    @click="toggleComments"
                     class="commentFooter"
-                    v-if="props.comment.kids.length > 0">
+                    v-if="props.comment.kids.length > 0"
+                >
                     {{ toggleText() }}
                     {{ props.comment.kids.length }}
-                    {{ props.comment.kids.length === 1 ? "comment" : "comments" }}
+                    {{
+                        props.comment.kids.length === 1 ? "comment" : "comments"
+                    }}
                 </span>
             </div>
         </div>
 
-        <div v-if="state.fetching">
-            Loading...
-        </div>
+        <div v-if="state.fetching">Loading...</div>
 
         <div v-if="state.error" class="error">
             Failed to load comments: {{ state.error }}
         </div>
 
-        <div v-if="state.commentsOpen" class="pointer">
-            👉
-        </div>
+        <div v-if="state.commentsOpen" class="pointer">👉</div>
 
         <div v-if="state.commentsOpen" v-for="comment of state.comments">
             <Comment :comment="comment" />
@@ -105,7 +111,7 @@ function toggleText() {
 }
 
 .tri-right.left-top:before {
-    content: ' ';
+    content: " ";
     position: absolute;
     width: 0;
     height: 0;
@@ -118,7 +124,7 @@ function toggleText() {
 }
 
 .tri-right.left-top:after {
-    content: ' ';
+    content: " ";
     position: absolute;
     width: 0;
     height: 0;
