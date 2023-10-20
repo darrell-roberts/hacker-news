@@ -29,6 +29,15 @@ pub struct Item {
     pub deleted: bool,
 }
 
+/// Hacker news user.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct User {
+    pub about: String,
+    pub created: u64,
+    pub karma: u64,
+    pub submitted: Vec<u64>,
+}
+
 /// Hacker News Api client.
 pub struct ApiClient {
     client: Arc<reqwest::Client>,
@@ -101,6 +110,18 @@ impl ApiClient {
         Ok(result)
     }
 
+    /// Get user by user handle.
+    pub async fn user(&self, handle: &str) -> Result<User> {
+        self.client
+            .get(format!("{}/user/{handle}.json", Self::API_END_POINT))
+            .send()
+            .await?
+            .json::<User>()
+            .map_err(anyhow::Error::new)
+            .await
+    }
+
+    /// Top stories event-source stream.
     pub async fn top_stories_stream(&self, sender: Sender<EventData>) -> Result<()> {
         use futures::stream::StreamExt;
         let mut stream = self

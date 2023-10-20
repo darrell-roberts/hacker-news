@@ -8,7 +8,6 @@ import { invoke } from "@tauri-apps/api";
 
 interface State {
   topStories: TopStories,
-  fetching: boolean,
   error?: string,
   filtered: boolean,
   url?: string
@@ -18,7 +17,6 @@ interface State {
 
 const state = reactive<State>({
     topStories: { items: [] },
-    fetching: false,
     filtered: false,
     liveEvents: true,
 });
@@ -88,7 +86,7 @@ function mergeViewed(items: TopStories) {
                     :content="state.liveEvents ? 'Disable Live Events' : 'Enable Live Events'"
                     :large="true">
                 <div>
-                    <div v-if="state.fetching">Loading...</div>
+                    <div v-if="state.topStories.items.length === 0">Loading...</div>
                     <div v-else class="status-action" @click="toggleLiveEvents()">
                         <span>
                             {{ state.topStories.loaded }}
@@ -99,7 +97,7 @@ function mergeViewed(items: TopStories) {
                 </Tooltip>
                 <Tooltip content="Filter Rust">
                     <div @click="toggleFilter()" class="status-action">
-                        Rust articles: {{ state.topStories.rustArticles }}
+                        Rust articles: {{ state.topStories.rustArticles ?? 0 }}
                     </div>
                 </Tooltip>
 
