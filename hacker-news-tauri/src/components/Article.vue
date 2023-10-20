@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { reactive } from "vue";
 import { Item } from "../types/article";
-import { User } from "../types/user";
 import { invoke } from "@tauri-apps/api/tauri";
 import Comment from "./Comment.vue";
+import UserModal from "./UserModal.vue";
 import { shell } from "@tauri-apps/api";
 
 interface Props {
@@ -16,6 +16,7 @@ interface State {
     fetching: boolean;
     error?: string;
     comments: Item[];
+    userVisible: boolean;
 }
 
 const props = defineProps<Props>();
@@ -23,6 +24,7 @@ const state = reactive<State>({
     commentsOpen: false,
     fetching: false,
     comments: [],
+    userVisible: false,
 });
 
 const emit = defineEmits(["viewed", "url"]);
@@ -75,9 +77,8 @@ function positionChanged() {
     }
 }
 
-async function getUser() {
-    const user = await invoke<User>("get_user", { handle: props.item.by });
-    console.info("user", user);
+function toggleUserView() {
+    state.userVisible = !state.userVisible;
 }
 </script>
 
@@ -89,6 +90,7 @@ async function getUser() {
             new: props.item.new,
         }"
     >
+
         <div class="title-container">
             <div class="title">
                 <span>{{ props.index + 1 }}. </span>
@@ -117,11 +119,14 @@ async function getUser() {
             <div class="positionChange">{{ positionChanged() }}</div>
         </div>
 
+        <UserModal :visible="state.userVisible" :user-handle="props.item.by"/>
+
         <div class="bottom">
             <div class="author">
                 {{ props.item.score }} points, by
-                <span class="by" @click="getUser()">{{ props.item.by }}</span>
+                <span class="by" @click="toggleUserView()">{{ props.item.by }}</span>
                 {{ props.item.time }}
+
             </div>
 
             <div class="commentFooterContainer">
@@ -138,6 +143,7 @@ async function getUser() {
                     <span v-else-if="props.item.text">{{ toggleText() }}</span>
                 </span>
             </div>
+
         </div>
 
         <div v-if="state.fetching">Loading...</div>
@@ -156,6 +162,8 @@ async function getUser() {
         <div v-if="state.commentsOpen" v-for="comment of state.comments">
             <Comment :comment="comment" />
         </div>
+
+
     </div>
 </template>
 
@@ -252,9 +260,5 @@ async function getUser() {
 
 .viewed {
     background-color: #e1e1e1;
-}
-
-.by {
-    cursor: pointer;
 }
 </style>

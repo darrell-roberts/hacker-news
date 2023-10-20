@@ -2,6 +2,7 @@
 import { reactive } from "vue";
 import { Item } from "../types/article";
 import { invoke } from "@tauri-apps/api/tauri";
+import UserModal from "./UserModal.vue";
 
 interface Props {
     comment: Item;
@@ -12,6 +13,7 @@ interface State {
     comments: Item[];
     fetching: boolean;
     error?: string;
+    userVisible: boolean;
 }
 
 const props = defineProps<Props>();
@@ -19,6 +21,7 @@ const state = reactive<State>({
     commentsOpen: false,
     comments: [],
     fetching: false,
+    userVisible: false,
 });
 
 function toggleComments() {
@@ -42,6 +45,11 @@ function getComments() {
 function toggleText() {
     return state.commentsOpen ? "[-]" : "[+]";
 }
+
+function toggleUserView() {
+    state.userVisible = !state.userVisible;
+}
+
 </script>
 
 <template>
@@ -50,9 +58,15 @@ function toggleText() {
             <span v-html="comment.text" />
         </div>
 
+        <UserModal :visible="state.userVisible" :user-handle="props.comment.by"/>
+
         <div class="bottom">
             <div class="author">
-                by {{ props.comment.by }} {{ props.comment.time }}
+                by
+                <span @click="toggleUserView()" class="by">
+                    {{ props.comment.by }}
+                </span>
+                 {{ props.comment.time }}
             </div>
             <div class="commentFooterContainer">
                 <span
