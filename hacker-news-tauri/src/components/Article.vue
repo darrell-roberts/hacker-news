@@ -3,6 +3,7 @@ import { reactive } from "vue";
 import { Item } from "../types/article";
 import { invoke } from "@tauri-apps/api/tauri";
 import Comment from "./Comment.vue";
+import UserModal from "./UserModal.vue";
 import { shell } from "@tauri-apps/api";
 
 interface Props {
@@ -15,6 +16,7 @@ interface State {
     fetching: boolean;
     error?: string;
     comments: Item[];
+    userVisible: boolean;
 }
 
 const props = defineProps<Props>();
@@ -22,6 +24,7 @@ const state = reactive<State>({
     commentsOpen: false,
     fetching: false,
     comments: [],
+    userVisible: false,
 });
 
 const emit = defineEmits(["viewed", "url"]);
@@ -29,7 +32,7 @@ const emit = defineEmits(["viewed", "url"]);
 function openLink() {
     emit("viewed");
     if (props.item.url) {
-        shell.open(props.item.url)
+        shell.open(props.item.url);
     }
 }
 
@@ -38,8 +41,8 @@ function toggleComments() {
         state.fetching = true;
         state.error = undefined;
         getComments()
-            .catch(err => state.error = err)
-            .finally(() => state.fetching = false);
+            .catch((err) => (state.error = err))
+            .finally(() => (state.fetching = false));
     } else {
         state.error = undefined;
     }
@@ -48,7 +51,9 @@ function toggleComments() {
 
 async function getComments() {
     emit("viewed");
-    state.comments = await invoke<Item[]>("get_items", { items: props.item.kids });
+    state.comments = await invoke<Item[]>("get_items", {
+        items: props.item.kids,
+    });
 }
 
 function toggleText() {
@@ -56,7 +61,7 @@ function toggleText() {
 }
 
 function hasRust() {
-    return props.item.hasRust
+    return props.item.hasRust;
 }
 
 function positionChanged() {
@@ -66,32 +71,44 @@ function positionChanged() {
     if (props.item.positionChange.type === "Up") {
         return "🔺";
     } else if (props.item.positionChange.type === "Down") {
-        return "🔻"
+        return "🔻";
     } else {
-        return ""
+        return "";
     }
+}
+
+function toggleUserView() {
+    state.userVisible = !state.userVisible;
 }
 </script>
 
 <template>
-    <div :class="{
-        article: true,
-        viewed: props.item.viewed,
-        new: props.item.new
-        }">
+    <div
+        :class="{
+            article: true,
+            viewed: props.item.viewed,
+            new: props.item.new,
+        }"
+    >
+
         <div class="title-container">
             <div class="title">
                 <span>{{ props.index + 1 }}. </span>
-                <span @click="openLink"
+                <span
+                    @click="openLink"
                     v-if="props.item.url"
                     v-on:mouseover="() => emit('url', props.item.url)"
-                    v-on:mouseout="() => emit('url', '')">
+                    v-on:mouseout="() => emit('url', '')"
+                >
                     {{ props.item.title }}
                 </span>
-                <span v-else @click="toggleComments"
+                <span
+                    v-else
+                    @click="toggleComments"
                     v-on:mouseover="() => emit('url', 'Text article')"
-                    v-on:mouseout="() => emit('url', '')">
-                        {{ props.item.title }}
+                    v-on:mouseout="() => emit('url', '')"
+                >
+                    {{ props.item.title }}
                 </span>
             </div>
 
@@ -100,45 +117,53 @@ function positionChanged() {
             </div>
 
             <div class="positionChange">{{ positionChanged() }}</div>
-
         </div>
+
+        <UserModal :visible="state.userVisible" :user-handle="props.item.by" @close="toggleUserView()"/>
 
         <div class="bottom">
             <div class="author">
-                {{ props.item.score }} points, by {{ props.item.by }} {{ props.item.time }}
+                {{ props.item.score }} points, by
+                <span class="by" @click="toggleUserView()">{{ props.item.by }}</span>
+                {{ props.item.time }}
+
             </div>
 
             <div class="commentFooterContainer">
-                <span @click="toggleComments"
-                    class="commentFooter">
+                <span @click="toggleComments" class="commentFooter">
                     <span v-if="props.item.kids.length > 0">
                         {{ toggleText() }}
                         {{ props.item.kids.length }}
-                        {{ props.item.kids.length === 1 ? "comment" : "comments" }}
+                        {{
+                            props.item.kids.length === 1
+                                ? "comment"
+                                : "comments"
+                        }}
                     </span>
                     <span v-else-if="props.item.text">{{ toggleText() }}</span>
                 </span>
-
             </div>
+
         </div>
 
-        <div v-if="state.fetching">
-            Loading...
-        </div>
+        <div v-if="state.fetching">Loading...</div>
 
         <div v-if="state.error" class="error">
             Failed to load comments: {{ state.error }}
         </div>
 
-        <div v-if="state.commentsOpen && props.item.text"
-            class="text-talk-bubble text-tri-right right-top">
+        <div
+            v-if="state.commentsOpen && props.item.text"
+            class="text-talk-bubble text-tri-right right-top"
+        >
             <span v-html="props.item.text" />
         </div>
 
-        <div v-if="state.commentsOpen"
-            v-for="comment of state.comments">
+        <div v-if="state.commentsOpen" v-for="comment of state.comments">
             <Comment :comment="comment" />
         </div>
+
+
     </div>
 </template>
 
@@ -160,7 +185,6 @@ function positionChanged() {
     flex-grow: 1;
     justify-content: end;
 }
-
 
 .new {
     border: 5px solid red;
@@ -209,7 +233,7 @@ function positionChanged() {
 }
 
 .text-tri-right.right-top:before {
-    content: ' ';
+    content: " ";
     position: absolute;
     width: 0;
     height: 0;
@@ -222,7 +246,7 @@ function positionChanged() {
 }
 
 .text-tri-right.right-top:after {
-    content: ' ';
+    content: " ";
     position: absolute;
     width: 0;
     height: 0;

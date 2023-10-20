@@ -4,7 +4,7 @@
 use anyhow::Error;
 use chrono::{DateTime, Local, Utc};
 use flexi_logger::{FileSpec, Logger};
-use hacker_news_api::{subscribe_top_stories, ApiClient, Item};
+use hacker_news_api::{subscribe_top_stories, ApiClient, Item, User};
 use log::{error, info};
 use std::{
     path::PathBuf,
@@ -28,14 +28,14 @@ struct App {
 type AppState = Arc<RwLock<App>>;
 type AppClient = Arc<ApiClient>;
 
-// #[tauri::command]
-// async fn get_item(item_id: u64, state: State<'_, ApiClient>) -> Result<HNItem, String> {
-//     state
-//         .item(item_id)
-//         .await
-//         .map(Into::into)
-//         .map_err(|err| err.to_string())
-// }
+#[tauri::command]
+async fn get_user(handle: String, client: State<'_, AppClient>) -> Result<User, String> {
+    client
+        .user(&handle)
+        .await
+        .map(Into::into)
+        .map_err(|err| err.to_string())
+}
 
 #[tauri::command]
 fn toggle_live_events(
@@ -193,7 +193,11 @@ pub fn launch() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_items, toggle_live_events])
+        .invoke_handler(tauri::generate_handler![
+            get_items,
+            toggle_live_events,
+            get_user
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

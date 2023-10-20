@@ -2,20 +2,29 @@
 import { reactive } from "vue";
 import { Item } from "../types/article";
 import { invoke } from "@tauri-apps/api/tauri";
+import UserModal from "./UserModal.vue";
 
 interface Props {
     comment: Item;
 }
 
 interface State {
-    commentsOpen: boolean,
-    comments: Item[],
-    fetching: boolean,
-    error?: string,
+    commentsOpen: boolean;
+    comments: Item[];
+    fetching: boolean;
+    error?: string;
+    userVisible: boolean;
+    commentVisible: boolean;
 }
 
 const props = defineProps<Props>();
-const state = reactive<State>({ commentsOpen: false, comments: [], fetching: false });
+const state = reactive<State>({
+    commentsOpen: false,
+    comments: [],
+    fetching: false,
+    userVisible: false,
+    commentVisible: true,
+});
 
 function toggleComments() {
     if (!state.commentsOpen) {
@@ -30,61 +39,75 @@ function getComments() {
     state.fetching = true;
     state.error = undefined;
     invoke<Item[]>("get_items", { items: props.comment.kids })
-        .then(items =>state.comments = items)
-        .catch(err => state.error = err)
-        .finally(() => state.fetching = false);
+        .then((items) => (state.comments = items))
+        .catch((err) => (state.error = err))
+        .finally(() => (state.fetching = false));
 }
 
 function toggleText() {
     return state.commentsOpen ? "[-]" : "[+]";
 }
+
+function toggleUserView() {
+    state.userVisible = !state.userVisible;
+}
+
+function hideComment() {
+    state.commentVisible = false;
+}
 </script>
 
 <template>
-    <div class="talk-bubble tri-right left-top">
+    <div :class="{talkBubble:true, triRight: true, leftTop: true, hideComment: !state.commentVisible}">
+        <div class="close" @click="hideComment()">X</div>
         <div class="comment">
             <span v-html="comment.text" />
         </div>
 
+        <UserModal :visible="state.userVisible" :user-handle="props.comment.by" @close="toggleUserView()"/>
+
         <div class="bottom">
-            <div class="author">by {{ props.comment.by }} {{ props.comment.time }}</div>
+            <div class="author">
+                by
+                <span @click="toggleUserView()" class="by">
+                    {{ props.comment.by }}
+                </span>
+                 {{ props.comment.time }}
+            </div>
             <div class="commentFooterContainer">
-                <span @click="toggleComments"
+                <span
+                    @click="toggleComments"
                     class="commentFooter"
-                    v-if="props.comment.kids.length > 0">
+                    v-if="props.comment.kids.length > 0"
+                >
                     {{ toggleText() }}
                     {{ props.comment.kids.length }}
-                    {{ props.comment.kids.length === 1 ? "comment" : "comments" }}
+                    {{
+                        props.comment.kids.length === 1 ? "comment" : "comments"
+                    }}
                 </span>
             </div>
         </div>
 
-        <div v-if="state.fetching">
-            Loading...
-        </div>
+        <div v-if="state.fetching">Loading...</div>
 
         <div v-if="state.error" class="error">
             Failed to load comments: {{ state.error }}
         </div>
+    </div>
 
-        <div v-if="state.commentsOpen" class="pointer">
-            👉
-        </div>
-
-        <div v-if="state.commentsOpen" v-for="comment of state.comments">
-            <Comment :comment="comment" />
-        </div>
+    <div v-if="state.commentsOpen" v-for="comment of state.comments" class="childComments">
+        <Comment :comment="comment" />
     </div>
 </template>
 
 <style scoped>
 .comment {
-    padding: 10px;
     overflow: auto;
     max-width: 35rem;
 }
 
-.talk-bubble {
+.talkBubble {
     margin-left: 40px;
     margin-bottom: 5px;
     margin-top: 5px;
@@ -100,12 +123,10 @@ function toggleText() {
 
 .commentFooter:hover {
     color: rgb(122, 14, 14);
-    /* transform: scale(2, 2); */
-    /* text-shadow: 1px 1px black; */
 }
 
-.tri-right.left-top:before {
-    content: ' ';
+.triRight.leftTop:before {
+    content: " ";
     position: absolute;
     width: 0;
     height: 0;
@@ -117,8 +138,8 @@ function toggleText() {
     border-color: #666 transparent transparent transparent;
 }
 
-.tri-right.left-top:after {
-    content: ' ';
+.triRight.leftTop:after {
+    content: " ";
     position: absolute;
     width: 0;
     height: 0;
@@ -133,5 +154,15 @@ function toggleText() {
 .pointer {
     top: 40px;
     position: relative;
+}
+
+.hideComment {
+    visibility: hidden;
+    display: none;
+}
+
+.childComments {
+    background-color: #e1e1e1;
+    margin-left: 20px;
 }
 </style>

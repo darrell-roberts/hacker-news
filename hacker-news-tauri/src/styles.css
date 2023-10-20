@@ -130,3 +130,13 @@ button {
     color: darkred;
     font-weight: bold;
 }
+
+.by {
+    cursor: pointer;
+}
+
+.close {
+    display: flex;
+    justify-content: end;
+    cursor: pointer;
+}
