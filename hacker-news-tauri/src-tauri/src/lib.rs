@@ -18,14 +18,20 @@ use types::{HNItem, PositionChange, TopStories};
 
 mod types;
 
+/// Application state.
 struct App {
+    /// Current top stories.
     top_stories: Vec<HNItem>,
+    /// Live events enabled.
     live_events: bool,
+    /// Last set of event ids.
     last_event_ids: Vec<u64>,
+    /// Event handle for background task.
     event_handle: Option<TokioJoinHandle<()>>,
 }
-
+/// Application State.
 type AppState = Arc<RwLock<App>>;
+/// Application API Client.
 type AppClient = Arc<ApiClient>;
 
 #[tauri::command]
@@ -38,6 +44,8 @@ async fn get_user(handle: String, client: State<'_, AppClient>) -> Result<User, 
 }
 
 #[tauri::command]
+/// Enables or disables the live feed. The background task is terminated when stopped
+/// and started when enabling the live feed.
 fn toggle_live_events(
     app_client: State<'_, AppClient>,
     state: State<'_, AppState>,
@@ -48,15 +56,14 @@ fn toggle_live_events(
 
     if s.live_events {
         subscribe(window, state.inner().clone(), app_client.inner().clone());
-    } else {
-        if let Some(h) = s.event_handle.take() {
-            h.abort();
-        }
+    } else if let Some(h) = s.event_handle.take() {
+        h.abort();
     }
 
     s.live_events
 }
 
+/// Get hacker news items. Can be comments, jobs, stories...
 #[tauri::command]
 async fn get_items(items: Vec<u64>, client: State<'_, AppClient>) -> Result<Vec<HNItem>, String> {
     client
@@ -66,6 +73,7 @@ async fn get_items(items: Vec<u64>, client: State<'_, AppClient>) -> Result<Vec<
         .map_err(|err| err.to_string())
 }
 
+/// Create the [`TopStories`] view from the application state.
 fn to_view_items(app_state: AppState) -> TopStories {
     let s = app_state.read().unwrap();
 
@@ -81,31 +89,30 @@ fn to_view_items(app_state: AppState) -> TopStories {
     }
 }
 
+/// Naive difference between two array slices.
 fn difference(before: &[u64], after: &[u64]) -> Vec<u64> {
     if before.is_empty() {
         return Vec::new();
     }
 
     after
-        .into_iter()
+        .iter()
         .filter(|n| !before.contains(n))
         .copied()
         .collect()
 }
 
-fn position_change(id: &u64, before: &[u64], after: &[u64]) -> PositionChange {
+/// Determine an item position change.
+fn position_change(id: &u64, before: &[u64], after_pos: usize) -> PositionChange {
     if before.is_empty() {
         return PositionChange::UnChanged;
     }
 
     let before_pos = before.iter().position(|n| n == id);
-    let after_pos = after.iter().position(|n| n == id);
 
     match (before_pos, after_pos) {
-        (None, None) => PositionChange::UnChanged,
-        (None, Some(_)) => PositionChange::Up,
-        (Some(_), None) => PositionChange::Down,
-        (Some(a), Some(b)) => match a.cmp(&b) {
+        (None, _) => PositionChange::Up,
+        (Some(a), b) => match a.cmp(&b) {
             std::cmp::Ordering::Less => PositionChange::Down,
             std::cmp::Ordering::Equal => PositionChange::UnChanged,
             std::cmp::Ordering::Greater => PositionChange::Up,
@@ -122,7 +129,7 @@ fn subscribe(window: Window, app_state: AppState, app_client: AppClient) {
             s.event_handle = Some(handle);
         }
         while let Some(event) = rx.recv().await {
-            info!("Received top stories event {} items", event.data.len());
+            // info!("Received top stories event {} items", event.data.len());
             let mut new_items = event.data;
             new_items.truncate(50);
 
@@ -136,12 +143,13 @@ fn subscribe(window: Window, app_state: AppState, app_client: AppClient) {
                         s.top_stories = items
                             .into_iter()
                             .map(HNItem::from)
-                            .map(|item| HNItem {
+                            .enumerate()
+                            .map(|(index, item)| HNItem {
                                 new: new_keys.contains(&item.id),
                                 position_change: position_change(
                                     &item.id,
                                     &s.last_event_ids,
-                                    &new_items,
+                                    index,
                                 ),
                                 ..item
                             })
@@ -174,7 +182,6 @@ pub fn launch() {
         .manage(app_client.clone())
         .setup(move |app| {
             Logger::try_with_str("info")? // Write all error, warn, and info messages
-                // use a simple filename without a timestamp
                 .log_to_file(
                     FileSpec::default().suppress_timestamp().directory(
                         app.path_resolver()
@@ -182,7 +189,6 @@ pub fn launch() {
                             .unwrap_or_else(|| PathBuf::from("")),
                     ),
                 )
-                // do not truncate the log file when the program is restarted
                 .append()
                 .start()?;
 
