@@ -83,31 +83,21 @@ function toggleUserView() {
 </script>
 
 <template>
-    <div
-        :class="{
-            article: true,
-            viewed: props.item.viewed,
-            new: props.item.new,
-        }"
-    >
+    <div :class="{
+        article: true,
+        viewed: props.item.viewed,
+        new: props.item.new,
+    }">
 
         <div class="title-container">
             <div class="title">
                 <span>{{ props.index + 1 }}. </span>
-                <span
-                    @click="openLink"
-                    v-if="props.item.url"
-                    v-on:mouseover="() => emit('url', props.item.url)"
-                    v-on:mouseout="() => emit('url', '')"
-                >
+                <span @click="openLink" v-if="props.item.url" v-on:mouseover="() => emit('url', props.item.url)"
+                    v-on:mouseout="() => emit('url', '')">
                     {{ props.item.title }}
                 </span>
-                <span
-                    v-else
-                    @click="toggleComments"
-                    v-on:mouseover="() => emit('url', 'Text article')"
-                    v-on:mouseout="() => emit('url', '')"
-                >
+                <span v-else @click="toggleComments" v-on:mouseover="() => emit('url', 'Text article')"
+                    v-on:mouseout="() => emit('url', '')">
                     {{ props.item.title }}
                 </span>
             </div>
@@ -119,7 +109,7 @@ function toggleUserView() {
             <div class="positionChange">{{ positionChanged() }}</div>
         </div>
 
-        <UserModal :visible="state.userVisible" :user-handle="props.item.by" @close="toggleUserView()"/>
+        <UserModal :visible="state.userVisible" :user-handle="props.item.by" @close="toggleUserView()" />
 
         <div class="bottom">
             <div class="author">
@@ -136,8 +126,8 @@ function toggleUserView() {
                         {{ props.item.kids.length }}
                         {{
                             props.item.kids.length === 1
-                                ? "comment"
-                                : "comments"
+                            ? "comment"
+                            : "comments"
                         }}
                     </span>
                     <span v-else-if="props.item.text">{{ toggleText() }}</span>
@@ -152,18 +142,13 @@ function toggleUserView() {
             Failed to load comments: {{ state.error }}
         </div>
 
-        <div
-            v-if="state.commentsOpen && props.item.text"
-            class="text-talk-bubble text-tri-right right-top"
-        >
+        <div v-if="state.commentsOpen && props.item.text" class="text-talk-bubble text-tri-right right-top">
             <span v-html="props.item.text" />
         </div>
 
         <div v-if="state.commentsOpen" v-for="comment of state.comments">
             <Comment :comment="comment" />
         </div>
-
-
     </div>
 </template>
 

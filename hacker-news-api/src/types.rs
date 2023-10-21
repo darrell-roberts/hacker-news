@@ -40,7 +40,9 @@ pub struct EventData {
     pub data: Vec<u64>,
 }
 
+/// Extension trait for the Result type.
 pub trait ResultExt<T, E> {
+    /// If the result is [`Err`] then log the error.
     fn log_error(self) -> Self;
 }
 

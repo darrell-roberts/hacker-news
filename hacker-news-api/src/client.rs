@@ -133,24 +133,6 @@ fn parse_event(bytes: &[u8]) -> Option<EventData> {
                     .ok()
             })?
         })
-    // if let Some(event) = lines.next() {
-    //     if event.starts_with(b"event: put") {
-    //         None?;
-    //     }
-    // }
-
-    // if let Some(data) = lines.next() {
-    //     if data.starts_with(b"data: ") {
-    //         let event_data = serde_json::from_slice::<EventData>(&data[6..])
-    //             .map_err(|err| {
-    //                 error!("Failed to deserialize event data {err}");
-    //                 err
-    //             })
-    //             .ok()?;
-    //         return Some(event_data);
-    //     }
-    // }
-    // None
 }
 
 /// Create a subscription to the top stories event stream. Provides

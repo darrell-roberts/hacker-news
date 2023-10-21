@@ -65,43 +65,36 @@ function mergeViewed(items: TopStories) {
     }
     state.topStories = items;
 }
+
+function onMenu(e: PointerEvent) {
+    // No context menu for now.
+    e.preventDefault();
+}
+
 </script>
 
 <template>
-    <div class="container">
+    <div class="container" :oncontextmenu="onMenu">
         <div v-if="state.error">Failed to load stories: {{ state.error }}</div>
 
         <div class="articles">
             <div v-for="(item, index) in state.topStories.items" :key="item.id">
-                <Article
-                    :item="item"
-                    :index="index"
-                    v-if="applyFilter(item)"
-                    @viewed="() => (item.viewed = true)"
-                    @url="(url) => (state.url = url)"
-                />
+                <Article :item="item" :index="index" v-if="applyFilter(item)" @viewed="() => (item.viewed = true)"
+                    @url="(url) => (state.url = url)" />
             </div>
         </div>
 
         <div class="footer">
             <div class="status-line">
-                <Tooltip
-                    :content="
-                        state.liveEvents
-                            ? 'Disable Live Events'
-                            : 'Enable Live Events'
-                    "
-                    :large="true"
-                >
+                <Tooltip :content="state.liveEvents
+                    ? 'Disable Live Events'
+                    : 'Enable Live Events'
+                    " :large="true">
                     <div>
                         <div v-if="state.topStories.items.length === 0">
                             Loading...
                         </div>
-                        <div
-                            v-else
-                            class="status-action"
-                            @click="toggleLiveEvents()"
-                        >
+                        <div v-else class="status-action" @click="toggleLiveEvents()">
                             <span>
                                 {{ state.topStories.loaded }}
                             </span>
