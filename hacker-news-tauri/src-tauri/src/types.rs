@@ -1,6 +1,6 @@
 //! View model types.
 use chrono::{DateTime, Utc};
-use hacker_news_api::Item;
+use hacker_news_api::{Item, User};
 use serde::Serialize;
 
 #[derive(Serialize, Clone)]
@@ -18,6 +18,7 @@ pub struct HNItem {
     pub viewed: bool,
     pub new: bool,
     pub position_change: PositionChange,
+    pub ty: String,
 }
 
 impl From<Item> for HNItem {
@@ -35,6 +36,26 @@ impl From<Item> for HNItem {
             viewed: false,
             new: false,
             position_change: PositionChange::UnChanged,
+            ty: item.ty,
+        }
+    }
+}
+
+#[derive(Serialize, Clone)]
+pub struct HNUser {
+    pub about: Option<String>,
+    pub created: String,
+    pub karma: u64,
+}
+
+impl From<User> for HNUser {
+    fn from(user: User) -> Self {
+        Self {
+            about: user.about,
+            created: DateTime::<Utc>::from_timestamp(user.created as i64, 0)
+                .map(|d| format!("{}", d.format("%b %e, %Y")))
+                .unwrap_or_default(),
+            karma: user.karma,
         }
     }
 }

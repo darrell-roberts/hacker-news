@@ -36,11 +36,20 @@ function hideUser() {
 
 <template>
     <div v-if="props.visible" class="user arrow">
-        <div class="close" @click="hideUser()">X</div>
+        <div class="userHeader">
+            <div :style="{ fontStyle: 'italic' }">{{ props.userHandle }}</div>
+            <div class="close" @click="hideUser()">X</div>
+        </div>
+
         <div v-if="user">
             <span id="myPopup" v-html="user?.about" class="about" />
             <div class="karma">
-                Karma: {{ user?.karma }}
+                <div>
+                    Karma: {{ user?.karma }}
+                </div>
+                <div>
+                    Registered: {{ user.created }}
+                </div>
             </div>
         </div>
         <div v-else>
@@ -61,6 +70,12 @@ function hideUser() {
     position: relative;
     display: inline-block;
     min-width: 10rem;
+}
+
+.userHeader {
+    display: flex;
+    justify-content: space-between;
+    margin-right: 5px;
 }
 
 .arrow:before {

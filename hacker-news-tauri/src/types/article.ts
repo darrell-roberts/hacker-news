@@ -17,6 +17,7 @@ export interface Item {
     viewed: boolean;
     new: boolean;
     positionChange: PositionChange;
+    ty: string;
 }
 
 export interface PositionChange {

@@ -22,6 +22,8 @@ pub struct Item {
     pub dead: bool,
     #[serde(default)]
     pub deleted: bool,
+    #[serde(alias = "type")]
+    pub ty: String,
 }
 
 /// Hacker news user.
@@ -48,7 +50,7 @@ pub trait ResultExt<T, E> {
 
 impl<T, E> ResultExt<T, E> for std::result::Result<T, E>
 where
-    E: Display + Debug,
+    E: Display,
 {
     fn log_error(self) -> Self {
         match self {
