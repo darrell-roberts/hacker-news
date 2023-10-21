@@ -42,10 +42,14 @@ pub struct EventData {
     pub data: Vec<u64>,
 }
 
-/// Extension trait for the Result type.
+/// Extension trait for the Result type to
+/// add logging capabilities.
 pub trait ResultExt<T, E> {
     /// If the result is [`Err`] then log the error.
     fn log_error(self) -> Self;
+
+    /// When you don't need the result but want to log failure.
+    fn log_error_consume(self);
 }
 
 impl<T, E> ResultExt<T, E> for std::result::Result<T, E>
@@ -60,5 +64,9 @@ where
                 Err(err)
             }
         }
+    }
+
+    fn log_error_consume(self) {
+        let _ = self.log_error();
     }
 }
