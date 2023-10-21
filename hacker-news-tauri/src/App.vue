@@ -102,11 +102,22 @@ function onMenu(e: PointerEvent) {
                         </div>
                     </div>
                 </Tooltip>
-                <Tooltip content="Filter Rust">
-                    <div @click="toggleFilter()" class="status-action">
-                        Rust articles: {{ state.topStories.rustArticles ?? 0 }}
+                <div :style="{ display: 'flex' }">
+                    <div>
+                        Jobs: {{ state.topStories.items.filter(item => item.ty === "job").length }}
                     </div>
-                </Tooltip>
+                    <div :style="{ marginLeft: '10px' }">
+                        Stories: {{ state.topStories.items.filter(item => item.ty === "story").length }}
+                    </div>
+                    <div :style="{ marginLeft: '10px' }">
+                        Polls: {{ state.topStories.items.filter(item => item.ty === "poll").length }}
+                    </div>
+                    <Tooltip content="Filter Rust">
+                        <div @click="toggleFilter()" class="status-action">
+                            Rust articles: {{ state.topStories.rustArticles ?? 0 }}
+                        </div>
+                    </Tooltip>
+                </div>
             </div>
 
             <div class="url">{{ state.url }}</div>
@@ -155,6 +166,7 @@ function onMenu(e: PointerEvent) {
 
 .status-action {
     cursor: pointer;
+    margin-left: 10px;
 }
 
 .status-action:hover {
