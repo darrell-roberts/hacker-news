@@ -87,8 +87,8 @@ function onMenu(e: PointerEvent) {
         <div class="footer">
             <div class="status-line">
                 <Tooltip :content="state.liveEvents
-                    ? 'Disable Live Events'
-                    : 'Enable Live Events'
+                    ? 'Pause live events'
+                    : 'Resume live events'
                     " :large="true">
                     <div>
                         <div v-if="state.topStories.items.length === 0">

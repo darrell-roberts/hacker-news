@@ -13,11 +13,13 @@ pub struct ApiClient {
     client: Arc<reqwest::Client>,
 }
 
+/// Result using anyhow.
 type Result<T> = std::result::Result<T, anyhow::Error>;
 
 impl ApiClient {
     const API_END_POINT: &str = "https://hacker-news.firebaseio.com/v0";
 
+    /// Create a new API client.
     pub fn new() -> Result<Self> {
         Ok(Self {
             client: Arc::new(
@@ -157,7 +159,7 @@ pub fn subscribe_top_stories() -> (Receiver<EventData>, JoinHandle<()>) {
                 }
             }
             tokio::time::sleep(Duration::from_secs(60 * 5)).await;
-            info!("Restarted subscription");
+            info!("Restarting subscription");
         }
     });
 

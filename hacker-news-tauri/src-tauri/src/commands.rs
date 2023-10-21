@@ -1,14 +1,15 @@
 //! Tauri commands bridging the UI with the backend.
 use crate::types::{has_rust, HNItem, HNUser, PositionChange, TopStories};
 use crate::{AppClient, AppState};
+use anyhow::Context;
 use chrono::Local;
-use hacker_news_api::{subscribe_top_stories, Item};
+use hacker_news_api::{subscribe_top_stories, Item, ResultExt};
 use log::{error, info};
 use tauri::{async_runtime::spawn, State, Window};
 
-#[tauri::command]
 /// Enables or disables the live feed. The background task is terminated when stopped
 /// and started when enabling the live feed.
+#[tauri::command]
 pub(crate) fn toggle_live_events(
     app_client: State<'_, AppClient>,
     state: State<'_, AppState>,
@@ -20,6 +21,7 @@ pub(crate) fn toggle_live_events(
     if s.live_events {
         subscribe(window, state.inner().clone(), app_client.inner().clone());
     } else if let Some(h) = s.event_handle.take() {
+        info!("Stopping subscription task");
         h.abort();
     }
 
@@ -39,6 +41,7 @@ pub(crate) async fn get_items(
         .map_err(|err| err.to_string())
 }
 
+/// Get a hacker news user.
 #[tauri::command]
 pub(crate) async fn get_user(
     handle: String,
@@ -51,6 +54,7 @@ pub(crate) async fn get_user(
         .map_err(|err| err.to_string())
 }
 
+/// Transform API [`Item`]s into [HNItem] view items.
 fn to_hn_items(items: Vec<Item>) -> Vec<HNItem> {
     items.into_iter().map(Into::into).collect()
 }
@@ -147,9 +151,10 @@ pub(crate) fn subscribe(window: Window, app_state: AppState, app_client: AppClie
                         s.last_event_ids = new_items;
                     }
 
-                    if let Err(err) = window.emit("top_stories", to_view_items(app_state.clone())) {
-                        error!("Failed to emit top stories: {err}");
-                    };
+                    window
+                        .emit("top_stories", to_view_items(app_state.clone()))
+                        .context("Failed to emit to stories")
+                        .log_error_consume();
                 }
                 Err(err) => {
                     error!("Failed to get new items {err}");
