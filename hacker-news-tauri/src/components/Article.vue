@@ -115,7 +115,7 @@ function typeBadge() {
             </div>
 
             <div style="display: flex;">
-                <div>{{ typeBadge() }}</div>
+                <div style="margin-left: 10px">{{ typeBadge() }}</div>
                 <div v-if="positionChanged() !== ''" class="positionChange">{{ positionChanged() }}</div>
             </div>
 
