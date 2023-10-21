@@ -1,8 +1,8 @@
 //! Tauri commands bridging the UI with the backend.
-use crate::types::{has_rust, HNItem, PositionChange, TopStories};
+use crate::types::{has_rust, HNItem, HNUser, PositionChange, TopStories};
 use crate::{AppClient, AppState};
 use chrono::Local;
-use hacker_news_api::{subscribe_top_stories, Item, User};
+use hacker_news_api::{subscribe_top_stories, Item};
 use log::{error, info};
 use tauri::{async_runtime::spawn, State, Window};
 
@@ -40,7 +40,10 @@ pub(crate) async fn get_items(
 }
 
 #[tauri::command]
-pub(crate) async fn get_user(handle: String, client: State<'_, AppClient>) -> Result<User, String> {
+pub(crate) async fn get_user(
+    handle: String,
+    client: State<'_, AppClient>,
+) -> Result<HNUser, String> {
     client
         .user(&handle)
         .await

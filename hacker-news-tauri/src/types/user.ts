@@ -1,6 +1,5 @@
 export interface User {
     about?: string;
-    created: number;
+    created: string;
     karma: number;
-    submitted: number[];
 }

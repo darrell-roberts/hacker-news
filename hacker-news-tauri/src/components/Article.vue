@@ -80,13 +80,21 @@ function positionChanged() {
 function toggleUserView() {
     state.userVisible = !state.userVisible;
 }
+
+function typeBadge() {
+    switch (props.item.ty) {
+        case "job": return "job";
+        case "poll": return "poll";
+        default: return ""
+    }
+}
 </script>
 
 <template>
     <div :class="{
         article: true,
         viewed: props.item.viewed,
-        new: props.item.new,
+        nonStory: props.item.ty !== 'story',
     }">
 
         <div class="title-container">
@@ -106,7 +114,11 @@ function toggleUserView() {
                 <img src="/rust-logo-blk.svg" class="rustBadge" />
             </div>
 
-            <div class="positionChange">{{ positionChanged() }}</div>
+            <div style="display: flex;">
+                <div>{{ typeBadge() }}</div>
+                <div v-if="positionChanged() !== ''" class="positionChange">{{ positionChanged() }}</div>
+            </div>
+
         </div>
 
         <UserModal :visible="state.userVisible" :user-handle="props.item.by" @close="toggleUserView()" />
@@ -146,7 +158,7 @@ function toggleUserView() {
             <span v-html="props.item.text" />
         </div>
 
-        <div v-if="state.commentsOpen" v-for="comment of state.comments">
+        <div v-if="state.commentsOpen" v-for=" comment  of  state.comments ">
             <Comment :comment="comment" />
         </div>
     </div>
@@ -165,14 +177,18 @@ function toggleUserView() {
     box-shadow: 2px 1px 1px;
 }
 
+.nonStory {
+    background-color: rgb(187, 187, 125);
+}
+
+.nonStory.viewed {
+    background-color: rgb(149, 149, 100);
+}
+
 .rustArticle {
     display: flex;
     flex-grow: 1;
     justify-content: end;
-}
-
-.new {
-    border: 5px solid red;
 }
 
 .title {
@@ -200,7 +216,8 @@ function toggleUserView() {
 .positionChange {
     width: 10px;
     height: 10px;
-    margin-right: 5px;
+    margin-right: 10px;
+    margin-left: 10px;
 }
 
 .text-talk-bubble {
