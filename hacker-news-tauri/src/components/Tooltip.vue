@@ -41,11 +41,11 @@ const props = defineProps<Props>();
     position: absolute;
     z-index: 1;
     left: 0;
-    top: -45px;
+    top: -3rem;
     font-size: small;
 }
 
 .tooltip .large {
-    width: 130px;
+    width: 10rem;
 }
 </style>
