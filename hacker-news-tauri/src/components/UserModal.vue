@@ -13,7 +13,7 @@ const user = ref<User>();
 
 const emit = defineEmits(["close"]);
 
-watch(props, ({visible}) => {
+watch(props, ({ visible }) => {
     if (visible) {
         getUser();
     } else {
@@ -22,7 +22,7 @@ watch(props, ({visible}) => {
 })
 
 function getUser() {
-    invoke<User>("get_user", {handle: props.userHandle})
+    invoke<User>("get_user", { handle: props.userHandle })
         .then(u => {
             user.value = u;
         })
@@ -38,7 +38,7 @@ function hideUser() {
     <div v-if="props.visible" class="user arrow">
         <div class="close" @click="hideUser()">X</div>
         <div v-if="user">
-            <span id="myPopup" v-html="user?.about" class="about"/>
+            <span id="myPopup" v-html="user?.about" class="about" />
             <div class="karma">
                 Karma: {{ user?.karma }}
             </div>
@@ -55,7 +55,7 @@ function hideUser() {
     color: white;
     padding: 5px;
     border-radius: 8px;
-    box-shadow:  2px 1px 1px gray;
+    box-shadow: 2px 1px 1px gray;
     margin-top: 5px;
     margin-bottom: 5px;
     position: relative;

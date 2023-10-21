@@ -58,13 +58,13 @@ function hideComment() {
 </script>
 
 <template>
-    <div :class="{talkBubble:true, triRight: true, leftTop: true, hideComment: !state.commentVisible}">
+    <div :class="{ talkBubble: true, triRight: true, hideComment: !state.commentVisible }">
         <div class="close" @click="hideComment()">X</div>
         <div class="comment">
             <span v-html="comment.text" />
         </div>
 
-        <UserModal :visible="state.userVisible" :user-handle="props.comment.by" @close="toggleUserView()"/>
+        <UserModal :visible="state.userVisible" :user-handle="props.comment.by" @close="toggleUserView()" />
 
         <div class="bottom">
             <div class="author">
@@ -72,14 +72,10 @@ function hideComment() {
                 <span @click="toggleUserView()" class="by">
                     {{ props.comment.by }}
                 </span>
-                 {{ props.comment.time }}
+                {{ props.comment.time }}
             </div>
             <div class="commentFooterContainer">
-                <span
-                    @click="toggleComments"
-                    class="commentFooter"
-                    v-if="props.comment.kids.length > 0"
-                >
+                <span @click="toggleComments" class="commentFooter" v-if="props.comment.kids.length > 0">
                     {{ toggleText() }}
                     {{ props.comment.kids.length }}
                     {{
@@ -125,7 +121,7 @@ function hideComment() {
     color: rgb(122, 14, 14);
 }
 
-.triRight.leftTop:before {
+.triRight:before {
     content: " ";
     position: absolute;
     width: 0;
@@ -138,7 +134,7 @@ function hideComment() {
     border-color: #666 transparent transparent transparent;
 }
 
-.triRight.leftTop:after {
+.triRight:after {
     content: " ";
     position: absolute;
     width: 0;
