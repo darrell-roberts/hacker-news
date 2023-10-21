@@ -52,7 +52,8 @@ impl ApiClient {
         Ok(Self {
             client: Arc::new(
                 reqwest::Client::builder()
-                    // .timeout(Duration::from_secs(30))
+                    .timeout(Duration::from_secs(30))
+                    .connect_timeout(Duration::from_secs(30))
                     .build()?,
             ),
         })
@@ -156,7 +157,7 @@ fn parse_event(bytes: &[u8]) -> Option<EventData> {
     if let Some(event) = lines.next() {
         if event.starts_with(b"event: ") {
             let event_name = String::from_utf8_lossy(&event[7..]);
-            info!("event_name: {event_name}");
+            // info!("event_name: {event_name}");
             if event_name != "put" {
                 return None;
             }

@@ -1,5 +1,5 @@
 use anyhow::Error;
-use hacker_news_api::{subscribe_top_stories, ApiClient};
+use hacker_news_api::subscribe_top_stories;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Error> {
