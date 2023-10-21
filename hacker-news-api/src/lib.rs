@@ -52,7 +52,7 @@ impl ApiClient {
         Ok(Self {
             client: Arc::new(
                 reqwest::Client::builder()
-                    .timeout(Duration::from_secs(30))
+                    // .timeout(Duration::from_secs(30))
                     .connect_timeout(Duration::from_secs(30))
                     .build()?,
             ),
