@@ -1,16 +1,16 @@
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until, take_while1},
-    character::complete::{alpha1, char},
+    character::complete::{alpha1, char, space1},
     combinator::map,
     multi::{many0, many1},
-    sequence::{delimited, preceded, separated_pair, terminated},
+    sequence::{delimited, pair, preceded, separated_pair, terminated},
     IResult,
 };
 
 fn parse_attribute(input: &str) -> IResult<&str, Attribute> {
     map(
-        preceded(char(' '), separated_pair(alpha1, tag("="), parse_quote)),
+        preceded(space1, separated_pair(alpha1, tag("="), parse_quote)),
         |(name, value)| Attribute { name, value },
     )(input)
 }
@@ -27,40 +27,37 @@ fn parse_anchor_children(input: &str) -> IResult<&str, &str> {
 }
 
 fn parse_anchor(input: &str) -> IResult<&str, ParsedHtml> {
-    let mut parse = delimited(
+    let parse_attr = delimited(
         alt((tag("<a"), tag("<A"))),
         many0(parse_attribute),
         tag(">"),
     );
 
-    let (rest, attributes) = parse(input)?;
-    let (rest, children) = parse_anchor_children(rest)?;
-
-    Ok((
-        rest,
-        ParsedHtml::Link(Anchor {
-            attributes,
-            children,
-        }),
-    ))
+    map(
+        pair(parse_attr, parse_anchor_children),
+        |(attributes, children)| {
+            ParsedHtml::Link(Anchor {
+                attributes,
+                children,
+            })
+        },
+    )(input)
 }
 
 fn parse_html(input: &str) -> IResult<&str, Vec<ParsedHtml>> {
-    let mut parse = many1(alt((
+    many1(alt((
         parse_anchor,
         map(
             alt((take_until("<a"), take_while1(|_| true))),
             ParsedHtml::Text,
         ),
-    )));
-    parse(input)
+    )))(input)
 }
 
 pub(crate) fn parse(input: &str) -> Result<Vec<ParsedHtml>, anyhow::Error> {
-    let (rest, mut html) = parse_html(input).map_err(|e| anyhow::Error::msg(e.to_string()))?;
-
-    html.push(ParsedHtml::Text(rest));
-    Ok(html)
+    parse_html(input)
+        .map_err(|e| anyhow::Error::msg(e.to_string()))
+        .map(|(_, html)| html)
 }
 
 #[derive(Debug)]
