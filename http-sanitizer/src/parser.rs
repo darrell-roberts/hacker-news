@@ -20,7 +20,6 @@ fn parse_quote(input: &str) -> IResult<&str, &str> {
 }
 
 fn parse_anchor_children(input: &str) -> IResult<&str, &str> {
-    // take_until("</a>")(input)
     terminated(take_until("</a>"), tag("</a>"))(input)
 }
 
@@ -40,11 +39,7 @@ fn parse_anchor(input: &str) -> IResult<&str, ParsedHtml> {
 }
 
 fn parse_html(input: &str) -> IResult<&str, Vec<ParsedHtml>> {
-    let mut parse = many1(alt((
-        parse_anchor,
-        // map(alt((take_until("<a"), take_until("\n"))), ParsedHtml::Text),
-        map(take_until("<a"), ParsedHtml::Text),
-    )));
+    let mut parse = many1(alt((parse_anchor, map(take_until("<a"), ParsedHtml::Text))));
 
     parse(input)
 }
@@ -108,10 +103,10 @@ mod test {
 
     #[test]
     fn parse_comment() {
-        let comment = r#"This is a test with a <a href="http://www.google.com/">Google</a> Link. <a href="www.google.com">blah</a> Hello"#;
-
+        let comment = r#"
+            This is a test with a <a href="http://www.google.com/">Google</a> Link. <a href="www.google.com">blah</a> Hello
+            "#;
         let result = parse(comment);
-
         assert!(result.is_ok());
     }
 
