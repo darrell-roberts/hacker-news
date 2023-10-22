@@ -1,16 +1,15 @@
 use parser::{parse, ParsedHtml};
-use std::borrow::Cow;
 
 mod parser;
 
 /// Transform any html anchor links inside a comment.
-pub fn sanitize_html<'a>(input: &'a str) -> Cow<'a, str> {
-    let Ok(elements) = parse(input) else {
-        return Cow::Borrowed(input);
+pub fn sanitize_html<'a>(input: String) -> String {
+    let Ok(elements) = parse(&input) else {
+        return input;
     };
 
     if elements.iter().all(|el| matches!(el, ParsedHtml::Text(_))) {
-        return Cow::Borrowed(input);
+        return input;
     }
 
     let modified = elements.into_iter().fold(String::new(), |mut s, elem| {
@@ -21,13 +20,19 @@ pub fn sanitize_html<'a>(input: &'a str) -> Cow<'a, str> {
             ParsedHtml::Link(l) => {
                 if let Some(att) = l.attributes.iter().find(|a| a.name == "href") {
                     s.push_str(att.value);
+
+                    if l.children != att.value && !l.children.starts_with("http") {
+                        s.push('(');
+                        s.push_str(l.children);
+                        s.push(')');
+                    }
                 }
             }
         }
         s
     });
 
-    Cow::Owned(modified)
+    modified
 }
 
 #[cfg(test)]
@@ -42,7 +47,7 @@ mod test {
             Bye.
         "#;
 
-        let transformed = sanitize_html(&test);
+        let transformed = sanitize_html(String::from(test));
 
         let expected = r#"
             Hello this is a comment.
