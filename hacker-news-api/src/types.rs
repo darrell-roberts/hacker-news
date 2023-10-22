@@ -1,3 +1,4 @@
+//! API Client types.
 use log::error;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Display};
@@ -42,8 +43,7 @@ pub struct EventData {
     pub data: Vec<u64>,
 }
 
-/// Extension trait for the Result type to
-/// add logging capabilities.
+/// Extension trait for the Result type to add logging capabilities.
 pub trait ResultExt<T, E> {
     /// If the result is [`Err`] then log the error.
     fn log_error(self) -> Self;

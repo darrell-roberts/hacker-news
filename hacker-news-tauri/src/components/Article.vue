@@ -83,8 +83,9 @@ function toggleUserView() {
 
 function typeBadge() {
     switch (props.item.ty) {
-        case "job": return "job";
-        case "poll": return "poll";
+        case "job": return "(job)";
+        case "poll": return "(poll)";
+        case "pollopt": return "(pollopt)";
         default: return ""
     }
 }

@@ -1,3 +1,4 @@
+//! Hacker News API Client.
 use crate::types::{EventData, Item, ResultExt, User};
 use anyhow::Context;
 use futures::TryFutureExt;
@@ -121,9 +122,9 @@ impl ApiClient {
 fn parse_event(bytes: &[u8]) -> Option<EventData> {
     let mut lines = bytes.split(|b| *b == b'\n');
 
-    // We are only concerned with put events for the top stories.
-    // This event will provide a JSON number array payload of
-    // all the top stories in ranking order.
+    // We are only concerned with put events for the top stories. This event
+    // will provide a JSON number array payload of all the top stories in
+    // ranking order.
     lines
         .next()
         .and_then(|event| event.starts_with(b"event: put").then(|| lines.next())?)
@@ -140,9 +141,8 @@ fn parse_event(bytes: &[u8]) -> Option<EventData> {
         })
 }
 
-/// Create a subscription to the top stories event stream. Provides
-/// a receive channel and a task handle for consuming events and
-/// canceling the task.
+/// Create a subscription to the top stories event stream. Provides a receive
+/// channel and a task handle for consuming events and canceling the task.
 pub fn subscribe_top_stories() -> (Receiver<EventData>, JoinHandle<()>) {
     let (tx, rx) = mpsc::channel(100);
 
