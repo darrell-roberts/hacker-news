@@ -1,6 +1,7 @@
 //! View model types.
 use chrono::{DateTime, Utc};
 use hacker_news_api::{Item, User};
+use http_sanitizer::sanitize_html;
 use serde::Serialize;
 
 #[derive(Serialize, Clone)]
@@ -26,7 +27,7 @@ impl From<Item> for HNItem {
         Self {
             id: item.id,
             kids: item.kids,
-            text: item.text,
+            text: item.text.map(|s| sanitize_html(&s).to_string()),
             url: item.url,
             score: item.score,
             time: parse_date(item.time),
