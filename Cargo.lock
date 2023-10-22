@@ -1283,7 +1283,6 @@ name = "http-sanitizer"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "log",
  "nom",
 ]
 
