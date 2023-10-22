@@ -27,7 +27,7 @@ impl From<Item> for HNItem {
         Self {
             id: item.id,
             kids: item.kids,
-            text: item.text.map(|s| sanitize_html(&s).to_string()),
+            text: item.text.map(sanitize_html),
             url: item.url,
             score: item.score,
             time: parse_date(item.time),
