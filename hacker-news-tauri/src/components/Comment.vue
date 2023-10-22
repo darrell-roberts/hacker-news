@@ -59,7 +59,10 @@ function hideComment() {
 
 <template>
     <div :class="{ talkBubble: true, triRight: true, hideComment: !state.commentVisible }">
-        <div class="close" @click="hideComment()">X</div>
+        <div style="display: flex; justify-content: space-between;">
+            <div></div>
+            <div class="close" @click="hideComment()">X</div>
+        </div>
         <div class="comment">
             <span v-html="comment.text" />
         </div>
