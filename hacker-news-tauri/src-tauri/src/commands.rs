@@ -7,8 +7,8 @@ use hacker_news_api::{subscribe_top_stories, Item, ResultExt};
 use log::{error, info};
 use tauri::{async_runtime::spawn, State, Window};
 
-/// Enables or disables the live feed. The background task is terminated when stopped
-/// and started when enabling the live feed.
+/// Enables or disables the live feed. The background task is terminated when
+/// stopped and started when enabling the live feed.
 #[tauri::command]
 pub(crate) fn toggle_live_events(
     app_client: State<'_, AppClient>,
@@ -111,8 +111,8 @@ fn position_change(id: &u64, before: &[u64], after_pos: usize) -> PositionChange
     }
 }
 
-/// Start a task that subscribes to top stories and emits events
-/// back to the main window.
+/// Start a task that subscribes to top stories and emits events back to the
+/// main window.
 pub(crate) fn subscribe(window: Window, app_state: AppState, app_client: AppClient) {
     info!("Starting subscription");
     spawn(async move {

@@ -76,8 +76,8 @@ pub enum PositionChange {
     UnChanged,
 }
 
-/// Extract the duration from a UNIX time and
-/// convert duration into a human friendly sentence.
+/// Extract the duration from a UNIX time and convert duration into a human
+/// friendly sentence.
 fn parse_date(time: u64) -> Option<String> {
     let duration = DateTime::<Utc>::from_timestamp(time as i64, 0).map(|then| Utc::now() - then)?;
 
