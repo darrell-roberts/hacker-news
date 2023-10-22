@@ -1,4 +1,3 @@
-use log::error;
 use parser::{parse, ParsedHtml};
 use std::borrow::Cow;
 
@@ -6,12 +5,8 @@ mod parser;
 
 /// Transform any html anchor links inside a comment.
 pub fn sanitize_html<'a>(input: &'a str) -> Cow<'a, str> {
-    let elements = match parse(input) {
-        Ok(elements) => elements,
-        Err(err) => {
-            error!("Failed to transform comment: {err}");
-            return Cow::Borrowed(input);
-        }
+    let Ok(elements) = parse(input) else {
+        return Cow::Borrowed(input);
     };
 
     if elements.iter().all(|el| matches!(el, ParsedHtml::Text(_))) {
