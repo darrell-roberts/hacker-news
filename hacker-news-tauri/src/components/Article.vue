@@ -131,8 +131,6 @@ function typeBadge() {
                 {{ props.item.time }}
 
             </div>
-
-
             <div @click="toggleComments" class="commentFooter">
                 <div v-if="props.item.kids.length > 0" style="display: flex; flex-direction: row;">
                     <div><span>{{ toggleText() }} {{ props.item.kids.length }}</span></div>
