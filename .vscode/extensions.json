@@ -1,0 +1,13 @@
+{
+  "recommendations": [
+    "rust-lang.rust-analyzer",
+    "vue.volar",
+    "stkb.rewrap",
+    "tamasfe.even-better-toml",
+    "esbenp.prettier-vscode",
+    "stylelint.vscode-stylelint",
+    "streetsidesoftware.code-spell-checker",
+    "serayuzgur.crates",
+    "dbaeumer.vscode-eslint"
+  ]
+}
