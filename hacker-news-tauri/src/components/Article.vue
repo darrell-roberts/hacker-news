@@ -132,21 +132,17 @@ function typeBadge() {
 
             </div>
 
-            <div >
-                <span @click="toggleComments" class="commentFooter">
-                    <span v-if="props.item.kids.length > 0">
-                        {{ toggleText() }}
-                        {{ props.item.kids.length }}
-                        {{
-                            props.item.kids.length === 1
-                            ? "comment"
-                            : "comments"
-                        }}
-                    </span>
-                    <span v-else-if="props.item.text">{{ toggleText() }}</span>
-                </span>
-            </div>
 
+            <div @click="toggleComments" class="commentFooter">
+                <div v-if="props.item.kids.length > 0" style="display: flex; flex-direction: row;">
+                    <div><span>{{ toggleText() }} {{ props.item.kids.length }}</span></div>
+                    <div style="margin-left: 5px">
+                        <svg width="20" height="19">
+                            <path d="M7.725 19.872a.718.718 0 0 1-.607-.328.725.725 0 0 1-.118-.397V16H3.625A2.63 2.63 0 0 1 1 13.375v-9.75A2.629 2.629 0 0 1 3.625 1h12.75A2.63 2.63 0 0 1 19 3.625v9.75A2.63 2.63 0 0 1 16.375 16h-4.161l-4 3.681a.725.725 0 0 1-.489.191ZM3.625 2.25A1.377 1.377 0 0 0 2.25 3.625v9.75a1.377 1.377 0 0 0 1.375 1.375h4a.625.625 0 0 1 .625.625v2.575l3.3-3.035a.628.628 0 0 1 .424-.165h4.4a1.377 1.377 0 0 0 1.375-1.375v-9.75a1.377 1.377 0 0 0-1.374-1.375H3.625Z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div v-if="state.fetching">Loading...</div>
@@ -168,7 +164,7 @@ function typeBadge() {
 <style scoped>
 .article {
     text-align: start;
-    padding: 10px;
+    padding: 10px 10px 5px 10px;
     margin: 2px;
     border-radius: 8px;
     background-color: white;
@@ -198,9 +194,13 @@ function typeBadge() {
     cursor: pointer;
 }
 
+/* .commentFooter {
+    background-color: azure;
+    border-radius: 8px;
+} */
+
 .commentFooter:hover {
     color: rgb(122, 14, 14);
-    transform: scale(2, 2);
 }
 
 .title-container {
