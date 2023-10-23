@@ -1,13 +1,19 @@
+use log::error;
 use parser::{parse, ParsedHtml};
 
 mod parser;
 
 /// Transform any html anchor links inside a comment.
 pub fn sanitize_html<'a>(input: String) -> String {
-    let Ok(elements) = parse(&input) else {
-        return input;
+    let elements = match parse(&input) {
+        Ok(el) => el,
+        Err(err) => {
+            error!("Failed to parse input: {err}");
+            return input;
+        }
     };
 
+    // All Text does not require any sanitization.
     if elements.iter().all(|el| matches!(el, ParsedHtml::Text(_))) {
         return input;
     }
@@ -51,10 +57,23 @@ mod test {
 
         let expected = r#"
             Hello this is a comment.
-            I have a http://www.google.com/ link.
+            I have a http://www.google.com/(Google) link.
             Bye.
         "#;
 
         assert_eq!(transformed, expected);
+    }
+
+    #[test]
+    fn test_transform_no_link() {
+        let comment = r#"
+            I am a comment. I have no
+            links.
+            Bye.
+        "#;
+
+        let transformed = sanitize_html(String::from(comment));
+
+        assert_eq!(transformed, comment);
     }
 }
