@@ -125,7 +125,7 @@ pub(crate) fn subscribe(window: Window, app_state: AppState, app_client: AppClie
         while let Some(event) = rx.recv().await {
             // info!("Received top stories event {} items", event.data.len());
             let mut new_items = event.data;
-            new_items.truncate(50);
+            new_items.truncate(75);
 
             // Fetch details for new items.
             match app_client.items(&new_items).await {

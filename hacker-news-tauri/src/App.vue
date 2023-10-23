@@ -130,7 +130,8 @@ function onMenu(e: PointerEvent) {
     overflow: auto;
     column-count: 2;
     column-width: 200px;
-    padding: 10px;
+    column-gap: 2px;
+    padding: 5px;
     min-height: 95vh;
 }
 
@@ -152,7 +153,6 @@ function onMenu(e: PointerEvent) {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    margin-left: 5px;
     margin-right: 5px;
 }
 
@@ -160,7 +160,6 @@ function onMenu(e: PointerEvent) {
     position: sticky;
     bottom: 0;
     background-color: #2f2f2f;
-    padding-left: 5px;
     padding-right: 5px;
 }
 

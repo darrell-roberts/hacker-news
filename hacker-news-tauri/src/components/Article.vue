@@ -132,7 +132,7 @@ function typeBadge() {
 
             </div>
 
-            <div class="commentFooterContainer">
+            <div >
                 <span @click="toggleComments" class="commentFooter">
                     <span v-if="props.item.kids.length > 0">
                         {{ toggleText() }}
@@ -169,7 +169,7 @@ function typeBadge() {
 .article {
     text-align: start;
     padding: 10px;
-    margin: 5px;
+    margin: 2px;
     border-radius: 8px;
     background-color: white;
     color: black;

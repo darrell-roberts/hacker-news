@@ -46,6 +46,6 @@ const props = defineProps<Props>();
 }
 
 .tooltip .large {
-    width: 10rem;
+    width: 12rem;
 }
 </style>

@@ -105,7 +105,7 @@ function hideUser() {
 }
 
 .karma {
-    font-size: smaller;
+    font-size: small;
 }
 
 .about {
