@@ -1,6 +1,6 @@
 use nom::{
     branch::alt,
-    bytes::complete::{tag, take_until},
+    bytes::complete::{tag, take_until, take_while1},
     character::complete::{alpha1, char},
     combinator::map,
     multi::{many0, many1},
@@ -20,12 +20,18 @@ fn parse_quote(input: &str) -> IResult<&str, &str> {
 }
 
 fn parse_anchor_children(input: &str) -> IResult<&str, &str> {
-    // take_until("</a>")(input)
-    terminated(take_until("</a>"), tag("</a>"))(input)
+    terminated(
+        alt((take_until("</a>"), take_until("</A>"))),
+        alt((tag("</a>"), tag("</A>"))),
+    )(input)
 }
 
 fn parse_anchor(input: &str) -> IResult<&str, ParsedHtml> {
-    let mut parse = delimited(tag("<a"), many0(parse_attribute), tag(">"));
+    let mut parse = delimited(
+        alt((tag("<a"), tag("<A"))),
+        many0(parse_attribute),
+        tag(">"),
+    );
 
     let (rest, attributes) = parse(input)?;
     let (rest, children) = parse_anchor_children(rest)?;
@@ -42,10 +48,11 @@ fn parse_anchor(input: &str) -> IResult<&str, ParsedHtml> {
 fn parse_html(input: &str) -> IResult<&str, Vec<ParsedHtml>> {
     let mut parse = many1(alt((
         parse_anchor,
-        // map(alt((take_until("<a"), take_until("\n"))), ParsedHtml::Text),
-        map(take_until("<a"), ParsedHtml::Text),
+        map(
+            alt((take_until("<a"), take_while1(|_| true))),
+            ParsedHtml::Text,
+        ),
     )));
-
     parse(input)
 }
 
@@ -93,6 +100,20 @@ mod test {
     }
 
     #[test]
+    fn parse_url_upper() {
+        let anchor = r#"<A href="http://www.google.com">Google</A><br/>"#;
+
+        let (rest, ParsedHtml::Link(anchor)) = parse_anchor(anchor).unwrap() else {
+            panic!("Wrong type");
+        };
+
+        assert!(anchor.attributes.len() == 1);
+        assert_eq!(anchor.attributes[0].value, "http://www.google.com");
+        assert_eq!(anchor.children, "Google");
+        assert_eq!(rest, "<br/>");
+    }
+
+    #[test]
     fn parse_alt_url() {
         let anchor = r#"<a target="_blank" href="http://www.google.com">Google</a><br/>"#;
 
@@ -108,10 +129,22 @@ mod test {
 
     #[test]
     fn parse_comment() {
-        let comment = r#"This is a test with a <a href="http://www.google.com/">Google</a> Link. <a href="www.google.com">blah</a> Hello"#;
+        let comment = r#"
+            This is a test with a <a href="http://www.google.com/">Google</a> Link. <a href="www.google.com">blah</a> Hello
+            "#;
+        let result = parse(comment);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn parse_comment_no_link() {
+        let comment = r#"
+            I am a comment. I have no
+            links.
+            Bye.
+        "#;
 
         let result = parse(comment);
-
         assert!(result.is_ok());
     }
 
