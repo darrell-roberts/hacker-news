@@ -1,11 +1,11 @@
 use log::error;
-use parser::{parse, ParsedHtml};
+use parser::{parse_html, Element};
 
 mod parser;
 
 /// Transform any html anchor links inside a comment.
 pub fn sanitize_html(input: String) -> String {
-    let elements = match parse(&input) {
+    let elements = match parse_html(&input) {
         Ok(el) => el,
         Err(err) => {
             error!("Failed to parse input: {err}");
@@ -14,16 +14,16 @@ pub fn sanitize_html(input: String) -> String {
     };
 
     // All Text does not require any sanitization.
-    if elements.iter().all(|el| matches!(el, ParsedHtml::Text(_))) {
+    if elements.iter().all(|el| matches!(el, Element::Text(_))) {
         return input;
     }
 
     elements.into_iter().fold(String::new(), |mut s, elem| {
         match elem {
-            ParsedHtml::Text(t) => {
+            Element::Text(t) => {
                 s.push_str(t);
             }
-            ParsedHtml::Link(l) => {
+            Element::Link(l) => {
                 if let Some(att) = l.attributes.iter().find(|a| a.name == "href") {
                     s.push_str(att.value);
 

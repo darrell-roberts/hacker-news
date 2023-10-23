@@ -1,4 +1,5 @@
 [workspace]
 license = "Apache-2.0 OR MIT"
+resolver = "2"
 
 members = ["hacker-news-api", "hacker-news-tauri/src-tauri", "http-sanitizer"]
