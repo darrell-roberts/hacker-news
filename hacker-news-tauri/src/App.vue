@@ -154,6 +154,9 @@ function onMenu(e: PointerEvent) {
     flex-direction: row;
     justify-content: space-between;
     margin-right: 5px;
+    margin-top: 5px;
+    margin-bottom: 5px;
+    line-height: 12px;
 }
 
 .footer {
