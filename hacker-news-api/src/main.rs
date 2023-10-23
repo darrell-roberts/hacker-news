@@ -1,22 +1,8 @@
-use anyhow::Error;
 use hacker_news_api::subscribe_top_stories;
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<(), Error> {
-    // let top_stories = ApiClient::new()?.top_stories(20).await?;
-
-    // let top_stories = ApiClient::new()?.top_stories_stream().await?;
-
-    // for story in top_stories {
-    //     println!(
-    //         "{} url: {}, comments: {}",
-    //         story.title.unwrap_or_default(),
-    //         story.url.unwrap_or_default(),
-    //         story.kids.len()
-    //     );
-    // }
-
-    let (mut rx, _) = subscribe_top_stories();
+async fn main() -> anyhow::Result<()> {
+    let (mut rx, _handle) = subscribe_top_stories();
 
     let mut old_keys = Vec::new();
 

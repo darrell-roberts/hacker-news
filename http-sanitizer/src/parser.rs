@@ -1,3 +1,4 @@
+///! A simple html parser that targets anchor elements.
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until, take_while1},
@@ -8,6 +9,32 @@ use nom::{
     IResult,
 };
 
+/// An html attribute name value pair.
+#[derive(Debug)]
+pub(crate) struct Attribute<'a> {
+    pub name: &'a str,
+    pub value: &'a str,
+}
+
+/// An html anchor tag.
+#[derive(Debug)]
+pub(crate) struct Anchor<'a> {
+    /// Anchor attributes.
+    pub attributes: Vec<Attribute<'a>>,
+    /// Child elements.
+    pub children: &'a str,
+}
+
+/// A simple Html element.
+#[derive(Debug)]
+pub(crate) enum Element<'a> {
+    /// Anything that is not a link.
+    Text(&'a str),
+    /// A link.
+    Link(Anchor<'a>),
+}
+
+/// Parse an html attribute name value pair.
 fn parse_attribute(input: &str) -> IResult<&str, Attribute> {
     map(
         preceded(space1, separated_pair(alpha1, tag("="), parse_quote)),
@@ -15,10 +42,12 @@ fn parse_attribute(input: &str) -> IResult<&str, Attribute> {
     )(input)
 }
 
+/// Parse a quoted string.
 fn parse_quote(input: &str) -> IResult<&str, &str> {
     delimited(char('"'), take_until("\""), char('"'))(input)
 }
 
+/// Parse child elements of an anchor.
 fn parse_anchor_children(input: &str) -> IResult<&str, &str> {
     terminated(
         alt((take_until("</a>"), take_until("</A>"))),
@@ -26,7 +55,8 @@ fn parse_anchor_children(input: &str) -> IResult<&str, &str> {
     )(input)
 }
 
-fn parse_anchor(input: &str) -> IResult<&str, ParsedHtml> {
+/// Parse an anchor element.
+fn parse_anchor(input: &str) -> IResult<&str, Element> {
     let parse_attr = delimited(
         alt((tag("<a"), tag("<A"))),
         many0(parse_attribute),
@@ -36,7 +66,7 @@ fn parse_anchor(input: &str) -> IResult<&str, ParsedHtml> {
     map(
         pair(parse_attr, parse_anchor_children),
         |(attributes, children)| {
-            ParsedHtml::Link(Anchor {
+            Element::Link(Anchor {
                 attributes,
                 children,
             })
@@ -44,49 +74,28 @@ fn parse_anchor(input: &str) -> IResult<&str, ParsedHtml> {
     )(input)
 }
 
-fn parse_html(input: &str) -> IResult<&str, Vec<ParsedHtml>> {
+/// Parse an html string.
+pub(crate) fn parse_html(input: &str) -> anyhow::Result<Vec<Element>> {
     many1(alt((
         parse_anchor,
         map(
             alt((take_until("<a"), take_while1(|_| true))),
-            ParsedHtml::Text,
+            Element::Text,
         ),
     )))(input)
-}
-
-pub(crate) fn parse(input: &str) -> Result<Vec<ParsedHtml>, anyhow::Error> {
-    parse_html(input)
-        .map_err(|e| anyhow::Error::msg(e.to_string()))
-        .map(|(_, html)| html)
-}
-
-#[derive(Debug)]
-pub(crate) struct Attribute<'a> {
-    pub name: &'a str,
-    pub value: &'a str,
-}
-
-#[derive(Debug)]
-pub(crate) struct Anchor<'a> {
-    pub attributes: Vec<Attribute<'a>>,
-    pub children: &'a str,
-}
-
-#[derive(Debug)]
-pub(crate) enum ParsedHtml<'a> {
-    Text(&'a str),
-    Link(Anchor<'a>),
+    .map_err(|e| anyhow::Error::msg(e.to_string()))
+    .map(|(_, html)| html)
 }
 
 #[cfg(test)]
 mod test {
-    use super::{parse, parse_anchor, parse_quote, ParsedHtml};
+    use super::{parse_anchor, parse_html, parse_quote, Element};
 
     #[test]
     fn parse_url() {
         let anchor = r#"<a href="http://www.google.com">Google</a><br/>"#;
 
-        let (rest, ParsedHtml::Link(anchor)) = parse_anchor(anchor).unwrap() else {
+        let (rest, Element::Link(anchor)) = parse_anchor(anchor).unwrap() else {
             panic!("Wrong type");
         };
 
@@ -100,7 +109,7 @@ mod test {
     fn parse_url_upper() {
         let anchor = r#"<A href="http://www.google.com">Google</A><br/>"#;
 
-        let (rest, ParsedHtml::Link(anchor)) = parse_anchor(anchor).unwrap() else {
+        let (rest, Element::Link(anchor)) = parse_anchor(anchor).unwrap() else {
             panic!("Wrong type");
         };
 
@@ -114,7 +123,7 @@ mod test {
     fn parse_alt_url() {
         let anchor = r#"<a target="_blank" href="http://www.google.com">Google</a><br/>"#;
 
-        let (rest, ParsedHtml::Link(anchor)) = parse_anchor(anchor).unwrap() else {
+        let (rest, Element::Link(anchor)) = parse_anchor(anchor).unwrap() else {
             panic!("Wrong type");
         };
 
@@ -129,7 +138,7 @@ mod test {
         let comment = r#"
             This is a test with a <a href="http://www.google.com/">Google</a> Link. <a href="www.google.com">blah</a> Hello
             "#;
-        let result = parse(comment);
+        let result = parse_html(comment);
         assert!(result.is_ok());
     }
 
@@ -141,7 +150,7 @@ mod test {
             Bye.
         "#;
 
-        let result = parse(comment);
+        let result = parse_html(comment);
         assert!(result.is_ok());
     }
 

@@ -15,7 +15,7 @@ pub struct ApiClient {
 }
 
 /// Result using anyhow.
-type Result<T> = std::result::Result<T, anyhow::Error>;
+type Result<T> = anyhow::Result<T>;
 
 impl ApiClient {
     const API_END_POINT: &str = "https://hacker-news.firebaseio.com/v0";
@@ -25,8 +25,7 @@ impl ApiClient {
         Ok(Self {
             client: Arc::new(
                 reqwest::Client::builder()
-                    // .timeout(Duration::from_secs(30))
-                    .connect_timeout(Duration::from_secs(30))
+                    .connect_timeout(Duration::from_secs(5))
                     .build()?,
             ),
         })
