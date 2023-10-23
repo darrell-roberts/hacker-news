@@ -104,6 +104,7 @@ function hideComment() {
 .comment {
     overflow: auto;
     max-width: 35rem;
+    font-size: 1.1rem;
 }
 
 .talkBubble {
