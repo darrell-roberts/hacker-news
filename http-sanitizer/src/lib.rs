@@ -4,7 +4,7 @@ use parser::{parse, ParsedHtml};
 mod parser;
 
 /// Transform any html anchor links inside a comment.
-pub fn sanitize_html<'a>(input: String) -> String {
+pub fn sanitize_html(input: String) -> String {
     let elements = match parse(&input) {
         Ok(el) => el,
         Err(err) => {
@@ -18,7 +18,7 @@ pub fn sanitize_html<'a>(input: String) -> String {
         return input;
     }
 
-    let modified = elements.into_iter().fold(String::new(), |mut s, elem| {
+    elements.into_iter().fold(String::new(), |mut s, elem| {
         match elem {
             ParsedHtml::Text(t) => {
                 s.push_str(t);
@@ -36,9 +36,7 @@ pub fn sanitize_html<'a>(input: String) -> String {
             }
         }
         s
-    });
-
-    modified
+    })
 }
 
 #[cfg(test)]
