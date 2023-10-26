@@ -130,10 +130,12 @@ fn parse_event(bytes: &[u8]) -> Option<EventData> {
         .and_then(|data| {
             data.starts_with(b"data: ").then(|| {
                 serde_json::from_slice::<EventData>(&data[6..])
-                    .context(format!(
-                        "Failed to deserialize event payload: {}",
-                        String::from_utf8_lossy(&data[6..])
-                    ))
+                    .with_context(|| {
+                        format!(
+                            "Failed to deserialize event payload: {}",
+                            String::from_utf8_lossy(&data[6..])
+                        )
+                    })
                     .log_error()
                     .ok()
             })?
