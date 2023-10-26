@@ -77,3 +77,9 @@ body {
     justify-content: end;
     cursor: pointer;
 }
+
+select {
+    margin: 0;
+    margin-right: 5px;
+    padding: 5px
+}

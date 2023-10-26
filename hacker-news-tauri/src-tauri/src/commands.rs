@@ -54,6 +54,23 @@ pub(crate) async fn get_user(
         .map_err(|err| err.to_string())
 }
 
+#[tauri::command]
+pub(crate) fn update_total_articles(
+    total_articles: usize,
+    state: State<'_, AppState>,
+    app_client: State<'_, AppClient>,
+    window: Window,
+) {
+    let mut s = state.write().unwrap();
+    s.total_articles = total_articles;
+
+    if let Some(h) = s.event_handle.take() {
+        info!("Stopping subscription task");
+        h.abort();
+    }
+    subscribe(window, state.inner().clone(), app_client.inner().clone());
+}
+
 /// Transform API [`Item`]s into [HNItem] view items.
 fn to_hn_items(items: Vec<Item>) -> Vec<HNItem> {
     items.into_iter().map(Into::into).collect()
@@ -77,6 +94,7 @@ fn to_view_items(app_state: AppState) -> TopStories {
             .filter_map(|item| item.title.as_deref())
             .filter(|title| has_rust(title))
             .count(),
+        total_stories: s.total_articles,
     }
 }
 
@@ -117,15 +135,16 @@ pub(crate) fn subscribe(window: Window, app_state: AppState, app_client: AppClie
     info!("Starting subscription");
     spawn(async move {
         let (mut rx, handle) = subscribe_top_stories();
-        {
+        let total_articles = {
             let mut s = app_state.write().unwrap();
             s.event_handle = Some(handle);
-        }
+            s.total_articles
+        };
 
         while let Some(event) = rx.recv().await {
             // info!("Received top stories event {} items", event.data.len());
             let mut new_items = event.data;
-            new_items.truncate(75);
+            new_items.truncate(total_articles);
 
             // Fetch details for new items.
             match app_client.items(&new_items).await {

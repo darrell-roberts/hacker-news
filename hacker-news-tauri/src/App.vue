@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Article from "./components/Article.vue";
 import { TopStories, Item } from "./types/article";
-import { onMounted, onUnmounted, reactive } from "vue";
+import { onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import Tooltip from "./components/Tooltip.vue";
 import { UnlistenFn, listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api";
@@ -16,7 +16,7 @@ interface State {
 }
 
 const state = reactive<State>({
-    topStories: { items: [] },
+    topStories: { items: [], totalStories: 0 },
     filtered: false,
     liveEvents: true,
 });
@@ -71,6 +71,25 @@ function onMenu(e: PointerEvent) {
     e.preventDefault();
 }
 
+const selectTotalArticles = ref(0);
+
+const options = ref([
+    { text: "10", value: 10 },
+    { text: "25", value: 25 },
+    { text: "50", value: 50 },
+    { text: "75", value: 75 }
+]);
+
+watch(state, (state) => {
+    if (state.topStories.totalStories !== selectTotalArticles.value) {
+        selectTotalArticles.value = state.topStories.totalStories;
+    }
+});
+
+watch(selectTotalArticles, (change) => {
+    invoke("update_total_articles", { totalArticles: change})
+        .catch(err => console.error("Failed to update total articles", err));
+});
 </script>
 
 <template>
@@ -103,6 +122,15 @@ function onMenu(e: PointerEvent) {
                     </div>
                 </Tooltip>
                 <div :style="{ display: 'flex' }">
+                    <div>
+                        <span>Show: </span>
+                        <select v-model="selectTotalArticles"
+                            :disabled="state.topStories.items.length === 0">
+                            <option v-for="option in options" :value="option.value">
+                                {{ option.text }}
+                            </option>
+                        </select>
+                    </div>
                     <div>
                         Jobs: {{ state.topStories.items.filter(item => item.ty === "job").length }}
                     </div>
@@ -156,7 +184,7 @@ function onMenu(e: PointerEvent) {
     margin-right: 5px;
     margin-top: 5px;
     margin-bottom: 5px;
-    line-height: 12px;
+    line-height: 1.5rem;
 }
 
 .footer {
