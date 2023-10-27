@@ -3,7 +3,7 @@ use crate::types::{EventData, Item, ResultExt, User};
 use anyhow::Context;
 use futures::TryFutureExt;
 use log::{error, info};
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 use tokio::{
     sync::mpsc::{self, Receiver, Sender},
     task::JoinHandle,
@@ -11,7 +11,7 @@ use tokio::{
 
 /// Hacker News Api client.
 pub struct ApiClient {
-    client: Arc<reqwest::Client>,
+    client: reqwest::Client,
 }
 
 /// Result using anyhow.
@@ -23,11 +23,9 @@ impl ApiClient {
     /// Create a new API client.
     pub fn new() -> Result<Self> {
         Ok(Self {
-            client: Arc::new(
-                reqwest::Client::builder()
-                    .connect_timeout(Duration::from_secs(5))
-                    .build()?,
-            ),
+            client: reqwest::Client::builder()
+                .connect_timeout(Duration::from_secs(5))
+                .build()?,
         })
     }
 
@@ -62,7 +60,7 @@ impl ApiClient {
         // one.
         let mut handles = Vec::with_capacity(ids.len());
         for id in ids {
-            let client = self.client.clone();
+            let client = &self.client;
             handles.push(tokio::spawn(
                 client
                     .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
