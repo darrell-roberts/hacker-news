@@ -42,7 +42,7 @@ pub fn launch() {
         live_events: true,
         last_event_ids: Vec::new(),
         event_handle: None,
-        total_articles: 75,
+        total_articles: 50,
     }));
     let app_client = Arc::new(ApiClient::new().unwrap());
     tauri::Builder::default()
