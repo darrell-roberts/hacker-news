@@ -1,4 +1,4 @@
-///! A simple html parser that targets anchor elements.
+//! A simple html parser that targets anchor elements.
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until, take_while1},

@@ -25,9 +25,13 @@ struct App {
     last_event_ids: Vec<u64>,
     /// Event handle for background task.
     event_handle: Option<TokioJoinHandle<()>>,
+    /// Number of articles.
+    total_articles: usize,
 }
+
 /// Application State.
 type AppState = Arc<RwLock<App>>;
+
 /// Application API Client.
 type AppClient = Arc<ApiClient>;
 
@@ -38,6 +42,7 @@ pub fn launch() {
         live_events: true,
         last_event_ids: Vec::new(),
         event_handle: None,
+        total_articles: 75,
     }));
     let app_client = Arc::new(ApiClient::new().unwrap());
     tauri::Builder::default()
@@ -66,7 +71,8 @@ pub fn launch() {
         .invoke_handler(tauri::generate_handler![
             get_items,
             toggle_live_events,
-            get_user
+            get_user,
+            update_total_articles
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

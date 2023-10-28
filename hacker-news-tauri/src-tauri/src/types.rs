@@ -67,6 +67,7 @@ pub struct TopStories {
     pub items: Vec<HNItem>,
     pub loaded: String,
     pub rust_articles: usize,
+    pub total_stories: usize,
 }
 
 #[derive(Serialize, Clone)]
