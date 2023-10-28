@@ -24,11 +24,12 @@ const state = reactive<State>({
 onMounted(() => {
     listen<TopStories>("top_stories", (topStories) => {
         mergeViewed(topStories.payload);
+        selectTotalArticles.value = topStories.payload.items.length;
     })
-        .catch(
-            (err) => (state.error = `Failed to listen to top stories ${err}`),
-        )
-        .then((unlisten) => (state.unlisten = unlisten));
+    .catch(
+        (err) => (state.error = `Failed to listen to top stories ${err}`),
+    )
+    .then((unlisten) => (state.unlisten = unlisten));
 });
 
 onUnmounted(() => {
@@ -79,12 +80,6 @@ const options = ref([
     { text: "50", value: 50 },
     { text: "75", value: 75 }
 ]);
-
-watch(state, (state) => {
-    if (state.topStories.totalStories !== selectTotalArticles.value) {
-        selectTotalArticles.value = state.topStories.totalStories;
-    }
-});
 
 watch(selectTotalArticles, (change) => {
     invoke("update_total_articles", { totalArticles: change})
