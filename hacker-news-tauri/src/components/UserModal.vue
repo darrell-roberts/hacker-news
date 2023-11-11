@@ -64,7 +64,7 @@ function hideUser() {
     color: white;
     padding: 5px;
     border-radius: 8px;
-    box-shadow: 2px 1px 1px gray;
+    box-shadow: 2px 1px 1px grey;
     margin-top: 5px;
     margin-bottom: 5px;
     position: relative;
@@ -87,7 +87,7 @@ function hideUser() {
     right: auto;
     top: auto;
     bottom: 20px;
-    border: 0px solid;
+    border: 0 solid;
     border-color: #666 transparent transparent transparent;
 }
 

@@ -99,7 +99,7 @@ mod test {
             panic!("Wrong type");
         };
 
-        assert!(anchor.attributes.len() == 1);
+        assert_eq!(anchor.attributes.len(), 1);
         assert_eq!(anchor.attributes[0].value, "http://www.google.com");
         assert_eq!(anchor.children, "Google");
         assert_eq!(rest, "<br/>");
@@ -113,7 +113,7 @@ mod test {
             panic!("Wrong type");
         };
 
-        assert!(anchor.attributes.len() == 1);
+        assert_eq!(anchor.attributes.len(), 1);
         assert_eq!(anchor.attributes[0].value, "http://www.google.com");
         assert_eq!(anchor.children, "Google");
         assert_eq!(rest, "<br/>");
@@ -127,7 +127,7 @@ mod test {
             panic!("Wrong type");
         };
 
-        assert!(anchor.attributes.len() == 2);
+        assert_eq!(anchor.attributes.len(), 2);
         assert_eq!(anchor.attributes[1].value, "http://www.google.com");
         assert_eq!(anchor.children, "Google");
         assert_eq!(rest, "<br/>");

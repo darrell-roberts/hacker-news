@@ -26,10 +26,10 @@ onMounted(() => {
         mergeViewed(topStories.payload);
         selectTotalArticles.value = topStories.payload.items.length;
     })
-    .catch(
-        (err) => (state.error = `Failed to listen to top stories ${err}`),
-    )
-    .then((unlisten) => (state.unlisten = unlisten));
+        .catch(
+            (err) => (state.error = `Failed to listen to top stories ${err}`),
+        )
+        .then((unlisten) => (state.unlisten = unlisten));
 });
 
 onUnmounted(() => {
@@ -82,7 +82,7 @@ const options = ref([
 ]);
 
 watch(selectTotalArticles, (change) => {
-    invoke("update_total_articles", { totalArticles: change})
+    invoke("update_total_articles", { totalArticles: change })
         .catch(err => console.error("Failed to update total articles", err));
 });
 </script>
@@ -119,8 +119,7 @@ watch(selectTotalArticles, (change) => {
                 <div :style="{ display: 'flex' }">
                     <div>
                         <span>Show: </span>
-                        <select v-model="selectTotalArticles"
-                            :disabled="state.topStories.items.length === 0">
+                        <select v-model="selectTotalArticles" :disabled="state.topStories.items.length === 0">
                             <option v-for="option in options" :value="option.value">
                                 {{ option.text }}
                             </option>
@@ -152,7 +151,7 @@ watch(selectTotalArticles, (change) => {
 .articles {
     overflow: auto;
     column-count: 2;
-    column-width: 200px;
+    /* column-width: 150px; */
     column-gap: 2px;
     padding: 5px;
     min-height: 95vh;
@@ -171,7 +170,7 @@ watch(selectTotalArticles, (change) => {
 }
 
 .status-line {
-    color: gray;
+    color: grey;
     font-size: small;
     display: flex;
     flex-direction: row;
@@ -203,8 +202,7 @@ watch(selectTotalArticles, (change) => {
     color: white;
     text-overflow: ellipsis;
     overflow: hidden;
-    text-align: left;
-    text-wrap: nowrap;
+    text-wrap: none;
     height: 25px;
     width: 95vw;
     margin-left: 5px;
