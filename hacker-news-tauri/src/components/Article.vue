@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { reactive } from "vue";
 import { Item } from "../types/article";
-import { invoke } from "@tauri-apps/api/tauri";
-import Comment from "./Comment.vue";
 import UserModal from "./UserModal.vue";
 import { shell } from "@tauri-apps/api";
 
@@ -13,21 +11,16 @@ interface Props {
 
 interface State {
     commentsOpen: boolean;
-    fetching: boolean;
-    error?: string;
-    comments: Item[];
     userVisible: boolean;
 }
 
 const props = defineProps<Props>();
 const state = reactive<State>({
     commentsOpen: false,
-    fetching: false,
-    comments: [],
     userVisible: false,
 });
 
-const emit = defineEmits(["viewed", "url"]);
+const emit = defineEmits(["viewed", "url", "showComments"]);
 
 function openLink() {
     emit("viewed");
@@ -37,23 +30,7 @@ function openLink() {
 }
 
 function toggleComments() {
-    if (!state.commentsOpen) {
-        state.fetching = true;
-        state.error = undefined;
-        getComments()
-            .catch((err) => (state.error = err))
-            .finally(() => (state.fetching = false));
-    } else {
-        state.error = undefined;
-    }
-    state.commentsOpen = !state.commentsOpen;
-}
-
-async function getComments() {
-    emit("viewed");
-    state.comments = await invoke<Item[]>("get_items", {
-        items: props.item.kids,
-    });
+    emit("showComments", props.item);
 }
 
 function toggleText() {
@@ -171,23 +148,6 @@ function typeBadge() {
                 </div>
             </div>
         </div>
-
-        <div v-if="state.fetching">Loading...</div>
-
-        <div v-if="state.error" class="error">
-            Failed to load comments: {{ state.error }}
-        </div>
-
-        <div
-            v-if="state.commentsOpen && props.item.text"
-            class="text-talk-bubble text-tri-right right-top"
-        >
-            <span v-html="props.item.text" />
-        </div>
-
-        <div v-if="state.commentsOpen" v-for="comment of state.comments">
-            <Comment :comment="comment" />
-        </div>
     </div>
 </template>
 
@@ -195,13 +155,15 @@ function typeBadge() {
 .article {
     text-align: start;
     padding: 10px 10px 5px 10px;
-    margin: 2px;
+    margin: 1px 5px 1px 5px;
     border-radius: 8px;
     background-color: white;
     color: black;
     display: inline-block;
     width: 95%;
     box-shadow: 2px 1px 1px;
+    /* height: 100%; */
+    /* width: 30rem; */
 }
 
 .nonStory {
@@ -249,46 +211,6 @@ function typeBadge() {
     height: 10px;
     margin-right: 10px;
     margin-left: 10px;
-}
-
-.text-talk-bubble {
-    margin-right: 40px;
-    margin-bottom: 5px;
-    margin-top: 5px;
-    display: inline-block;
-    position: relative;
-    height: auto;
-    background-color: #e4f7fb;
-    border-radius: 8px;
-    padding: 10px;
-    box-shadow: -1px 1px 2px -1px;
-    color: black;
-}
-
-.text-tri-right.right-top:before {
-    content: " ";
-    position: absolute;
-    width: 0;
-    height: 0;
-    right: -40px;
-    left: auto;
-    top: -1px;
-    bottom: auto;
-    border: 0 solid;
-    border-color: #666 transparent transparent transparent;
-}
-
-.text-tri-right.right-top:after {
-    content: " ";
-    position: absolute;
-    width: 0;
-    height: 0;
-    right: -20px;
-    left: auto;
-    top: 0;
-    bottom: auto;
-    border: 22px solid;
-    border-color: #e4f7fb transparent transparent transparent;
 }
 
 .viewed {

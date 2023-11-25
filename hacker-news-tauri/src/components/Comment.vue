@@ -126,7 +126,7 @@ function hideComment() {
 <style scoped>
 .comment {
     overflow: auto;
-    max-width: 35rem;
+    /* max-width: 40rem; */
     font-size: 1.1rem;
 }
 

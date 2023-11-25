@@ -18,7 +18,7 @@ pub struct ApiClient {
 type Result<T> = anyhow::Result<T>;
 
 impl ApiClient {
-    const API_END_POINT: &str = "https://hacker-news.firebaseio.com/v0";
+    const API_END_POINT: &'static str = "https://hacker-news.firebaseio.com/v0";
 
     /// Create a new API client.
     pub fn new() -> Result<Self> {

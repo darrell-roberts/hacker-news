@@ -5,6 +5,7 @@ import { onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import Tooltip from "./components/Tooltip.vue";
 import { UnlistenFn, listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api";
+import ArticleDialog from "./components/ArticleDialog.vue";
 
 interface State {
     topStories: TopStories;
@@ -86,11 +87,19 @@ watch(selectTotalArticles, (change) => {
         console.error("Failed to update total articles", err),
     );
 });
+const modal = ref<InstanceType<typeof ArticleDialog>>();
+
+const showModal = (item: Item) => {
+    item.viewed = true;
+    modal.value?.showItem(item);
+};
 </script>
 
 <template>
     <div class="container" :oncontextmenu="onMenu">
         <div v-if="state.error">Failed to load stories: {{ state.error }}</div>
+
+        <ArticleDialog ref="modal" />
 
         <div class="articles">
             <div v-for="(item, index) in state.topStories.items" :key="item.id">
@@ -100,6 +109,7 @@ watch(selectTotalArticles, (change) => {
                     v-if="applyFilter(item)"
                     @viewed="() => (item.viewed = true)"
                     @url="(url) => (state.url = url)"
+                    @show-comments="(item) => showModal(item)"
                 />
             </div>
         </div>
