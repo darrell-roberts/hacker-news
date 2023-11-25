@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
-import { User } from '../types/user';
-import { invoke } from '@tauri-apps/api';
+import { ref, watch } from "vue";
+import { User } from "../types/user";
+import { invoke } from "@tauri-apps/api";
 
 interface Props {
     visible: boolean;
@@ -19,14 +19,14 @@ watch(props, ({ visible }) => {
     } else {
         user.value = undefined;
     }
-})
+});
 
 function getUser() {
     invoke<User>("get_user", { handle: props.userHandle })
-        .then(u => {
+        .then((u) => {
             user.value = u;
         })
-        .catch(err => console.error("Failed to get user", err));
+        .catch((err) => console.error("Failed to get user", err));
 }
 
 function hideUser() {
@@ -44,17 +44,11 @@ function hideUser() {
         <div v-if="user">
             <span id="myPopup" v-html="user?.about" class="about" />
             <div class="karma">
-                <div>
-                    Karma: {{ user?.karma }}
-                </div>
-                <div>
-                    Registered: {{ user.created }}
-                </div>
+                <div>Karma: {{ user?.karma }}</div>
+                <div>Registered: {{ user.created }}</div>
             </div>
         </div>
-        <div v-else>
-            Loading...
-        </div>
+        <div v-else>Loading...</div>
     </div>
 </template>
 

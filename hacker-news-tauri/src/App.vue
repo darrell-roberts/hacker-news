@@ -78,12 +78,13 @@ const options = ref([
     { text: "10", value: 10 },
     { text: "25", value: 25 },
     { text: "50", value: 50 },
-    { text: "75", value: 75 }
+    { text: "75", value: 75 },
 ]);
 
 watch(selectTotalArticles, (change) => {
-    invoke("update_total_articles", { totalArticles: change })
-        .catch(err => console.error("Failed to update total articles", err));
+    invoke("update_total_articles", { totalArticles: change }).catch((err) =>
+        console.error("Failed to update total articles", err),
+    );
 });
 </script>
 
@@ -93,22 +94,35 @@ watch(selectTotalArticles, (change) => {
 
         <div class="articles">
             <div v-for="(item, index) in state.topStories.items" :key="item.id">
-                <Article :item="item" :index="index" v-if="applyFilter(item)" @viewed="() => (item.viewed = true)"
-                    @url="(url) => (state.url = url)" />
+                <Article
+                    :item="item"
+                    :index="index"
+                    v-if="applyFilter(item)"
+                    @viewed="() => (item.viewed = true)"
+                    @url="(url) => (state.url = url)"
+                />
             </div>
         </div>
 
         <div class="footer">
             <div class="status-line">
-                <Tooltip :content="state.liveEvents
-                    ? 'Pause live events'
-                    : 'Resume live events'
-                    " :large="true">
+                <Tooltip
+                    :content="
+                        state.liveEvents
+                            ? 'Pause live events'
+                            : 'Resume live events'
+                    "
+                    :large="true"
+                >
                     <div>
                         <div v-if="state.topStories.items.length === 0">
                             Loading...
                         </div>
-                        <div v-else class="status-action" @click="toggleLiveEvents()">
+                        <div
+                            v-else
+                            class="status-action"
+                            @click="toggleLiveEvents()"
+                        >
                             <span>
                                 {{ state.topStories.loaded }}
                             </span>
@@ -119,24 +133,46 @@ watch(selectTotalArticles, (change) => {
                 <div :style="{ display: 'flex' }">
                     <div>
                         <span>Show: </span>
-                        <select v-model="selectTotalArticles" :disabled="state.topStories.items.length === 0">
-                            <option v-for="option in options" :value="option.value">
+                        <select
+                            v-model="selectTotalArticles"
+                            :disabled="state.topStories.items.length === 0"
+                        >
+                            <option
+                                v-for="option in options"
+                                :value="option.value"
+                            >
                                 {{ option.text }}
                             </option>
                         </select>
                     </div>
                     <div>
-                        Jobs: {{ state.topStories.items.filter(item => item.ty === "job").length }}
+                        Jobs:
+                        {{
+                            state.topStories.items.filter(
+                                (item) => item.ty === "job",
+                            ).length
+                        }}
                     </div>
                     <div :style="{ marginLeft: '10px' }">
-                        Stories: {{ state.topStories.items.filter(item => item.ty === "story").length }}
+                        Stories:
+                        {{
+                            state.topStories.items.filter(
+                                (item) => item.ty === "story",
+                            ).length
+                        }}
                     </div>
                     <div :style="{ marginLeft: '10px' }">
-                        Polls: {{ state.topStories.items.filter(item => item.ty === "poll").length }}
+                        Polls:
+                        {{
+                            state.topStories.items.filter(
+                                (item) => item.ty === "poll",
+                            ).length
+                        }}
                     </div>
                     <Tooltip content="Filter Rust">
                         <div @click="toggleFilter()" class="status-action">
-                            Rust articles: {{ state.topStories.rustArticles ?? 0 }}
+                            Rust articles:
+                            {{ state.topStories.rustArticles ?? 0 }}
                         </div>
                     </Tooltip>
                 </div>
