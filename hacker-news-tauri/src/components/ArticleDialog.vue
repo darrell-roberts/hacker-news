@@ -97,8 +97,8 @@ watch(state, (s) => {
 :modal {
     background-color: #e1e1e1;
     box-shadow: 3px 3px 10px rgba(0 0 0 / 0.5);
-    max-height: 100vh;
-    max-width: 50rem;
+    max-height: 80vh;
+    min-width: 80vh;
     text-align: left;
     padding: 0;
     border: 0;

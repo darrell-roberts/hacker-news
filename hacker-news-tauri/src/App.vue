@@ -97,23 +97,6 @@ const showModal = (item: Item) => {
 
 <template>
     <div class="container" :oncontextmenu="onMenu">
-        <div v-if="state.error">Failed to load stories: {{ state.error }}</div>
-
-        <ArticleDialog ref="modal" />
-
-        <div class="articles">
-            <div v-for="(item, index) in state.topStories.items" :key="item.id">
-                <Article
-                    :item="item"
-                    :index="index"
-                    v-if="applyFilter(item)"
-                    @viewed="() => (item.viewed = true)"
-                    @url="(url) => (state.url = url)"
-                    @show-comments="(item) => showModal(item)"
-                />
-            </div>
-        </div>
-
         <div class="footer">
             <div class="status-line">
                 <Tooltip
@@ -190,6 +173,23 @@ const showModal = (item: Item) => {
 
             <div class="url">{{ state.url }}</div>
         </div>
+
+        <div v-if="state.error">Failed to load stories: {{ state.error }}</div>
+
+        <ArticleDialog ref="modal" />
+
+        <div class="articles">
+            <div v-for="(item, index) in state.topStories.items" :key="item.id">
+                <Article
+                    :item="item"
+                    :index="index"
+                    v-if="applyFilter(item)"
+                    @viewed="() => (item.viewed = true)"
+                    @url="(url) => (state.url = url)"
+                    @show-comments="(item) => showModal(item)"
+                />
+            </div>
+        </div>
     </div>
 </template>
 
@@ -229,7 +229,7 @@ const showModal = (item: Item) => {
 
 .footer {
     position: sticky;
-    bottom: 0;
+    top: 0;
     background-color: #2f2f2f;
     padding-right: 5px;
 }

@@ -191,16 +191,20 @@ function hideComment() {
 
 @media (prefers-color-scheme: dark) {
     .talkBubble {
-        background-color: #666600;
-        color: white;
+        background-color: #1a1625;
+        color: #908d96;
     }
 
     .triRight:after {
-        border-color: #666600 transparent transparent transparent;
+        border-color: #1a1625 transparent transparent transparent;
     }
 
     .childComments {
         background-color: #060d13;
+    }
+
+    svg path {
+        fill: #a688fa;
     }
 }
 </style>

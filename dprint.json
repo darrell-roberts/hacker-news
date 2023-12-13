@@ -23,7 +23,8 @@
     ],
     "prettier": {
         "tabWidth": 4,
-        "trailingComma": "all"
+        "trailingComma": "all",
+        "useTabs": true
     },
     "indentWidth": 4
 }

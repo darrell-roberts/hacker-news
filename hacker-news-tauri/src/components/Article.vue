@@ -219,9 +219,18 @@ function typeBadge() {
 
 @media (prefers-color-scheme: dark) {
     .article {
-        color: #9fbfdf;
-        background-color: #060d13;
+        color: #908d96;
+        background-color: #282828;
         box-shadow: none;
+    }
+
+    svg path {
+        fill: #a688fa;
+    }
+
+    .rustBadge {
+        background-color: #a688fa;
+        border-radius: 8px;
     }
 }
 </style>
