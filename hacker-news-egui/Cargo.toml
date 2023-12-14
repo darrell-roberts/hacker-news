@@ -1,0 +1,18 @@
+[package]
+name = "hacker-news-egui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+eframe = "0.24.1"
+egui = "0.24.1"
+
+tokio = { version = "1.35.0", features = ["full"] }
+env_logger = "0.10.1"
+log = "0.4.20"
+anyhow = "1.0.75"
+
+hacker-news-api = { path = "../hacker-news-api" }
+http-sanitizer = { path = "../http-sanitizer" }
