@@ -1,6 +1,8 @@
 use anyhow::Result;
-use hacker_news_api::Item;
-use std::sync::atomic::AtomicBool;
+use egui::Context;
+use hacker_news_api::{ApiClient, Item};
+use log::error;
+use std::sync::{atomic::AtomicBool, Arc};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 pub static SHUT_DOWN: AtomicBool = AtomicBool::new(false);
@@ -37,5 +39,46 @@ impl EventHandler {
 
     pub fn next_event(&mut self) -> Result<Event> {
         Ok(self.client_receiver.try_recv()?)
+    }
+}
+
+pub struct ClientEventHandler {
+    client: Arc<ApiClient>,
+    context: Context,
+    sender: UnboundedSender<Event>,
+}
+
+impl ClientEventHandler {
+    pub fn new(client: Arc<ApiClient>, context: Context, sender: UnboundedSender<Event>) -> Self {
+        Self {
+            client,
+            context,
+            sender,
+        }
+    }
+
+    pub async fn handle_event(&self, event: ClientEvent) {
+        let result = match event {
+            ClientEvent::TopStories => self
+                .client
+                .top_stories(50)
+                .await
+                .map_err(|e| anyhow::Error::msg(format!("{e}")))
+                .and_then(|ts| {
+                    self.sender
+                        .send(Event::TopStories(ts))
+                        .map_err(anyhow::Error::new)
+                }),
+            ClientEvent::Comments(ids) => self.client.items(&ids).await.and_then(|comments| {
+                self.sender
+                    .send(Event::Comments(comments))
+                    .map_err(anyhow::Error::new)
+            }),
+        };
+
+        match result {
+            Ok(_) => self.context.request_repaint(),
+            Err(err) => error!("handle_event failed: {err}"),
+        }
     }
 }
