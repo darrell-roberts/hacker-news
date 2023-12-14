@@ -1,4 +1,4 @@
-use egui::{Color32, RichText, Style};
+use egui::{Color32, RichText, Style, TextStyle};
 use event::{ClientEvent, Event, EventHandler, SHUT_DOWN};
 use hacker_news_api::Item;
 use log::error;
@@ -71,7 +71,6 @@ async fn main() {
 }
 
 struct HackerNewsApp {
-    // receiver: UnboundedReceiver<Event>,
     top_stories: Vec<Item>,
     comments: Vec<Item>,
     event_handler: EventHandler,
@@ -114,14 +113,6 @@ impl eframe::App for HackerNewsApp {
         ctx.set_pixels_per_point(2.5);
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            let style = Style {
-                override_font_id: Some(egui::FontId {
-                    size: 15.0,
-                    ..Default::default()
-                }),
-                ..Default::default()
-            };
-            ui.set_style(style);
             if !self.comments.is_empty() && self.showing_comments {
                 egui::Window::new("Comments")
                     .open(&mut self.showing_comments)
@@ -136,6 +127,15 @@ impl eframe::App for HackerNewsApp {
                                         .map(http_sanitizer::sanitize_html)
                                         .unwrap_or_default(),
                                 );
+                                ui.horizontal(|ui| {
+                                    ui.set_style(Style {
+                                        override_text_style: Some(TextStyle::Small),
+                                        ..Default::default()
+                                    });
+                                    ui.label("by");
+                                    ui.label(&comment.by);
+                                    ui.label(format!("{}", comment.kids.len()));
+                                });
                                 ui.separator();
                             }
                         })
