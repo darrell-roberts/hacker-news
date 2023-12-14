@@ -34,6 +34,12 @@ pub fn sanitize_html(input: String) -> String {
                     }
                 }
             }
+            Element::Paragraph => {
+                s.push('\n');
+            }
+            Element::Escaped(c) => {
+                s.push(c);
+            }
         }
         s
     })

@@ -5,6 +5,7 @@ use nom::{
     character::complete::{alpha1, char, space1},
     combinator::map,
     multi::{many0, many1},
+    number::complete::hex_u32,
     sequence::{delimited, pair, preceded, separated_pair, terminated},
     IResult,
 };
@@ -32,6 +33,13 @@ pub(crate) enum Element<'a> {
     Text(&'a str),
     /// A link.
     Link(Anchor<'a>),
+    Escaped(char),
+    Paragraph,
+}
+
+fn parse_escaped(input: &[u8]) -> IResult<&[u8], Element> {
+    let parse = delimited(tag("&#x"), hex_u32, tag(";"));
+    map(parse, |n| Element::Escaped(char::from_u32(n).unwrap()))(input)
 }
 
 /// Parse an html attribute name value pair.
@@ -73,6 +81,10 @@ fn parse_anchor(input: &str) -> IResult<&str, Element> {
         },
     )(input)
 }
+
+// fn parse_element(input: &[u8]) -> IResult<&[u8], Element> {
+//     alt((parse_escaped, take_until("<a"), take_while1(|_| true)))(input)
+// }
 
 /// Parse an html string.
 pub(crate) fn parse_html(input: &str) -> anyhow::Result<Vec<Element>> {

@@ -49,14 +49,26 @@ impl eframe::App for HackerNewsApp {
         ctx.set_pixels_per_point(2.5);
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.label(format!("Total: {}", self.top_stories.len()));
+            ui.visuals_mut().widgets.noninteractive.fg_stroke.color = Color32::BLACK;
+            ui.visuals_mut().widgets.active.fg_stroke.color = Color32::BLACK;
+            ui.visuals_mut().widgets.hovered.fg_stroke.color = Color32::BLACK;
+
             ui.horizontal(|ui| {
-                ui.set_height(20.);
-                if self.fetching {
-                    ui.centered_and_justified(|ui| {
-                        ui.spinner();
-                    });
+                ui.label(format!("Total: {}", self.top_stories.len()));
+                if ui.button("Reload").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories)
+                        .unwrap_or_default();
                 }
+                ui.horizontal(|ui| {
+                    // ui.set_height(20.);
+                    if self.fetching {
+                        ui.centered_and_justified(|ui| {
+                            ui.spinner();
+                        });
+                    }
+                });
             });
 
             if !self.comments.is_empty() && self.showing_comments {
@@ -91,7 +103,7 @@ impl eframe::App for HackerNewsApp {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for (article, index) in self.top_stories.iter().zip(1..) {
                     ui.horizontal(|ui| {
-                        ui.label(format!("{index}. "));
+                        ui.label(format!("{index:>2}."));
                         ui.hyperlink_to(
                             RichText::new(article.title.as_deref().unwrap_or("nothing"))
                                 .strong()

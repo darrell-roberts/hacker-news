@@ -1,16 +1,16 @@
 use anyhow::Context;
 use app::HackerNewsApp;
-use event::{ClientEvent, ClientEventHandler, Event, EventHandler, SHUT_DOWN};
-use hacker_news_api::Item;
-use std::sync::{atomic::Ordering, Arc};
+use event::{ClientEvent, ClientEventHandler, Event, EventHandler};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 use tokio::sync::mpsc;
-
-pub enum ApiEvent {
-    TopStories(Vec<Item>),
-}
 
 pub mod app;
 pub mod event;
+
+pub static SHUT_DOWN: AtomicBool = AtomicBool::new(false);
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

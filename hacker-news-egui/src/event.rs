@@ -2,10 +2,8 @@ use anyhow::Result;
 use egui::Context;
 use hacker_news_api::{ApiClient, Item};
 use log::error;
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-
-pub static SHUT_DOWN: AtomicBool = AtomicBool::new(false);
 
 pub enum Event {
     TopStories(Vec<Item>),
