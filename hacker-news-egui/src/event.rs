@@ -5,12 +5,14 @@ use log::error;
 use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
+/// Background event.
 pub enum Event {
     TopStories(Vec<Item>),
     Comments(Vec<Item>, Option<Item>),
     Back,
 }
 
+/// Client event.
 pub enum ClientEvent {
     TopStories,
     Comments(Vec<u64>, Option<Item>),
@@ -22,6 +24,7 @@ pub struct EventHandler {
 }
 
 impl EventHandler {
+    /// Create a new [`EventHandler`].
     pub fn new(
         sender: UnboundedSender<ClientEvent>,
         client_receiver: UnboundedReceiver<Event>,
@@ -32,10 +35,12 @@ impl EventHandler {
         }
     }
 
+    /// Emit a client event.
     pub fn emit(&self, event: ClientEvent) -> Result<()> {
         Ok(self.sender.send(event)?)
     }
 
+    /// Get the next background event.
     pub fn next_event(&mut self) -> Result<Event> {
         Ok(self.client_receiver.try_recv()?)
     }
@@ -48,6 +53,7 @@ pub struct ClientEventHandler {
 }
 
 impl ClientEventHandler {
+    /// Create a new ['ClientEventHandler'].
     pub fn new(client: Arc<ApiClient>, context: Context, sender: UnboundedSender<Event>) -> Self {
         Self {
             client,
@@ -56,6 +62,7 @@ impl ClientEventHandler {
         }
     }
 
+    /// Handle a client event.
     pub async fn handle_event(&self, event: ClientEvent) {
         let result = match event {
             ClientEvent::TopStories => self
