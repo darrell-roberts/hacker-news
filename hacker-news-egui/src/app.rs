@@ -1,5 +1,5 @@
 use crate::event::{ClientEvent, Event, EventHandler};
-use egui::{style::Spacing, Color32, RichText, Style, TextStyle, Vec2};
+use egui::{style::Spacing, Color32, Frame, Margin, RichText, Rounding, Style, TextStyle, Vec2};
 use hacker_news_api::Item;
 use log::error;
 use tokio::sync::mpsc::UnboundedSender;
@@ -85,6 +85,7 @@ impl HackerNewsApp {
     fn render_articles(&mut self, ui: &mut egui::Ui) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             for (article, index) in self.top_stories.iter().zip(1..) {
+                // ui.style_mut().visuals.panel_fill = Color32::KHAKI;
                 ui.horizontal(|ui| {
                     ui.label(format!("{index:>2}."));
                     if let Some(url) = article.url.as_deref() {
@@ -128,8 +129,26 @@ impl HackerNewsApp {
     /// Render comments if requested.
     fn render_comments(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         if !self.comments.is_empty() && self.showing_comments {
+            let frame = Frame {
+                fill: Color32::LIGHT_YELLOW,
+                inner_margin: Margin {
+                    left: 5.,
+                    right: 5.,
+                    top: 5.,
+                    bottom: 5.,
+                },
+                rounding: Rounding {
+                    nw: 8.,
+                    ne: 8.,
+                    sw: 8.,
+                    se: 8.,
+                },
+                ..Default::default()
+            };
+
             egui::Window::new("")
-                .default_width(ui.available_width() - 5.0)
+                .frame(frame)
+                .default_width(ui.available_width() - 15.)
                 .open(&mut self.showing_comments)
                 .show(ctx, |ui| {
                     if let Some(item) = self.active_item.as_ref() {
@@ -213,7 +232,18 @@ impl eframe::App for HackerNewsApp {
 
         ctx.set_pixels_per_point(2.5);
 
-        egui::CentralPanel::default().show(ctx, |ui| {
+        let frame = Frame {
+            fill: Color32::LIGHT_BLUE,
+            inner_margin: Margin {
+                left: 5.,
+                right: 5.,
+                top: 5.,
+                bottom: 5.,
+            },
+            ..Default::default()
+        };
+
+        egui::CentralPanel::default().frame(frame).show(ctx, |ui| {
             ui.visuals_mut().widgets.noninteractive.fg_stroke.color = Color32::BLACK;
             ui.visuals_mut().widgets.active.fg_stroke.color = Color32::BLACK;
             ui.visuals_mut().widgets.hovered.fg_stroke.color = Color32::BLACK;
