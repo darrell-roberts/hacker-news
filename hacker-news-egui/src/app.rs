@@ -112,15 +112,21 @@ impl eframe::App for HackerNewsApp {
                                 ui.label(text);
                             }
                             for parent in self.parent_comments.iter() {
+                                ui.style_mut().visuals.override_text_color = Some(Color32::GRAY);
                                 ui.label(format!(
                                     "-> {}",
                                     parent.text.as_deref().unwrap_or_default()
                                 ));
                                 ui.horizontal(|ui| {
+                                    ui.set_style(Style {
+                                        override_text_style: Some(TextStyle::Small),
+                                        ..Default::default()
+                                    });
                                     ui.label("by");
                                     ui.label(&parent.by);
                                     ui.label(format!("[{}]", parent.kids.len()));
                                 });
+                                ui.style_mut().visuals.override_text_color = None;
                             }
                             ui.separator();
                         }
@@ -160,6 +166,7 @@ impl eframe::App for HackerNewsApp {
                     ui.horizontal(|ui| {
                         ui.label(format!("{index:>2}."));
                         if let Some(url) = article.url.as_deref() {
+                            ui.style_mut().visuals.hyperlink_color = Color32::BLACK;
                             ui.hyperlink_to(
                                 RichText::new(article.title.as_deref().unwrap_or("No title"))
                                     .strong()
