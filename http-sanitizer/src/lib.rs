@@ -1,7 +1,42 @@
 use log::error;
-use parser::{parse_html, Element};
+use nom::error::VerboseError;
+use parser::parse_html;
+use std::borrow::Cow;
 
 mod parser;
+
+pub use parser::{parse_elements, Element};
+
+pub fn convert_html(input: &str) -> Cow<str> {
+    match parse_elements::<VerboseError<&str>>(input) {
+        Ok((_, elements)) => {
+            let mut result = String::new();
+            for element in elements {
+                match element {
+                    Element::Text(s) => result.push_str(s),
+                    Element::Link(l) => {
+                        if let Some(att) = l.attributes.iter().find(|a| a.name == "href") {
+                            result.push_str(att.value);
+
+                            if l.children != att.value && !l.children.starts_with("http") {
+                                result.push('(');
+                                result.push_str(l.children);
+                                result.push(')');
+                            }
+                        }
+                    }
+                    Element::Escaped(c) => result.push(c),
+                    Element::Paragraph => result.push_str("\n\n"),
+                }
+            }
+            Cow::Owned(result)
+        }
+        Err(err) => {
+            error!("Parsing failed: {err}");
+            Cow::Borrowed(input)
+        }
+    }
+}
 
 /// Transform any html anchor links inside a comment.
 pub fn sanitize_html(input: String) -> String {
@@ -21,6 +56,8 @@ pub fn sanitize_html(input: String) -> String {
     elements.into_iter().fold(String::new(), |mut s, elem| {
         match elem {
             Element::Text(t) => {
+                // let str: &str = std::str::from_utf8(t).unwrap_or_default();
+                // s.push_str(str);
                 s.push_str(t);
             }
             Element::Link(l) => {

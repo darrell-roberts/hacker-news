@@ -77,14 +77,9 @@ impl eframe::App for HackerNewsApp {
                     .show(ctx, |ui| {
                         egui::ScrollArea::vertical().show(ui, |ui| {
                             for comment in self.comments.iter() {
-                                ui.label(
-                                    comment
-                                        .text
-                                        .as_ref()
-                                        .cloned()
-                                        .map(http_sanitizer::sanitize_html)
-                                        .unwrap_or_default(),
-                                );
+                                ui.label(http_sanitizer::convert_html(
+                                    comment.text.as_deref().unwrap_or_default(),
+                                ));
                                 ui.horizontal(|ui| {
                                     ui.set_style(Style {
                                         override_text_style: Some(TextStyle::Small),
