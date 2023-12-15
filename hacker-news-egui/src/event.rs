@@ -7,12 +7,13 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 pub enum Event {
     TopStories(Vec<Item>),
-    Comments(Vec<Item>),
+    Comments(Vec<Item>, Option<Item>),
+    Back,
 }
 
 pub enum ClientEvent {
     TopStories,
-    Comments(Vec<u64>),
+    Comments(Vec<u64>, Option<Item>),
 }
 
 pub struct EventHandler {
@@ -67,11 +68,13 @@ impl ClientEventHandler {
                         .send(Event::TopStories(ts))
                         .map_err(anyhow::Error::new)
                 }),
-            ClientEvent::Comments(ids) => self.client.items(&ids).await.and_then(|comments| {
-                self.sender
-                    .send(Event::Comments(comments))
-                    .map_err(anyhow::Error::new)
-            }),
+            ClientEvent::Comments(ids, parent) => {
+                self.client.items(&ids).await.and_then(|comments| {
+                    self.sender
+                        .send(Event::Comments(comments, parent))
+                        .map_err(anyhow::Error::new)
+                })
+            }
         };
 
         match result {

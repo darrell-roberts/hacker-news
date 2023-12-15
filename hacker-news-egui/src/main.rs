@@ -33,7 +33,8 @@ async fn main() -> anyhow::Result<()> {
                 .expect("Failed to request initial top stories");
 
             let event_handler = EventHandler::new(sender, client_receiver);
-            let client_event_handler = ClientEventHandler::new(client.clone(), frame, local_sender);
+            let client_event_handler =
+                ClientEventHandler::new(client.clone(), frame, local_sender.clone());
 
             let _handle = tokio::spawn(async move {
                 while !(SHUT_DOWN.load(Ordering::Acquire)) {
@@ -43,7 +44,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             });
 
-            Box::new(HackerNewsApp::new(cc, event_handler))
+            Box::new(HackerNewsApp::new(cc, event_handler, local_sender))
         }),
     )
     .map_err(|e| anyhow::Error::msg(format!("failed to launch: {e}")))?;
