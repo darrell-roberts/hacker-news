@@ -1,5 +1,5 @@
 use crate::event::{ClientEvent, Event, EventHandler};
-use egui::{Color32, RichText, Style, TextStyle};
+use egui::{style::Spacing, Color32, RichText, Style, TextStyle, Vec2};
 use hacker_news_api::Item;
 use log::error;
 use tokio::sync::mpsc::UnboundedSender;
@@ -115,13 +115,19 @@ impl eframe::App for HackerNewsApp {
                                 ui.style_mut().visuals.override_text_color = Some(Color32::GRAY);
                                 ui.label(format!(
                                     "-> {}",
-                                    parent.text.as_deref().unwrap_or_default()
+                                    http_sanitizer::convert_html(
+                                        parent.text.as_deref().unwrap_or_default(),
+                                    )
                                 ));
                                 ui.horizontal(|ui| {
                                     ui.set_style(Style {
                                         override_text_style: Some(TextStyle::Small),
                                         ..Default::default()
                                     });
+                                    ui.style_mut().spacing = Spacing {
+                                        item_spacing: Vec2 { y: 1., x: 2. },
+                                        ..Default::default()
+                                    };
                                     ui.label("by");
                                     ui.label(&parent.by);
                                     ui.label(format!("[{}]", parent.kids.len()));
@@ -140,6 +146,10 @@ impl eframe::App for HackerNewsApp {
                                         override_text_style: Some(TextStyle::Small),
                                         ..Default::default()
                                     });
+                                    ui.style_mut().spacing = Spacing {
+                                        item_spacing: Vec2 { y: 1., x: 2. },
+                                        ..Default::default()
+                                    };
                                     ui.label("by");
                                     ui.label(&comment.by);
                                     if !comment.kids.is_empty()
@@ -176,6 +186,11 @@ impl eframe::App for HackerNewsApp {
                         } else {
                             ui.label(article.title.as_deref().unwrap_or("No title"));
                         }
+                        ui.style_mut().override_text_style = Some(TextStyle::Small);
+                        ui.style_mut().spacing = Spacing {
+                            item_spacing: Vec2 { y: 1., x: 2. },
+                            ..Default::default()
+                        };
                         ui.label("by");
                         ui.label(&article.by);
                         if !article.kids.is_empty()
