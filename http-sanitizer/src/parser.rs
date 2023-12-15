@@ -1,16 +1,15 @@
 //! A simple html parser that targets anchor elements.
-use std::num::ParseIntError;
-
 use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case, take_until, take_while1, take_while_m_n},
-    character::complete::{alpha1, anychar, char, space1},
-    combinator::{cut, eof, iterator, map, map_opt, map_res, rest, value},
-    error::{context, ContextError, FromExternalError, ParseError},
-    multi::{many0, many_till},
+    character::complete::{alpha1, char, space1},
+    combinator::{cut, eof, map, map_opt, map_res, rest, value},
+    error::{context, ContextError, FromExternalError, ParseError, VerboseError},
+    multi::{many0, many1, many_till},
     sequence::{delimited, pair, preceded, separated_pair, terminated},
     AsChar, IResult,
 };
+use std::num::ParseIntError;
 
 /// An html attribute name value pair.
 #[derive(Debug, Clone, Copy)]
@@ -217,16 +216,15 @@ where
 
 /// Parse an html string.
 pub(crate) fn parse_html(input: &str) -> anyhow::Result<Vec<Element>> {
-    // many1(alt((
-    //     parse_anchor,
-    //     map(
-    //         alt((take_until("<a"), take_while1(|_| true))),
-    //         |bs: &str| Element::Text(bs),
-    //     ),
-    // )))(input)
-    // .map_err(|e| anyhow::Error::msg(e.to_string()))
-    // .map(|(_, html)| html)
-    todo!()
+    many1(alt((
+        parse_anchor::<VerboseError<&str>>,
+        map(
+            alt((take_until("<a"), take_while1(|_| true))),
+            |bs: &str| Element::Text(bs),
+        ),
+    )))(input)
+    .map_err(|e| anyhow::Error::msg(e.to_string()))
+    .map(|(_, html)| html)
 }
 
 #[cfg(test)]
@@ -238,47 +236,50 @@ mod test {
         Err,
     };
 
-    // #[test]
-    // fn parse_url() {
-    //     let anchor = r#"<a href="http://www.google.com">Google</a><br/>"#;
+    #[test]
+    fn parse_url() {
+        let anchor = r#"<a href="http://www.google.com">Google</a><br/>"#;
 
-    //     let (rest, Element::Link(anchor)) = parse_anchor(anchor).unwrap() else {
-    //         panic!("Wrong type");
-    //     };
+        let (rest, Element::Link(anchor)) = parse_anchor::<VerboseError<&str>>(anchor).unwrap()
+        else {
+            panic!("Wrong type");
+        };
 
-    //     assert!(anchor.attributes.len() == 1);
-    //     assert_eq!(anchor.attributes[0].value, "http://www.google.com");
-    //     assert_eq!(anchor.children, "Google");
-    //     assert_eq!(rest, "<br/>");
-    // }
+        assert!(anchor.attributes.len() == 1);
+        assert_eq!(anchor.attributes[0].value, "http://www.google.com");
+        assert_eq!(anchor.children, "Google");
+        assert_eq!(rest, "<br/>");
+    }
 
-    // #[test]
-    // fn parse_url_upper() {
-    //     let anchor = r#"<A href="http://www.google.com">Google</A><br/>"#;
+    #[test]
+    fn parse_url_upper() {
+        let anchor = r#"<A href="http://www.google.com">Google</A><br/>"#;
 
-    //     let (rest, Element::Link(anchor)) = parse_anchor(anchor).unwrap() else {
-    //         panic!("Wrong type");
-    //     };
+        let (rest, Element::Link(anchor)) = parse_anchor::<VerboseError<&str>>(anchor).unwrap()
+        else {
+            panic!("Wrong type");
+        };
 
-    //     assert!(anchor.attributes.len() == 1);
-    //     assert_eq!(anchor.attributes[0].value, "http://www.google.com");
-    //     assert_eq!(anchor.children, "Google");
-    //     assert_eq!(rest, "<br/>");
-    // }
+        assert!(anchor.attributes.len() == 1);
+        assert_eq!(anchor.attributes[0].value, "http://www.google.com");
+        assert_eq!(anchor.children, "Google");
+        assert_eq!(rest, "<br/>");
+    }
 
-    // #[test]
-    // fn parse_alt_url() {
-    //     let anchor = r#"<a target="_blank" href="http://www.google.com">Google</a><br/>"#;
+    #[test]
+    fn parse_alt_url() {
+        let anchor = r#"<a target="_blank" href="http://www.google.com">Google</a><br/>"#;
 
-    //     let (rest, Element::Link(anchor)) = parse_anchor(anchor).unwrap() else {
-    //         panic!("Wrong type");
-    //     };
+        let (rest, Element::Link(anchor)) = parse_anchor::<VerboseError<&str>>(anchor).unwrap()
+        else {
+            panic!("Wrong type");
+        };
 
-    //     assert!(anchor.attributes.len() == 2);
-    //     assert_eq!(anchor.attributes[1].value, "http://www.google.com");
-    //     assert_eq!(anchor.children, "Google");
-    //     assert_eq!(rest, "<br/>");
-    // }
+        assert!(anchor.attributes.len() == 2);
+        assert_eq!(anchor.attributes[1].value, "http://www.google.com");
+        assert_eq!(anchor.children, "Google");
+        assert_eq!(rest, "<br/>");
+    }
 
     #[test]
     fn parse_comment() {
@@ -335,9 +336,6 @@ mod test {
     fn test_elements() {
         let s = r#"123h&#x2F; <P>&#x2F;&#x23;<P>Hello<P>
             <a href="some url">some link</a>"#;
-        // let s = "123h&#x2F;<P>&#x2F;&#x23;<P>Hello<P>";
-        // let s = "<P>";
-        // let s = r#"<a target="_blank" href="http://www.google.com">Google</a><P>&#x2F;"#;
 
         let el = parse_elements::<VerboseError<&str>>(s);
 

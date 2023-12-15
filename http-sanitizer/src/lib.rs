@@ -16,7 +16,8 @@ pub fn convert_html(input: &str) -> Cow<str> {
                     Element::Text(s) => result.push_str(s),
                     Element::Link(l) => {
                         if let Some(att) = l.attributes.iter().find(|a| a.name == "href") {
-                            result.push_str(att.value);
+                            // TODO: Should be in parser.
+                            result.push_str(&att.value.replace("&#x2F;", "/"));
 
                             if l.children != att.value && !l.children.starts_with("http") {
                                 result.push('(');
