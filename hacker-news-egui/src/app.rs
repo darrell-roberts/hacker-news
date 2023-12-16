@@ -1,6 +1,6 @@
 use crate::{
     event::{ClientEvent, Event, EventHandler},
-    text::render_rich_text,
+    text::{parse_date, render_rich_text},
 };
 use egui::{
     os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Margin, RichText, Rounding,
@@ -109,8 +109,12 @@ impl HackerNewsApp {
                         item_spacing: Vec2 { y: 1., x: 2. },
                         ..Default::default()
                     };
+                    ui.label(RichText::new(format!("{} points", article.score)).italics());
                     ui.label(RichText::new("by").italics());
                     ui.label(RichText::new(&article.by).italics());
+                    if let Some(time) = parse_date(article.time) {
+                        ui.label(RichText::new(time).italics());
+                    }
                     if !article.kids.is_empty()
                         && ui.button(format!("[{}]", article.kids.len())).clicked()
                     {
@@ -182,6 +186,9 @@ impl HackerNewsApp {
 
                                 ui.label(RichText::new("by").italics());
                                 ui.label(RichText::new(&item.by).italics());
+                                if let Some(time) = parse_date(item.time) {
+                                    ui.label(RichText::new(time).italics());
+                                }
                                 ui.label(format!("[{}]", item.kids.len()));
                             });
                         }
@@ -205,6 +212,9 @@ impl HackerNewsApp {
                                 };
                                 ui.label("by");
                                 ui.label(&parent.by);
+                                if let Some(time) = parse_date(parent.time) {
+                                    ui.label(RichText::new(time).italics());
+                                }
                                 ui.label(format!("[{}]", parent.kids.len()));
                             });
                             ui.style_mut().visuals.override_text_color = None;
@@ -229,6 +239,9 @@ impl HackerNewsApp {
                                 // }
                                 ui.label(RichText::new("by").italics());
                                 ui.label(RichText::new(&comment.by).italics());
+                                if let Some(time) = parse_date(comment.time) {
+                                    ui.label(RichText::new(time).italics());
+                                }
                                 if !comment.kids.is_empty()
                                     && ui.button(format!("[{}]", comment.kids.len())).clicked()
                                 {

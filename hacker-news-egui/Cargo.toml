@@ -16,3 +16,4 @@ anyhow = "1.0.75"
 
 hacker-news-api = { path = "../hacker-news-api" }
 http-sanitizer = { path = "../http-sanitizer" }
+chrono = "0.4.31"

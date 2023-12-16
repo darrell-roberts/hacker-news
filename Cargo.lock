@@ -2016,6 +2016,7 @@ name = "hacker-news-egui"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "eframe",
  "egui",
  "env_logger",
