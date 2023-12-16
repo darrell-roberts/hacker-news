@@ -32,6 +32,8 @@ pub struct HackerNewsApp {
     parent_comments: Vec<Item>,
     /// Number of articles to show.
     showing: usize,
+    /// Articles visited.
+    visited: Vec<usize>,
 }
 
 impl HackerNewsApp {
@@ -52,6 +54,7 @@ impl HackerNewsApp {
             active_item: None,
             parent_comments: Vec::new(),
             showing: 50,
+            visited: Vec::new(),
         }
     }
 
@@ -61,6 +64,7 @@ impl HackerNewsApp {
             Event::TopStories(ts) => {
                 self.showing = ts.len();
                 self.top_stories = ts;
+                self.visited = Vec::new();
             }
             Event::Comments(comments, parent) => {
                 if let Some(comment) = parent {
@@ -98,15 +102,27 @@ impl HackerNewsApp {
                 ui.horizontal(|ui| {
                     ui.label(format!("{index:>2}."));
                     if let Some(url) = article.url.as_deref() {
-                        ui.style_mut().visuals.hyperlink_color = Color32::BLACK;
-                        ui.hyperlink_to(
-                            RichText::new(article.title.as_deref().unwrap_or("No title"))
-                                .strong()
-                                .color(Color32::BLACK),
-                            url,
-                        );
+                        ui.style_mut().visuals.hyperlink_color = if self.visited.contains(&index) {
+                            Color32::DARK_GRAY
+                        } else {
+                            Color32::BLACK
+                        };
+                        if ui
+                            .hyperlink_to(
+                                RichText::new(article.title.as_deref().unwrap_or("No title"))
+                                    .strong()
+                                    .color(Color32::BLACK),
+                                url,
+                            )
+                            .clicked()
+                        {
+                            self.visited.push(index);
+                        }
                     } else {
                         ui.label(article.title.as_deref().unwrap_or("No title"));
+                    }
+                    if self.visited.contains(&index) {
+                        ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
                     }
                     ui.style_mut().override_text_style = Some(TextStyle::Small);
                     ui.style_mut().spacing = Spacing {
@@ -126,6 +142,7 @@ impl HackerNewsApp {
                         self.comments = Vec::new();
                         self.fetching = true;
                         self.active_item = Some(article.to_owned());
+                        self.visited.push(index);
                         if let Err(err) = self
                             .event_handler
                             .emit(ClientEvent::Comments(article.kids.clone(), None))
