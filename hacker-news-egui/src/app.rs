@@ -176,6 +176,7 @@ impl HackerNewsApp {
 
                                 ui.label("by");
                                 ui.label(&item.by);
+                                ui.label(format!("[{}]", item.kids.len()));
                             });
                         }
                         if let Some(text) = item.text.as_deref() {

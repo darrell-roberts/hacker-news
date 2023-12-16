@@ -340,8 +340,10 @@ mod test {
         let el = parse_elements::<VerboseError<&str>>(s);
 
         match el {
-            Ok(elements) => {
-                dbg!(&elements);
+            Ok((rest, elements)) => {
+                // dbg!(&elements);
+                assert!(rest.is_empty());
+                assert!(!elements.is_empty());
             }
             Err(Err::Error(err)) | Err(Err::Failure(err)) => {
                 eprintln!("error: {}", convert_error(s, err));
