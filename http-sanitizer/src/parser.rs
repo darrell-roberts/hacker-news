@@ -78,15 +78,9 @@ where
     );
 
     let (rest, code) = parse(input)?;
-
     let (_, code) = text(code)?;
 
     Ok((rest, Element::Code(code.into_iter().collect())))
-
-    // context(
-    //     "parse_code",
-    //     map(parse, |s| Element::Code(s.into_iter().collect())),
-    // )(input)
 }
 
 fn parse_paragraph<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
@@ -132,16 +126,6 @@ fn parse_escaped<'a, E>(input: &'a str) -> IResult<&str, Element, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
-    // let hex_parse = context(
-    //     "escaped_tag",
-    //     delimited(tag("&#x"), cut(parse_hex), tag(";")),
-    // );
-    // let mut parse = context(
-    //     "parse_escaped",
-    //     map_opt(hex_parse, |n| char::from_u32(n).map(Element::Escaped)),
-    // );
-
-    // parse(input)
     map(parse_escaped_character, Element::Escaped)(input)
 }
 
@@ -162,14 +146,6 @@ fn parse_escaped_tag_into_element<'a, E>(input: &'a str) -> IResult<&str, Elemen
 where
     E: ParseError<&'a str> + ContextError<&'a str>,
 {
-    // let quote = value(Element::Escaped('\"'), tag("&quot;"));
-    // let gt = value(Element::Escaped('>'), tag("&gt;"));
-    // let lt = value(Element::Escaped('<'), tag("&lt;"));
-    // let ampersand = value(Element::Escaped('&'), tag("&amp;"));
-    // let apos = value(Element::Escaped('\''), tag("&apos;"));
-
-    // let mut parse = alt((quote, gt, lt, ampersand, apos));
-    // parse(input)
     map(parse_escaped_tag, Element::Escaped)(input)
 }
 
@@ -179,17 +155,6 @@ where
 {
     let parse = take_while1(|c| c != '<' && c != '&');
     context("parse_text", map(parse, |s: &str| Element::Text(s)))(input)
-    // let parse = cut(alt((
-    //     take_until("&#x"),
-    //     take_until("&gt;"),
-    //     take_until("&lt;"),
-    //     take_until("<p>"),
-    //     take_until("&amp;"),
-    //     take_until("&apos;"),
-    //     // take_until(""),
-    // )));
-
-    // context("parse_text", map(parse, Element::Text))(input)
 }
 
 pub fn parse_elements<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element>, E>
@@ -246,24 +211,12 @@ fn parse_anchor_children<'a, E>(input: &'a str) -> IResult<&'a str, &'a str, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str>,
 {
-    // let escaped = alt((value("/", tag("&#x2F;")), value("\"", tag("&quot;"))));
-    // let value = many0(alt((
-    //     take_until("&"),
-    //     take_until("</a>"),
-    //     take_until("</A>"),
-    //     escaped,
-    // )));
-
     let parser = terminated(
         alt((take_until("</a>"), take_until("</A>"))),
         // value,
         alt((tag("</a>"), tag("</A>"))),
     );
-    context(
-        "parse_anchor_children",
-        // map(parser, |ss| ss.into_iter().collect::<String>()),
-        parser,
-    )(input)
+    context("parse_anchor_children", parser)(input)
 }
 
 fn parse_attr<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Attribute>, E>
@@ -272,12 +225,7 @@ where
 {
     context(
         "parse_attr",
-        delimited(
-            // alt((tag("<a"), tag("<A"))),
-            tag_no_case("<a"),
-            many0(parse_attribute),
-            tag(">"),
-        ),
+        delimited(tag_no_case("<a"), many0(parse_attribute), tag(">")),
     )(input)
 }
 
@@ -299,10 +247,6 @@ where
         ),
     )(input)
 }
-
-// fn parse_element(input: &[u8]) -> IResult<&[u8], Element> {
-//     alt((parse_escaped, take_until("<a"), take_while1(|_| true)))(input)
-// }
 
 /// Parse an html string.
 pub(crate) fn parse_html(input: &str) -> anyhow::Result<Vec<Element>> {

@@ -14,12 +14,14 @@ pub fn rich_text(escaped_text: &str) -> impl Iterator<Item = RichText> + '_ {
             .map(|att| RichText::new(att.value.replace("&#x2F;", "/")).underline()),
         Element::Escaped(c) => Some(RichText::new(c)),
         Element::Paragraph => Some(RichText::new("\n\n")),
-        Element::Code(s) => Some(RichText::new(s).code()),
+        // Element::Code(s) => Some(RichText::new(s).code()),
+        Element::Code(s) => Some(RichText::new(s).monospace()),
         Element::Italic(s) => Some(RichText::new(s).italics()),
         Element::Bold(s) => Some(RichText::new(s).strong()),
     })
 }
 
+/// Render the escaped.
 pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing = Vec2 { x: 0., y: 0. };

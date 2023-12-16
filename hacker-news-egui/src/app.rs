@@ -91,7 +91,6 @@ impl HackerNewsApp {
     fn render_articles(&mut self, ui: &mut egui::Ui) {
         egui::ScrollArea::vertical().show(ui, |ui| {
             for (article, index) in self.top_stories.iter().zip(1..) {
-                // ui.style_mut().visuals.panel_fill = Color32::KHAKI;
                 ui.horizontal(|ui| {
                     ui.label(format!("{index:>2}."));
                     if let Some(url) = article.url.as_deref() {
