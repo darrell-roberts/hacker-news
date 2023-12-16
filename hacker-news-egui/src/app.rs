@@ -120,7 +120,7 @@ impl HackerNewsApp {
                         ui.label(RichText::new(time).italics());
                     }
                     if !article.kids.is_empty()
-                        && ui.button(format!("[{}]", article.kids.len())).clicked()
+                        && ui.button(format!("{}", article.kids.len())).clicked()
                     {
                         self.showing_comments = true;
                         self.comments = Vec::new();
@@ -199,7 +199,7 @@ impl HackerNewsApp {
                         if let Some(text) = item.text.as_deref() {
                             render_rich_text(text, ui);
                         }
-                        ui.separator();
+                        // ui.separator();
                     }
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         for parent in self.parent_comments.iter() {
@@ -247,8 +247,9 @@ impl HackerNewsApp {
                                     ui.label(RichText::new(time).italics());
                                 }
                                 if !comment.kids.is_empty()
-                                    && ui.button(format!("[{}]", comment.kids.len())).clicked()
+                                    && ui.button(format!("{}", comment.kids.len())).clicked()
                                 {
+                                    self.fetching = true;
                                     if let Err(err) =
                                         self.event_handler.emit(ClientEvent::Comments(
                                             comment.kids.clone(),
@@ -259,7 +260,7 @@ impl HackerNewsApp {
                                     }
                                 }
                             });
-                            ui.separator();
+                            // ui.separator();
                         }
                     })
                 });
