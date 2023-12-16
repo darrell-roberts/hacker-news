@@ -30,7 +30,7 @@ async fn main() -> anyhow::Result<()> {
             let (local_sender, client_receiver) = mpsc::unbounded_channel::<Event>();
 
             sender
-                .send(ClientEvent::TopStories)
+                .send(ClientEvent::TopStories(50))
                 .expect("Failed to request initial top stories");
 
             let event_handler = EventHandler::new(sender, client_receiver);

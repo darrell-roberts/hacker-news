@@ -14,7 +14,7 @@ pub enum Event {
 
 /// Client event.
 pub enum ClientEvent {
-    TopStories,
+    TopStories(usize),
     Comments(Vec<u64>, Option<Item>),
 }
 
@@ -65,9 +65,9 @@ impl ClientEventHandler {
     /// Handle a client event.
     pub async fn handle_event(&self, event: ClientEvent) {
         let result = match event {
-            ClientEvent::TopStories => self
+            ClientEvent::TopStories(total) => self
                 .client
-                .top_stories(50)
+                .top_stories(total)
                 .await
                 .map_err(|e| anyhow::Error::msg(format!("{e}")))
                 .and_then(|ts| {

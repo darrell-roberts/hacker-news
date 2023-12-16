@@ -30,6 +30,8 @@ pub struct HackerNewsApp {
     active_item: Option<Item>,
     /// Parent comment trail.
     parent_comments: Vec<Item>,
+    /// Number of articles to show.
+    showing: usize,
 }
 
 impl HackerNewsApp {
@@ -49,6 +51,7 @@ impl HackerNewsApp {
             local_sender,
             active_item: None,
             parent_comments: Vec::new(),
+            showing: 50,
         }
     }
 
@@ -56,6 +59,7 @@ impl HackerNewsApp {
     fn handle_event(&mut self, event: Event) {
         match event {
             Event::TopStories(ts) => {
+                self.showing = ts.len();
                 self.top_stories = ts;
             }
             Event::Comments(comments, parent) => {
@@ -280,7 +284,8 @@ impl eframe::App for HackerNewsApp {
         }
 
         let frame = Frame {
-            fill: Color32::LIGHT_BLUE,
+            // fill: Color32::LIGHT_BLUE,
+            fill: Color32::from_rgb(189, 200, 204),
             inner_margin: Margin {
                 left: 5.,
                 right: 5.,
@@ -301,7 +306,31 @@ impl eframe::App for HackerNewsApp {
                 if ui.button("Reload").clicked() {
                     self.fetching = true;
                     self.event_handler
-                        .emit(ClientEvent::TopStories)
+                        .emit(ClientEvent::TopStories(self.showing))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 25, "25").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(25))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 50, "50").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(50))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 75, "75").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(75))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 100, "100").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(100))
                         .unwrap_or_default();
                 }
                 if self.fetching {
