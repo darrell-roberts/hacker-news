@@ -164,10 +164,26 @@ impl HackerNewsApp {
                         ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
                         if let Some(title) = item.title.as_deref() {
                             ui.heading(title);
+                            ui.horizontal(|ui| {
+                                ui.set_style(Style {
+                                    override_text_style: Some(TextStyle::Small),
+                                    ..Default::default()
+                                });
+                                ui.style_mut().spacing = Spacing {
+                                    item_spacing: Vec2 { y: 1., x: 2. },
+                                    ..Default::default()
+                                };
+
+                                ui.label("by");
+                                ui.label(&item.by);
+                            });
                         }
                         if let Some(text) = item.text.as_deref() {
                             ui.label(text);
                         }
+                        ui.separator();
+                    }
+                    egui::ScrollArea::vertical().show(ui, |ui| {
                         for parent in self.parent_comments.iter() {
                             ui.style_mut().visuals.override_text_color = Some(Color32::GRAY);
                             ui.label(format!(
@@ -191,9 +207,6 @@ impl HackerNewsApp {
                             });
                             ui.style_mut().visuals.override_text_color = None;
                         }
-                        ui.separator();
-                    }
-                    egui::ScrollArea::vertical().show(ui, |ui| {
                         ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
                         ui.style_mut().visuals.extreme_bg_color = Color32::LIGHT_GRAY;
                         for comment in self.comments.iter() {
