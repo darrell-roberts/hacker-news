@@ -109,8 +109,8 @@ impl HackerNewsApp {
                         item_spacing: Vec2 { y: 1., x: 2. },
                         ..Default::default()
                     };
-                    ui.label("by");
-                    ui.label(&article.by);
+                    ui.label(RichText::new("by").italics());
+                    ui.label(RichText::new(&article.by).italics());
                     if !article.kids.is_empty()
                         && ui.button(format!("[{}]", article.kids.len())).clicked()
                     {
@@ -180,8 +180,8 @@ impl HackerNewsApp {
                                     ..Default::default()
                                 };
 
-                                ui.label("by");
-                                ui.label(&item.by);
+                                ui.label(RichText::new("by").italics());
+                                ui.label(RichText::new(&item.by).italics());
                                 ui.label(format!("[{}]", item.kids.len()));
                             });
                         }
@@ -227,8 +227,8 @@ impl HackerNewsApp {
                                 // if ui.button(format!("id: {}", comment.id)).clicked() {
                                 //     ui.output_mut(|p| p.copied_text = format!("{}", comment.id));
                                 // }
-                                ui.label("by");
-                                ui.label(&comment.by);
+                                ui.label(RichText::new("by").italics());
+                                ui.label(RichText::new(&comment.by).italics());
                                 if !comment.kids.is_empty()
                                     && ui.button(format!("[{}]", comment.kids.len())).clicked()
                                 {
