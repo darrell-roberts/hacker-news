@@ -2,7 +2,7 @@
 use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case, take_until, take_while1, take_while_m_n},
-    character::complete::{alpha1, char, space1},
+    character::complete::{alpha1, anychar, char, space1},
     combinator::{cut, eof, map, map_opt, map_res, rest, value},
     error::{context, ContextError, FromExternalError, ParseError, VerboseError},
     multi::{many0, many1, many_till},
@@ -39,6 +39,54 @@ pub enum Element<'a> {
     Escaped(char),
     /// Paragraph tag.
     Paragraph,
+
+    Code(String),
+
+    Italic(&'a str),
+
+    Bold(&'a str),
+}
+
+fn parse_bold<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str>,
+{
+    let parse = delimited(tag("<b>"), take_until("</b>"), tag("</b>"));
+
+    context("parse_bold", map(parse, Element::Bold))(input)
+}
+
+fn parse_italic<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str>,
+{
+    let parse = delimited(tag("<i>"), take_until("</i>"), tag("</i>"));
+
+    context("parse_italic", map(parse, Element::Italic))(input)
+}
+
+fn parse_code<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
+{
+    let mut text = many0(alt((parse_escaped_character, parse_escaped_tag, anychar)));
+
+    let mut parse = delimited(
+        tag_no_case("<pre><code>"),
+        take_until("</code></pre>"),
+        tag_no_case("</code></pre>"),
+    );
+
+    let (rest, code) = parse(input)?;
+
+    let (_, code) = text(code)?;
+
+    Ok((rest, Element::Code(code.into_iter().collect())))
+
+    // context(
+    //     "parse_code",
+    //     map(parse, |s| Element::Code(s.into_iter().collect())),
+    // )(input)
 }
 
 fn parse_paragraph<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
@@ -67,7 +115,7 @@ where
     )(input)
 }
 
-fn parse_escaped<'a, E>(input: &'a str) -> IResult<&str, Element, E>
+fn parse_escaped_character<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
@@ -75,26 +123,54 @@ where
         "escaped_tag",
         delimited(tag("&#x"), cut(parse_hex), tag(";")),
     );
-    let mut parse = context(
-        "parse_escaped",
-        map_opt(hex_parse, |n| char::from_u32(n).map(Element::Escaped)),
-    );
+    let mut parse = context("parse_escaped", map_opt(hex_parse, char::from_u32));
 
     parse(input)
 }
 
-fn parse_escaped_tag<'a, E>(input: &'a str) -> IResult<&str, Element, E>
+fn parse_escaped<'a, E>(input: &'a str) -> IResult<&str, Element, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
+{
+    // let hex_parse = context(
+    //     "escaped_tag",
+    //     delimited(tag("&#x"), cut(parse_hex), tag(";")),
+    // );
+    // let mut parse = context(
+    //     "parse_escaped",
+    //     map_opt(hex_parse, |n| char::from_u32(n).map(Element::Escaped)),
+    // );
+
+    // parse(input)
+    map(parse_escaped_character, Element::Escaped)(input)
+}
+
+fn parse_escaped_tag<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str>,
 {
-    let quote = value(Element::Escaped('\"'), tag("&quot;"));
-    let gt = value(Element::Escaped('>'), tag("&gt;"));
-    let lt = value(Element::Escaped('<'), tag("&lt;"));
-    let ampersand = value(Element::Escaped('&'), tag("&amp;"));
-    let apos = value(Element::Escaped('\''), tag("&apos;"));
+    let quote = value('\"', tag("&quot;"));
+    let gt = value('>', tag("&gt;"));
+    let lt = value('<', tag("&lt;"));
+    let ampersand = value('&', tag("&amp;"));
+    let apos = value('\'', tag("&apos;"));
 
-    let mut parse = alt((quote, gt, lt, ampersand, apos));
-    parse(input)
+    alt((quote, gt, lt, ampersand, apos))(input)
+}
+
+fn parse_escaped_tag_into_element<'a, E>(input: &'a str) -> IResult<&str, Element, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str>,
+{
+    // let quote = value(Element::Escaped('\"'), tag("&quot;"));
+    // let gt = value(Element::Escaped('>'), tag("&gt;"));
+    // let lt = value(Element::Escaped('<'), tag("&lt;"));
+    // let ampersand = value(Element::Escaped('&'), tag("&amp;"));
+    // let apos = value(Element::Escaped('\''), tag("&apos;"));
+
+    // let mut parse = alt((quote, gt, lt, ampersand, apos));
+    // parse(input)
+    map(parse_escaped_tag, Element::Escaped)(input)
 }
 
 fn parse_text<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
@@ -103,6 +179,17 @@ where
 {
     let parse = take_while1(|c| c != '<' && c != '&');
     context("parse_text", map(parse, |s: &str| Element::Text(s)))(input)
+    // let parse = cut(alt((
+    //     take_until("&#x"),
+    //     take_until("&gt;"),
+    //     take_until("&lt;"),
+    //     take_until("<p>"),
+    //     take_until("&amp;"),
+    //     take_until("&apos;"),
+    //     // take_until(""),
+    // )));
+
+    // context("parse_text", map(parse, Element::Text))(input)
 }
 
 pub fn parse_elements<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element>, E>
@@ -114,7 +201,10 @@ where
         parse_anchor,
         parse_paragraph,
         parse_escaped,
-        parse_escaped_tag,
+        parse_escaped_tag_into_element,
+        parse_code,
+        parse_italic,
+        parse_bold,
         map(rest, Element::Text),
     ));
     let mut parser = context("parse_elements", many_till(parsers, eof));
@@ -229,7 +319,10 @@ pub(crate) fn parse_html(input: &str) -> anyhow::Result<Vec<Element>> {
 
 #[cfg(test)]
 mod test {
-    use super::{parse_anchor, parse_elements, parse_escaped, parse_html, parse_quote, Element};
+
+    use super::{
+        parse_anchor, parse_code, parse_elements, parse_escaped, parse_html, parse_quote, Element,
+    };
     use crate::parser::parse_paragraph;
     use nom::{
         error::{convert_error, VerboseError},
@@ -341,9 +434,9 @@ mod test {
 
         match el {
             Ok((rest, elements)) => {
-                // dbg!(&elements);
                 assert!(rest.is_empty());
                 assert!(!elements.is_empty());
+                dbg!(&elements);
             }
             Err(Err::Error(err)) | Err(Err::Failure(err)) => {
                 eprintln!("error: {}", convert_error(s, err));
@@ -354,5 +447,39 @@ mod test {
                 panic!("failed");
             }
         }
+    }
+
+    #[test]
+    fn test_code() {
+        let s = r#"<pre><code>
+            if x {
+                y = 0
+            }
+        </code></pre>"#;
+
+        let el = parse_code::<VerboseError<&str>>(s);
+        match el {
+            Ok((rest, element)) => {
+                assert!(rest.is_empty());
+                assert!(matches!(element, Element::Code(_)));
+            }
+            Err(Err::Error(err)) | Err(Err::Failure(err)) => {
+                eprintln!("error: {}", convert_error(s, err));
+                panic!("failed");
+            }
+            Err(err) => {
+                dbg!(&err);
+                panic!("failed");
+            }
+        }
+    }
+
+    #[test]
+    fn testy() {
+        let s = "I really, really loathe it when scientists advocate for something (in this case planting tons of trees) and then get faux shocked when people use that information to their economic benefit (&quot;I didn&#x27;t mean plant trees <i>and</i> still burn fossil fuels!&quot;)<p>A good analogy to me is the &quot;anti-fat&quot; nutrition crowd in the 90s (remember &quot;the food pyramid&quot; anyone??) I was reading an article about this whole debacle a while back, and remember one scientist lamenting &quot;The advice on its own was good advice, but we never imagined the rise of Snack Wells.&quot; If anyone doesn&#x27;t know, Snack Wells were a cookie brand in the 90s that were fat-free but loaded with sugar. They had the effect of getting you just as fat (they had a ton of calories), with probably a higher risk of type 2 diabetes, but with no fat they left you feeling hungry and they tasted a bit like cardboard.<p>But the scientist&#x27;s defense was utter baloney. Of course if you convince the populace that fat is evil and you can avoid weight gain just by avoiding dietary fat that food companies will respond accordingly.<p>The same thing applies here. It&#x27;s ridiculous for a scientist to think that his report about how planting lots of trees can counteract fossil fuel emissions wouldn&#x27;t be latched on to by fossil fuel companies to say they &quot;offset&quot; their new emissions by planting more trees.";
+
+        let result = parse_elements::<VerboseError<&str>>(s);
+
+        dbg!(&result);
     }
 }

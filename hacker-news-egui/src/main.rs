@@ -9,6 +9,7 @@ use tokio::sync::mpsc;
 
 pub mod app;
 pub mod event;
+pub mod text;
 
 pub static SHUT_DOWN: AtomicBool = AtomicBool::new(false);
 

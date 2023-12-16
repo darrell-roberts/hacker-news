@@ -1,4 +1,7 @@
-use crate::event::{ClientEvent, Event, EventHandler};
+use crate::{
+    event::{ClientEvent, Event, EventHandler},
+    text::render_rich_text,
+};
 use egui::{
     os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Margin, RichText, Rounding,
     Style, TextStyle, Vec2,
@@ -149,9 +152,13 @@ impl HackerNewsApp {
                 ..Default::default()
             };
 
+            let width = ui.available_width() - (ui.available_width() * 0.05);
+            let height = ui.available_height() - (ui.available_height() * 0.15);
+
             egui::Window::new("")
                 .frame(frame)
-                .default_width(ui.available_width() - 15.)
+                .default_width(width)
+                .default_height(height)
                 .open(&mut self.showing_comments)
                 .show(ctx, |ui| {
                     if let Some(item) = self.active_item.as_ref() {
@@ -180,19 +187,14 @@ impl HackerNewsApp {
                             });
                         }
                         if let Some(text) = item.text.as_deref() {
-                            ui.label(text);
+                            render_rich_text(text, ui);
                         }
                         ui.separator();
                     }
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         for parent in self.parent_comments.iter() {
                             ui.style_mut().visuals.override_text_color = Some(Color32::GRAY);
-                            ui.label(format!(
-                                "-> {}",
-                                http_sanitizer::convert_html(
-                                    parent.text.as_deref().unwrap_or_default(),
-                                )
-                            ));
+                            render_rich_text(parent.text.as_deref().unwrap_or_default(), ui);
                             ui.horizontal(|ui| {
                                 ui.set_style(Style {
                                     override_text_style: Some(TextStyle::Small),
@@ -208,12 +210,12 @@ impl HackerNewsApp {
                             });
                             ui.style_mut().visuals.override_text_color = None;
                         }
+
                         ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
-                        ui.style_mut().visuals.extreme_bg_color = Color32::LIGHT_GRAY;
+
                         for comment in self.comments.iter() {
-                            ui.label(http_sanitizer::convert_html(
-                                comment.text.as_deref().unwrap_or_default(),
-                            ));
+                            render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
+
                             ui.horizontal(|ui| {
                                 ui.set_style(Style {
                                     override_text_style: Some(TextStyle::Small),
@@ -223,6 +225,9 @@ impl HackerNewsApp {
                                     item_spacing: Vec2 { y: 1., x: 2. },
                                     ..Default::default()
                                 };
+                                // if ui.button(format!("id: {}", comment.id)).clicked() {
+                                //     ui.output_mut(|p| p.copied_text = format!("{}", comment.id));
+                                // }
                                 ui.label("by");
                                 ui.label(&comment.by);
                                 if !comment.kids.is_empty()

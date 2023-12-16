@@ -28,6 +28,13 @@ pub fn convert_html(input: &str) -> Cow<str> {
                     }
                     Element::Escaped(c) => result.push(c),
                     Element::Paragraph => result.push_str("\n\n"),
+                    Element::Code(s) => {
+                        result.push_str("---code----\n");
+                        result.push_str(&s);
+                        result.push_str("---end-----\n");
+                    }
+                    Element::Italic(s) => result.push_str(s),
+                    Element::Bold(s) => result.push_str(s),
                 }
             }
             Cow::Owned(result)
@@ -78,9 +85,28 @@ pub fn sanitize_html(input: String) -> String {
             Element::Escaped(c) => {
                 s.push(c);
             }
+            Element::Code(code) => {
+                s.push_str("------begin code-----");
+                s.push_str(&code);
+                s.push_str("----end code---------");
+            }
+            Element::Italic(i) => {
+                s.push_str(i);
+            }
+            Element::Bold(b) => s.push_str(b),
         }
         s
     })
+}
+
+/// Parse the input str into elements.
+pub fn as_elements(input: &str) -> Vec<Element> {
+    parse_elements::<VerboseError<&str>>(input)
+        .map(|(_, v)| v)
+        .unwrap_or_else(|err| {
+            error!("Failed to parse input: {err}");
+            vec![Element::Text(input)]
+        })
 }
 
 #[cfg(test)]
