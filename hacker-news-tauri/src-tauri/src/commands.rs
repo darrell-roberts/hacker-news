@@ -1,6 +1,8 @@
 //! Tauri commands bridging the UI with the backend.
-use crate::types::{has_rust, HNItem, HNUser, PositionChange, TopStories};
-use crate::{AppClient, AppState};
+use crate::{
+    types::{has_rust, HNItem, HNUser, PositionChange, TopStories},
+    AppClient, AppState,
+};
 use anyhow::Context;
 use chrono::Local;
 use hacker_news_api::{subscribe_top_stories, Item, ResultExt};

@@ -1,5 +1,8 @@
 use crate::event::{ClientEvent, Event, EventHandler};
-use egui::{style::Spacing, Color32, Frame, Margin, RichText, Rounding, Style, TextStyle, Vec2};
+use egui::{
+    os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Margin, RichText, Rounding,
+    Style, TextStyle, Vec2,
+};
 use hacker_news_api::Item;
 use log::error;
 use tokio::sync::mpsc::UnboundedSender;
@@ -158,6 +161,7 @@ impl HackerNewsApp {
                             }
                             ctx.request_repaint();
                         }
+                        ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
                         if let Some(title) = item.title.as_deref() {
                             ui.heading(title);
                         }
@@ -190,6 +194,8 @@ impl HackerNewsApp {
                         ui.separator();
                     }
                     egui::ScrollArea::vertical().show(ui, |ui| {
+                        ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
+                        ui.style_mut().visuals.extreme_bg_color = Color32::LIGHT_GRAY;
                         for comment in self.comments.iter() {
                             ui.label(http_sanitizer::convert_html(
                                 comment.text.as_deref().unwrap_or_default(),
@@ -230,7 +236,17 @@ impl eframe::App for HackerNewsApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_next_event();
 
-        ctx.set_pixels_per_point(2.5);
+        if ctx.os() == OperatingSystem::Mac {
+            ctx.set_pixels_per_point(2.5);
+        } else {
+            ctx.set_pixels_per_point(3.0);
+        }
+
+        if self.fetching {
+            ctx.set_cursor_icon(CursorIcon::Progress);
+        } else {
+            ctx.set_cursor_icon(CursorIcon::Default);
+        }
 
         let frame = Frame {
             fill: Color32::LIGHT_BLUE,
