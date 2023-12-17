@@ -1,39 +1,39 @@
 use crate::{
     event::{ClientEvent, Event, EventHandler},
-    text::{parse_date, render_rich_text},
+    text::parse_date,
 };
 use egui::{
     os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Key, Margin, RichText,
-    Rounding, Style, TextStyle, Vec2,
+    TextStyle, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
 use tokio::sync::mpsc::UnboundedSender;
 
+use self::comments::{Comments, CommentsState};
+
+mod comments;
+
 /// Application State.
 pub struct HackerNewsApp {
     /// Top stories.
     top_stories: Vec<Item>,
-    /// Active comments being viewed.
-    comments: Vec<Item>,
     /// Event handler for background events.
     event_handler: EventHandler,
     /// Toggle comment view window.
     showing_comments: bool,
     /// API request in progress.
     fetching: bool,
-    /// Trail of comments navigated.
-    comment_trail: Vec<Vec<Item>>,
     /// Emit local events.
     local_sender: UnboundedSender<Event>,
     /// Active item when reading comments.
     active_item: Option<Item>,
-    /// Parent comment trail.
-    parent_comments: Vec<Item>,
     /// Number of articles to show.
     showing: usize,
     /// Articles visited.
     visited: Vec<usize>,
+    /// Comments state.
+    comments_state: CommentsState,
 }
 
 impl HackerNewsApp {
@@ -46,15 +46,13 @@ impl HackerNewsApp {
         Self {
             event_handler,
             top_stories: Vec::new(),
-            comments: Vec::new(),
-            showing_comments: false,
             fetching: true,
-            comment_trail: Vec::new(),
             local_sender,
             active_item: None,
-            parent_comments: Vec::new(),
             showing: 50,
             visited: Vec::new(),
+            comments_state: Default::default(),
+            showing_comments: false,
         }
     }
 
@@ -68,20 +66,22 @@ impl HackerNewsApp {
             }
             Event::Comments(comments, parent) => {
                 if let Some(comment) = parent {
-                    self.comment_trail.push(std::mem::take(&mut self.comments));
-                    self.parent_comments.push(comment);
+                    self.comments_state
+                        .comment_trail
+                        .push(std::mem::take(&mut self.comments_state.comments));
+                    self.comments_state.parent_comments.push(comment);
                 } else {
-                    self.comment_trail = Vec::new();
-                    self.parent_comments = Vec::new();
+                    self.comments_state.comment_trail = Vec::new();
+                    self.comments_state.parent_comments = Vec::new();
                 }
-                self.comments = comments;
+                self.comments_state.comments = comments;
             }
             Event::Back => {
-                match self.comment_trail.pop() {
-                    Some(cs) => self.comments = cs,
-                    None => self.comments = Vec::new(),
+                match self.comments_state.comment_trail.pop() {
+                    Some(cs) => self.comments_state.comments = cs,
+                    None => self.comments_state.comments = Vec::new(),
                 };
-                self.parent_comments.pop();
+                self.comments_state.parent_comments.pop();
             }
         }
         self.fetching = false;
@@ -146,7 +146,7 @@ impl HackerNewsApp {
                         && ui.button(format!("{}", article.kids.len())).clicked()
                     {
                         self.showing_comments = true;
-                        self.comments = Vec::new();
+                        self.comments_state.comments = Vec::new();
                         self.fetching = true;
                         self.active_item = Some(article.to_owned());
                         self.visited.push(index);
@@ -165,131 +165,16 @@ impl HackerNewsApp {
 
     /// Render comments if requested.
     fn render_comments(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        if !self.comments.is_empty() && self.showing_comments {
-            let frame = Frame {
-                fill: Color32::LIGHT_YELLOW,
-                inner_margin: Margin {
-                    left: 5.,
-                    right: 5.,
-                    top: 5.,
-                    bottom: 5.,
-                },
-                rounding: Rounding {
-                    nw: 8.,
-                    ne: 8.,
-                    sw: 8.,
-                    se: 8.,
-                },
-                ..Default::default()
-            };
-
-            let width = ui.available_width() - (ui.available_width() * 0.05);
-            let height = ui.available_height() - (ui.available_height() * 0.15);
-
-            egui::Window::new("")
-                .frame(frame)
-                .default_width(width)
-                .default_height(height)
-                .open(&mut self.showing_comments)
-                .show(ctx, |ui| {
-                    if let Some(item) = self.active_item.as_ref() {
-                        if !self.comment_trail.is_empty() && ui.button("back").clicked() {
-                            if let Err(err) = self.local_sender.send(Event::Back) {
-                                error!("Failed to send Back: {err}");
-                            }
-                            ctx.request_repaint();
-                        }
-                        ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
-                        if let Some(title) = item.title.as_deref() {
-                            ui.heading(title);
-                            ui.horizontal(|ui| {
-                                ui.set_style(Style {
-                                    override_text_style: Some(TextStyle::Small),
-                                    ..Default::default()
-                                });
-                                ui.style_mut().spacing = Spacing {
-                                    item_spacing: Vec2 { y: 1., x: 2. },
-                                    ..Default::default()
-                                };
-
-                                ui.label(RichText::new("by").italics());
-                                ui.label(RichText::new(&item.by).italics());
-                                if let Some(time) = parse_date(item.time) {
-                                    ui.label(RichText::new(time).italics());
-                                }
-                                ui.label(format!("[{}]", item.kids.len()));
-                            });
-                        }
-                        if let Some(text) = item.text.as_deref() {
-                            render_rich_text(text, ui);
-                        }
-                        // ui.separator();
-                    }
-                    let scroll_delta = scroll_delta(ui);
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        ui.scroll_with_delta(scroll_delta);
-                        for parent in self.parent_comments.iter() {
-                            ui.style_mut().visuals.override_text_color = Some(Color32::GRAY);
-                            render_rich_text(parent.text.as_deref().unwrap_or_default(), ui);
-                            ui.horizontal(|ui| {
-                                ui.set_style(Style {
-                                    override_text_style: Some(TextStyle::Small),
-                                    ..Default::default()
-                                });
-                                ui.style_mut().spacing = Spacing {
-                                    item_spacing: Vec2 { y: 1., x: 2. },
-                                    ..Default::default()
-                                };
-                                ui.label("by");
-                                ui.label(&parent.by);
-                                if let Some(time) = parse_date(parent.time) {
-                                    ui.label(RichText::new(time).italics());
-                                }
-                                ui.label(format!("[{}]", parent.kids.len()));
-                            });
-                            ui.style_mut().visuals.override_text_color = None;
-                        }
-
-                        ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
-
-                        for comment in self.comments.iter() {
-                            render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
-
-                            ui.horizontal(|ui| {
-                                ui.set_style(Style {
-                                    override_text_style: Some(TextStyle::Small),
-                                    ..Default::default()
-                                });
-                                ui.style_mut().spacing = Spacing {
-                                    item_spacing: Vec2 { y: 1., x: 2. },
-                                    ..Default::default()
-                                };
-                                // if ui.button(format!("id: {}", comment.id)).clicked() {
-                                //     ui.output_mut(|p| p.copied_text = format!("{}", comment.id));
-                                // }
-                                ui.label(RichText::new("by").italics());
-                                ui.label(RichText::new(&comment.by).italics());
-                                if let Some(time) = parse_date(comment.time) {
-                                    ui.label(RichText::new(time).italics());
-                                }
-                                if !comment.kids.is_empty()
-                                    && ui.button(format!("{}", comment.kids.len())).clicked()
-                                {
-                                    self.fetching = true;
-                                    if let Err(err) =
-                                        self.event_handler.emit(ClientEvent::Comments(
-                                            comment.kids.clone(),
-                                            Some(comment.to_owned()),
-                                        ))
-                                    {
-                                        error!("Failed to emit comments: {err}");
-                                    }
-                                }
-                            });
-                            // ui.separator();
-                        }
-                    })
-                });
+        if !self.comments_state.comments.is_empty() && self.showing_comments {
+            Comments {
+                active_item: self.active_item.as_ref(),
+                local_sender: &self.local_sender,
+                fetching: &mut self.fetching,
+                event_handler: &self.event_handler,
+                showing_comments: &mut self.showing_comments,
+                comments_state: &self.comments_state,
+            }
+            .render_comments(ctx, ui);
         }
     }
 }
