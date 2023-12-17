@@ -3,8 +3,8 @@ use crate::{
     text::{parse_date, render_rich_text},
 };
 use egui::{
-    os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Margin, RichText, Rounding,
-    Style, TextStyle, Vec2,
+    os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Key, Margin, RichText,
+    Rounding, Style, TextStyle, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -97,7 +97,9 @@ impl HackerNewsApp {
 
     /// Render the articles.
     fn render_articles(&mut self, ui: &mut egui::Ui) {
+        let scroll_delta = scroll_delta(ui);
         egui::ScrollArea::vertical().show(ui, |ui| {
+            ui.scroll_with_delta(scroll_delta);
             for (article, index) in self.top_stories.iter().zip(1..) {
                 ui.horizontal(|ui| {
                     ui.label(format!("{index:>2}."));
@@ -218,7 +220,9 @@ impl HackerNewsApp {
                         }
                         // ui.separator();
                     }
+                    let scroll_delta = scroll_delta(ui);
                     egui::ScrollArea::vertical().show(ui, |ui| {
+                        ui.scroll_with_delta(scroll_delta);
                         for parent in self.parent_comments.iter() {
                             ui.style_mut().visuals.override_text_color = Some(Color32::GRAY);
                             render_rich_text(parent.text.as_deref().unwrap_or_default(), ui);
@@ -361,4 +365,29 @@ impl eframe::App for HackerNewsApp {
             self.render_articles(ui);
         });
     }
+}
+
+fn scroll_delta(ui: &mut egui::Ui) -> Vec2 {
+    let mut scroll_delta = Vec2::ZERO;
+    ui.input_mut(|input| {
+        if input.key_released(Key::PageDown) {
+            scroll_delta.y -= ui.available_height();
+        }
+        if input.key_released(Key::PageUp) {
+            scroll_delta.y += ui.available_height();
+        }
+        if input.key_released(Key::ArrowDown) {
+            scroll_delta.y -= 24.0;
+        }
+        if input.key_released(Key::ArrowUp) {
+            scroll_delta.y += 24.0;
+        }
+        if input.key_released(Key::Home) {
+            scroll_delta.y = f32::MAX;
+        }
+        if input.key_released(Key::End) {
+            scroll_delta.y = f32::MIN;
+        }
+    });
+    scroll_delta
 }
