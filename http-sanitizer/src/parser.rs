@@ -7,7 +7,7 @@ use nom::{
     error::{context, ContextError, FromExternalError, ParseError, VerboseError},
     multi::{many0, many1, many_till},
     sequence::{delimited, pair, preceded, separated_pair, terminated},
-    AsChar, IResult,
+    AsChar, IResult, Parser,
 };
 use std::num::ParseIntError;
 
@@ -66,18 +66,15 @@ fn parse_code<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
-    let mut text = many0(alt((parse_escaped_character, parse_escaped_tag, anychar)));
+    let text = many0(alt((parse_escaped_character, parse_escaped_tag, anychar)));
 
-    let mut parse = delimited(
+    let parse = delimited(
         tag_no_case("<pre><code>"),
-        take_until("</code></pre>"),
+        take_until("</code></pre>").and_then(text),
         tag_no_case("</code></pre>"),
     );
 
-    let (rest, code) = parse(input)?;
-    let (_, code) = text(code)?;
-
-    Ok((rest, Element::Code(code.into_iter().collect())))
+    map(parse, |code| Element::Code(code.into_iter().collect())).parse(input)
 }
 
 fn parse_paragraph<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
@@ -210,7 +207,6 @@ where
 {
     let parser = terminated(
         alt((take_until("</a>"), take_until("</A>"))),
-        // value,
         alt((tag("</a>"), tag("</A>"))),
     );
     context("parse_anchor_children", parser)(input)
@@ -260,11 +256,10 @@ pub(crate) fn parse_html(input: &str) -> anyhow::Result<Vec<Element>> {
 
 #[cfg(test)]
 mod test {
-
     use super::{
-        parse_anchor, parse_code, parse_elements, parse_escaped, parse_html, parse_quote, Element,
+        parse_anchor, parse_code, parse_elements, parse_escaped, parse_html, parse_paragraph,
+        parse_quote, Element,
     };
-    use crate::parser::parse_paragraph;
     use nom::{
         error::{convert_error, VerboseError},
         Err,
