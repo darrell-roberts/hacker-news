@@ -120,6 +120,11 @@ impl HackerNewsApp {
                         {
                             self.visited.push(index);
                         }
+                    } else if self.visited.contains(&index) {
+                        ui.label(
+                            RichText::new(article.title.as_deref().unwrap_or("No title"))
+                                .color(Color32::DARK_GRAY),
+                        );
                     } else {
                         ui.label(article.title.as_deref().unwrap_or("No title"));
                     }
