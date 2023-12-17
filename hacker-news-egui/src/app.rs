@@ -312,7 +312,8 @@ impl eframe::App for HackerNewsApp {
 
         let frame = Frame {
             // fill: Color32::LIGHT_BLUE,
-            fill: Color32::from_rgb(189, 200, 204),
+            // fill: Color32::from_rgb(189, 200, 204),
+            fill: Color32::from_rgb(245, 243, 240),
             inner_margin: Margin {
                 left: 5.,
                 right: 5.,
