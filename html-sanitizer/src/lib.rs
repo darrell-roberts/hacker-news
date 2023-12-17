@@ -28,11 +28,11 @@ pub fn sanitize_html(input: String) -> String {
             }
             Element::Link(l) => {
                 if let Some(att) = l.attributes.iter().find(|a| a.name == "href") {
-                    s.push_str(att.value);
+                    s.push_str(&att.value);
 
                     if l.children != att.value && !l.children.starts_with("http") {
                         s.push('(');
-                        s.push_str(l.children);
+                        s.push_str(&l.children);
                         s.push(')');
                     }
                 }

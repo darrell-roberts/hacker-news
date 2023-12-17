@@ -2021,7 +2021,7 @@ dependencies = [
  "egui",
  "env_logger",
  "hacker-news-api",
- "http-sanitizer",
+ "html-sanitizer",
  "log",
  "tokio",
 ]
@@ -2034,7 +2034,7 @@ dependencies = [
  "chrono",
  "flexi_logger",
  "hacker-news-api",
- "http-sanitizer",
+ "html-sanitizer",
  "log",
  "serde",
  "serde_json",
@@ -2088,6 +2088,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5444c27eef6923071f7ebcc33e3444508466a76f7a2b93da00ed6e19f30c1ddb"
 dependencies = [
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "html-sanitizer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "nom",
 ]
 
 [[package]]
@@ -2145,15 +2154,6 @@ name = "http-range"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21dec9db110f5f872ed9699c3ecf50cf16f423502706ba5c72462e28d3157573"
-
-[[package]]
-name = "http-sanitizer"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "log",
- "nom",
-]
 
 [[package]]
 name = "httparse"

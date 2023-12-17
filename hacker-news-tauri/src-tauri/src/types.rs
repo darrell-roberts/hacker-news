@@ -1,7 +1,7 @@
 //! View model types.
 use chrono::{DateTime, Utc};
 use hacker_news_api::{Item, User};
-use http_sanitizer::sanitize_html;
+use html_sanitizer::sanitize_html;
 use serde::Serialize;
 
 #[derive(Serialize, Clone)]

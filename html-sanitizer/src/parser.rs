@@ -12,10 +12,10 @@ use nom::{
 use std::num::ParseIntError;
 
 /// An html attribute name value pair.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Attribute<'a> {
     pub name: &'a str,
-    pub value: &'a str,
+    pub value: String,
 }
 
 /// An html anchor tag.
@@ -24,7 +24,7 @@ pub struct Anchor<'a> {
     /// Anchor attributes.
     pub attributes: Vec<Attribute<'a>>,
     /// Child elements.
-    pub children: &'a str,
+    pub children: String,
 }
 
 /// A simple Html element.
@@ -62,19 +62,27 @@ where
     context("parse_italic", map(parse, Element::Italic))(input)
 }
 
+fn parse_escaped_text<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
+{
+    map(
+        many0(alt((parse_escaped_character, parse_escaped_tag, anychar))),
+        |v| v.into_iter().collect(),
+    )(input)
+}
+
 fn parse_code<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
-    let text = many0(alt((parse_escaped_character, parse_escaped_tag, anychar)));
-
     let parse = delimited(
         tag_no_case("<pre><code>"),
-        take_until("</code></pre>").and_then(text),
+        take_until("</code></pre>").and_then(parse_escaped_text),
         tag_no_case("</code></pre>"),
     );
 
-    map(parse, |code| Element::Code(code.into_iter().collect())).parse(input)
+    map(parse, Element::Code).parse(input)
 }
 
 fn parse_paragraph<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
@@ -151,6 +159,76 @@ where
     context("parse_text", map(parse, |s: &str| Element::Text(s)))(input)
 }
 
+/// Parse an html attribute name value pair.
+fn parse_attribute<'a, E>(input: &'a str) -> IResult<&'a str, Attribute, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
+{
+    context(
+        "parse_attribute",
+        map(
+            preceded(
+                space1,
+                separated_pair(alpha1, tag("="), parse_quote.and_then(parse_escaped_text)),
+            ),
+            |(name, value)| Attribute { name, value },
+        ),
+    )(input)
+}
+
+/// Parse a quoted string.
+fn parse_quote<'a, E>(input: &'a str) -> IResult<&'a str, &'a str, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str>,
+{
+    context(
+        "parse_quote",
+        delimited(char('"'), take_until("\""), char('"')),
+    )(input)
+}
+
+/// Parse child elements of an anchor.
+fn parse_anchor_children<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
+{
+    let parser = terminated(
+        alt((take_until("</a>"), take_until("</A>"))).and_then(parse_escaped_text),
+        alt((tag("</a>"), tag("</A>"))),
+    );
+    context("parse_anchor_children", parser)(input)
+}
+
+fn parse_attr<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Attribute>, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
+{
+    context(
+        "parse_attr",
+        delimited(tag_no_case("<a"), many0(parse_attribute), tag(">")),
+    )(input)
+}
+
+/// Parse an anchor element.
+fn parse_anchor<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
+{
+    context(
+        "parse_anchor",
+        map(
+            pair(parse_attr, parse_anchor_children),
+            |(attributes, children)| {
+                Element::Link(Anchor {
+                    attributes,
+                    children,
+                })
+            },
+        ),
+    )(input)
+}
+
+/// Parse html encoded string into a logical [`Element`]s.
 pub fn parse_elements<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
@@ -173,72 +251,6 @@ where
         result.push(Element::Text(rest));
     }
     Ok((rest, result))
-}
-
-/// Parse an html attribute name value pair.
-fn parse_attribute<'a, E>(input: &'a str) -> IResult<&'a str, Attribute, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str>,
-{
-    context(
-        "parse_attribute",
-        map(
-            preceded(space1, separated_pair(alpha1, tag("="), parse_quote)),
-            |(name, value)| Attribute { name, value },
-        ),
-    )(input)
-}
-
-/// Parse a quoted string.
-fn parse_quote<'a, E>(input: &'a str) -> IResult<&'a str, &'a str, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str>,
-{
-    context(
-        "parse_quote",
-        delimited(char('"'), take_until("\""), char('"')),
-    )(input)
-}
-
-/// Parse child elements of an anchor.
-fn parse_anchor_children<'a, E>(input: &'a str) -> IResult<&'a str, &'a str, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str>,
-{
-    let parser = terminated(
-        alt((take_until("</a>"), take_until("</A>"))),
-        alt((tag("</a>"), tag("</A>"))),
-    );
-    context("parse_anchor_children", parser)(input)
-}
-
-fn parse_attr<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Attribute>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str>,
-{
-    context(
-        "parse_attr",
-        delimited(tag_no_case("<a"), many0(parse_attribute), tag(">")),
-    )(input)
-}
-
-/// Parse an anchor element.
-fn parse_anchor<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str>,
-{
-    context(
-        "parse_anchor",
-        map(
-            pair(parse_attr, parse_anchor_children),
-            |(attributes, children)| {
-                Element::Link(Anchor {
-                    attributes,
-                    children,
-                })
-            },
-        ),
-    )(input)
 }
 
 /// Parse an html string.
