@@ -2,6 +2,7 @@ use crate::{
     event::{ClientEvent, Event, EventHandler},
     text::parse_date,
 };
+use comments::{Comments, CommentsState};
 use egui::{
     os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Key, Margin, RichText,
     TextStyle, Vec2,
@@ -9,8 +10,6 @@ use egui::{
 use hacker_news_api::Item;
 use log::error;
 use tokio::sync::mpsc::UnboundedSender;
-
-use self::comments::{Comments, CommentsState};
 
 mod comments;
 
@@ -26,8 +25,6 @@ pub struct HackerNewsApp {
     fetching: bool,
     /// Emit local events.
     local_sender: UnboundedSender<Event>,
-    /// Active item when reading comments.
-    active_item: Option<Item>,
     /// Number of articles to show.
     showing: usize,
     /// Articles visited.
@@ -48,7 +45,6 @@ impl HackerNewsApp {
             top_stories: Vec::new(),
             fetching: true,
             local_sender,
-            active_item: None,
             showing: 50,
             visited: Vec::new(),
             comments_state: Default::default(),
@@ -148,7 +144,7 @@ impl HackerNewsApp {
                         self.showing_comments = true;
                         self.comments_state.comments = Vec::new();
                         self.fetching = true;
-                        self.active_item = Some(article.to_owned());
+                        self.comments_state.active_item = Some(article.to_owned());
                         self.visited.push(index);
                         if let Err(err) = self
                             .event_handler
@@ -167,7 +163,6 @@ impl HackerNewsApp {
     fn render_comments(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         if !self.comments_state.comments.is_empty() && self.showing_comments {
             Comments {
-                active_item: self.active_item.as_ref(),
                 local_sender: &self.local_sender,
                 fetching: &mut self.fetching,
                 event_handler: &self.event_handler,

@@ -17,12 +17,12 @@ pub struct CommentsState {
     pub comment_trail: Vec<Vec<Item>>,
     /// Parent comment trail.
     pub parent_comments: Vec<Item>,
+    /// Active item when reading comments.
+    pub active_item: Option<Item>,
 }
 
 /// Renderer for comment window.
 pub struct Comments<'a> {
-    /// Active item when reading comments.
-    pub active_item: Option<&'a Item>,
     /// Emit local events.
     pub local_sender: &'a UnboundedSender<Event>,
     /// API request in progress.
@@ -64,7 +64,7 @@ impl<'a> Comments<'a> {
             .default_height(height)
             .open(self.showing_comments)
             .show(ctx, |ui| {
-                if let Some(item) = self.active_item.as_ref() {
+                if let Some(item) = self.comments_state.active_item.as_ref() {
                     if !self.comments_state.comment_trail.is_empty() && ui.button("back").clicked()
                     {
                         if let Err(err) = self.local_sender.send(Event::Back) {
