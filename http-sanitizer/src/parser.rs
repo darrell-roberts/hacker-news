@@ -30,8 +30,7 @@ pub struct Anchor<'a> {
 /// A simple Html element.
 #[derive(Debug, Clone)]
 pub enum Element<'a> {
-    /// Anything that is not a link.
-    // Text(&'a str),
+    /// Regular text.
     Text(&'a str),
     /// A link.
     Link(Anchor<'a>),
@@ -39,11 +38,11 @@ pub enum Element<'a> {
     Escaped(char),
     /// Paragraph tag.
     Paragraph,
-
+    /// Source code block.
     Code(String),
-
+    /// Italic text.
     Italic(&'a str),
-
+    /// Bold text.
     Bold(&'a str),
 }
 
@@ -52,7 +51,6 @@ where
     E: ParseError<&'a str> + ContextError<&'a str>,
 {
     let parse = delimited(tag("<b>"), take_until("</b>"), tag("</b>"));
-
     context("parse_bold", map(parse, Element::Bold))(input)
 }
 
@@ -61,7 +59,6 @@ where
     E: ParseError<&'a str> + ContextError<&'a str>,
 {
     let parse = delimited(tag("<i>"), take_until("</i>"), tag("</i>"));
-
     context("parse_italic", map(parse, Element::Italic))(input)
 }
 
