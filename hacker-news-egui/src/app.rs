@@ -96,6 +96,7 @@ impl HackerNewsApp {
         let scroll_delta = scroll_delta(ui);
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.scroll_with_delta(scroll_delta);
+
             for (article, index) in self.top_stories.iter().zip(1..) {
                 ui.horizontal(|ui| {
                     ui.label(format!("{index:>2}."));
@@ -169,7 +170,7 @@ impl HackerNewsApp {
                 showing_comments: &mut self.showing_comments,
                 comments_state: &self.comments_state,
             }
-            .render_comments(ctx, ui);
+            .render(ctx, ui);
         }
     }
 }

@@ -37,7 +37,7 @@ pub struct Comments<'a> {
 
 impl<'a> Comments<'a> {
     /// Render comments if requested.
-    pub fn render_comments(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn render(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
         let frame = Frame {
             fill: Color32::LIGHT_YELLOW,
             inner_margin: Margin {
