@@ -1,6 +1,9 @@
+use std::sync::atomic::Ordering;
+
 use crate::{
     event::{ClientEvent, Event, EventHandler},
     text::parse_date,
+    SHUT_DOWN,
 };
 use comments::{Comments, CommentsState};
 use egui::{
@@ -251,6 +254,10 @@ impl eframe::App for HackerNewsApp {
             self.render_comments(ctx, ui);
             self.render_articles(ui);
         });
+    }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        SHUT_DOWN.store(true, Ordering::Release);
     }
 }
 
