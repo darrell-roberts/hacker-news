@@ -356,6 +356,7 @@ impl eframe::App for HackerNewsApp {
                 }
             });
 
+            ui.add_space(2.);
             self.render_comments(ctx, ui);
             self.render_articles(ui);
         });
