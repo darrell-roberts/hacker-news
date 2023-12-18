@@ -152,6 +152,7 @@ impl HackerNewsApp {
                     if let Some(time) = parse_date(article.time) {
                         ui.label(RichText::new(time).italics());
                     }
+                    ui.add_space(5.0);
                     if !article.kids.is_empty()
                         && ui.button(format!("{}", article.kids.len())).clicked()
                     {

@@ -3,7 +3,9 @@ use crate::{
     event::{ClientEvent, Event, EventHandler},
     text::{parse_date, render_rich_text},
 };
-use egui::{style::Spacing, Color32, Frame, Margin, RichText, Rounding, Style, TextStyle, Vec2};
+use egui::{
+    style::Spacing, Color32, Frame, Margin, RichText, Rounding, Separator, Style, TextStyle, Vec2,
+};
 use hacker_news_api::Item;
 use log::error;
 use tokio::sync::mpsc::UnboundedSender;
@@ -94,6 +96,7 @@ impl<'a> Comments<'a> {
                             if let Some(time) = parse_date(item.time) {
                                 ui.label(RichText::new(time).italics());
                             }
+                            ui.add_space(5.0);
                             ui.label(format!("[{}]", item.kids.len()));
                         });
                     }
@@ -121,6 +124,7 @@ impl<'a> Comments<'a> {
                             if let Some(time) = parse_date(parent.time) {
                                 ui.label(RichText::new(time).italics());
                             }
+                            ui.add_space(5.0);
                             ui.label(format!("[{}]", parent.kids.len()));
                         });
                         ui.style_mut().visuals.override_text_color = None;
@@ -148,6 +152,7 @@ impl<'a> Comments<'a> {
                             if let Some(time) = parse_date(comment.time) {
                                 ui.label(RichText::new(time).italics());
                             }
+                            ui.add_space(5.);
                             if !comment.kids.is_empty()
                                 && ui.button(format!("{}", comment.kids.len())).clicked()
                             {
@@ -160,6 +165,8 @@ impl<'a> Comments<'a> {
                                 }
                             }
                         });
+
+                        ui.add(Separator::default().spacing(25.0));
                     }
                 })
             });
