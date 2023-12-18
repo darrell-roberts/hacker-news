@@ -34,7 +34,7 @@ pub enum Element<'a> {
     Text(&'a str),
     /// A link.
     Link(Anchor<'a>),
-    /// Html escaped charater
+    /// Html escaped character
     Escaped(char),
     /// Paragraph tag.
     Paragraph,
