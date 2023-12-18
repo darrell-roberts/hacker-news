@@ -1,5 +1,3 @@
-use std::sync::atomic::Ordering;
-
 use crate::{
     event::{ClientEvent, Event, EventHandler},
     text::parse_date,
@@ -12,6 +10,7 @@ use egui::{
 };
 use hacker_news_api::Item;
 use log::error;
+use std::sync::atomic::Ordering;
 use tokio::sync::mpsc::UnboundedSender;
 
 mod comments;
@@ -34,6 +33,8 @@ pub struct HackerNewsApp {
     visited: Vec<usize>,
     /// Comments state.
     comments_state: CommentsState,
+    /// Errors.
+    error: Option<String>,
 }
 
 impl HackerNewsApp {
@@ -52,6 +53,7 @@ impl HackerNewsApp {
             visited: Vec::new(),
             comments_state: Default::default(),
             showing_comments: false,
+            error: None,
         }
     }
 
@@ -62,18 +64,23 @@ impl HackerNewsApp {
                 self.showing = ts.len();
                 self.top_stories = ts;
                 self.visited = Vec::new();
+                self.error = None;
             }
             Event::Comments(comments, parent) => {
-                if let Some(comment) = parent {
-                    self.comments_state
-                        .comment_trail
-                        .push(std::mem::take(&mut self.comments_state.comments));
-                    self.comments_state.parent_comments.push(comment);
-                } else {
-                    self.comments_state.comment_trail = Vec::new();
-                    self.comments_state.parent_comments = Vec::new();
+                match parent {
+                    Some(comment) => {
+                        self.comments_state
+                            .comment_trail
+                            .push(std::mem::take(&mut self.comments_state.comments));
+                        self.comments_state.parent_comments.push(comment);
+                    }
+                    None => {
+                        self.comments_state.comment_trail = Vec::new();
+                        self.comments_state.parent_comments = Vec::new();
+                    }
                 }
                 self.comments_state.comments = comments;
+                self.error = None;
             }
             Event::Back => {
                 match self.comments_state.comment_trail.pop() {
@@ -81,6 +88,9 @@ impl HackerNewsApp {
                     None => self.comments_state.comments = Vec::new(),
                 };
                 self.comments_state.parent_comments.pop();
+            }
+            Event::Error(error) => {
+                self.error = Some(error);
             }
         }
         self.fetching = false;
@@ -214,6 +224,7 @@ impl eframe::App for HackerNewsApp {
 
             // Header
             ui.horizontal(|ui| {
+                ui.style_mut().visuals.window_fill = Color32::DARK_BLUE;
                 ui.label(format!("Total: {}", self.top_stories.len()));
                 if ui.button("Reload").clicked() {
                     self.fetching = true;
@@ -247,6 +258,9 @@ impl eframe::App for HackerNewsApp {
                 }
                 if self.fetching {
                     ui.spinner();
+                }
+                if let Some(error) = self.error.as_deref() {
+                    ui.label(RichText::new(error).color(Color32::RED).strong());
                 }
             });
 

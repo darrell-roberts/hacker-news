@@ -5,6 +5,7 @@ use html_sanitizer::Element;
 /// Render html escaped text into the Ui.
 pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
     let elements = html_sanitizer::as_elements(escaped_text);
+
     ui.horizontal_wrapped(|ui| {
         ui.style_mut().visuals.hyperlink_color = Color32::DARK_RED;
         ui.spacing_mut().item_spacing = Vec2 { x: 0., y: 0. };
@@ -42,7 +43,7 @@ pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
                     ui.label(RichText::new(text).italics());
                 }
                 Element::Bold(text) => {
-                    ui.label(RichText::new(text).strong());
+                    ui.label(RichText::new(text).heading());
                 }
             }
         }

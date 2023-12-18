@@ -41,24 +41,32 @@ pub enum Element<'a> {
     /// Source code block.
     Code(String),
     /// Italic text.
-    Italic(&'a str),
+    Italic(String),
     /// Bold text.
-    Bold(&'a str),
+    Bold(String),
 }
 
 fn parse_bold<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
 where
-    E: ParseError<&'a str> + ContextError<&'a str>,
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
-    let parse = delimited(tag("<b>"), take_until("</b>"), tag("</b>"));
+    let parse = delimited(
+        tag("<b>"),
+        take_until("</b>").and_then(parse_escaped_text),
+        tag("</b>"),
+    );
     context("parse_bold", map(parse, Element::Bold))(input)
 }
 
 fn parse_italic<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
 where
-    E: ParseError<&'a str> + ContextError<&'a str>,
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
-    let parse = delimited(tag("<i>"), take_until("</i>"), tag("</i>"));
+    let parse = delimited(
+        tag("<i>"),
+        take_until("</i>").and_then(parse_escaped_text),
+        tag("</i>"),
+    );
     context("parse_italic", map(parse, Element::Italic))(input)
 }
 

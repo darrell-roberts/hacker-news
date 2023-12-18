@@ -49,9 +49,9 @@ pub fn sanitize_html(input: String) -> String {
                 s.push_str("----end code---------");
             }
             Element::Italic(i) => {
-                s.push_str(i);
+                s.push_str(&i);
             }
-            Element::Bold(b) => s.push_str(b),
+            Element::Bold(b) => s.push_str(&b),
         }
         s
     })

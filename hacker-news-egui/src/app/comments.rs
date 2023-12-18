@@ -96,7 +96,6 @@ impl<'a> Comments<'a> {
                     if let Some(text) = item.text.as_deref() {
                         render_rich_text(text, ui);
                     }
-                    // ui.separator();
                 }
                 let scroll_delta = scroll_delta(ui);
                 egui::ScrollArea::vertical().show(ui, |ui| {

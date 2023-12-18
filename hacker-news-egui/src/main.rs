@@ -21,6 +21,7 @@ async fn main() -> anyhow::Result<()> {
         Arc::new(hacker_news_api::ApiClient::new().context("Could not create api client")?);
 
     let native_options = eframe::NativeOptions::default();
+
     eframe::run_native(
         "Hacker News",
         native_options,
