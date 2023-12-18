@@ -136,7 +136,10 @@ fn parse_escaped<'a, E>(input: &'a str) -> IResult<&str, Element, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
-    map(parse_escaped_character, Element::Escaped)(input)
+    map(
+        alt((parse_escaped_character, parse_escaped_tag)),
+        Element::Escaped,
+    )(input)
 }
 
 fn parse_escaped_tag<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
@@ -155,13 +158,6 @@ where
     let euro = value('€', tag("&euro;"));
 
     alt((quote, gt, lt, ampersand, apos, copy, reg, trade, deg, euro))(input)
-}
-
-fn parse_escaped_tag_into_element<'a, E>(input: &'a str) -> IResult<&str, Element, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str>,
-{
-    map(parse_escaped_tag, Element::Escaped)(input)
 }
 
 fn parse_text<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
@@ -251,7 +247,6 @@ where
         parse_anchor,
         parse_paragraph,
         parse_escaped,
-        parse_escaped_tag_into_element,
         parse_code,
         parse_italic,
         parse_bold,
