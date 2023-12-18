@@ -148,8 +148,13 @@ where
     let lt = value('<', tag("&lt;"));
     let ampersand = value('&', tag("&amp;"));
     let apos = value('\'', tag("&apos;"));
+    let copy = value('©', tag("&copy;"));
+    let reg = value('®', tag("&reg;"));
+    let trade = value('™', tag("&trade;"));
+    let deg = value('°', tag("&deg;"));
+    let euro = value('€', tag("&euro;"));
 
-    alt((quote, gt, lt, ampersand, apos))(input)
+    alt((quote, gt, lt, ampersand, apos, copy, reg, trade, deg, euro))(input)
 }
 
 fn parse_escaped_tag_into_element<'a, E>(input: &'a str) -> IResult<&str, Element, E>
