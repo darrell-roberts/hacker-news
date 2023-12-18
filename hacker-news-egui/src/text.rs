@@ -34,7 +34,7 @@ pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
                     ui.label(RichText::new(c));
                 }
                 Element::Paragraph => {
-                    ui.label("\n\n");
+                    ui.label("\n\n\t");
                 }
                 Element::Code(text) => {
                     ui.label(RichText::new(text).monospace());

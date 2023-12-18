@@ -73,8 +73,12 @@ impl<'a> Comments<'a> {
                         ctx.request_repaint();
                     }
                     ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
+                    ui.style_mut().visuals.hyperlink_color = Color32::BLACK;
                     if let Some(title) = item.title.as_deref() {
-                        ui.heading(title);
+                        match item.url.as_deref() {
+                            Some(url) => ui.hyperlink_to(RichText::new(title).heading(), url),
+                            None => ui.heading(title),
+                        };
                         ui.horizontal(|ui| {
                             ui.set_style(Style {
                                 override_text_style: Some(TextStyle::Small),
