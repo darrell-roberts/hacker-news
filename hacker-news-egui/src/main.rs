@@ -1,5 +1,7 @@
 use anyhow::Context;
 use app::HackerNewsApp;
+use eframe::icon_data::from_png_bytes;
+use egui::ViewportBuilder;
 use event::{ClientEvent, ClientEventHandler, Event, EventHandler};
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -20,7 +22,14 @@ async fn main() -> anyhow::Result<()> {
     let client =
         Arc::new(hacker_news_api::ApiClient::new().context("Could not create api client")?);
 
-    let native_options = eframe::NativeOptions::default();
+    let icon = from_png_bytes(include_bytes!(
+        "../../hacker-news-tauri/src-tauri/icons/icon.png"
+    ))?;
+
+    let native_options = eframe::NativeOptions {
+        viewport: ViewportBuilder::default().with_icon(icon),
+        ..Default::default()
+    };
 
     eframe::run_native(
         "Hacker News",
