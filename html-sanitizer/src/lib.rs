@@ -1,7 +1,10 @@
 use log::error;
-use parser::{parse_html, Element};
+use nom::error::VerboseError;
+use parser::parse_html;
 
 mod parser;
+
+pub use parser::{parse_elements, Element};
 
 /// Transform any html anchor links inside a comment.
 pub fn sanitize_html(input: String) -> String {
@@ -25,18 +28,43 @@ pub fn sanitize_html(input: String) -> String {
             }
             Element::Link(l) => {
                 if let Some(att) = l.attributes.iter().find(|a| a.name == "href") {
-                    s.push_str(att.value);
+                    s.push_str(&att.value);
 
                     if l.children != att.value && !l.children.starts_with("http") {
                         s.push('(');
-                        s.push_str(l.children);
+                        s.push_str(&l.children);
                         s.push(')');
                     }
                 }
             }
+            Element::Paragraph => {
+                s.push_str("\n\n");
+            }
+            Element::Escaped(c) => {
+                s.push(c);
+            }
+            Element::Code(code) => {
+                s.push_str("------begin code-----");
+                s.push_str(&code);
+                s.push_str("----end code---------");
+            }
+            Element::Italic(i) => {
+                s.push_str(&i);
+            }
+            Element::Bold(b) => s.push_str(&b),
         }
         s
     })
+}
+
+/// Parse the input str into elements.
+pub fn as_elements(input: &str) -> Vec<Element> {
+    parse_elements::<VerboseError<&str>>(input)
+        .map(|(_, v)| v)
+        .unwrap_or_else(|err| {
+            error!("Failed to parse input: {err}");
+            vec![Element::Text(input)]
+        })
 }
 
 #[cfg(test)]

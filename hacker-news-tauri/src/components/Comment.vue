@@ -3,6 +3,7 @@ import { reactive } from "vue";
 import { Item } from "../types/article";
 import { invoke } from "@tauri-apps/api/tauri";
 import UserModal from "./UserModal.vue";
+import RichText from "./RichText.vue";
 
 interface Props {
     comment: Item;
@@ -69,9 +70,8 @@ function hideComment() {
             <div></div>
             <div class="close" @click="hideComment()">X</div>
         </div>
-        <div class="comment">
-            <span v-html="comment.text" />
-        </div>
+
+        <RichText :richText="comment.text" />
 
         <UserModal
             :visible="state.userVisible"
