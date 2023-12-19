@@ -35,6 +35,7 @@ async fn main() -> anyhow::Result<()> {
         "Hacker News",
         native_options,
         Box::new(move |cc| {
+            egui_extras::install_image_loaders(&cc.egui_ctx);
             let frame = cc.egui_ctx.clone();
             let (sender, mut receiver) = mpsc::unbounded_channel::<ClientEvent>();
             let (local_sender, client_receiver) = mpsc::unbounded_channel::<Event>();

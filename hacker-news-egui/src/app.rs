@@ -107,6 +107,14 @@ impl HackerNewsApp {
         self.fetching = false;
     }
 
+    fn last_request(&self) -> impl Fn(usize) -> ClientEvent {
+        match self.article_type {
+            ArticleType::New => ClientEvent::NewStories,
+            ArticleType::Best => ClientEvent::BestStories,
+            ArticleType::Top => ClientEvent::TopStories,
+        }
+    }
+
     /// Handle background emitted events.
     fn handle_next_event(&mut self) {
         self.event_handler
@@ -159,31 +167,31 @@ impl HackerNewsApp {
                 if ui.selectable_label(self.showing == 25, "25").clicked() {
                     self.fetching = true;
                     self.event_handler
-                        .emit(ClientEvent::TopStories(25))
+                        .emit(self.last_request()(25))
                         .unwrap_or_default();
                 }
                 if ui.selectable_label(self.showing == 50, "50").clicked() {
                     self.fetching = true;
                     self.event_handler
-                        .emit(ClientEvent::TopStories(50))
+                        .emit(self.last_request()(50))
                         .unwrap_or_default();
                 }
                 if ui.selectable_label(self.showing == 75, "75").clicked() {
                     self.fetching = true;
                     self.event_handler
-                        .emit(ClientEvent::TopStories(75))
+                        .emit(self.last_request()(75))
                         .unwrap_or_default();
                 }
                 if ui.selectable_label(self.showing == 100, "100").clicked() {
                     self.fetching = true;
                     self.event_handler
-                        .emit(ClientEvent::TopStories(100))
+                        .emit(self.last_request()(100))
                         .unwrap_or_default();
                 }
                 if ui.selectable_label(self.showing == 500, "500").clicked() {
                     self.fetching = true;
                     self.event_handler
-                        .emit(ClientEvent::TopStories(500))
+                        .emit(self.last_request()(500))
                         .unwrap_or_default();
                 }
                 if self.fetching {
@@ -205,6 +213,15 @@ impl HackerNewsApp {
             for (article, index) in self.articles.iter().zip(1..) {
                 ui.horizontal(|ui| {
                     ui.label(format!("{index:>2}."));
+                    if article
+                        .title
+                        .as_deref()
+                        .unwrap_or_default()
+                        .split_whitespace()
+                        .any(|word| word.to_lowercase() == "rust")
+                    {
+                        ui.image(egui::include_image!("../rust-logo-32x32.png"));
+                    }
                     if let Some(url) = article.url.as_deref() {
                         ui.style_mut().visuals.hyperlink_color = if self.visited.contains(&index) {
                             Color32::DARK_GRAY
@@ -233,6 +250,7 @@ impl HackerNewsApp {
                     if self.visited.contains(&index) {
                         ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
                     }
+
                     ui.style_mut().override_text_style = Some(TextStyle::Small);
                     ui.style_mut().spacing = Spacing {
                         item_spacing: Vec2 { y: 1., x: 2. },
