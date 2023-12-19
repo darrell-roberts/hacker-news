@@ -15,10 +15,17 @@ use tokio::sync::mpsc::UnboundedSender;
 
 mod comments;
 
+#[derive(Eq, PartialEq)]
+pub enum ArticleType {
+    New,
+    Best,
+    Top,
+}
+
 /// Application State.
 pub struct HackerNewsApp {
     /// Top stories.
-    top_stories: Vec<Item>,
+    articles: Vec<Item>,
     /// Event handler for background events.
     event_handler: EventHandler,
     /// Toggle comment view window.
@@ -35,6 +42,8 @@ pub struct HackerNewsApp {
     comments_state: CommentsState,
     /// Errors.
     error: Option<String>,
+    /// Viewing article type.
+    article_type: ArticleType,
 }
 
 impl HackerNewsApp {
@@ -46,7 +55,7 @@ impl HackerNewsApp {
     ) -> Self {
         Self {
             event_handler,
-            top_stories: Vec::new(),
+            articles: Vec::new(),
             fetching: true,
             local_sender,
             showing: 50,
@@ -54,17 +63,19 @@ impl HackerNewsApp {
             comments_state: Default::default(),
             showing_comments: false,
             error: None,
+            article_type: ArticleType::Top,
         }
     }
 
     /// Handle background emitted events.
     fn handle_event(&mut self, event: Event) {
         match event {
-            Event::TopStories(ts) => {
+            Event::Articles(article_type, ts) => {
                 self.showing = ts.len();
-                self.top_stories = ts;
+                self.articles = ts;
                 self.visited = Vec::new();
                 self.error = None;
+                self.article_type = article_type;
             }
             Event::Comments(comments, parent) => {
                 match parent {
@@ -96,6 +107,14 @@ impl HackerNewsApp {
         self.fetching = false;
     }
 
+    fn last_request(&self) -> impl Fn(usize) -> ClientEvent {
+        match self.article_type {
+            ArticleType::New => ClientEvent::NewStories,
+            ArticleType::Best => ClientEvent::BestStories,
+            ArticleType::Top => ClientEvent::TopStories,
+        }
+    }
+
     /// Handle background emitted events.
     fn handle_next_event(&mut self) {
         self.event_handler
@@ -104,15 +123,105 @@ impl HackerNewsApp {
             .unwrap_or_default();
     }
 
+    fn render_header(&mut self, ctx: &egui::Context) {
+        egui::TopBottomPanel::top("Hello").show(ctx, |ui| {
+            // Header
+            ui.horizontal(|ui| {
+                ui.style_mut().visuals.window_fill = Color32::DARK_BLUE;
+                // ui.label(format!("Total: {}", self.top_stories.len()));
+                if ui.button("Reload").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(self.showing))
+                        .unwrap_or_default();
+                }
+
+                if ui
+                    .selectable_label(self.article_type == ArticleType::Top, "Top")
+                    .clicked()
+                {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(self.showing))
+                        .unwrap_or_default();
+                }
+                if ui
+                    .selectable_label(self.article_type == ArticleType::Best, "Best")
+                    .clicked()
+                {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::BestStories(self.showing))
+                        .unwrap_or_default();
+                }
+                if ui
+                    .selectable_label(self.article_type == ArticleType::New, "New")
+                    .clicked()
+                {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::NewStories(self.showing))
+                        .unwrap_or_default();
+                }
+
+                if ui.selectable_label(self.showing == 25, "25").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(self.last_request()(25))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 50, "50").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(self.last_request()(50))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 75, "75").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(self.last_request()(75))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 100, "100").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(self.last_request()(100))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 500, "500").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(self.last_request()(500))
+                        .unwrap_or_default();
+                }
+                if self.fetching {
+                    ui.spinner();
+                }
+                if let Some(error) = self.error.as_deref() {
+                    ui.label(RichText::new(error).color(Color32::RED).strong());
+                }
+            });
+        });
+    }
+
     /// Render the articles.
     fn render_articles(&mut self, ui: &mut egui::Ui) {
         let scroll_delta = scroll_delta(ui);
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.scroll_with_delta(scroll_delta);
 
-            for (article, index) in self.top_stories.iter().zip(1..) {
+            for (article, index) in self.articles.iter().zip(1..) {
                 ui.horizontal(|ui| {
                     ui.label(format!("{index:>2}."));
+                    if article
+                        .title
+                        .as_deref()
+                        .unwrap_or_default()
+                        .split_whitespace()
+                        .any(|word| word.to_lowercase() == "rust")
+                    {
+                        ui.image(egui::include_image!("../rust-logo-32x32.png"));
+                    }
                     if let Some(url) = article.url.as_deref() {
                         ui.style_mut().visuals.hyperlink_color = if self.visited.contains(&index) {
                             Color32::DARK_GRAY
@@ -141,6 +250,7 @@ impl HackerNewsApp {
                     if self.visited.contains(&index) {
                         ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
                     }
+
                     ui.style_mut().override_text_style = Some(TextStyle::Small);
                     ui.style_mut().spacing = Spacing {
                         item_spacing: Vec2 { y: 1., x: 2. },
@@ -205,6 +315,8 @@ impl eframe::App for HackerNewsApp {
             ctx.set_cursor_icon(CursorIcon::Default);
         }
 
+        self.render_header(ctx);
+
         let frame = Frame {
             // fill: Color32::LIGHT_BLUE,
             // fill: Color32::from_rgb(189, 200, 204),
@@ -222,48 +334,6 @@ impl eframe::App for HackerNewsApp {
             ui.visuals_mut().widgets.noninteractive.fg_stroke.color = Color32::BLACK;
             ui.visuals_mut().widgets.active.fg_stroke.color = Color32::BLACK;
             ui.visuals_mut().widgets.hovered.fg_stroke.color = Color32::BLACK;
-
-            // Header
-            ui.horizontal(|ui| {
-                ui.style_mut().visuals.window_fill = Color32::DARK_BLUE;
-                ui.label(format!("Total: {}", self.top_stories.len()));
-                if ui.button("Reload").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(self.showing))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 25, "25").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(25))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 50, "50").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(50))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 75, "75").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(75))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 100, "100").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(100))
-                        .unwrap_or_default();
-                }
-                if self.fetching {
-                    ui.spinner();
-                }
-                if let Some(error) = self.error.as_deref() {
-                    ui.label(RichText::new(error).color(Color32::RED).strong());
-                }
-            });
 
             ui.add_space(2.);
             self.render_comments(ctx, ui);
