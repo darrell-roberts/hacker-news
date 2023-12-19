@@ -65,6 +65,7 @@ impl<'a> Comments<'a> {
             .default_width(width)
             .default_height(height)
             .open(self.showing_comments)
+            .collapsible(false)
             .show(ctx, |ui| {
                 if let Some(item) = self.comments_state.active_item.as_ref() {
                     if !self.comments_state.comment_trail.is_empty() && ui.button("back").clicked()
