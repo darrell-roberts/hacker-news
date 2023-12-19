@@ -128,13 +128,6 @@ impl HackerNewsApp {
             // Header
             ui.horizontal(|ui| {
                 ui.style_mut().visuals.window_fill = Color32::DARK_BLUE;
-                // ui.label(format!("Total: {}", self.top_stories.len()));
-                if ui.button("Reload").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(self.showing))
-                        .unwrap_or_default();
-                }
 
                 if ui
                     .selectable_label(self.article_type == ArticleType::Top, "Top")
