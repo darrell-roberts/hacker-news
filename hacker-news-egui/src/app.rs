@@ -5,7 +5,7 @@ use crate::{
 };
 use comments::{Comments, CommentsState};
 use egui::{
-    os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Key, Margin, RichText,
+    os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Grid, Key, Margin, RichText,
     TextStyle, Vec2,
 };
 use hacker_news_api::Item;
@@ -207,80 +207,94 @@ impl HackerNewsApp {
     /// Render the articles.
     fn render_articles(&mut self, ui: &mut egui::Ui) {
         let scroll_delta = scroll_delta(ui);
+
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.scroll_with_delta(scroll_delta);
 
-            for (article, index) in self.articles.iter().zip(1..) {
-                ui.horizontal(|ui| {
-                    ui.label(format!("{index:>2}."));
-                    if article
-                        .title
-                        .as_deref()
-                        .unwrap_or_default()
-                        .split_whitespace()
-                        .any(|word| word.to_lowercase() == "rust")
-                    {
-                        ui.image(egui::include_image!("../rust-logo-32x32.png"));
-                    }
-                    if let Some(url) = article.url.as_deref() {
-                        ui.style_mut().visuals.hyperlink_color = if self.visited.contains(&index) {
-                            Color32::DARK_GRAY
-                        } else {
-                            Color32::BLACK
-                        };
-                        if ui
-                            .hyperlink_to(
-                                RichText::new(article.title.as_deref().unwrap_or("No title"))
-                                    .strong()
-                                    .color(Color32::BLACK),
-                                url,
-                            )
-                            .clicked()
-                        {
-                            self.visited.push(index);
-                        }
-                    } else if self.visited.contains(&index) {
-                        ui.label(
-                            RichText::new(article.title.as_deref().unwrap_or("No title"))
-                                .color(Color32::DARK_GRAY),
-                        );
-                    } else {
-                        ui.label(article.title.as_deref().unwrap_or("No title"));
-                    }
-                    if self.visited.contains(&index) {
-                        ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
-                    }
+            Grid::new("articles")
+                .num_columns(2)
+                .spacing(Vec2 { x: 0., y: 5. })
+                .striped(true)
+                .show(ui, |ui| {
+                    for (article, index) in self.articles.iter().zip(1..) {
+                        ui.label(format!("{index}."));
 
-                    ui.style_mut().override_text_style = Some(TextStyle::Small);
-                    ui.style_mut().spacing = Spacing {
-                        item_spacing: Vec2 { y: 1., x: 2. },
-                        ..Default::default()
-                    };
-                    ui.label(RichText::new(format!("{} points", article.score)).italics());
-                    ui.label(RichText::new("by").italics());
-                    ui.label(RichText::new(&article.by).italics());
-                    if let Some(time) = parse_date(article.time) {
-                        ui.label(RichText::new(time).italics());
-                    }
-                    ui.add_space(5.0);
-                    if !article.kids.is_empty()
-                        && ui.button(format!("{}", article.kids.len())).clicked()
-                    {
-                        self.showing_comments = true;
-                        self.comments_state.comments = Vec::new();
-                        self.fetching = true;
-                        self.comments_state.active_item = Some(article.to_owned());
-                        self.visited.push(index);
-                        if let Err(err) = self
-                            .event_handler
-                            .emit(ClientEvent::Comments(article.kids.clone(), None))
-                        {
-                            error!("Failed to emit comments: {err}");
-                        }
+                        ui.horizontal(|ui| {
+                            if article
+                                .title
+                                .as_deref()
+                                .unwrap_or_default()
+                                .split_whitespace()
+                                .any(|word| word.to_lowercase() == "rust")
+                            {
+                                ui.image(egui::include_image!("../rust-logo-32x32.png"));
+                            }
+                            if let Some(url) = article.url.as_deref() {
+                                ui.style_mut().visuals.hyperlink_color =
+                                    if self.visited.contains(&index) {
+                                        Color32::DARK_GRAY
+                                    } else {
+                                        Color32::BLACK
+                                    };
+                                if ui
+                                    .hyperlink_to(
+                                        RichText::new(
+                                            article.title.as_deref().unwrap_or("No title"),
+                                        )
+                                        .strong()
+                                        .color(Color32::BLACK),
+                                        url,
+                                    )
+                                    .clicked()
+                                {
+                                    self.visited.push(index);
+                                }
+                            } else if self.visited.contains(&index) {
+                                ui.label(
+                                    RichText::new(article.title.as_deref().unwrap_or("No title"))
+                                        .color(Color32::DARK_GRAY),
+                                );
+                            } else {
+                                ui.label(article.title.as_deref().unwrap_or("No title"));
+                            }
+                            if self.visited.contains(&index) {
+                                ui.style_mut().visuals.override_text_color =
+                                    Some(Color32::DARK_GRAY);
+                            }
+
+                            ui.style_mut().override_text_style = Some(TextStyle::Small);
+                            ui.style_mut().spacing = Spacing {
+                                item_spacing: Vec2 { y: 1., x: 2. },
+                                ..Default::default()
+                            };
+                            ui.label(RichText::new(format!("{} points", article.score)).italics());
+                            ui.label(RichText::new("by").italics());
+                            ui.label(RichText::new(&article.by).italics());
+                            if let Some(time) = parse_date(article.time) {
+                                ui.label(RichText::new(time).italics());
+                            }
+                            ui.add_space(5.0);
+                            if !article.kids.is_empty()
+                                && ui.button(format!("{}", article.kids.len())).clicked()
+                            {
+                                self.showing_comments = true;
+                                self.comments_state.comments = Vec::new();
+                                self.fetching = true;
+                                self.comments_state.active_item = Some(article.to_owned());
+                                self.visited.push(index);
+                                if let Err(err) = self
+                                    .event_handler
+                                    .emit(ClientEvent::Comments(article.kids.clone(), None))
+                                {
+                                    error!("Failed to emit comments: {err}");
+                                }
+                            }
+                            ui.allocate_space(ui.available_size());
+                        });
+
+                        ui.end_row();
                     }
                 });
-            }
-            ui.allocate_space(ui.available_size());
         });
     }
 
