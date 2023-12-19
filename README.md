@@ -29,9 +29,10 @@ cargo tauri build
 cargo install --path hacker-news-egui --bin hacker-news-egui
 ```
 
-## Top articles
-<img width="1204" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/546768b2-4ee7-476d-886c-99a699a66127">
+## Articles
+<img width="1045" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/b2612742-82a3-464f-b0be-4bd5633f6fb6">
 
 ## View comments
-<img width="1204" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/af27bbd1-cc14-4e8c-b2f2-477ba5779fd8">
+<img width="1045" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/ae11ebf7-e9a2-4e64-ad37-99431605f2e5">
+
 
