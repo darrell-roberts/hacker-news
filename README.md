@@ -30,9 +30,10 @@ cargo install --path hacker-news-egui --bin hacker-news-egui
 ```
 
 ## Articles
-<img width="1045" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/b2612742-82a3-464f-b0be-4bd5633f6fb6">
+<img width="1043" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/857ed5ce-f9bf-45a5-87e9-08c99668e90e">
 
 ## View comments
-<img width="1045" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/ae11ebf7-e9a2-4e64-ad37-99431605f2e5">
+<img width="1043" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/99eb7d19-2808-4dc4-9a67-3f1ae6a1bb7d">
+
 
 
