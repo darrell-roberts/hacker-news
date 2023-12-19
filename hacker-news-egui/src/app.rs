@@ -29,7 +29,7 @@ pub struct HackerNewsApp {
     /// Event handler for background events.
     event_handler: EventHandler,
     /// Toggle comment view window.
-    showing_comments: bool,
+    // showing_comments: bool,
     /// API request in progress.
     fetching: bool,
     /// Emit local events.
@@ -44,6 +44,7 @@ pub struct HackerNewsApp {
     error: Option<String>,
     /// Viewing article type.
     article_type: ArticleType,
+    open_comments: Vec<bool>,
 }
 
 impl HackerNewsApp {
@@ -61,9 +62,10 @@ impl HackerNewsApp {
             showing: 50,
             visited: Vec::new(),
             comments_state: Default::default(),
-            showing_comments: false,
+            // showing_comments: false,
             error: None,
             article_type: ArticleType::Top,
+            open_comments: Vec::new(),
         }
     }
 
@@ -78,19 +80,29 @@ impl HackerNewsApp {
                 self.article_type = article_type;
             }
             Event::Comments(comments, parent) => {
-                match parent {
-                    Some(comment) => {
-                        self.comments_state
-                            .comment_trail
-                            .push(std::mem::take(&mut self.comments_state.comments));
-                        self.comments_state.parent_comments.push(comment);
-                    }
-                    None => {
-                        self.comments_state.comment_trail = Vec::new();
-                        self.comments_state.parent_comments = Vec::new();
-                    }
+                if parent.is_some() {
+                    self.comments_state.comment_trail.push(comments);
+                    // let next = self.comments_state.comment_trail.len();
+                    // self.open_comments[next - 1] = true;
+                    self.open_comments.push(true);
+                } else {
+                    self.comments_state.comment_trail = vec![comments];
+                    self.open_comments = vec![true];
                 }
-                self.comments_state.comments = comments;
+                // self.comments_state.parent_comments.push(comment);
+                // match parent {
+                //     Some(comment) => {
+                //         self.comments_state
+                //             .comment_trail
+                //             .push(std::mem::take(&mut self.comments_state.comments));
+                //         self.comments_state.parent_comments.push(comment);
+                //     }
+                //     None => {
+                //         self.comments_state.comment_trail = Vec::new();
+                //         self.comments_state.parent_comments = Vec::new();
+                //     }
+                // }
+                // self.comments_state.comments = comments;
                 self.error = None;
             }
             Event::Back => {
@@ -270,7 +282,7 @@ impl HackerNewsApp {
                             if !article.kids.is_empty()
                                 && ui.button(format!("{}", article.kids.len())).clicked()
                             {
-                                self.showing_comments = true;
+                                // self.open_comments[0] = true;
                                 self.comments_state.comments = Vec::new();
                                 self.fetching = true;
                                 self.comments_state.active_item = Some(article.to_owned());
@@ -293,12 +305,13 @@ impl HackerNewsApp {
 
     /// Render comments if requested.
     fn render_comments(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        if !self.comments_state.comments.is_empty() && self.showing_comments {
+        if self.open_comments.iter().any(|c| *c) {
             Comments {
                 local_sender: &self.local_sender,
                 fetching: &mut self.fetching,
                 event_handler: &self.event_handler,
-                showing_comments: &mut self.showing_comments,
+                // showing_comments: &mut self.showing_comments,
+                open_comments: &mut self.open_comments,
                 comments_state: &self.comments_state,
             }
             .render(ctx, ui);
