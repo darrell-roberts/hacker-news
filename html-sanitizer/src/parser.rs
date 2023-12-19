@@ -4,8 +4,8 @@ use nom::{
     bytes::complete::{tag, tag_no_case, take_until, take_while1, take_while_m_n},
     character::complete::{alpha1, anychar, char, space1},
     combinator::{cut, eof, map, map_opt, map_res, rest, value},
-    error::{context, ContextError, FromExternalError, ParseError, VerboseError},
-    multi::{many0, many1, many_till},
+    error::{context, ContextError, FromExternalError, ParseError},
+    multi::{many0, many_till},
     sequence::{delimited, pair, preceded, separated_pair, terminated},
     AsChar, IResult, Parser,
 };
@@ -261,24 +261,11 @@ where
     Ok((rest, result))
 }
 
-/// Parse an html string.
-pub(crate) fn parse_html(input: &str) -> anyhow::Result<Vec<Element>> {
-    many1(alt((
-        parse_anchor::<VerboseError<&str>>,
-        map(
-            alt((take_until("<a"), take_while1(|_| true))),
-            |bs: &str| Element::Text(bs),
-        ),
-    )))(input)
-    .map_err(|e| anyhow::Error::msg(e.to_string()))
-    .map(|(_, html)| html)
-}
-
 #[cfg(test)]
 mod test {
     use super::{
-        parse_anchor, parse_code, parse_elements, parse_escaped, parse_html, parse_paragraph,
-        parse_quote, Element,
+        parse_anchor, parse_code, parse_elements, parse_escaped, parse_paragraph, parse_quote,
+        Element,
     };
     use nom::{
         error::{convert_error, VerboseError},
@@ -328,27 +315,6 @@ mod test {
         assert_eq!(anchor.attributes[1].value, "http://www.google.com");
         assert_eq!(anchor.children, "Google");
         assert_eq!(rest, "<br/>");
-    }
-
-    #[test]
-    fn parse_comment() {
-        let comment = r#"
-            This is a test with a <a href="http://www.google.com/">Google</a> Link. <a href="www.google.com">blah</a> Hello
-            "#;
-        let result = parse_html(comment);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn parse_comment_no_link() {
-        let comment = r#"
-            I am a comment. I have no
-            links.
-            Bye.
-        "#;
-
-        let result = parse_html(comment);
-        assert!(result.is_ok());
     }
 
     #[test]
@@ -428,14 +394,5 @@ mod test {
                 panic!("failed");
             }
         }
-    }
-
-    #[test]
-    fn testy() {
-        let s = "I really, really loathe it when scientists advocate for something (in this case planting tons of trees) and then get faux shocked when people use that information to their economic benefit (&quot;I didn&#x27;t mean plant trees <i>and</i> still burn fossil fuels!&quot;)<p>A good analogy to me is the &quot;anti-fat&quot; nutrition crowd in the 90s (remember &quot;the food pyramid&quot; anyone??) I was reading an article about this whole debacle a while back, and remember one scientist lamenting &quot;The advice on its own was good advice, but we never imagined the rise of Snack Wells.&quot; If anyone doesn&#x27;t know, Snack Wells were a cookie brand in the 90s that were fat-free but loaded with sugar. They had the effect of getting you just as fat (they had a ton of calories), with probably a higher risk of type 2 diabetes, but with no fat they left you feeling hungry and they tasted a bit like cardboard.<p>But the scientist&#x27;s defense was utter baloney. Of course if you convince the populace that fat is evil and you can avoid weight gain just by avoiding dietary fat that food companies will respond accordingly.<p>The same thing applies here. It&#x27;s ridiculous for a scientist to think that his report about how planting lots of trees can counteract fossil fuel emissions wouldn&#x27;t be latched on to by fossil fuel companies to say they &quot;offset&quot; their new emissions by planting more trees.";
-
-        let result = parse_elements::<VerboseError<&str>>(s);
-
-        dbg!(&result);
     }
 }

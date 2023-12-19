@@ -58,7 +58,7 @@ impl From<Item> for HNItem {
 }
 
 fn to_rich_text(escaped_text: &str) -> Vec<RichText> {
-    html_sanitizer::as_elements(escaped_text)
+    html_sanitizer::parse_elements(escaped_text)
         .into_iter()
         .flat_map(|element| match element {
             html_sanitizer::Element::Text(text) => Some(RichText::Text(text.into())),

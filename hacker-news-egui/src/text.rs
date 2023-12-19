@@ -4,7 +4,7 @@ use html_sanitizer::Element;
 
 /// Render html escaped text into the Ui.
 pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
-    let elements = html_sanitizer::as_elements(escaped_text);
+    let elements = html_sanitizer::parse_elements(escaped_text);
 
     ui.horizontal_wrapped(|ui| {
         ui.style_mut().visuals.hyperlink_color = Color32::DARK_RED;
