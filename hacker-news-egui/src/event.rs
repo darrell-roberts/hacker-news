@@ -1,3 +1,4 @@
+use crate::app::ArticleType;
 use anyhow::Result;
 use egui::Context;
 use hacker_news_api::{ApiClient, Item};
@@ -7,7 +8,7 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 /// Background event.
 pub enum Event {
-    TopStories(Vec<Item>),
+    Articles(ArticleType, Vec<Item>),
     Comments(Vec<Item>, Option<Item>),
     Back,
     Error(String),
@@ -16,6 +17,8 @@ pub enum Event {
 /// Client event.
 pub enum ClientEvent {
     TopStories(usize),
+    BestStories(usize),
+    NewStories(usize),
     Comments(Vec<u64>, Option<Item>),
 }
 
@@ -67,11 +70,19 @@ impl ClientEventHandler {
     pub async fn handle_event(&self, event: ClientEvent) {
         let result = match event {
             ClientEvent::TopStories(total) => match self.client.top_stories(total).await {
-                Ok(ts) => self.sender.send(Event::TopStories(ts)),
+                Ok(ts) => self.sender.send(Event::Articles(ArticleType::Top, ts)),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
             },
             ClientEvent::Comments(ids, parent) => match self.client.items(&ids).await {
                 Ok(comments) => self.sender.send(Event::Comments(comments, parent)),
+                Err(err) => self.sender.send(Event::Error(err.to_string())),
+            },
+            ClientEvent::BestStories(total) => match self.client.best_stories(total).await {
+                Ok(bs) => self.sender.send(Event::Articles(ArticleType::Best, bs)),
+                Err(err) => self.sender.send(Event::Error(err.to_string())),
+            },
+            ClientEvent::NewStories(total) => match self.client.new_stories(total).await {
+                Ok(ns) => self.sender.send(Event::Articles(ArticleType::New, ns)),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
             },
         };

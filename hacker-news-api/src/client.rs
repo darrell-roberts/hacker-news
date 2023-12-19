@@ -29,19 +29,29 @@ impl ApiClient {
         })
     }
 
-    /// Get `limit` number of top stories.
-    pub async fn top_stories(&self, limit: usize) -> Result<Vec<Item>> {
+    async fn call(&self, limit: usize, api: &str) -> Result<Vec<Item>> {
         let mut ids = self
             .client
-            .get(format!("{}/topstories.json", Self::API_END_POINT))
+            .get(format!("{}/{api}", Self::API_END_POINT))
             .send()
             .and_then(|resp| resp.json::<Vec<u64>>())
             .await?;
 
         ids.truncate(limit);
-        let results = self.items(&ids).await?;
+        self.items(&ids).await
+    }
 
-        Ok(results)
+    /// Get `limit` number of top stories.
+    pub async fn top_stories(&self, limit: usize) -> Result<Vec<Item>> {
+        self.call(limit, "topstories.json").await
+    }
+
+    pub async fn best_stories(&self, limit: usize) -> Result<Vec<Item>> {
+        self.call(limit, "beststories.json").await
+    }
+
+    pub async fn new_stories(&self, limit: usize) -> Result<Vec<Item>> {
+        self.call(limit, "newstories.json").await
     }
 
     /// Get a single item via item id.

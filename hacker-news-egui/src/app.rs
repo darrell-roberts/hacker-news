@@ -15,10 +15,17 @@ use tokio::sync::mpsc::UnboundedSender;
 
 mod comments;
 
+#[derive(Eq, PartialEq)]
+pub enum ArticleType {
+    New,
+    Best,
+    Top,
+}
+
 /// Application State.
 pub struct HackerNewsApp {
     /// Top stories.
-    top_stories: Vec<Item>,
+    articles: Vec<Item>,
     /// Event handler for background events.
     event_handler: EventHandler,
     /// Toggle comment view window.
@@ -35,6 +42,8 @@ pub struct HackerNewsApp {
     comments_state: CommentsState,
     /// Errors.
     error: Option<String>,
+    /// Viewing article type.
+    article_type: ArticleType,
 }
 
 impl HackerNewsApp {
@@ -46,7 +55,7 @@ impl HackerNewsApp {
     ) -> Self {
         Self {
             event_handler,
-            top_stories: Vec::new(),
+            articles: Vec::new(),
             fetching: true,
             local_sender,
             showing: 50,
@@ -54,17 +63,19 @@ impl HackerNewsApp {
             comments_state: Default::default(),
             showing_comments: false,
             error: None,
+            article_type: ArticleType::Top,
         }
     }
 
     /// Handle background emitted events.
     fn handle_event(&mut self, event: Event) {
         match event {
-            Event::TopStories(ts) => {
+            Event::Articles(article_type, ts) => {
                 self.showing = ts.len();
-                self.top_stories = ts;
+                self.articles = ts;
                 self.visited = Vec::new();
                 self.error = None;
+                self.article_type = article_type;
             }
             Event::Comments(comments, parent) => {
                 match parent {
@@ -116,6 +127,35 @@ impl HackerNewsApp {
                         .emit(ClientEvent::TopStories(self.showing))
                         .unwrap_or_default();
                 }
+
+                if ui
+                    .selectable_label(self.article_type == ArticleType::Top, "Top")
+                    .clicked()
+                {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(self.showing))
+                        .unwrap_or_default();
+                }
+                if ui
+                    .selectable_label(self.article_type == ArticleType::Best, "Best")
+                    .clicked()
+                {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::BestStories(self.showing))
+                        .unwrap_or_default();
+                }
+                if ui
+                    .selectable_label(self.article_type == ArticleType::New, "New")
+                    .clicked()
+                {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::NewStories(self.showing))
+                        .unwrap_or_default();
+                }
+
                 if ui.selectable_label(self.showing == 25, "25").clicked() {
                     self.fetching = true;
                     self.event_handler
@@ -162,7 +202,7 @@ impl HackerNewsApp {
         egui::ScrollArea::vertical().show(ui, |ui| {
             ui.scroll_with_delta(scroll_delta);
 
-            for (article, index) in self.top_stories.iter().zip(1..) {
+            for (article, index) in self.articles.iter().zip(1..) {
                 ui.horizontal(|ui| {
                     ui.label(format!("{index:>2}."));
                     if let Some(url) = article.url.as_deref() {
