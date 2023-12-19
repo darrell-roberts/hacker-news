@@ -104,6 +104,58 @@ impl HackerNewsApp {
             .unwrap_or_default();
     }
 
+    fn render_header(&mut self, ctx: &egui::Context) {
+        egui::TopBottomPanel::top("Hello").show(ctx, |ui| {
+            // Header
+            ui.horizontal(|ui| {
+                ui.style_mut().visuals.window_fill = Color32::DARK_BLUE;
+                // ui.label(format!("Total: {}", self.top_stories.len()));
+                if ui.button("Reload").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(self.showing))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 25, "25").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(25))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 50, "50").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(50))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 75, "75").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(75))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 100, "100").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(100))
+                        .unwrap_or_default();
+                }
+                if ui.selectable_label(self.showing == 500, "500").clicked() {
+                    self.fetching = true;
+                    self.event_handler
+                        .emit(ClientEvent::TopStories(500))
+                        .unwrap_or_default();
+                }
+                if self.fetching {
+                    ui.spinner();
+                }
+                if let Some(error) = self.error.as_deref() {
+                    ui.label(RichText::new(error).color(Color32::RED).strong());
+                }
+            });
+        });
+    }
+
     /// Render the articles.
     fn render_articles(&mut self, ui: &mut egui::Ui) {
         let scroll_delta = scroll_delta(ui);
@@ -205,6 +257,8 @@ impl eframe::App for HackerNewsApp {
             ctx.set_cursor_icon(CursorIcon::Default);
         }
 
+        self.render_header(ctx);
+
         let frame = Frame {
             // fill: Color32::LIGHT_BLUE,
             // fill: Color32::from_rgb(189, 200, 204),
@@ -222,48 +276,6 @@ impl eframe::App for HackerNewsApp {
             ui.visuals_mut().widgets.noninteractive.fg_stroke.color = Color32::BLACK;
             ui.visuals_mut().widgets.active.fg_stroke.color = Color32::BLACK;
             ui.visuals_mut().widgets.hovered.fg_stroke.color = Color32::BLACK;
-
-            // Header
-            ui.horizontal(|ui| {
-                ui.style_mut().visuals.window_fill = Color32::DARK_BLUE;
-                ui.label(format!("Total: {}", self.top_stories.len()));
-                if ui.button("Reload").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(self.showing))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 25, "25").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(25))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 50, "50").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(50))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 75, "75").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(75))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 100, "100").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(100))
-                        .unwrap_or_default();
-                }
-                if self.fetching {
-                    ui.spinner();
-                }
-                if let Some(error) = self.error.as_deref() {
-                    ui.label(RichText::new(error).color(Color32::RED).strong());
-                }
-            });
 
             ui.add_space(2.);
             self.render_comments(ctx, ui);
