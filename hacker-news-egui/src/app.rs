@@ -36,7 +36,7 @@ pub struct HackerNewsApp {
     /// Number of articles to show.
     showing: usize,
     /// Articles visited.
-    visited: Vec<usize>,
+    visited: Vec<u64>,
     /// Comments state.
     comments_state: CommentsState,
     /// Errors.
@@ -74,7 +74,6 @@ impl HackerNewsApp {
             Event::Articles(article_type, ts) => {
                 self.showing = ts.len();
                 self.articles = ts;
-                self.visited = Vec::new();
                 self.error = None;
                 self.article_type = article_type;
             }
@@ -220,12 +219,12 @@ impl HackerNewsApp {
                             }
 
                             ui.style_mut().visuals.hyperlink_color =
-                                if self.visited.contains(&index) {
+                                if self.visited.contains(&article.id) {
                                     Color32::DARK_GRAY
                                 } else {
                                     Color32::BLACK
                                 };
-                            if self.visited.contains(&index) {
+                            if self.visited.contains(&article.id) {
                                 ui.style_mut().visuals.override_text_color =
                                     Some(Color32::DARK_GRAY);
                             }
@@ -237,7 +236,7 @@ impl HackerNewsApp {
                                     if ui.link(title).clicked() {
                                         //Render comment.
                                         self.comments_state.active_item = Some(article.to_owned());
-                                        self.visited.push(index);
+                                        self.visited.push(article.id);
                                         self.local_sender
                                             .send(Event::Comments {
                                                 items: Vec::new(),
@@ -255,7 +254,7 @@ impl HackerNewsApp {
                                         )
                                         .clicked()
                                     {
-                                        self.visited.push(index);
+                                        self.visited.push(article.id);
                                     }
                                 }
                             }
@@ -279,7 +278,7 @@ impl HackerNewsApp {
                                 self.comments_state.comments = Vec::new();
                                 self.fetching = true;
                                 self.comments_state.active_item = Some(article.to_owned());
-                                self.visited.push(index);
+                                self.visited.push(article.id);
                                 if let Err(err) = self.event_handler.emit(ClientEvent::Comments {
                                     ids: article.kids.clone(),
                                     parent: None,
