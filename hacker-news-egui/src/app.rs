@@ -1,3 +1,4 @@
+use self::comments::CommentItem;
 use crate::{
     event::{ClientEvent, Event, EventHandler},
     text::parse_date,
@@ -12,8 +13,6 @@ use hacker_news_api::Item;
 use log::error;
 use std::sync::atomic::Ordering;
 use tokio::sync::mpsc::UnboundedSender;
-
-use self::comments::CommentItem;
 
 mod comments;
 
@@ -30,8 +29,6 @@ pub struct HackerNewsApp {
     articles: Vec<Item>,
     /// Event handler for background events.
     event_handler: EventHandler,
-    /// Toggle comment view window.
-    // showing_comments: bool,
     /// API request in progress.
     fetching: bool,
     /// Emit local events.
@@ -46,6 +43,7 @@ pub struct HackerNewsApp {
     error: Option<String>,
     /// Viewing article type.
     article_type: ArticleType,
+    /// Comment window open states.
     open_comments: Vec<bool>,
 }
 
@@ -64,7 +62,6 @@ impl HackerNewsApp {
             showing: 50,
             visited: Vec::new(),
             comments_state: Default::default(),
-            // showing_comments: false,
             error: None,
             article_type: ArticleType::Top,
             open_comments: Vec::new(),
@@ -82,43 +79,18 @@ impl HackerNewsApp {
                 self.article_type = article_type;
             }
             Event::Comments(comments, parent) => {
-                if parent.is_some() {
-                    self.comments_state
-                        .comment_trail
-                        .push(CommentItem { comments, parent });
-                    // let next = self.comments_state.comment_trail.len();
-                    // self.open_comments[next - 1] = true;
+                let comment_item = CommentItem { comments, parent };
+                if comment_item.parent.is_some() {
+                    self.comments_state.comment_trail.push(comment_item);
                     self.open_comments.push(true);
                 } else {
-                    self.comments_state.comment_trail = vec![CommentItem {
-                        comments,
-                        parent: None,
-                    }];
+                    // Reset comment history/state.
+                    self.comments_state.comment_trail = vec![comment_item];
                     self.open_comments = vec![true];
                 }
-                // self.comments_state.parent_comments.push(comment);
-                // match parent {
-                //     Some(comment) => {
-                //         self.comments_state
-                //             .comment_trail
-                //             .push(std::mem::take(&mut self.comments_state.comments));
-                //         self.comments_state.parent_comments.push(comment);
-                //     }
-                //     None => {
-                //         self.comments_state.comment_trail = Vec::new();
-                //         self.comments_state.parent_comments = Vec::new();
-                //     }
-                // }
-                // self.comments_state.comments = comments;
                 self.error = None;
             }
-            Event::Back => {
-                // match self.comments_state.comment_trail.pop() {
-                //     Some(cs) => self.comments_state.comments = cs,
-                //     None => self.comments_state.comments = Vec::new(),
-                // };
-                self.comments_state.parent_comments.pop();
-            }
+
             Event::Error(error) => {
                 self.error = Some(error);
             }
@@ -345,8 +317,6 @@ impl eframe::App for HackerNewsApp {
         self.render_header(ctx);
 
         let frame = Frame {
-            // fill: Color32::LIGHT_BLUE,
-            // fill: Color32::from_rgb(189, 200, 204),
             fill: Color32::from_rgb(245, 243, 240),
             inner_margin: Margin {
                 left: 5.,

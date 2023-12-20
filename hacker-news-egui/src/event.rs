@@ -10,7 +10,6 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 pub enum Event {
     Articles(ArticleType, Vec<Item>),
     Comments(Vec<Item>, Option<Item>),
-    Back,
     Error(String),
 }
 
