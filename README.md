@@ -33,7 +33,7 @@ cargo install --path hacker-news-egui --bin hacker-news-egui
 <img width="1101" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/58763c45-7a15-4dc8-83a9-ac7bae3b27be">
 
 ## View comments
-<img width="1101" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/419347f0-7197-4a7e-b692-3de5546bb466">
+<img width="1101" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/c1839ae9-3b67-4181-9d0b-0104ac306866">
 
 
 
