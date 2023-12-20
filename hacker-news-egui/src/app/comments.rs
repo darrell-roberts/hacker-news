@@ -4,7 +4,8 @@ use crate::{
     text::{parse_date, render_rich_text},
 };
 use egui::{
-    style::Spacing, widgets::Widget, Button, Color32, Frame, Grid, Id, Margin, RichText, Rounding, Vec2,
+    style::Spacing, widgets::Widget, Button, Color32, Frame, Grid, Id, Margin, RichText, Rounding,
+    Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -188,6 +189,6 @@ fn render_by(ui: &mut egui::Ui, item: &Item) {
             ui.label(RichText::new(time).italics());
         }
         ui.add_space(5.0);
-        ui.label(format!("[{}]", item.kids.len()));
+        ui.label(format!("💬{}", item.kids.len()));
     });
 }
