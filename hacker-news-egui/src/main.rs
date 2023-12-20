@@ -1,6 +1,6 @@
 use anyhow::Context;
 use app::HackerNewsApp;
-use eframe::icon_data::from_png_bytes;
+use eframe::{icon_data::from_png_bytes, Theme};
 use egui::ViewportBuilder;
 use event::{ClientEvent, ClientEventHandler, Event, EventHandler};
 use std::sync::{
@@ -28,6 +28,10 @@ async fn main() -> anyhow::Result<()> {
 
     let native_options = eframe::NativeOptions {
         viewport: ViewportBuilder::default().with_icon(icon),
+        persist_window: true,
+        // For now only light theme.
+        follow_system_theme: false,
+        default_theme: Theme::Light,
         ..Default::default()
     };
 
