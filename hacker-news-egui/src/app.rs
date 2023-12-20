@@ -23,6 +23,16 @@ pub enum ArticleType {
     Top,
 }
 
+impl ArticleType {
+    fn as_str(&self) -> &str {
+        match self {
+            ArticleType::New => "New",
+            ArticleType::Best => "Best",
+            ArticleType::Top => "Top",
+        }
+    }
+}
+
 /// Application State.
 pub struct HackerNewsApp {
     /// Top stories.
@@ -117,70 +127,50 @@ impl HackerNewsApp {
             .unwrap_or_default();
     }
 
+    fn add_total_select_label(&mut self, ui: &mut egui::Ui, total: usize) {
+        if ui
+            .selectable_label(self.showing == total, format!("{total}"))
+            .clicked()
+        {
+            self.fetching = true;
+            self.event_handler
+                .emit(self.last_request()(total))
+                .unwrap_or_default();
+        }
+    }
+
+    fn add_article_type_selet_label(&mut self, ui: &mut egui::Ui, article_type: ArticleType) {
+        if ui
+            .selectable_label(self.article_type == article_type, article_type.as_str())
+            .clicked()
+        {
+            self.fetching = true;
+            self.event_handler
+                .emit(match article_type {
+                    ArticleType::New => ClientEvent::NewStories(self.showing),
+                    ArticleType::Best => ClientEvent::BestStories(self.showing),
+                    ArticleType::Top => ClientEvent::TopStories(self.showing),
+                })
+                .unwrap_or_default();
+        }
+    }
+
     fn render_header(&mut self, ctx: &egui::Context) {
         egui::TopBottomPanel::top("Hello").show(ctx, |ui| {
             // Header
             ui.horizontal(|ui| {
                 ui.style_mut().visuals.window_fill = Color32::DARK_BLUE;
 
-                if ui
-                    .selectable_label(self.article_type == ArticleType::Top, "Top")
-                    .clicked()
-                {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::TopStories(self.showing))
-                        .unwrap_or_default();
-                }
-                if ui
-                    .selectable_label(self.article_type == ArticleType::Best, "Best")
-                    .clicked()
-                {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::BestStories(self.showing))
-                        .unwrap_or_default();
-                }
-                if ui
-                    .selectable_label(self.article_type == ArticleType::New, "New")
-                    .clicked()
-                {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(ClientEvent::NewStories(self.showing))
-                        .unwrap_or_default();
-                }
+                self.add_article_type_selet_label(ui, ArticleType::Top);
+                self.add_article_type_selet_label(ui, ArticleType::Best);
+                self.add_article_type_selet_label(ui, ArticleType::New);
 
-                if ui.selectable_label(self.showing == 25, "25").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(self.last_request()(25))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 50, "50").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(self.last_request()(50))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 75, "75").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(self.last_request()(75))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 100, "100").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(self.last_request()(100))
-                        .unwrap_or_default();
-                }
-                if ui.selectable_label(self.showing == 500, "500").clicked() {
-                    self.fetching = true;
-                    self.event_handler
-                        .emit(self.last_request()(500))
-                        .unwrap_or_default();
-                }
+                self.add_total_select_label(ui, 25);
+                self.add_total_select_label(ui, 50);
+                self.add_total_select_label(ui, 75);
+                self.add_total_select_label(ui, 100);
+                self.add_total_select_label(ui, 500);
+
                 if self.fetching {
                     ui.spinner();
                 }
@@ -317,7 +307,6 @@ impl HackerNewsApp {
                 local_sender: &self.local_sender,
                 fetching: &mut self.fetching,
                 event_handler: &self.event_handler,
-                // showing_comments: &mut self.showing_comments,
                 open_comments: &mut self.open_comments,
                 comments_state: &self.comments_state,
             }

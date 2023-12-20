@@ -4,8 +4,7 @@ use crate::{
     text::{parse_date, render_rich_text},
 };
 use egui::{
-    style::Spacing, widgets::Widget, Button, Color32, Frame, Grid, Id, Margin, RichText, Rounding,
-    Style, TextStyle, Vec2,
+    style::Spacing, widgets::Widget, Button, Color32, Frame, Grid, Id, Margin, RichText, Rounding, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
