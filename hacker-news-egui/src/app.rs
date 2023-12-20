@@ -208,6 +208,7 @@ impl HackerNewsApp {
                         ui.label(format!("{index}."));
 
                         ui.horizontal(|ui| {
+                            // Add rust icon.
                             if article
                                 .title
                                 .as_deref()
@@ -217,37 +218,46 @@ impl HackerNewsApp {
                             {
                                 ui.image(egui::include_image!("../rust-logo-32x32.png"));
                             }
-                            if let Some(url) = article.url.as_deref() {
-                                ui.style_mut().visuals.hyperlink_color =
-                                    if self.visited.contains(&index) {
-                                        Color32::DARK_GRAY
-                                    } else {
-                                        Color32::BLACK
-                                    };
-                                if ui
-                                    .hyperlink_to(
-                                        RichText::new(
-                                            article.title.as_deref().unwrap_or("No title"),
-                                        )
-                                        .strong()
-                                        .color(Color32::BLACK),
-                                        url,
-                                    )
-                                    .clicked()
-                                {
-                                    self.visited.push(index);
-                                }
-                            } else if self.visited.contains(&index) {
-                                ui.label(
-                                    RichText::new(article.title.as_deref().unwrap_or("No title"))
-                                        .color(Color32::DARK_GRAY),
-                                );
-                            } else {
-                                ui.label(article.title.as_deref().unwrap_or("No title"));
-                            }
+
+                            ui.style_mut().visuals.hyperlink_color =
+                                if self.visited.contains(&index) {
+                                    Color32::DARK_GRAY
+                                } else {
+                                    Color32::BLACK
+                                };
                             if self.visited.contains(&index) {
                                 ui.style_mut().visuals.override_text_color =
                                     Some(Color32::DARK_GRAY);
+                            }
+
+                            match (article.url.as_deref(), article.title.as_deref()) {
+                                (None, None) => (),
+                                (Some(_), None) => (),
+                                (None, Some(title)) => {
+                                    if ui.link(title).clicked() {
+                                        //Render comment.
+                                        self.comments_state.active_item = Some(article.to_owned());
+                                        self.visited.push(index);
+                                        self.local_sender
+                                            .send(Event::Comments {
+                                                items: Vec::new(),
+                                                parent: None,
+                                                id: Id::new(article.id),
+                                            })
+                                            .unwrap_or_default();
+                                    }
+                                }
+                                (Some(url), Some(title)) => {
+                                    if ui
+                                        .hyperlink_to(
+                                            RichText::new(title).strong().color(Color32::BLACK),
+                                            url,
+                                        )
+                                        .clicked()
+                                    {
+                                        self.visited.push(index);
+                                    }
+                                }
                             }
 
                             ui.style_mut().override_text_style = Some(TextStyle::Small);
