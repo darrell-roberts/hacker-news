@@ -3,9 +3,10 @@ use crate::{
     event::{ClientEvent, Event, EventHandler},
     text::{parse_date, render_rich_text},
 };
+// use eframe::Frame;
 use egui::{
-    style::Spacing, widgets::Widget, Button, Color32, Frame, Grid, Id, Margin, RichText, Rounding,
-    Vec2,
+    containers::Frame, style::Spacing, widgets::Widget, Button, Color32, Id, Margin, RichText,
+    Rounding, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -48,7 +49,7 @@ impl<'a> Comments<'a> {
     /// Render comments if requested.
     pub fn render(&mut self, ctx: &egui::Context, _ui: &mut egui::Ui) {
         let frame = Frame {
-            fill: Color32::LIGHT_YELLOW,
+            fill: Color32::WHITE,
             inner_margin: Margin {
                 left: 5.,
                 right: 5.,
@@ -93,84 +94,74 @@ impl<'a> Comments<'a> {
                         ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
                         render_rich_text(parent_comment.text.as_deref().unwrap_or_default(), ui);
                         render_by(ui, parent_comment);
-                        ui.add_space(15.);
-                        // ui.separator();
                     }
                     ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
 
-                    Grid::new(Id::new(index))
-                        .num_columns(1)
-                        .striped(true)
-                        .spacing((0., 10.))
-                        .with_row_color(|index, _style| {
-                            if index % 2 == 0 {
-                                Some(Color32::from_rgb(245, 247, 183))
-                            } else {
-                                Some(Color32::from_rgb(242, 245, 154))
-                            }
-                        })
-                        .show(ui, |ui| {
-                            for (index, comment) in comment_item.comments.iter().enumerate() {
-                                ui.vertical(|ui| {
-                                    render_rich_text(
-                                        comment.text.as_deref().unwrap_or_default(),
-                                        ui,
-                                    );
+                    for comment in comment_item.comments.iter() {
+                        Frame::none()
+                            .fill(Color32::LIGHT_YELLOW)
+                            .outer_margin(Margin {
+                                top: 5.,
+                                left: 10.,
+                                right: 10.,
+                                bottom: 5.,
+                            })
+                            .inner_margin(Margin {
+                                top: 10.,
+                                left: 10.,
+                                right: 10.,
+                                bottom: 10.,
+                            })
+                            .rounding(Rounding {
+                                nw: 8.,
+                                ne: 8.,
+                                sw: 8.,
+                                se: 8.,
+                            })
+                            .show(ui, |ui| {
+                                render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
 
-                                    ui.add_space(5.0);
-                                    ui.horizontal(|ui| {
-                                        // ui.set_style(Style {
-                                        //     override_text_style: Some(TextStyle::Small),
-                                        //     ..Default::default()
-                                        // });
-                                        ui.style_mut().spacing = Spacing {
-                                            item_spacing: Vec2 { y: 1., x: 2. },
-                                            ..Default::default()
-                                        };
+                                ui.add_space(5.0);
+                                ui.horizontal(|ui| {
+                                    ui.style_mut().spacing = Spacing {
+                                        item_spacing: Vec2 { y: 1., x: 2. },
+                                        ..Default::default()
+                                    };
+                                    ui.style_mut().visuals.override_text_color =
+                                        Some(Color32::GRAY);
+                                    ui.label(RichText::new(&comment.by).italics());
+                                    if let Some(time) = parse_date(comment.time) {
+                                        ui.label(RichText::new(time).italics());
+                                    }
+                                    ui.add_space(5.);
+
+                                    if !comment.kids.is_empty() {
                                         ui.style_mut().visuals.override_text_color =
-                                            Some(Color32::GRAY);
-                                        // if ui.button(format!("id: {}", comment.id)).clicked() {
-                                        //     ui.output_mut(|p| {
-                                        //         p.copied_text = format!("{}", comment.id)
-                                        //     });
-                                        // }
-                                        ui.label(RichText::new(&comment.by).italics());
-                                        if let Some(time) = parse_date(comment.time) {
-                                            ui.label(RichText::new(time).italics());
-                                        }
-                                        ui.add_space(5.);
+                                            Some(Color32::BLACK);
+                                        let button =
+                                            Button::new(format!("💬{}", comment.kids.len()))
+                                                .fill(Color32::LIGHT_YELLOW)
+                                                .ui(ui);
 
-                                        if !comment.kids.is_empty() {
-                                            ui.style_mut().visuals.override_text_color =
-                                                Some(Color32::BLACK);
-                                            let button =
-                                                Button::new(format!("💬{}", comment.kids.len()))
-                                                    .fill(if index % 2 == 0 {
-                                                        Color32::from_rgb(245, 247, 183)
-                                                    } else {
-                                                        Color32::from_rgb(242, 245, 154)
-                                                    })
-                                                    .ui(ui);
-
-                                            if button.clicked() {
-                                                *self.fetching = true;
-                                                if let Err(err) =
-                                                    self.event_handler.emit(ClientEvent::Comments {
-                                                        ids: comment.kids.clone(),
-                                                        parent: Some(comment.to_owned()),
-                                                        id: Id::new(comment.id),
-                                                    })
-                                                {
-                                                    error!("Failed to emit comments: {err}");
-                                                }
+                                        if button.clicked() {
+                                            *self.fetching = true;
+                                            if let Err(err) =
+                                                self.event_handler.emit(ClientEvent::Comments {
+                                                    ids: comment.kids.clone(),
+                                                    parent: Some(comment.to_owned()),
+                                                    id: Id::new(comment.id),
+                                                })
+                                            {
+                                                error!("Failed to emit comments: {err}");
                                             }
                                         }
-                                    });
+                                    }
                                 });
-
-                                ui.end_row();
-                            }
-                        });
+                                ui.set_width(ui.available_width());
+                            });
+                        // ui.group(|ui| );
+                        // ui.add_space(10.);
+                    }
                 });
         }
     }
