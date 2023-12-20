@@ -7,7 +7,7 @@ use crate::{
 use comments::{Comments, CommentsState};
 use egui::{
     os::OperatingSystem, style::Spacing, widgets::Widget, Button, Color32, CursorIcon, Frame, Grid,
-    Id, Key, Label, Margin, RichText, TextStyle, Vec2,
+    Id, Key, Margin, RichText, TextStyle, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -203,11 +203,13 @@ impl HackerNewsApp {
 
                 Grid::new("articles")
                     .num_columns(3)
-                    .spacing((2., 5.))
+                    .spacing((0., 5.))
                     .striped(true)
                     .show(ui, |ui| {
-                        for (article, index) in self.articles.iter().zip(1..) {
-                            ui.label(format!("{index}."));
+                        for article in self.articles.iter() {
+                            // ui.label(format!("{index}"));
+
+                            ui.label(format!("🔼{}", article.score));
 
                             if !article.kids.is_empty() {
                                 let button = Button::new(format!("💬{}", article.kids.len()))
@@ -292,9 +294,7 @@ impl HackerNewsApp {
                                     item_spacing: Vec2 { y: 1., x: 2. },
                                     ..Default::default()
                                 };
-                                ui.label(
-                                    RichText::new(format!("{} points", article.score)).italics(),
-                                );
+
                                 ui.label(RichText::new("by").italics());
                                 ui.label(RichText::new(&article.by).italics());
                                 if let Some(time) = parse_date(article.time) {
