@@ -7,7 +7,7 @@ use crate::{
 use comments::{Comments, CommentsState};
 use egui::{
     os::OperatingSystem, style::Spacing, widgets::Widget, Button, Color32, CursorIcon, Frame, Grid,
-    Id, Key, Margin, RichText, TextStyle, Vec2,
+    Id, Key, Label, Margin, RichText, TextStyle, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -202,12 +202,36 @@ impl HackerNewsApp {
                 ui.scroll_with_delta(scroll_delta);
 
                 Grid::new("articles")
-                    .num_columns(2)
-                    .spacing((0., 5.))
+                    .num_columns(3)
+                    .spacing((2., 5.))
                     .striped(true)
                     .show(ui, |ui| {
                         for (article, index) in self.articles.iter().zip(1..) {
                             ui.label(format!("{index}."));
+
+                            if !article.kids.is_empty() {
+                                let button = Button::new(format!("💬{}", article.kids.len()))
+                                    .fill(ui.style().visuals.window_fill())
+                                    .ui(ui);
+
+                                if button.clicked() {
+                                    self.comments_state.comments = Vec::new();
+                                    self.fetching = true;
+                                    self.comments_state.active_item = Some(article.to_owned());
+                                    self.visited.push(article.id);
+                                    if let Err(err) =
+                                        self.event_handler.emit(ClientEvent::Comments {
+                                            ids: article.kids.clone(),
+                                            parent: None,
+                                            id: Id::new(article.id),
+                                        })
+                                    {
+                                        error!("Failed to emit comments: {err}");
+                                    }
+                                }
+                            } else {
+                                ui.label("");
+                            }
 
                             ui.horizontal(|ui| {
                                 // Add rust icon.
@@ -277,27 +301,7 @@ impl HackerNewsApp {
                                     ui.label(RichText::new(time).italics());
                                 }
                                 ui.add_space(5.0);
-                                if !article.kids.is_empty() {
-                                    let button = Button::new(format!("💬{}", article.kids.len()))
-                                        .fill(ui.style().visuals.window_fill())
-                                        .ui(ui);
 
-                                    if button.clicked() {
-                                        self.comments_state.comments = Vec::new();
-                                        self.fetching = true;
-                                        self.comments_state.active_item = Some(article.to_owned());
-                                        self.visited.push(article.id);
-                                        if let Err(err) =
-                                            self.event_handler.emit(ClientEvent::Comments {
-                                                ids: article.kids.clone(),
-                                                parent: None,
-                                                id: Id::new(article.id),
-                                            })
-                                        {
-                                            error!("Failed to emit comments: {err}");
-                                        }
-                                    }
-                                }
                                 ui.allocate_space(ui.available_size());
                             });
 
