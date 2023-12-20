@@ -202,12 +202,38 @@ impl HackerNewsApp {
                 ui.scroll_with_delta(scroll_delta);
 
                 Grid::new("articles")
-                    .num_columns(2)
-                    .spacing(Vec2 { x: 0., y: 5. })
+                    .num_columns(3)
+                    .spacing((0., 5.))
                     .striped(true)
                     .show(ui, |ui| {
-                        for (article, index) in self.articles.iter().zip(1..) {
-                            ui.label(format!("{index}."));
+                        for article in self.articles.iter() {
+                            // ui.label(format!("{index}"));
+
+                            ui.label(format!("🔼{}", article.score));
+
+                            if !article.kids.is_empty() {
+                                let button = Button::new(format!("💬{}", article.kids.len()))
+                                    .fill(ui.style().visuals.window_fill())
+                                    .ui(ui);
+
+                                if button.clicked() {
+                                    self.comments_state.comments = Vec::new();
+                                    self.fetching = true;
+                                    self.comments_state.active_item = Some(article.to_owned());
+                                    self.visited.push(article.id);
+                                    if let Err(err) =
+                                        self.event_handler.emit(ClientEvent::Comments {
+                                            ids: article.kids.clone(),
+                                            parent: None,
+                                            id: Id::new(article.id),
+                                        })
+                                    {
+                                        error!("Failed to emit comments: {err}");
+                                    }
+                                }
+                            } else {
+                                ui.label("");
+                            }
 
                             ui.horizontal(|ui| {
                                 // Add rust icon.
@@ -268,36 +294,13 @@ impl HackerNewsApp {
                                     item_spacing: Vec2 { y: 1., x: 2. },
                                     ..Default::default()
                                 };
-                                ui.label(
-                                    RichText::new(format!("{} points", article.score)).italics(),
-                                );
-                                ui.label(RichText::new("by").italics());
+
                                 ui.label(RichText::new(&article.by).italics());
                                 if let Some(time) = parse_date(article.time) {
                                     ui.label(RichText::new(time).italics());
                                 }
                                 ui.add_space(5.0);
-                                if !article.kids.is_empty() {
-                                    let button = Button::new(format!("💬{}", article.kids.len()))
-                                        .fill(ui.style().visuals.window_fill())
-                                        .ui(ui);
 
-                                    if button.clicked() {
-                                        self.comments_state.comments = Vec::new();
-                                        self.fetching = true;
-                                        self.comments_state.active_item = Some(article.to_owned());
-                                        self.visited.push(article.id);
-                                        if let Err(err) =
-                                            self.event_handler.emit(ClientEvent::Comments {
-                                                ids: article.kids.clone(),
-                                                parent: None,
-                                                id: Id::new(article.id),
-                                            })
-                                        {
-                                            error!("Failed to emit comments: {err}");
-                                        }
-                                    }
-                                }
                                 ui.allocate_space(ui.available_size());
                             });
 
