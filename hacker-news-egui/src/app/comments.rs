@@ -4,8 +4,8 @@ use crate::{
     text::{parse_date, render_rich_text},
 };
 use egui::{
-    style::Spacing, Color32, Frame, Id, Margin, RichText, Rounding, Separator, Style, TextStyle,
-    Vec2,
+    style::Spacing, widgets::Widget, Button, Color32, Frame, Id, Margin, RichText, Rounding,
+    Separator, Style, TextStyle, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -119,16 +119,24 @@ impl<'a> Comments<'a> {
                                 ui.label(RichText::new(time).italics());
                             }
                             ui.add_space(5.);
-                            if !comment.kids.is_empty()
-                                && ui.button(format!("{}", comment.kids.len())).clicked()
-                            {
-                                *self.fetching = true;
-                                if let Err(err) = self.event_handler.emit(ClientEvent::Comments {
-                                    ids: comment.kids.clone(),
-                                    parent: Some(comment.to_owned()),
-                                    id: Id::new(comment.id),
-                                }) {
-                                    error!("Failed to emit comments: {err}");
+
+                            if !comment.kids.is_empty() {
+                                ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
+                                let button = Button::new(format!("💬{}", comment.kids.len()))
+                                    .fill(Color32::LIGHT_YELLOW)
+                                    .ui(ui);
+
+                                if button.clicked() {
+                                    *self.fetching = true;
+                                    if let Err(err) =
+                                        self.event_handler.emit(ClientEvent::Comments {
+                                            ids: comment.kids.clone(),
+                                            parent: Some(comment.to_owned()),
+                                            id: Id::new(comment.id),
+                                        })
+                                    {
+                                        error!("Failed to emit comments: {err}");
+                                    }
                                 }
                             }
                         });

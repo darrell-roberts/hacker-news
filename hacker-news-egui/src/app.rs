@@ -6,8 +6,8 @@ use crate::{
 };
 use comments::{Comments, CommentsState};
 use egui::{
-    os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Grid, Id, Key, Margin,
-    RichText, TextStyle, Vec2,
+    os::OperatingSystem, style::Spacing, widgets::Widget, Button, Color32, CursorIcon, Frame, Grid,
+    Id, Key, Margin, RichText, TextStyle, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -184,10 +184,11 @@ impl HackerNewsApp {
                 if self.fetching {
                     ui.spinner();
                 }
-                if let Some(error) = self.error.as_deref() {
-                    ui.label(RichText::new(error).color(Color32::RED).strong());
-                }
             });
+
+            if let Some(error) = self.error.as_deref() {
+                ui.label(RichText::new(error).color(Color32::RED).strong());
+            }
         });
     }
 
@@ -217,7 +218,7 @@ impl HackerNewsApp {
                                     .split_whitespace()
                                     .any(|word| word.to_lowercase() == "rust")
                                 {
-                                    ui.image(egui::include_image!("../rust-logo-32x32.png"));
+                                    ui.image(egui::include_image!("../assets/rust-logo-32x32.png"));
                                 }
 
                                 ui.style_mut().visuals.hyperlink_color =
@@ -276,22 +277,25 @@ impl HackerNewsApp {
                                     ui.label(RichText::new(time).italics());
                                 }
                                 ui.add_space(5.0);
-                                if !article.kids.is_empty()
-                                    && ui.button(format!("{}", article.kids.len())).clicked()
-                                {
-                                    // self.open_comments[0] = true;
-                                    self.comments_state.comments = Vec::new();
-                                    self.fetching = true;
-                                    self.comments_state.active_item = Some(article.to_owned());
-                                    self.visited.push(article.id);
-                                    if let Err(err) =
-                                        self.event_handler.emit(ClientEvent::Comments {
-                                            ids: article.kids.clone(),
-                                            parent: None,
-                                            id: Id::new(article.id),
-                                        })
-                                    {
-                                        error!("Failed to emit comments: {err}");
+                                if !article.kids.is_empty() {
+                                    let button = Button::new(format!("💬{}", article.kids.len()))
+                                        .fill(ui.style().visuals.window_fill())
+                                        .ui(ui);
+
+                                    if button.clicked() {
+                                        self.comments_state.comments = Vec::new();
+                                        self.fetching = true;
+                                        self.comments_state.active_item = Some(article.to_owned());
+                                        self.visited.push(article.id);
+                                        if let Err(err) =
+                                            self.event_handler.emit(ClientEvent::Comments {
+                                                ids: article.kids.clone(),
+                                                parent: None,
+                                                id: Id::new(article.id),
+                                            })
+                                        {
+                                            error!("Failed to emit comments: {err}");
+                                        }
                                     }
                                 }
                                 ui.allocate_space(ui.available_size());
@@ -299,7 +303,7 @@ impl HackerNewsApp {
 
                             ui.end_row();
                         }
-                    });
+                    })
             });
     }
 
