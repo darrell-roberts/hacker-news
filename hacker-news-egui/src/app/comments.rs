@@ -67,79 +67,71 @@ impl<'a> Comments<'a> {
             egui::Window::new("")
                 .id(format!("comments-{index}").into())
                 .frame(frame)
+                .vscroll(true)
                 .open(open)
                 .collapsible(false)
                 .show(ctx, |ui| {
                     let scroll_delta = scroll_delta(ui);
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        ui.scroll_with_delta(scroll_delta);
-                        if let Some(item) = self.comments_state.active_item.as_ref() {
-                            ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
-                            ui.style_mut().visuals.hyperlink_color = Color32::BLACK;
-                            if let Some(title) = item.title.as_deref() {
-                                match item.url.as_deref() {
-                                    Some(url) => {
-                                        ui.hyperlink_to(RichText::new(title).heading(), url)
-                                    }
-                                    None => ui.heading(title),
-                                };
-                                render_by(ui, item);
-                            }
-                            if let Some(text) = item.text.as_deref() {
-                                render_rich_text(text, ui);
-                            }
-                        }
-                        if let Some(parent_comment) = comment_item.parent.as_ref() {
-                            ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
-                            render_rich_text(
-                                parent_comment.text.as_deref().unwrap_or_default(),
-                                ui,
-                            );
-                            render_by(ui, parent_comment);
-                            ui.add_space(5.);
-                            ui.separator();
-                        }
+                    ui.scroll_with_delta(scroll_delta);
+                    if let Some(item) = self.comments_state.active_item.as_ref() {
                         ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
-
-                        for comment in comment_item.comments.iter() {
-                            render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
-
-                            ui.horizontal(|ui| {
-                                ui.set_style(Style {
-                                    override_text_style: Some(TextStyle::Small),
-                                    ..Default::default()
-                                });
-                                ui.style_mut().spacing = Spacing {
-                                    item_spacing: Vec2 { y: 1., x: 2. },
-                                    ..Default::default()
-                                };
-                                // if ui.button(format!("id: {}", comment.id)).clicked() {
-                                //     ui.output_mut(|p| p.copied_text = format!("{}", comment.id));
-                                // }
-                                ui.label(RichText::new("by").italics());
-                                ui.label(RichText::new(&comment.by).italics());
-                                if let Some(time) = parse_date(comment.time) {
-                                    ui.label(RichText::new(time).italics());
-                                }
-                                ui.add_space(5.);
-                                if !comment.kids.is_empty()
-                                    && ui.button(format!("{}", comment.kids.len())).clicked()
-                                {
-                                    *self.fetching = true;
-                                    if let Err(err) =
-                                        self.event_handler.emit(ClientEvent::Comments(
-                                            comment.kids.clone(),
-                                            Some(comment.to_owned()),
-                                        ))
-                                    {
-                                        error!("Failed to emit comments: {err}");
-                                    }
-                                }
-                            });
-
-                            ui.add(Separator::default().spacing(25.0));
+                        ui.style_mut().visuals.hyperlink_color = Color32::BLACK;
+                        if let Some(title) = item.title.as_deref() {
+                            match item.url.as_deref() {
+                                Some(url) => ui.hyperlink_to(RichText::new(title).heading(), url),
+                                None => ui.heading(title),
+                            };
+                            render_by(ui, item);
                         }
-                    })
+                        if let Some(text) = item.text.as_deref() {
+                            render_rich_text(text, ui);
+                        }
+                    }
+                    if let Some(parent_comment) = comment_item.parent.as_ref() {
+                        ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
+                        render_rich_text(parent_comment.text.as_deref().unwrap_or_default(), ui);
+                        render_by(ui, parent_comment);
+                        ui.add_space(5.);
+                        ui.separator();
+                    }
+                    ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
+
+                    for comment in comment_item.comments.iter() {
+                        render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
+
+                        ui.horizontal(|ui| {
+                            ui.set_style(Style {
+                                override_text_style: Some(TextStyle::Small),
+                                ..Default::default()
+                            });
+                            ui.style_mut().spacing = Spacing {
+                                item_spacing: Vec2 { y: 1., x: 2. },
+                                ..Default::default()
+                            };
+                            // if ui.button(format!("id: {}", comment.id)).clicked() {
+                            //     ui.output_mut(|p| p.copied_text = format!("{}", comment.id));
+                            // }
+                            ui.label(RichText::new("by").italics());
+                            ui.label(RichText::new(&comment.by).italics());
+                            if let Some(time) = parse_date(comment.time) {
+                                ui.label(RichText::new(time).italics());
+                            }
+                            ui.add_space(5.);
+                            if !comment.kids.is_empty()
+                                && ui.button(format!("{}", comment.kids.len())).clicked()
+                            {
+                                *self.fetching = true;
+                                if let Err(err) = self.event_handler.emit(ClientEvent::Comments(
+                                    comment.kids.clone(),
+                                    Some(comment.to_owned()),
+                                )) {
+                                    error!("Failed to emit comments: {err}");
+                                }
+                            }
+                        });
+
+                        ui.add(Separator::default().spacing(25.0));
+                    }
                 });
         }
     }
