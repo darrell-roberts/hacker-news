@@ -1,3 +1,4 @@
+use self::comments::CommentItem;
 use crate::{
     event::{ClientEvent, Event, EventHandler},
     text::parse_date,
@@ -5,8 +6,8 @@ use crate::{
 };
 use comments::{Comments, CommentsState};
 use egui::{
-    os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Grid, Key, Margin, RichText,
-    TextStyle, Vec2,
+    os::OperatingSystem, style::Spacing, widgets::Widget, Button, Color32, CursorIcon, Frame, Grid,
+    Id, Key, Margin, RichText, TextStyle, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -15,7 +16,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 mod comments;
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Copy, Clone, Hash)]
 pub enum ArticleType {
     New,
     Best,
@@ -28,8 +29,6 @@ pub struct HackerNewsApp {
     articles: Vec<Item>,
     /// Event handler for background events.
     event_handler: EventHandler,
-    /// Toggle comment view window.
-    showing_comments: bool,
     /// API request in progress.
     fetching: bool,
     /// Emit local events.
@@ -37,13 +36,15 @@ pub struct HackerNewsApp {
     /// Number of articles to show.
     showing: usize,
     /// Articles visited.
-    visited: Vec<usize>,
+    visited: Vec<u64>,
     /// Comments state.
     comments_state: CommentsState,
     /// Errors.
     error: Option<String>,
     /// Viewing article type.
     article_type: ArticleType,
+    /// Comment window open states.
+    open_comments: Vec<bool>,
 }
 
 impl HackerNewsApp {
@@ -61,9 +62,9 @@ impl HackerNewsApp {
             showing: 50,
             visited: Vec::new(),
             comments_state: Default::default(),
-            showing_comments: false,
             error: None,
             article_type: ArticleType::Top,
+            open_comments: Vec::new(),
         }
     }
 
@@ -73,33 +74,26 @@ impl HackerNewsApp {
             Event::Articles(article_type, ts) => {
                 self.showing = ts.len();
                 self.articles = ts;
-                self.visited = Vec::new();
                 self.error = None;
                 self.article_type = article_type;
             }
-            Event::Comments(comments, parent) => {
-                match parent {
-                    Some(comment) => {
-                        self.comments_state
-                            .comment_trail
-                            .push(std::mem::take(&mut self.comments_state.comments));
-                        self.comments_state.parent_comments.push(comment);
-                    }
-                    None => {
-                        self.comments_state.comment_trail = Vec::new();
-                        self.comments_state.parent_comments = Vec::new();
-                    }
+            Event::Comments { items, parent, id } => {
+                let comment_item = CommentItem {
+                    comments: items,
+                    parent,
+                    id,
+                };
+                if comment_item.parent.is_some() {
+                    self.comments_state.comment_trail.push(comment_item);
+                    self.open_comments.push(true);
+                } else {
+                    // Reset comment history/state.
+                    self.comments_state.comment_trail = vec![comment_item];
+                    self.open_comments = vec![true];
                 }
-                self.comments_state.comments = comments;
                 self.error = None;
             }
-            Event::Back => {
-                match self.comments_state.comment_trail.pop() {
-                    Some(cs) => self.comments_state.comments = cs,
-                    None => self.comments_state.comments = Vec::new(),
-                };
-                self.comments_state.parent_comments.pop();
-            }
+
             Event::Error(error) => {
                 self.error = Some(error);
             }
@@ -190,10 +184,11 @@ impl HackerNewsApp {
                 if self.fetching {
                     ui.spinner();
                 }
-                if let Some(error) = self.error.as_deref() {
-                    ui.label(RichText::new(error).color(Color32::RED).strong());
-                }
             });
+
+            if let Some(error) = self.error.as_deref() {
+                ui.label(RichText::new(error).color(Color32::RED).strong());
+            }
         });
     }
 
@@ -201,104 +196,126 @@ impl HackerNewsApp {
     fn render_articles(&mut self, ui: &mut egui::Ui) {
         let scroll_delta = scroll_delta(ui);
 
-        egui::ScrollArea::vertical().show(ui, |ui| {
-            ui.scroll_with_delta(scroll_delta);
+        egui::ScrollArea::vertical()
+            .id_source(Id::new(self.article_type))
+            .show(ui, |ui| {
+                ui.scroll_with_delta(scroll_delta);
 
-            Grid::new("articles")
-                .num_columns(2)
-                .spacing(Vec2 { x: 0., y: 5. })
-                .striped(true)
-                .show(ui, |ui| {
-                    for (article, index) in self.articles.iter().zip(1..) {
-                        ui.label(format!("{index}."));
+                Grid::new("articles")
+                    .num_columns(2)
+                    .spacing(Vec2 { x: 0., y: 5. })
+                    .striped(true)
+                    .show(ui, |ui| {
+                        for (article, index) in self.articles.iter().zip(1..) {
+                            ui.label(format!("{index}."));
 
-                        ui.horizontal(|ui| {
-                            if article
-                                .title
-                                .as_deref()
-                                .unwrap_or_default()
-                                .split_whitespace()
-                                .any(|word| word.to_lowercase() == "rust")
-                            {
-                                ui.image(egui::include_image!("../rust-logo-32x32.png"));
-                            }
-                            if let Some(url) = article.url.as_deref() {
+                            ui.horizontal(|ui| {
+                                // Add rust icon.
+                                if article
+                                    .title
+                                    .as_deref()
+                                    .unwrap_or_default()
+                                    .split_whitespace()
+                                    .any(|word| word.to_lowercase() == "rust")
+                                {
+                                    ui.image(egui::include_image!("../assets/rust-logo-32x32.png"));
+                                }
+
                                 ui.style_mut().visuals.hyperlink_color =
-                                    if self.visited.contains(&index) {
+                                    if self.visited.contains(&article.id) {
                                         Color32::DARK_GRAY
                                     } else {
                                         Color32::BLACK
                                     };
-                                if ui
-                                    .hyperlink_to(
-                                        RichText::new(
-                                            article.title.as_deref().unwrap_or("No title"),
-                                        )
-                                        .strong()
-                                        .color(Color32::BLACK),
-                                        url,
-                                    )
-                                    .clicked()
-                                {
-                                    self.visited.push(index);
+                                if self.visited.contains(&article.id) {
+                                    ui.style_mut().visuals.override_text_color =
+                                        Some(Color32::DARK_GRAY);
                                 }
-                            } else if self.visited.contains(&index) {
+
+                                match (article.url.as_deref(), article.title.as_deref()) {
+                                    (None, None) => (),
+                                    (Some(_), None) => (),
+                                    (None, Some(title)) => {
+                                        if ui.link(title).clicked() {
+                                            //Render comment.
+                                            self.comments_state.active_item =
+                                                Some(article.to_owned());
+                                            self.visited.push(article.id);
+                                            self.local_sender
+                                                .send(Event::Comments {
+                                                    items: Vec::new(),
+                                                    parent: None,
+                                                    id: Id::new(article.id),
+                                                })
+                                                .unwrap_or_default();
+                                        }
+                                    }
+                                    (Some(url), Some(title)) => {
+                                        if ui
+                                            .hyperlink_to(
+                                                RichText::new(title).strong().color(Color32::BLACK),
+                                                url,
+                                            )
+                                            .clicked()
+                                        {
+                                            self.visited.push(article.id);
+                                        }
+                                    }
+                                }
+
+                                ui.style_mut().override_text_style = Some(TextStyle::Small);
+                                ui.style_mut().spacing = Spacing {
+                                    item_spacing: Vec2 { y: 1., x: 2. },
+                                    ..Default::default()
+                                };
                                 ui.label(
-                                    RichText::new(article.title.as_deref().unwrap_or("No title"))
-                                        .color(Color32::DARK_GRAY),
+                                    RichText::new(format!("{} points", article.score)).italics(),
                                 );
-                            } else {
-                                ui.label(article.title.as_deref().unwrap_or("No title"));
-                            }
-                            if self.visited.contains(&index) {
-                                ui.style_mut().visuals.override_text_color =
-                                    Some(Color32::DARK_GRAY);
-                            }
-
-                            ui.style_mut().override_text_style = Some(TextStyle::Small);
-                            ui.style_mut().spacing = Spacing {
-                                item_spacing: Vec2 { y: 1., x: 2. },
-                                ..Default::default()
-                            };
-                            ui.label(RichText::new(format!("{} points", article.score)).italics());
-                            ui.label(RichText::new("by").italics());
-                            ui.label(RichText::new(&article.by).italics());
-                            if let Some(time) = parse_date(article.time) {
-                                ui.label(RichText::new(time).italics());
-                            }
-                            ui.add_space(5.0);
-                            if !article.kids.is_empty()
-                                && ui.button(format!("{}", article.kids.len())).clicked()
-                            {
-                                self.showing_comments = true;
-                                self.comments_state.comments = Vec::new();
-                                self.fetching = true;
-                                self.comments_state.active_item = Some(article.to_owned());
-                                self.visited.push(index);
-                                if let Err(err) = self
-                                    .event_handler
-                                    .emit(ClientEvent::Comments(article.kids.clone(), None))
-                                {
-                                    error!("Failed to emit comments: {err}");
+                                ui.label(RichText::new("by").italics());
+                                ui.label(RichText::new(&article.by).italics());
+                                if let Some(time) = parse_date(article.time) {
+                                    ui.label(RichText::new(time).italics());
                                 }
-                            }
-                            ui.allocate_space(ui.available_size());
-                        });
+                                ui.add_space(5.0);
+                                if !article.kids.is_empty() {
+                                    let button = Button::new(format!("💬{}", article.kids.len()))
+                                        .fill(ui.style().visuals.window_fill())
+                                        .ui(ui);
 
-                        ui.end_row();
-                    }
-                });
-        });
+                                    if button.clicked() {
+                                        self.comments_state.comments = Vec::new();
+                                        self.fetching = true;
+                                        self.comments_state.active_item = Some(article.to_owned());
+                                        self.visited.push(article.id);
+                                        if let Err(err) =
+                                            self.event_handler.emit(ClientEvent::Comments {
+                                                ids: article.kids.clone(),
+                                                parent: None,
+                                                id: Id::new(article.id),
+                                            })
+                                        {
+                                            error!("Failed to emit comments: {err}");
+                                        }
+                                    }
+                                }
+                                ui.allocate_space(ui.available_size());
+                            });
+
+                            ui.end_row();
+                        }
+                    })
+            });
     }
 
     /// Render comments if requested.
     fn render_comments(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-        if !self.comments_state.comments.is_empty() && self.showing_comments {
+        if self.open_comments.iter().any(|c| *c) {
             Comments {
                 local_sender: &self.local_sender,
                 fetching: &mut self.fetching,
                 event_handler: &self.event_handler,
-                showing_comments: &mut self.showing_comments,
+                // showing_comments: &mut self.showing_comments,
+                open_comments: &mut self.open_comments,
                 comments_state: &self.comments_state,
             }
             .render(ctx, ui);
@@ -325,8 +342,6 @@ impl eframe::App for HackerNewsApp {
         self.render_header(ctx);
 
         let frame = Frame {
-            // fill: Color32::LIGHT_BLUE,
-            // fill: Color32::from_rgb(189, 200, 204),
             fill: Color32::from_rgb(245, 243, 240),
             inner_margin: Margin {
                 left: 5.,

@@ -4,11 +4,18 @@ use crate::{
     text::{parse_date, render_rich_text},
 };
 use egui::{
-    style::Spacing, Color32, Frame, Margin, RichText, Rounding, Separator, Style, TextStyle, Vec2,
+    style::Spacing, widgets::Widget, Button, Color32, Frame, Id, Margin, RichText, Rounding,
+    Separator, Style, TextStyle, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
 use tokio::sync::mpsc::UnboundedSender;
+
+pub struct CommentItem {
+    pub comments: Vec<Item>,
+    pub parent: Option<Item>,
+    pub id: Id,
+}
 
 /// Comment state data.
 #[derive(Default)]
@@ -16,7 +23,7 @@ pub struct CommentsState {
     /// Active comments being viewed.
     pub comments: Vec<Item>,
     /// Trail of comments navigated.
-    pub comment_trail: Vec<Vec<Item>>,
+    pub comment_trail: Vec<CommentItem>,
     /// Parent comment trail.
     pub parent_comments: Vec<Item>,
     /// Active item when reading comments.
@@ -31,15 +38,15 @@ pub struct Comments<'a> {
     pub fetching: &'a mut bool,
     /// Event handler for background events.
     pub event_handler: &'a EventHandler,
-    /// Toggle comment view window.
-    pub showing_comments: &'a mut bool,
     /// Comments state.
     pub comments_state: &'a CommentsState,
+    /// Flags for open/closing comment windows.
+    pub open_comments: &'a mut Vec<bool>,
 }
 
 impl<'a> Comments<'a> {
     /// Render comments if requested.
-    pub fn render(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn render(&mut self, ctx: &egui::Context, _ui: &mut egui::Ui) {
         let frame = Frame {
             fill: Color32::LIGHT_YELLOW,
             inner_margin: Margin {
@@ -57,83 +64,41 @@ impl<'a> Comments<'a> {
             ..Default::default()
         };
 
-        let width = ui.available_width() - (ui.available_width() * 0.05);
-        let height = ui.available_height() - (ui.available_height() * 0.15);
-
-        egui::Window::new("")
-            .frame(frame)
-            .default_width(width)
-            .default_height(height)
-            .open(self.showing_comments)
-            .collapsible(false)
-            .show(ctx, |ui| {
-                if let Some(item) = self.comments_state.active_item.as_ref() {
-                    if !self.comments_state.comment_trail.is_empty() && ui.button("back").clicked()
-                    {
-                        if let Err(err) = self.local_sender.send(Event::Back) {
-                            error!("Failed to send Back: {err}");
-                        }
-                        ctx.request_repaint();
-                    }
-                    ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
-                    ui.style_mut().visuals.hyperlink_color = Color32::BLACK;
-                    if let Some(title) = item.title.as_deref() {
-                        match item.url.as_deref() {
-                            Some(url) => ui.hyperlink_to(RichText::new(title).heading(), url),
-                            None => ui.heading(title),
-                        };
-                        ui.horizontal(|ui| {
-                            ui.set_style(Style {
-                                override_text_style: Some(TextStyle::Small),
-                                ..Default::default()
-                            });
-                            ui.style_mut().spacing = Spacing {
-                                item_spacing: Vec2 { y: 1., x: 2. },
-                                ..Default::default()
-                            };
-
-                            ui.label(RichText::new("by").italics());
-                            ui.label(RichText::new(&item.by).italics());
-                            if let Some(time) = parse_date(item.time) {
-                                ui.label(RichText::new(time).italics());
-                            }
-                            ui.add_space(5.0);
-                            ui.label(format!("[{}]", item.kids.len()));
-                        });
-                    }
-                    if let Some(text) = item.text.as_deref() {
-                        render_rich_text(text, ui);
-                    }
-                }
-                let scroll_delta = scroll_delta(ui);
-                egui::ScrollArea::vertical().show(ui, |ui| {
+        for (comment_item, index) in self.comments_state.comment_trail.iter().zip(0..) {
+            let open = &mut self.open_comments[index];
+            egui::Window::new("")
+                .id(comment_item.id)
+                .frame(frame)
+                .vscroll(true)
+                .open(open)
+                .collapsible(false)
+                .show(ctx, |ui| {
+                    let scroll_delta = scroll_delta(ui);
                     ui.scroll_with_delta(scroll_delta);
-                    for parent in self.comments_state.parent_comments.iter() {
-                        ui.style_mut().visuals.override_text_color = Some(Color32::GRAY);
-                        render_rich_text(parent.text.as_deref().unwrap_or_default(), ui);
-                        ui.horizontal(|ui| {
-                            ui.set_style(Style {
-                                override_text_style: Some(TextStyle::Small),
-                                ..Default::default()
-                            });
-                            ui.style_mut().spacing = Spacing {
-                                item_spacing: Vec2 { y: 1., x: 2. },
-                                ..Default::default()
+                    if let Some(item) = self.comments_state.active_item.as_ref() {
+                        ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
+                        ui.style_mut().visuals.hyperlink_color = Color32::BLACK;
+                        if let Some(title) = item.title.as_deref() {
+                            match item.url.as_deref() {
+                                Some(url) => ui.hyperlink_to(RichText::new(title).heading(), url),
+                                None => ui.heading(title),
                             };
-                            ui.label("by");
-                            ui.label(&parent.by);
-                            if let Some(time) = parse_date(parent.time) {
-                                ui.label(RichText::new(time).italics());
-                            }
-                            ui.add_space(5.0);
-                            ui.label(format!("[{}]", parent.kids.len()));
-                        });
-                        ui.style_mut().visuals.override_text_color = None;
+                            render_by(ui, item);
+                        }
+                        if let Some(text) = item.text.as_deref() {
+                            render_rich_text(text, ui);
+                        }
                     }
-
+                    if let Some(parent_comment) = comment_item.parent.as_ref() {
+                        ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
+                        render_rich_text(parent_comment.text.as_deref().unwrap_or_default(), ui);
+                        render_by(ui, parent_comment);
+                        ui.add_space(5.);
+                        ui.separator();
+                    }
                     ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
 
-                    for comment in self.comments_state.comments.iter() {
+                    for comment in comment_item.comments.iter() {
                         render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
 
                         ui.horizontal(|ui| {
@@ -154,22 +119,52 @@ impl<'a> Comments<'a> {
                                 ui.label(RichText::new(time).italics());
                             }
                             ui.add_space(5.);
-                            if !comment.kids.is_empty()
-                                && ui.button(format!("{}", comment.kids.len())).clicked()
-                            {
-                                *self.fetching = true;
-                                if let Err(err) = self.event_handler.emit(ClientEvent::Comments(
-                                    comment.kids.clone(),
-                                    Some(comment.to_owned()),
-                                )) {
-                                    error!("Failed to emit comments: {err}");
+
+                            if !comment.kids.is_empty() {
+                                ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
+                                let button = Button::new(format!("💬{}", comment.kids.len()))
+                                    .fill(Color32::LIGHT_YELLOW)
+                                    .ui(ui);
+
+                                if button.clicked() {
+                                    *self.fetching = true;
+                                    if let Err(err) =
+                                        self.event_handler.emit(ClientEvent::Comments {
+                                            ids: comment.kids.clone(),
+                                            parent: Some(comment.to_owned()),
+                                            id: Id::new(comment.id),
+                                        })
+                                    {
+                                        error!("Failed to emit comments: {err}");
+                                    }
                                 }
                             }
                         });
 
                         ui.add(Separator::default().spacing(25.0));
                     }
-                })
-            });
+                });
+        }
     }
+}
+
+fn render_by(ui: &mut egui::Ui, item: &Item) {
+    ui.horizontal(|ui| {
+        ui.set_style(Style {
+            override_text_style: Some(TextStyle::Small),
+            ..Default::default()
+        });
+        ui.style_mut().spacing = Spacing {
+            item_spacing: Vec2 { y: 1., x: 2. },
+            ..Default::default()
+        };
+
+        ui.label(RichText::new("by").italics());
+        ui.label(RichText::new(&item.by).italics());
+        if let Some(time) = parse_date(item.time) {
+            ui.label(RichText::new(time).italics());
+        }
+        ui.add_space(5.0);
+        ui.label(format!("[{}]", item.kids.len()));
+    });
 }
