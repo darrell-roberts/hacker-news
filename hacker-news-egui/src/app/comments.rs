@@ -7,8 +7,13 @@ use egui::{
     style::Spacing, Color32, Frame, Margin, RichText, Rounding, Separator, Style, TextStyle, Vec2,
 };
 use hacker_news_api::Item;
-use log::{error, info};
+use log::error;
 use tokio::sync::mpsc::UnboundedSender;
+
+pub struct CommentItem {
+    pub comments: Vec<Item>,
+    pub parent: Option<Item>,
+}
 
 /// Comment state data.
 #[derive(Default)]
@@ -16,7 +21,7 @@ pub struct CommentsState {
     /// Active comments being viewed.
     pub comments: Vec<Item>,
     /// Trail of comments navigated.
-    pub comment_trail: Vec<Vec<Item>>,
+    pub comment_trail: Vec<CommentItem>,
     /// Parent comment trail.
     pub parent_comments: Vec<Item>,
     /// Active item when reading comments.
@@ -41,7 +46,7 @@ pub struct Comments<'a> {
 
 impl<'a> Comments<'a> {
     /// Render comments if requested.
-    pub fn render(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+    pub fn render(&mut self, ctx: &egui::Context, _ui: &mut egui::Ui) {
         let frame = Frame {
             fill: Color32::LIGHT_YELLOW,
             inner_margin: Margin {
@@ -59,7 +64,7 @@ impl<'a> Comments<'a> {
             ..Default::default()
         };
 
-        for (comments, index) in self.comments_state.comment_trail.iter().zip(0..) {
+        for (comment_item, index) in self.comments_state.comment_trail.iter().zip(0..) {
             let open = &mut self.open_comments[index];
             egui::Window::new(format!("comments-{index}"))
                 .frame(frame)
@@ -101,10 +106,36 @@ impl<'a> Comments<'a> {
                     let scroll_delta = scroll_delta(ui);
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         ui.scroll_with_delta(scroll_delta);
+                        if let Some(parent_comment) = comment_item.parent.as_ref() {
+                            ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
+                            render_rich_text(
+                                parent_comment.text.as_deref().unwrap_or_default(),
+                                ui,
+                            );
+                            ui.horizontal(|ui| {
+                                ui.set_style(Style {
+                                    override_text_style: Some(TextStyle::Small),
+                                    ..Default::default()
+                                });
+                                ui.style_mut().spacing = Spacing {
+                                    item_spacing: Vec2 { y: 1., x: 2. },
+                                    ..Default::default()
+                                };
 
+                                ui.label(RichText::new("by").italics());
+                                ui.label(RichText::new(&parent_comment.by).italics());
+                                if let Some(time) = parse_date(parent_comment.time) {
+                                    ui.label(RichText::new(time).italics());
+                                }
+                                ui.add_space(5.0);
+                                ui.label(format!("[{}]", parent_comment.kids.len()));
+                            });
+                            ui.add_space(5.);
+                            ui.separator();
+                        }
                         ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
 
-                        for comment in comments.iter() {
+                        for comment in comment_item.comments.iter() {
                             render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
 
                             ui.horizontal(|ui| {

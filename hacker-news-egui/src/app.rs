@@ -13,6 +13,8 @@ use log::error;
 use std::sync::atomic::Ordering;
 use tokio::sync::mpsc::UnboundedSender;
 
+use self::comments::CommentItem;
+
 mod comments;
 
 #[derive(Eq, PartialEq)]
@@ -81,12 +83,17 @@ impl HackerNewsApp {
             }
             Event::Comments(comments, parent) => {
                 if parent.is_some() {
-                    self.comments_state.comment_trail.push(comments);
+                    self.comments_state
+                        .comment_trail
+                        .push(CommentItem { comments, parent });
                     // let next = self.comments_state.comment_trail.len();
                     // self.open_comments[next - 1] = true;
                     self.open_comments.push(true);
                 } else {
-                    self.comments_state.comment_trail = vec![comments];
+                    self.comments_state.comment_trail = vec![CommentItem {
+                        comments,
+                        parent: None,
+                    }];
                     self.open_comments = vec![true];
                 }
                 // self.comments_state.parent_comments.push(comment);
@@ -106,10 +113,10 @@ impl HackerNewsApp {
                 self.error = None;
             }
             Event::Back => {
-                match self.comments_state.comment_trail.pop() {
-                    Some(cs) => self.comments_state.comments = cs,
-                    None => self.comments_state.comments = Vec::new(),
-                };
+                // match self.comments_state.comment_trail.pop() {
+                //     Some(cs) => self.comments_state.comments = cs,
+                //     None => self.comments_state.comments = Vec::new(),
+                // };
                 self.comments_state.parent_comments.pop();
             }
             Event::Error(error) => {
