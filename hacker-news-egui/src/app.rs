@@ -165,11 +165,15 @@ impl HackerNewsApp {
                 self.add_article_type_selet_label(ui, ArticleType::Best);
                 self.add_article_type_selet_label(ui, ArticleType::New);
 
+                ui.separator();
+
                 self.add_total_select_label(ui, 25);
                 self.add_total_select_label(ui, 50);
                 self.add_total_select_label(ui, 75);
                 self.add_total_select_label(ui, 100);
                 self.add_total_select_label(ui, 500);
+
+                ui.separator();
 
                 if self.fetching {
                     ui.spinner();
