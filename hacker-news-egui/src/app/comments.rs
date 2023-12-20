@@ -83,24 +83,7 @@ impl<'a> Comments<'a> {
                                     }
                                     None => ui.heading(title),
                                 };
-                                ui.horizontal(|ui| {
-                                    ui.set_style(Style {
-                                        override_text_style: Some(TextStyle::Small),
-                                        ..Default::default()
-                                    });
-                                    ui.style_mut().spacing = Spacing {
-                                        item_spacing: Vec2 { y: 1., x: 2. },
-                                        ..Default::default()
-                                    };
-
-                                    ui.label(RichText::new("by").italics());
-                                    ui.label(RichText::new(&item.by).italics());
-                                    if let Some(time) = parse_date(item.time) {
-                                        ui.label(RichText::new(time).italics());
-                                    }
-                                    ui.add_space(5.0);
-                                    ui.label(format!("[{}]", item.kids.len()));
-                                });
+                                render_by(ui, item);
                             }
                             if let Some(text) = item.text.as_deref() {
                                 render_rich_text(text, ui);
@@ -112,24 +95,7 @@ impl<'a> Comments<'a> {
                                 parent_comment.text.as_deref().unwrap_or_default(),
                                 ui,
                             );
-                            ui.horizontal(|ui| {
-                                ui.set_style(Style {
-                                    override_text_style: Some(TextStyle::Small),
-                                    ..Default::default()
-                                });
-                                ui.style_mut().spacing = Spacing {
-                                    item_spacing: Vec2 { y: 1., x: 2. },
-                                    ..Default::default()
-                                };
-
-                                ui.label(RichText::new("by").italics());
-                                ui.label(RichText::new(&parent_comment.by).italics());
-                                if let Some(time) = parse_date(parent_comment.time) {
-                                    ui.label(RichText::new(time).italics());
-                                }
-                                ui.add_space(5.0);
-                                ui.label(format!("[{}]", parent_comment.kids.len()));
-                            });
+                            render_by(ui, parent_comment);
                             ui.add_space(5.);
                             ui.separator();
                         }
@@ -177,4 +143,25 @@ impl<'a> Comments<'a> {
                 });
         }
     }
+}
+
+fn render_by(ui: &mut egui::Ui, item: &Item) {
+    ui.horizontal(|ui| {
+        ui.set_style(Style {
+            override_text_style: Some(TextStyle::Small),
+            ..Default::default()
+        });
+        ui.style_mut().spacing = Spacing {
+            item_spacing: Vec2 { y: 1., x: 2. },
+            ..Default::default()
+        };
+
+        ui.label(RichText::new("by").italics());
+        ui.label(RichText::new(&item.by).italics());
+        if let Some(time) = parse_date(item.time) {
+            ui.label(RichText::new(time).italics());
+        }
+        ui.add_space(5.0);
+        ui.label(format!("[{}]", item.kids.len()));
+    });
 }
