@@ -141,7 +141,6 @@ impl<'a> Comments<'a> {
                                                 Some(Color32::BLACK);
                                             let button =
                                                 Button::new(format!("💬{}", comment.kids.len()))
-                                                    // .fill(Color32::LIGHT_YELLOW)
                                                     .fill(if index % 2 == 0 {
                                                         Color32::from_rgb(245, 247, 183)
                                                     } else {
@@ -165,8 +164,6 @@ impl<'a> Comments<'a> {
                                     });
                                 });
 
-                                // ui.add(Separator::default().spacing(25.));
-                                // ui.add_space(15.);
                                 ui.end_row();
                             }
                         });
@@ -177,10 +174,6 @@ impl<'a> Comments<'a> {
 
 fn render_by(ui: &mut egui::Ui, item: &Item) {
     ui.horizontal(|ui| {
-        ui.set_style(Style {
-            override_text_style: Some(TextStyle::Small),
-            ..Default::default()
-        });
         ui.style_mut().spacing = Spacing {
             item_spacing: Vec2 { y: 1., x: 2. },
             ..Default::default()
