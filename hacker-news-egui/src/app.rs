@@ -203,7 +203,7 @@ impl HackerNewsApp {
 
                 Grid::new("articles")
                     .num_columns(2)
-                    .spacing(Vec2 { x: 0., y: 5. })
+                    .spacing((0., 5.))
                     .striped(true)
                     .show(ui, |ui| {
                         for (article, index) in self.articles.iter().zip(1..) {

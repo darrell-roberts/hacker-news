@@ -4,8 +4,8 @@ use crate::{
     text::{parse_date, render_rich_text},
 };
 use egui::{
-    style::Spacing, widgets::Widget, Button, Color32, Frame, Id, Margin, RichText, Rounding,
-    Separator, Style, TextStyle, Vec2,
+    style::Spacing, widgets::Widget, Button, Color32, Frame, Grid, Id, Margin, RichText, Rounding,
+    Style, TextStyle, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -83,66 +83,93 @@ impl<'a> Comments<'a> {
                                 Some(url) => ui.hyperlink_to(RichText::new(title).heading(), url),
                                 None => ui.heading(title),
                             };
-                            render_by(ui, item);
                         }
                         if let Some(text) = item.text.as_deref() {
                             render_rich_text(text, ui);
                         }
+                        render_by(ui, item);
                     }
                     if let Some(parent_comment) = comment_item.parent.as_ref() {
                         ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
                         render_rich_text(parent_comment.text.as_deref().unwrap_or_default(), ui);
                         render_by(ui, parent_comment);
-                        ui.add_space(5.);
-                        ui.separator();
+                        ui.add_space(15.);
+                        // ui.separator();
                     }
                     ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
 
-                    for comment in comment_item.comments.iter() {
-                        render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
-
-                        ui.horizontal(|ui| {
-                            ui.set_style(Style {
-                                override_text_style: Some(TextStyle::Small),
-                                ..Default::default()
-                            });
-                            ui.style_mut().spacing = Spacing {
-                                item_spacing: Vec2 { y: 1., x: 2. },
-                                ..Default::default()
-                            };
-                            // if ui.button(format!("id: {}", comment.id)).clicked() {
-                            //     ui.output_mut(|p| p.copied_text = format!("{}", comment.id));
-                            // }
-                            ui.label(RichText::new("by").italics());
-                            ui.label(RichText::new(&comment.by).italics());
-                            if let Some(time) = parse_date(comment.time) {
-                                ui.label(RichText::new(time).italics());
+                    Grid::new(Id::new(index))
+                        .num_columns(1)
+                        .striped(true)
+                        .spacing((0., 10.))
+                        .with_row_color(|index, _style| {
+                            if index % 2 == 0 {
+                                Some(Color32::from_rgb(245, 247, 183))
+                            } else {
+                                Some(Color32::from_rgb(242, 245, 154))
                             }
-                            ui.add_space(5.);
+                        })
+                        .show(ui, |ui| {
+                            for (index, comment) in comment_item.comments.iter().enumerate() {
+                                ui.vertical(|ui| {
+                                    render_rich_text(
+                                        comment.text.as_deref().unwrap_or_default(),
+                                        ui,
+                                    );
 
-                            if !comment.kids.is_empty() {
-                                ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
-                                let button = Button::new(format!("💬{}", comment.kids.len()))
-                                    .fill(Color32::LIGHT_YELLOW)
-                                    .ui(ui);
+                                    ui.horizontal(|ui| {
+                                        ui.set_style(Style {
+                                            override_text_style: Some(TextStyle::Small),
+                                            ..Default::default()
+                                        });
+                                        ui.style_mut().spacing = Spacing {
+                                            item_spacing: Vec2 { y: 1., x: 2. },
+                                            ..Default::default()
+                                        };
+                                        // if ui.button(format!("id: {}", comment.id)).clicked() {
+                                        //     ui.output_mut(|p| p.copied_text = format!("{}", comment.id));
+                                        // }
+                                        ui.label(RichText::new("by").italics());
+                                        ui.label(RichText::new(&comment.by).italics());
+                                        if let Some(time) = parse_date(comment.time) {
+                                            ui.label(RichText::new(time).italics());
+                                        }
+                                        ui.add_space(5.);
 
-                                if button.clicked() {
-                                    *self.fetching = true;
-                                    if let Err(err) =
-                                        self.event_handler.emit(ClientEvent::Comments {
-                                            ids: comment.kids.clone(),
-                                            parent: Some(comment.to_owned()),
-                                            id: Id::new(comment.id),
-                                        })
-                                    {
-                                        error!("Failed to emit comments: {err}");
-                                    }
-                                }
+                                        if !comment.kids.is_empty() {
+                                            ui.style_mut().visuals.override_text_color =
+                                                Some(Color32::BLACK);
+                                            let button =
+                                                Button::new(format!("💬{}", comment.kids.len()))
+                                                    // .fill(Color32::LIGHT_YELLOW)
+                                                    .fill(if index % 2 == 0 {
+                                                        Color32::from_rgb(245, 247, 183)
+                                                    } else {
+                                                        Color32::from_rgb(242, 245, 154)
+                                                    })
+                                                    .ui(ui);
+
+                                            if button.clicked() {
+                                                *self.fetching = true;
+                                                if let Err(err) =
+                                                    self.event_handler.emit(ClientEvent::Comments {
+                                                        ids: comment.kids.clone(),
+                                                        parent: Some(comment.to_owned()),
+                                                        id: Id::new(comment.id),
+                                                    })
+                                                {
+                                                    error!("Failed to emit comments: {err}");
+                                                }
+                                            }
+                                        }
+                                    });
+                                });
+
+                                // ui.add(Separator::default().spacing(25.));
+                                // ui.add_space(15.);
+                                ui.end_row();
                             }
                         });
-
-                        ui.add(Separator::default().spacing(25.0));
-                    }
                 });
         }
     }
