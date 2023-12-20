@@ -4,7 +4,8 @@ use crate::{
     text::{parse_date, render_rich_text},
 };
 use egui::{
-    style::Spacing, Color32, Frame, Margin, RichText, Rounding, Separator, Style, TextStyle, Vec2,
+    style::Spacing, Color32, Frame, Id, Margin, RichText, Rounding, Separator, Style, TextStyle,
+    Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -13,6 +14,7 @@ use tokio::sync::mpsc::UnboundedSender;
 pub struct CommentItem {
     pub comments: Vec<Item>,
     pub parent: Option<Item>,
+    pub id: Id,
 }
 
 /// Comment state data.
@@ -65,7 +67,7 @@ impl<'a> Comments<'a> {
         for (comment_item, index) in self.comments_state.comment_trail.iter().zip(0..) {
             let open = &mut self.open_comments[index];
             egui::Window::new("")
-                .id(format!("comments-{index}").into())
+                .id(comment_item.id)
                 .frame(frame)
                 .vscroll(true)
                 .open(open)
@@ -121,10 +123,11 @@ impl<'a> Comments<'a> {
                                 && ui.button(format!("{}", comment.kids.len())).clicked()
                             {
                                 *self.fetching = true;
-                                if let Err(err) = self.event_handler.emit(ClientEvent::Comments(
-                                    comment.kids.clone(),
-                                    Some(comment.to_owned()),
-                                )) {
+                                if let Err(err) = self.event_handler.emit(ClientEvent::Comments {
+                                    ids: comment.kids.clone(),
+                                    parent: Some(comment.to_owned()),
+                                    id: Id::new(comment.id),
+                                }) {
                                     error!("Failed to emit comments: {err}");
                                 }
                             }

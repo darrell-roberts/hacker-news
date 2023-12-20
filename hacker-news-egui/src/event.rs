@@ -1,6 +1,6 @@
 use crate::app::ArticleType;
 use anyhow::Result;
-use egui::Context;
+use egui::{Context, Id};
 use hacker_news_api::{ApiClient, Item};
 use log::error;
 use std::sync::Arc;
@@ -9,7 +9,11 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 /// Background event.
 pub enum Event {
     Articles(ArticleType, Vec<Item>),
-    Comments(Vec<Item>, Option<Item>),
+    Comments {
+        items: Vec<Item>,
+        parent: Option<Item>,
+        id: Id,
+    },
     Error(String),
 }
 
@@ -18,7 +22,11 @@ pub enum ClientEvent {
     TopStories(usize),
     BestStories(usize),
     NewStories(usize),
-    Comments(Vec<u64>, Option<Item>),
+    Comments {
+        ids: Vec<u64>,
+        parent: Option<Item>,
+        id: Id,
+    },
 }
 
 pub struct EventHandler {
@@ -72,8 +80,8 @@ impl ClientEventHandler {
                 Ok(ts) => self.sender.send(Event::Articles(ArticleType::Top, ts)),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
             },
-            ClientEvent::Comments(ids, parent) => match self.client.items(&ids).await {
-                Ok(comments) => self.sender.send(Event::Comments(comments, parent)),
+            ClientEvent::Comments { ids, parent, id } => match self.client.items(&ids).await {
+                Ok(items) => self.sender.send(Event::Comments { items, parent, id }),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
             },
             ClientEvent::BestStories(total) => match self.client.best_stories(total).await {

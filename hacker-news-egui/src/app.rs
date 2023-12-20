@@ -6,8 +6,8 @@ use crate::{
 };
 use comments::{Comments, CommentsState};
 use egui::{
-    os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Grid, Key, Margin, RichText,
-    TextStyle, Vec2,
+    os::OperatingSystem, style::Spacing, Color32, CursorIcon, Frame, Grid, Id, Key, Margin,
+    RichText, TextStyle, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -78,8 +78,12 @@ impl HackerNewsApp {
                 self.error = None;
                 self.article_type = article_type;
             }
-            Event::Comments(comments, parent) => {
-                let comment_item = CommentItem { comments, parent };
+            Event::Comments { items, parent, id } => {
+                let comment_item = CommentItem {
+                    comments: items,
+                    parent,
+                    id,
+                };
                 if comment_item.parent.is_some() {
                     self.comments_state.comment_trail.push(comment_item);
                     self.open_comments.push(true);
@@ -266,10 +270,11 @@ impl HackerNewsApp {
                                 self.fetching = true;
                                 self.comments_state.active_item = Some(article.to_owned());
                                 self.visited.push(index);
-                                if let Err(err) = self
-                                    .event_handler
-                                    .emit(ClientEvent::Comments(article.kids.clone(), None))
-                                {
+                                if let Err(err) = self.event_handler.emit(ClientEvent::Comments {
+                                    ids: article.kids.clone(),
+                                    parent: None,
+                                    id: Id::new(article.id),
+                                }) {
                                     error!("Failed to emit comments: {err}");
                                 }
                             }
@@ -336,6 +341,12 @@ impl eframe::App for HackerNewsApp {
             self.render_comments(ctx, ui);
             self.render_articles(ui);
         });
+
+        // Remove comment trail for closed windows.
+        self.open_comments.retain(|open| *open);
+        self.comments_state
+            .comment_trail
+            .truncate(self.open_comments.len());
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
