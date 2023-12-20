@@ -357,12 +357,6 @@ impl eframe::App for HackerNewsApp {
             self.render_comments(ctx, ui);
             self.render_articles(ui);
         });
-
-        // Remove comment trail for closed windows.
-        self.open_comments.retain(|open| *open);
-        self.comments_state
-            .comment_trail
-            .truncate(self.open_comments.len());
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
