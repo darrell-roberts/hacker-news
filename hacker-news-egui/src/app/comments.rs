@@ -49,7 +49,7 @@ impl<'a> Comments<'a> {
     /// Render comments if requested.
     pub fn render(&mut self, ctx: &egui::Context, _ui: &mut egui::Ui) {
         let frame = Frame {
-            fill: Color32::WHITE,
+            fill: Color32::from_rgb(246, 247, 176),
             inner_margin: Margin {
                 left: 5.,
                 right: 5.,
