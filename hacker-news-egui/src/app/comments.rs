@@ -117,19 +117,23 @@ impl<'a> Comments<'a> {
                                         ui,
                                     );
 
+                                    ui.add_space(5.0);
                                     ui.horizontal(|ui| {
-                                        ui.set_style(Style {
-                                            override_text_style: Some(TextStyle::Small),
-                                            ..Default::default()
-                                        });
+                                        // ui.set_style(Style {
+                                        //     override_text_style: Some(TextStyle::Small),
+                                        //     ..Default::default()
+                                        // });
                                         ui.style_mut().spacing = Spacing {
                                             item_spacing: Vec2 { y: 1., x: 2. },
                                             ..Default::default()
                                         };
+                                        ui.style_mut().visuals.override_text_color =
+                                            Some(Color32::GRAY);
                                         // if ui.button(format!("id: {}", comment.id)).clicked() {
-                                        //     ui.output_mut(|p| p.copied_text = format!("{}", comment.id));
+                                        //     ui.output_mut(|p| {
+                                        //         p.copied_text = format!("{}", comment.id)
+                                        //     });
                                         // }
-                                        ui.label(RichText::new("by").italics());
                                         ui.label(RichText::new(&comment.by).italics());
                                         if let Some(time) = parse_date(comment.time) {
                                             ui.label(RichText::new(time).italics());
@@ -173,13 +177,13 @@ impl<'a> Comments<'a> {
 }
 
 fn render_by(ui: &mut egui::Ui, item: &Item) {
+    ui.add_space(5.);
     ui.horizontal(|ui| {
         ui.style_mut().spacing = Spacing {
             item_spacing: Vec2 { y: 1., x: 2. },
             ..Default::default()
         };
 
-        ui.label(RichText::new("by").italics());
         ui.label(RichText::new(&item.by).italics());
         if let Some(time) = parse_date(item.time) {
             ui.label(RichText::new(time).italics());

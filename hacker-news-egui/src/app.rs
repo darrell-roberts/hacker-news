@@ -295,7 +295,6 @@ impl HackerNewsApp {
                                     ..Default::default()
                                 };
 
-                                ui.label(RichText::new("by").italics());
                                 ui.label(RichText::new(&article.by).italics());
                                 if let Some(time) = parse_date(article.time) {
                                     ui.label(RichText::new(time).italics());
