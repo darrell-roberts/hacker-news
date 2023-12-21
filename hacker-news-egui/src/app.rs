@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use comments::{Comments, CommentsState};
 use egui::{
     os::OperatingSystem, style::Spacing, widgets::Widget, Button, Color32, CursorIcon, Frame, Grid,
-    Id, Key, Margin, RichText, TextStyle, Vec2, Window,
+    Id, Key, Margin, RichText, Rounding, TextStyle, Vec2, Window,
 };
 use hacker_news_api::{Item, User};
 use log::error;
@@ -359,30 +359,65 @@ impl HackerNewsApp {
 
     fn render_user(&mut self, ctx: &egui::Context) {
         if let Some(user) = self.user.as_ref() {
+            let frame = Frame::none()
+                .inner_margin(Margin {
+                    left: 5.,
+                    right: 5.,
+                    top: 5.,
+                    bottom: 5.,
+                })
+                .rounding(Rounding {
+                    nw: 8.,
+                    ne: 8.,
+                    sw: 8.,
+                    se: 8.,
+                })
+                .fill(Color32::from_rgb(220, 245, 247));
             Window::new(&user.id)
                 .open(&mut self.viewing_user)
+                .frame(frame)
                 .collapsible(false)
                 .show(ctx, |ui| {
-                    match user.about.as_deref() {
-                        Some(about) => {
-                            render_rich_text(about, ui);
-                        }
-                        None => {
-                            ui.label("No user info");
-                        }
+                    if let Some(about) = user.about.as_deref() {
+                        Frame::none()
+                            .fill(Color32::LIGHT_BLUE)
+                            .outer_margin(Margin {
+                                top: 5.,
+                                left: 10.,
+                                right: 10.,
+                                bottom: 5.,
+                            })
+                            .inner_margin(Margin {
+                                top: 10.,
+                                left: 10.,
+                                right: 10.,
+                                bottom: 10.,
+                            })
+                            .rounding(Rounding {
+                                nw: 8.,
+                                ne: 8.,
+                                sw: 8.,
+                                se: 8.,
+                            })
+                            .show(ui, |ui| {
+                                render_rich_text(about, ui);
+                            });
                     }
 
                     let created = DateTime::<Utc>::from_timestamp(user.created as i64, 0);
                     ui.add_space(5.);
+                    ui.horizontal(|ui| {
+                        match created {
+                            Some(c) => {
+                                ui.label(format!("Registered: {}", c.format("%d/%m/%Y")));
+                            }
+                            None => {
+                                ui.label("No registration date");
+                            }
+                        };
 
-                    match created {
-                        Some(c) => {
-                            ui.label(format!("Registered: {}", c.format("%d/%m/%Y")));
-                        }
-                        None => {
-                            ui.label("No registration date");
-                        }
-                    }
+                        ui.label(format!("karma: {}", user.karma));
+                    })
                 });
         }
     }
