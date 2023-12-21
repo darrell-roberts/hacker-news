@@ -7,8 +7,8 @@ use crate::{
 use chrono::{DateTime, Utc};
 use comments::{Comments, CommentsState};
 use egui::{
-    os::OperatingSystem, style::Spacing, widgets::Widget, Button, Color32, CursorIcon, Frame, Grid,
-    Id, Key, Margin, RichText, Rounding, TextStyle, Vec2, Window,
+    epaint::Shadow, os::OperatingSystem, style::Spacing, widgets::Widget, Button, Color32,
+    CursorIcon, Frame, Grid, Id, Key, Margin, RichText, Rounding, Stroke, TextStyle, Vec2, Window,
 };
 use hacker_news_api::{Item, User};
 use log::error;
@@ -373,6 +373,11 @@ impl HackerNewsApp {
                     sw: 8.,
                     se: 8.,
                 })
+                .stroke(Stroke {
+                    color: Color32::BLACK,
+                    width: 1.,
+                })
+                .shadow(Shadow::small_light())
                 .fill(Color32::from_rgb(220, 245, 247));
             Window::new(&user.id)
                 .open(&mut self.viewing_user)

@@ -4,8 +4,8 @@ use crate::{
     text::{parse_date, render_rich_text},
 };
 use egui::{
-    containers::Frame, style::Spacing, widgets::Widget, Button, Color32, Id, Margin, RichText,
-    Rounding, Vec2,
+    containers::Frame, epaint::Shadow, style::Spacing, widgets::Widget, Button, Color32, Id,
+    Margin, RichText, Rounding, Stroke, Vec2,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -47,22 +47,25 @@ pub struct Comments<'a> {
 impl<'a> Comments<'a> {
     /// Render comments if requested.
     pub fn render(&mut self, ctx: &egui::Context, _ui: &mut egui::Ui) {
-        let frame = Frame {
-            fill: Color32::from_rgb(246, 247, 176),
-            inner_margin: Margin {
+        let frame = Frame::none()
+            .fill(Color32::from_rgb(246, 247, 176))
+            .inner_margin(Margin {
                 left: 5.,
                 right: 5.,
                 top: 5.,
                 bottom: 5.,
-            },
-            rounding: Rounding {
+            })
+            .rounding(Rounding {
                 nw: 8.,
                 ne: 8.,
                 sw: 8.,
                 se: 8.,
-            },
-            ..Default::default()
-        };
+            })
+            .stroke(Stroke {
+                color: Color32::BLACK,
+                width: 1.,
+            })
+            .shadow(Shadow::small_light());
 
         for (comment_item, index) in self.comments_state.comment_trail.iter().zip(0..) {
             let open = &mut self.open_comments[index];

@@ -64,5 +64,6 @@ This will create a `dist/Hacker News.dmg` file and open/mount it. Simply copy th
 <img width="1184" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/fc8af470-497d-4626-a881-5f61c65e94f1">
 
 ### View comments
-<img width="1184" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/fb8cc628-0795-48ee-be61-f390aa7fd846">
+<img width="1098" alt="Screenshot 2023-12-21 at 4 28 46 PM" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/facddeae-cde0-4a8e-b147-f9ad4e157933">
+
 
