@@ -335,6 +335,7 @@ impl HackerNewsApp {
         if let Some(user) = self.user.as_ref() {
             Window::new(&user.id)
                 .open(&mut self.viewing_user)
+                .collapsible(false)
                 .show(ctx, |ui| {
                     match user.about.as_deref() {
                         Some(about) => {
