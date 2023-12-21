@@ -30,6 +30,7 @@ pub struct Item {
 /// Hacker news user.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct User {
+    pub id: String,
     pub about: Option<String>,
     pub created: u64,
     pub karma: u64,

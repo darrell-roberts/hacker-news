@@ -1,7 +1,7 @@
 use crate::app::ArticleType;
 use anyhow::Result;
 use egui::{Context, Id};
-use hacker_news_api::{ApiClient, Item};
+use hacker_news_api::{ApiClient, Item, User};
 use log::error;
 use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -15,6 +15,7 @@ pub enum Event {
         id: Id,
     },
     Error(String),
+    User(User),
 }
 
 /// Client event.
@@ -27,6 +28,7 @@ pub enum ClientEvent {
         parent: Option<Item>,
         id: Id,
     },
+    User(String),
 }
 
 pub struct EventHandler {
@@ -90,6 +92,10 @@ impl ClientEventHandler {
             },
             ClientEvent::NewStories(total) => match self.client.new_stories(total).await {
                 Ok(ns) => self.sender.send(Event::Articles(ArticleType::New, ns)),
+                Err(err) => self.sender.send(Event::Error(err.to_string())),
+            },
+            ClientEvent::User(user) => match self.client.user(&user).await {
+                Ok(user) => self.sender.send(Event::User(user)),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
             },
         };

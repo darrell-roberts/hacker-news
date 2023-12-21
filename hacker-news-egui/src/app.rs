@@ -1,15 +1,16 @@
 use self::comments::CommentItem;
 use crate::{
     event::{ClientEvent, Event, EventHandler},
-    text::parse_date,
+    text::{parse_date, render_rich_text},
     SHUT_DOWN,
 };
+use chrono::{DateTime, Utc};
 use comments::{Comments, CommentsState};
 use egui::{
     os::OperatingSystem, style::Spacing, widgets::Widget, Button, Color32, CursorIcon, Frame, Grid,
-    Id, Key, Margin, RichText, TextStyle, Vec2,
+    Id, Key, Margin, RichText, TextStyle, Vec2, Window,
 };
-use hacker_news_api::Item;
+use hacker_news_api::{Item, User};
 use log::error;
 use std::sync::atomic::Ordering;
 use tokio::sync::mpsc::UnboundedSender;
@@ -55,6 +56,10 @@ pub struct HackerNewsApp {
     article_type: ArticleType,
     /// Comment window open states.
     open_comments: Vec<bool>,
+    /// Viewing a user
+    user: Option<User>,
+    /// User window open/closed.
+    viewing_user: bool,
 }
 
 impl HackerNewsApp {
@@ -75,6 +80,8 @@ impl HackerNewsApp {
             error: None,
             article_type: ArticleType::Top,
             open_comments: Vec::new(),
+            user: None,
+            viewing_user: false,
         }
     }
 
@@ -106,6 +113,10 @@ impl HackerNewsApp {
 
             Event::Error(error) => {
                 self.error = Some(error);
+            }
+            Event::User(user) => {
+                self.viewing_user = true;
+                self.user = Some(user);
             }
         }
         self.fetching = false;
@@ -201,8 +212,6 @@ impl HackerNewsApp {
                     .striped(true)
                     .show(ui, |ui| {
                         for article in self.articles.iter() {
-                            // ui.label(format!("{index}"));
-
                             ui.label(format!("🔼{}", article.score));
 
                             if !article.kids.is_empty() {
@@ -289,7 +298,11 @@ impl HackerNewsApp {
                                     ..Default::default()
                                 };
 
-                                ui.label(RichText::new(&article.by).italics());
+                                if ui.link(RichText::new(&article.by).italics()).clicked() {
+                                    self.event_handler
+                                        .emit(ClientEvent::User(article.by.clone()))
+                                        .unwrap_or_default();
+                                };
                                 if let Some(time) = parse_date(article.time) {
                                     ui.label(RichText::new(time).italics());
                                 }
@@ -315,6 +328,35 @@ impl HackerNewsApp {
                 comments_state: &self.comments_state,
             }
             .render(ctx, ui);
+        }
+    }
+
+    fn render_user(&mut self, ctx: &egui::Context) {
+        if let Some(user) = self.user.as_ref() {
+            Window::new(&user.id)
+                .open(&mut self.viewing_user)
+                .show(ctx, |ui| {
+                    match user.about.as_deref() {
+                        Some(about) => {
+                            render_rich_text(about, ui);
+                        }
+                        None => {
+                            ui.label("No user info");
+                        }
+                    }
+
+                    let created = DateTime::<Utc>::from_timestamp(user.created as i64, 0);
+                    ui.add_space(5.);
+
+                    match created {
+                        Some(c) => {
+                            ui.label(format!("Registered: {}", c.format("%d/%m/%Y")));
+                        }
+                        None => {
+                            ui.label("No registration date");
+                        }
+                    }
+                });
         }
     }
 }
@@ -356,6 +398,7 @@ impl eframe::App for HackerNewsApp {
             ui.add_space(2.);
             self.render_comments(ctx, ui);
             self.render_articles(ui);
+            self.render_user(ctx);
         });
     }
 
