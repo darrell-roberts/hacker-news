@@ -325,6 +325,7 @@ impl HackerNewsApp {
                                 };
 
                                 if ui.link(RichText::new(&article.by).italics()).clicked() {
+                                    self.fetching = true;
                                     self.event_handler
                                         .emit(ClientEvent::User(article.by.clone()))
                                         .unwrap_or_default();
