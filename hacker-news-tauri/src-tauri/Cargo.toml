@@ -2,8 +2,7 @@
 name = "hacker-news-tauri"
 version = "0.0.1"
 description = "A Tauri App"
-authors = ["Darrell Roberts"]
-license = "Apache-2.0 OR MIT"
+license.workspace = true
 repository = ""
 edition = "2021"
 

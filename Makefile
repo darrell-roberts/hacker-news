@@ -4,7 +4,7 @@ clean-dist:
 	rm -rf dist/
 
 check:
-	cargo check 
+	cargo clippy
 
 build: check
 	cargo build --release  --bin hacker-news-egui
@@ -17,5 +17,6 @@ bundle-mac: clean-dist build
 	cp hacker-news-egui/assets/Info.plist dist/HackerNews.app/Contents
 	cp target/release/hacker-news-egui dist/HackerNews.app/Contents
 	hdiutil create -fs HFS+ -volname "Hacker News" -srcfolder "dist/HackerNews.app" "dist/HackerNews.dmg"
+	open dist/HackerNews.dmg
 
 
