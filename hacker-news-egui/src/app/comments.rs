@@ -74,6 +74,35 @@ impl<'a> Comments<'a> {
                 .open(open)
                 .collapsible(false)
                 .show(ctx, |ui| {
+                    let render_by = |ui: &mut egui::Ui, item: &Item, comments: bool| {
+                        // ui.add_space(5.);
+                        ui.horizontal(|ui| {
+                            ui.style_mut().spacing = Spacing {
+                                item_spacing: Vec2 { y: 1., x: 2. },
+                                ..Default::default()
+                            };
+
+                            ui.style_mut().visuals.hyperlink_color = Color32::GRAY;
+                            ui.style_mut().visuals.override_text_color = Some(Color32::GRAY);
+                            if ui
+                                .link(RichText::new(&item.by).italics().color(Color32::GRAY))
+                                .clicked()
+                            {
+                                self.event_handler
+                                    .emit(ClientEvent::User(item.by.clone()))
+                                    .unwrap_or_default();
+                            };
+
+                            if let Some(time) = parse_date(item.time) {
+                                ui.label(RichText::new(time).italics());
+                            }
+                            ui.add_space(5.0);
+                            if comments {
+                                ui.label(format!("💬{}", item.kids.len()));
+                            }
+                        });
+                    };
+
                     let scroll_delta = scroll_delta(ui);
                     ui.scroll_with_delta(scroll_delta);
                     if let Some(item) = self.comments_state.active_item.as_ref() {
@@ -88,12 +117,15 @@ impl<'a> Comments<'a> {
                         if let Some(text) = item.text.as_deref() {
                             render_rich_text(text, ui);
                         }
-                        render_by(ui, item);
+                        // self.render_by(ui, item);
+                        render_by(ui, item, true);
                     }
                     if let Some(parent_comment) = comment_item.parent.as_ref() {
                         ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
                         render_rich_text(parent_comment.text.as_deref().unwrap_or_default(), ui);
-                        render_by(ui, parent_comment);
+                        // self.render_by(ui, parent_comment);
+                        render_by(ui, parent_comment, true);
+                        // ui.label(format!("💬{}", parent_comment.kids.len()));
                     }
                     ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
 
@@ -129,11 +161,11 @@ impl<'a> Comments<'a> {
                                     };
                                     ui.style_mut().visuals.override_text_color =
                                         Some(Color32::GRAY);
-                                    ui.label(RichText::new(&comment.by).italics());
-                                    if let Some(time) = parse_date(comment.time) {
-                                        ui.label(RichText::new(time).italics());
-                                    }
-                                    ui.add_space(5.);
+                                    render_by(ui, comment, false);
+                                    // if let Some(time) = parse_date(comment.time) {
+                                    //     ui.label(RichText::new(time).italics());
+                                    // }
+                                    // ui.add_space(5.);
 
                                     if !comment.kids.is_empty() {
                                         ui.style_mut().visuals.override_text_color =
@@ -163,21 +195,27 @@ impl<'a> Comments<'a> {
                 });
         }
     }
-}
 
-fn render_by(ui: &mut egui::Ui, item: &Item) {
-    ui.add_space(5.);
-    ui.horizontal(|ui| {
-        ui.style_mut().spacing = Spacing {
-            item_spacing: Vec2 { y: 1., x: 2. },
-            ..Default::default()
-        };
+    // fn render_by(&self, ui: &mut egui::Ui, item: &Item) {
+    //     ui.add_space(5.);
+    //     ui.horizontal(|ui| {
+    //         ui.style_mut().spacing = Spacing {
+    //             item_spacing: Vec2 { y: 1., x: 2. },
+    //             ..Default::default()
+    //         };
 
-        ui.label(RichText::new(&item.by).italics());
-        if let Some(time) = parse_date(item.time) {
-            ui.label(RichText::new(time).italics());
-        }
-        ui.add_space(5.0);
-        ui.label(format!("💬{}", item.kids.len()));
-    });
+    //         if ui.link(RichText::new(&item.by).italics()).clicked() {
+    //             self.event_handler
+    //                 .emit(ClientEvent::User(item.by.clone()))
+    //                 .unwrap_or_default();
+    //         };
+
+    //         // ui.label(RichText::new(&item.by).italics());
+    //         if let Some(time) = parse_date(item.time) {
+    //             ui.label(RichText::new(time).italics());
+    //         }
+    //         ui.add_space(5.0);
+    //         ui.label(format!("💬{}", item.kids.len()));
+    //     });
+    // }
 }
