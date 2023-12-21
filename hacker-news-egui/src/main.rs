@@ -40,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
         native_options,
         Box::new(move |cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
-            let frame = cc.egui_ctx.clone();
+            let ctx = cc.egui_ctx.clone();
             let (sender, mut receiver) = mpsc::unbounded_channel::<ClientEvent>();
             let (local_sender, client_receiver) = mpsc::unbounded_channel::<Event>();
 
@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
 
             let event_handler = EventHandler::new(sender, client_receiver);
             let client_event_handler =
-                ClientEventHandler::new(client.clone(), frame, local_sender.clone());
+                ClientEventHandler::new(client.clone(), ctx, local_sender.clone());
 
             let _handle = tokio::spawn(async move {
                 while !(SHUT_DOWN.load(Ordering::Acquire)) {
