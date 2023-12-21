@@ -60,6 +60,8 @@ pub struct HackerNewsApp {
     user: Option<User>,
     /// User window open/closed.
     viewing_user: bool,
+    /// Search input.
+    search: String,
 }
 
 impl HackerNewsApp {
@@ -82,6 +84,7 @@ impl HackerNewsApp {
             open_comments: Vec::new(),
             user: None,
             viewing_user: false,
+            search: String::new(),
         }
     }
 
@@ -186,6 +189,11 @@ impl HackerNewsApp {
 
                 ui.separator();
 
+                ui.label("🔎");
+                ui.text_edit_singleline(&mut self.search);
+
+                ui.separator();
+
                 if self.fetching {
                     ui.spinner();
                 }
@@ -211,7 +219,22 @@ impl HackerNewsApp {
                     .spacing((0., 5.))
                     .striped(true)
                     .show(ui, |ui| {
-                        for article in self.articles.iter() {
+                        for article in self.articles.iter().filter(|article| {
+                            if !self.search.is_empty() {
+                                article
+                                    .title
+                                    .as_deref()
+                                    .map(|title| {
+                                        title.split_whitespace().any(|word| {
+                                            word.to_lowercase()
+                                                .contains(&self.search.to_lowercase())
+                                        })
+                                    })
+                                    .unwrap_or(false)
+                            } else {
+                                true
+                            }
+                        }) {
                             ui.label(format!("🔼{}", article.score));
 
                             if !article.kids.is_empty() {
