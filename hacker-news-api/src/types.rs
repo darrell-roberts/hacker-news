@@ -34,6 +34,7 @@ pub struct User {
     pub about: Option<String>,
     pub created: u64,
     pub karma: u64,
+    #[serde(default)]
     pub submitted: Vec<u64>,
 }
 
