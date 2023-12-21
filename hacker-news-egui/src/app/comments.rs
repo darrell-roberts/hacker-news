@@ -3,7 +3,6 @@ use crate::{
     event::{ClientEvent, Event, EventHandler},
     text::{parse_date, render_rich_text},
 };
-// use eframe::Frame;
 use egui::{
     containers::Frame, style::Spacing, widgets::Widget, Button, Color32, Id, Margin, RichText,
     Rounding, Vec2,
@@ -75,7 +74,6 @@ impl<'a> Comments<'a> {
                 .collapsible(false)
                 .show(ctx, |ui| {
                     let render_by = |ui: &mut egui::Ui, item: &Item, comments: bool| {
-                        // ui.add_space(5.);
                         ui.horizontal(|ui| {
                             ui.style_mut().spacing = Spacing {
                                 item_spacing: Vec2 { y: 1., x: 2. },
@@ -117,15 +115,12 @@ impl<'a> Comments<'a> {
                         if let Some(text) = item.text.as_deref() {
                             render_rich_text(text, ui);
                         }
-                        // self.render_by(ui, item);
                         render_by(ui, item, true);
                     }
                     if let Some(parent_comment) = comment_item.parent.as_ref() {
                         ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
                         render_rich_text(parent_comment.text.as_deref().unwrap_or_default(), ui);
-                        // self.render_by(ui, parent_comment);
                         render_by(ui, parent_comment, true);
-                        // ui.label(format!("💬{}", parent_comment.kids.len()));
                     }
                     ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
 
@@ -162,11 +157,6 @@ impl<'a> Comments<'a> {
                                     ui.style_mut().visuals.override_text_color =
                                         Some(Color32::GRAY);
                                     render_by(ui, comment, false);
-                                    // if let Some(time) = parse_date(comment.time) {
-                                    //     ui.label(RichText::new(time).italics());
-                                    // }
-                                    // ui.add_space(5.);
-
                                     if !comment.kids.is_empty() {
                                         ui.style_mut().visuals.override_text_color =
                                             Some(Color32::BLACK);
@@ -195,27 +185,4 @@ impl<'a> Comments<'a> {
                 });
         }
     }
-
-    // fn render_by(&self, ui: &mut egui::Ui, item: &Item) {
-    //     ui.add_space(5.);
-    //     ui.horizontal(|ui| {
-    //         ui.style_mut().spacing = Spacing {
-    //             item_spacing: Vec2 { y: 1., x: 2. },
-    //             ..Default::default()
-    //         };
-
-    //         if ui.link(RichText::new(&item.by).italics()).clicked() {
-    //             self.event_handler
-    //                 .emit(ClientEvent::User(item.by.clone()))
-    //                 .unwrap_or_default();
-    //         };
-
-    //         // ui.label(RichText::new(&item.by).italics());
-    //         if let Some(time) = parse_date(item.time) {
-    //             ui.label(RichText::new(time).italics());
-    //         }
-    //         ui.add_space(5.0);
-    //         ui.label(format!("💬{}", item.kids.len()));
-    //     });
-    // }
 }
