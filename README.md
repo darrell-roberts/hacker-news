@@ -20,6 +20,7 @@ cargo tauri build
 
 # hacker-news egui
 - View top/best/new stories.
+- Search text in title.
 - Read comments and nested comments.
 - Highlights rust articles with badge.
 
@@ -30,10 +31,14 @@ cargo install --path hacker-news-egui --bin hacker-news-egui
 ```
 
 ## Articles
-<img width="1184" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/fcb07619-1659-46d1-949d-e63b0d78e5ac">
+<img width="1184" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/72e817d1-4157-4021-9c0b-5130d76c58cd">
+
+## Title search
+<img width="1184" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/fc8af470-497d-4626-a881-5f61c65e94f1">
 
 ## View comments
-<img width="1184" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/bf14205d-cb1c-42be-934f-a521fc2bfbd3">
+<img width="1184" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/fb8cc628-0795-48ee-be61-f390aa7fd846">
+
 
 
 
