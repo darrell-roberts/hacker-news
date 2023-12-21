@@ -159,8 +159,6 @@ impl<'a> Comments<'a> {
                                 });
                                 ui.set_width(ui.available_width());
                             });
-                        // ui.group(|ui| );
-                        // ui.add_space(10.);
                     }
                 });
         }
