@@ -377,6 +377,7 @@ impl HackerNewsApp {
                 .open(&mut self.viewing_user)
                 .frame(frame)
                 .collapsible(false)
+                .vscroll(true)
                 .show(ctx, |ui| {
                     if let Some(about) = user.about.as_deref() {
                         Frame::none()
