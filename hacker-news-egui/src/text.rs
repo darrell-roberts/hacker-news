@@ -10,12 +10,22 @@ pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
         ui.style_mut().visuals.hyperlink_color = Color32::DARK_RED;
         ui.spacing_mut().item_spacing = Vec2 { x: 0., y: 0. };
 
+        let mut text_string = String::new();
+
+        let render_text = |ui: &mut egui::Ui, text: &mut String| {
+            if !text.is_empty() {
+                ui.label(text.as_str());
+                text.clear();
+            }
+        };
+
         for element in elements {
             match element {
                 Element::Text(text) => {
-                    ui.label(text);
+                    text_string.push_str(text);
                 }
                 Element::Link(link) => {
+                    render_text(ui, &mut text_string);
                     if let Some(text) = link
                         .attributes
                         .iter()
@@ -31,21 +41,28 @@ pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
                     }
                 }
                 Element::Escaped(c) => {
-                    ui.label(RichText::new(c));
+                    text_string.push(c);
                 }
                 Element::Paragraph => {
-                    ui.label("\n\n");
+                    text_string.push_str("\n\n");
                 }
                 Element::Code(text) => {
+                    render_text(ui, &mut text_string);
                     ui.label(RichText::new(text).monospace());
                 }
                 Element::Italic(text) => {
+                    render_text(ui, &mut text_string);
                     ui.label(RichText::new(text).italics());
                 }
                 Element::Bold(text) => {
+                    render_text(ui, &mut text_string);
                     ui.label(RichText::new(text).heading());
                 }
             }
+        }
+
+        if !text_string.is_empty() {
+            ui.label(&text_string);
         }
     });
 }
