@@ -191,6 +191,9 @@ impl HackerNewsApp {
 
                 ui.label("🔎");
                 ui.text_edit_singleline(&mut self.search);
+                if ui.button("🗑").on_hover_text("Clear search").clicked() {
+                    self.search = String::new();
+                }
 
                 ui.separator();
 
