@@ -24,12 +24,26 @@ cargo tauri build
 - Read comments and nested comments.
 - Highlights rust articles with badge.
 
-## Install
+## Install prerequisites
+Each install method will build and package from source. You'll first need to clone this repo.
+
+```bash
+git clone https://github.com/darrell-roberts/hacker-news.git
+cd hacker-news
+```
+
+You'll need the Rust compiler [toolchain](https://rustup.rs/).
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+## Install as binary
 
 ```bash
 cargo install --path hacker-news-egui --bin hacker-news-egui
 ```
-## Mac Install via dmg file.
+## Install as Mac app
 Run the provided `Makefile`
 
 
@@ -37,7 +51,7 @@ Run the provided `Makefile`
 make
 ```
 
-This will create a `dist/HackerNews.dmg` file and open/mount it. Simply copy the contents into your `Application` folder.
+This will create a `dist/Hacker News.dmg` file and open/mount it. Simply copy the contents into your `Application` folder.
 
 ## Articles
 <img width="1184" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/72e817d1-4157-4021-9c0b-5130d76c58cd">
