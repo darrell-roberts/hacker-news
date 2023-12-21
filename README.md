@@ -29,6 +29,15 @@ cargo tauri build
 ```bash
 cargo install --path hacker-news-egui --bin hacker-news-egui
 ```
+## Mac Install via dmg file.
+Run the provided `Makefile`
+
+
+```bash
+make
+```
+
+This will create a `dist/HackerNews.dmg` file. Simply double click on this and drag the contents into your `Applications` folder.
 
 ## Articles
 <img width="1184" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/72e817d1-4157-4021-9c0b-5130d76c58cd">
