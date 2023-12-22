@@ -3,6 +3,7 @@ use crate::{
     renderer::Renderer,
     SHUT_DOWN,
 };
+use eframe::Storage;
 use egui::{os::OperatingSystem, Id};
 use hacker_news_api::{Item, User};
 use std::sync::atomic::Ordering;
@@ -91,6 +92,7 @@ impl HackerNewsApp {
         _cc: &eframe::CreationContext<'_>,
         event_handler: EventHandler,
         local_sender: UnboundedSender<Event>,
+        visited: Option<Vec<u64>>,
     ) -> Self {
         Self {
             event_handler,
@@ -98,7 +100,7 @@ impl HackerNewsApp {
             fetching: true,
             local_sender,
             showing: 50,
-            visited: Vec::new(),
+            visited: visited.unwrap_or_default(),
             comments_state: Default::default(),
             error: None,
             article_type: ArticleType::Top,
@@ -163,6 +165,7 @@ impl HackerNewsApp {
                 if let Some(item) = active_item {
                     // Top level comment.
                     self.comments_state.comments = Vec::new();
+                    self.visited.push(item.id);
                     self.comments_state.active_item = Some(item);
                 }
                 self.event_handler
@@ -232,5 +235,16 @@ impl eframe::App for HackerNewsApp {
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         SHUT_DOWN.store(true, Ordering::Release);
+    }
+
+    fn save(&mut self, storage: &mut dyn Storage) {
+        storage.set_string("visited", {
+            let strs = self
+                .visited
+                .iter()
+                .map(|id| format!("{id}"))
+                .collect::<Vec<_>>();
+            strs.join(",")
+        });
     }
 }

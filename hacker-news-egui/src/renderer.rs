@@ -229,6 +229,9 @@ impl<'a, 'b> Renderer<'a, 'b> {
 
                 ui.separator();
 
+                ui.label("Visited");
+                ui.label(format!("{}", self.app_state.visited.len()));
+
                 if self.app_state.fetching {
                     ui.spinner();
                 }

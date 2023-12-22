@@ -61,7 +61,13 @@ async fn main() -> anyhow::Result<()> {
                 }
             });
 
-            Box::new(HackerNewsApp::new(cc, event_handler, local_sender))
+            let visited = cc.storage.and_then(|s| s.get_string("visited")).map(|v| {
+                v.split(',')
+                    .flat_map(|n| n.parse::<u64>())
+                    .collect::<Vec<_>>()
+            });
+
+            Box::new(HackerNewsApp::new(cc, event_handler, local_sender, visited))
         }),
     )
     .map_err(|e| anyhow::Error::msg(format!("failed to launch: {e}")))?;
