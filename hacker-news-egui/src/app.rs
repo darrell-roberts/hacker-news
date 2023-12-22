@@ -96,6 +96,7 @@ impl HackerNewsApp {
                 self.articles = ts;
                 self.error = None;
                 self.article_type = article_type;
+                self.fetching = false;
             }
             Event::Comments { items, parent, id } => {
                 let comment_item = CommentItem {
@@ -112,17 +113,31 @@ impl HackerNewsApp {
                     self.open_comments = vec![true];
                 }
                 self.error = None;
+                self.fetching = false;
             }
 
             Event::Error(error) => {
+                self.fetching = false;
                 self.error = Some(error);
             }
             Event::User(user) => {
+                self.fetching = false;
                 self.viewing_user = true;
                 self.user = Some(user);
             }
+            Event::FetchUser(user) => {
+                self.fetching = true;
+                self.event_handler
+                    .emit(ClientEvent::User(user))
+                    .unwrap_or_default();
+            }
+            Event::FetchComments { ids, parent, id } => {
+                self.fetching = true;
+                self.event_handler
+                    .emit(ClientEvent::Comments { ids, parent, id })
+                    .unwrap_or_default();
+            }
         }
-        self.fetching = false;
     }
 
     fn last_request(&self) -> impl Fn(usize) -> ClientEvent {
@@ -325,9 +340,12 @@ impl HackerNewsApp {
                                 };
 
                                 if ui.link(RichText::new(&article.by).italics()).clicked() {
-                                    self.fetching = true;
-                                    self.event_handler
-                                        .emit(ClientEvent::User(article.by.clone()))
+                                    // self.fetching = true;
+                                    // self.event_handler
+                                    //     .emit(ClientEvent::User(article.by.clone()))
+                                    //     .unwrap_or_default();
+                                    self.local_sender
+                                        .send(Event::FetchUser(article.by.clone()))
                                         .unwrap_or_default();
                                 };
                                 if let Some(time) = parse_date(article.time) {

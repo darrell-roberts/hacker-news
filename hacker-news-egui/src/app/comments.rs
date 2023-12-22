@@ -89,8 +89,8 @@ impl<'a> Comments<'a> {
                                 .link(RichText::new(&item.by).italics().color(Color32::GRAY))
                                 .clicked()
                             {
-                                self.event_handler
-                                    .emit(ClientEvent::User(item.by.clone()))
+                                self.local_sender
+                                    .send(Event::FetchUser(item.by.clone()))
                                     .unwrap_or_default();
                             };
 
