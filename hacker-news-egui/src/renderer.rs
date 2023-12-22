@@ -85,22 +85,31 @@ impl<'a, 'b> Renderer<'a, 'b> {
                     .spacing((0., 5.))
                     .striped(true)
                     .show(ui, |ui| {
-                        for article in self.app_state.articles.iter().filter(|article| {
-                            if !self.app_state.search.is_empty() {
-                                article
-                                    .title
-                                    .as_deref()
-                                    .map(|title| {
-                                        title.split_whitespace().any(|word| {
-                                            word.to_lowercase()
-                                                .contains(&self.app_state.search.to_lowercase())
+                        let article_iter = self
+                            .app_state
+                            .articles
+                            .iter()
+                            .filter(|article| {
+                                if !self.app_state.search.is_empty() {
+                                    article
+                                        .title
+                                        .as_deref()
+                                        .map(|title| {
+                                            title.split_whitespace().any(|word| {
+                                                word.to_lowercase()
+                                                    .contains(&self.app_state.search.to_lowercase())
+                                            })
                                         })
-                                    })
-                                    .unwrap_or(false)
-                            } else {
-                                true
-                            }
-                        }) {
+                                        .unwrap_or(false)
+                                } else {
+                                    true
+                                }
+                            })
+                            .filter(|article| {
+                                !self.app_state.filter_visited
+                                    || !self.app_state.visited.contains(&article.id)
+                            });
+                        for article in article_iter {
                             self.render_article(ui, article);
                         }
                     })
@@ -231,6 +240,12 @@ impl<'a, 'b> Renderer<'a, 'b> {
 
                 ui.label("Visited");
                 ui.label(format!("{}", self.app_state.visited.len()));
+                if ui.button("F").on_hover_text("Filter visited").clicked() {
+                    self.app_state
+                        .local_sender
+                        .send(Event::FilterVisited)
+                        .unwrap_or_default();
+                }
 
                 if self.app_state.fetching {
                     ui.spinner();

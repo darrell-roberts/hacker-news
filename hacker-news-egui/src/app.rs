@@ -90,6 +90,8 @@ pub struct HackerNewsApp {
     pub search: String,
     /// Showing window for item text.
     pub viewing_item_text: bool,
+    /// Filter visited.
+    pub filter_visited: bool,
 }
 
 pub struct MutableWidgetState {
@@ -143,6 +145,7 @@ impl HackerNewsApp {
             viewing_user: false,
             search: String::new(),
             viewing_item_text: false,
+            filter_visited: false,
         }
     }
 
@@ -217,6 +220,9 @@ impl HackerNewsApp {
                 self.visited.push(item.id);
                 self.comments_state.active_item = Some(item);
                 self.viewing_item_text = true;
+            }
+            Event::FilterVisited => {
+                self.filter_visited = !self.filter_visited;
             }
         }
     }
