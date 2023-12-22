@@ -16,6 +16,16 @@ pub enum Event {
     },
     Error(String),
     User(User),
+    FetchUser(String),
+    FetchComments {
+        ids: Vec<u64>,
+        parent: Option<Item>,
+        id: Id,
+        active_item: Option<Item>,
+    },
+    Visited(u64),
+    FetchArticles(ClientEvent),
+    ShowItemText(Item),
 }
 
 /// Client event.
