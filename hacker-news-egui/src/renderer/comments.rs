@@ -57,7 +57,7 @@ impl<'a, 'b> Comments<'a, 'b> {
                 .id(comment_item.id)
                 .frame(frame)
                 .vscroll(true)
-                .open(&mut self.mutable_state.open_comments[index])
+                .open(&mut self.mutable_state.viewing_comments[index])
                 .collapsible(false)
                 .show(ctx, |ui| {
                     let render_by = |ui: &mut egui::Ui, item: &Item, comments: bool| {

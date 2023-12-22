@@ -67,7 +67,7 @@ pub struct HackerNewsApp {
     /// Viewing article type.
     pub article_type: ArticleType,
     /// Comment window open states.
-    pub open_comments: Vec<bool>,
+    pub viewing_comments: Vec<bool>,
     /// Viewing a user
     pub user: Option<User>,
     /// User window open/closed.
@@ -80,7 +80,7 @@ pub struct HackerNewsApp {
 
 pub struct MutableWidgetState {
     pub search: String,
-    pub open_comments: Vec<bool>,
+    pub viewing_comments: Vec<bool>,
     pub viewing_user: bool,
     pub viewing_item_text: bool,
 }
@@ -102,7 +102,7 @@ impl HackerNewsApp {
             comments_state: Default::default(),
             error: None,
             article_type: ArticleType::Top,
-            open_comments: Vec::new(),
+            viewing_comments: Vec::new(),
             user: None,
             viewing_user: false,
             search: String::new(),
@@ -128,11 +128,11 @@ impl HackerNewsApp {
                 };
                 if comment_item.parent.is_some() {
                     self.comments_state.comment_trail.push(comment_item);
-                    self.open_comments.push(true);
+                    self.viewing_comments.push(true);
                 } else {
                     // Reset comment history/state.
                     self.comments_state.comment_trail = vec![comment_item];
-                    self.open_comments = vec![true];
+                    self.viewing_comments = vec![true];
                 }
                 self.error = None;
                 self.fetching = false;
@@ -215,16 +215,16 @@ impl eframe::App for HackerNewsApp {
         // Window widget requires a mutable reference for the close
         // button in the title bar and the search input also uses
         // a mutable ref for the input String.
-        let mutable_state = MutableWidgetState {
-            open_comments: self.open_comments.clone(),
+        let mut mutable_state = MutableWidgetState {
+            viewing_comments: self.viewing_comments.clone(),
             search: self.search.clone(),
             viewing_user: self.viewing_user,
             viewing_item_text: self.viewing_item_text,
         };
 
-        let mutable_state = Renderer::new(ctx, self, mutable_state).render();
+        Renderer::new(ctx, self, &mut mutable_state).render();
 
-        self.open_comments = mutable_state.open_comments;
+        self.viewing_comments = mutable_state.viewing_comments;
         self.search = mutable_state.search;
         self.viewing_user = mutable_state.viewing_user;
         self.viewing_item_text = mutable_state.viewing_item_text;

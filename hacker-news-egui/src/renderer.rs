@@ -12,17 +12,17 @@ use egui::{
 
 mod comments;
 
-pub struct Renderer<'a> {
+pub struct Renderer<'a, 'b> {
     context: &'a egui::Context,
     app_state: &'a HackerNewsApp,
-    mutable_state: MutableWidgetState,
+    mutable_state: &'b mut MutableWidgetState,
 }
 
-impl<'a> Renderer<'a> {
+impl<'a, 'b> Renderer<'a, 'b> {
     pub fn new(
         context: &'a egui::Context,
         app_state: &'a HackerNewsApp,
-        mutable_state: MutableWidgetState,
+        mutable_state: &'b mut MutableWidgetState,
     ) -> Self {
         Self {
             context,
@@ -31,7 +31,7 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    pub fn render(mut self) -> MutableWidgetState {
+    pub fn render(mut self) {
         if self.app_state.fetching {
             self.context.set_cursor_icon(CursorIcon::Progress);
         } else {
@@ -64,13 +64,11 @@ impl<'a> Renderer<'a> {
                 self.render_articles(ui);
                 self.render_user();
             });
-
-        self.mutable_state
     }
 
     /// Render comments if requested.
     fn render_comments(&mut self) {
-        Comments::new(self.context, self.app_state, &mut self.mutable_state).render(self.context);
+        Comments::new(self.context, self.app_state, self.mutable_state).render(self.context);
     }
 
     /// Render the articles.
