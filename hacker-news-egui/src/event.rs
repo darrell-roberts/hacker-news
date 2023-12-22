@@ -21,7 +21,11 @@ pub enum Event {
         ids: Vec<u64>,
         parent: Option<Item>,
         id: Id,
+        active_item: Option<Item>,
     },
+    Visited(u64),
+    FetchArticles(ClientEvent),
+    ShowItemText(Item),
 }
 
 /// Client event.

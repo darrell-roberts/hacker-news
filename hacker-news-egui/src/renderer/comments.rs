@@ -1,6 +1,7 @@
 use crate::{
-    app::scroll_delta,
-    event::{ClientEvent, Event, EventHandler},
+    app::{HackerNewsApp, MutableWidgetState},
+    event::Event,
+    renderer::scroll_delta,
     text::{parse_date, render_rich_text},
 };
 use egui::{
@@ -8,45 +9,29 @@ use egui::{
     Margin, RichText, Rounding, Stroke, Vec2,
 };
 use hacker_news_api::Item;
-use log::error;
-use tokio::sync::mpsc::UnboundedSender;
-
-pub struct CommentItem {
-    pub comments: Vec<Item>,
-    pub parent: Option<Item>,
-    pub id: Id,
-}
-
-/// Comment state data.
-#[derive(Default)]
-pub struct CommentsState {
-    /// Active comments being viewed.
-    pub comments: Vec<Item>,
-    /// Trail of comments navigated.
-    pub comment_trail: Vec<CommentItem>,
-    /// Parent comment trail.
-    pub parent_comments: Vec<Item>,
-    /// Active item when reading comments.
-    pub active_item: Option<Item>,
-}
 
 /// Renderer for comment window.
-pub struct Comments<'a> {
-    /// Emit local events.
-    pub local_sender: &'a UnboundedSender<Event>,
-    /// API request in progress.
-    pub fetching: &'a mut bool,
-    /// Event handler for background events.
-    pub event_handler: &'a EventHandler,
-    /// Comments state.
-    pub comments_state: &'a CommentsState,
-    /// Flags for open/closing comment windows.
-    pub open_comments: &'a mut Vec<bool>,
+pub struct Comments<'a, 'b> {
+    pub context: &'a egui::Context,
+    pub app_state: &'a HackerNewsApp,
+    pub mutable_state: &'b mut MutableWidgetState,
 }
 
-impl<'a> Comments<'a> {
+impl<'a, 'b> Comments<'a, 'b> {
+    pub fn new(
+        context: &'a egui::Context,
+        app_state: &'a HackerNewsApp,
+        mutable_state: &'b mut MutableWidgetState,
+    ) -> Self {
+        Self {
+            context,
+            app_state,
+            mutable_state,
+        }
+    }
+
     /// Render comments if requested.
-    pub fn render(&mut self, ctx: &egui::Context, _ui: &mut egui::Ui) {
+    pub fn render(&mut self, ctx: &egui::Context) {
         let frame = Frame::none()
             .fill(Color32::from_rgb(246, 247, 176))
             .inner_margin(Margin {
@@ -67,13 +52,12 @@ impl<'a> Comments<'a> {
             })
             .shadow(Shadow::small_light());
 
-        for (comment_item, index) in self.comments_state.comment_trail.iter().zip(0..) {
-            let open = &mut self.open_comments[index];
+        for (comment_item, index) in self.app_state.comments_state.comment_trail.iter().zip(0..) {
             egui::Window::new("")
                 .id(comment_item.id)
                 .frame(frame)
                 .vscroll(true)
-                .open(open)
+                .open(&mut self.mutable_state.open_comments[index])
                 .collapsible(false)
                 .show(ctx, |ui| {
                     let render_by = |ui: &mut egui::Ui, item: &Item, comments: bool| {
@@ -89,7 +73,8 @@ impl<'a> Comments<'a> {
                                 .link(RichText::new(&item.by).italics().color(Color32::GRAY))
                                 .clicked()
                             {
-                                self.local_sender
+                                self.app_state
+                                    .local_sender
                                     .send(Event::FetchUser(item.by.clone()))
                                     .unwrap_or_default();
                             };
@@ -106,7 +91,7 @@ impl<'a> Comments<'a> {
 
                     let scroll_delta = scroll_delta(ui);
                     ui.scroll_with_delta(scroll_delta);
-                    if let Some(item) = self.comments_state.active_item.as_ref() {
+                    if let Some(item) = self.app_state.comments_state.active_item.as_ref() {
                         ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
                         ui.style_mut().visuals.hyperlink_color = Color32::BLACK;
                         if let Some(title) = item.title.as_deref() {
@@ -169,16 +154,15 @@ impl<'a> Comments<'a> {
                                                 .ui(ui);
 
                                         if button.clicked() {
-                                            *self.fetching = true;
-                                            if let Err(err) =
-                                                self.event_handler.emit(ClientEvent::Comments {
+                                            self.app_state
+                                                .local_sender
+                                                .send(Event::FetchComments {
                                                     ids: comment.kids.clone(),
                                                     parent: Some(comment.to_owned()),
                                                     id: Id::new(comment.id),
+                                                    active_item: None,
                                                 })
-                                            {
-                                                error!("Failed to emit comments: {err}");
-                                            }
+                                                .unwrap_or_default();
                                         }
                                     }
                                 });
