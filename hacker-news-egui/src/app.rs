@@ -6,7 +6,7 @@ use crate::{
 use eframe::Storage;
 use egui::{os::OperatingSystem, Id};
 use hacker_news_api::{Item, User};
-use std::sync::atomic::Ordering;
+use std::{str::FromStr, sync::atomic::Ordering};
 use tokio::sync::mpsc::UnboundedSender;
 
 // mod comments;
@@ -25,6 +25,19 @@ impl ArticleType {
             ArticleType::Best => "Best",
             ArticleType::Top => "Top",
         }
+    }
+}
+
+impl FromStr for ArticleType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "New" => ArticleType::New,
+            "Best" => ArticleType::Best,
+            "Top" => ArticleType::Top,
+            _ => return Err(()),
+        })
     }
 }
 
@@ -89,21 +102,42 @@ pub struct MutableWidgetState {
 impl HackerNewsApp {
     /// Create a new [`HackerNewsApp`].
     pub fn new(
-        _cc: &eframe::CreationContext<'_>,
+        cc: &eframe::CreationContext<'_>,
         event_handler: EventHandler,
         local_sender: UnboundedSender<Event>,
-        visited: Option<Vec<u64>>,
     ) -> Self {
+        let visited = cc
+            .storage
+            .and_then(|s| s.get_string("visited"))
+            .map(|v| {
+                v.split(',')
+                    .flat_map(|n| n.parse::<u64>())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+
+        let article_type = cc
+            .storage
+            .and_then(|s| s.get_string("article_type"))
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(ArticleType::Top);
+
+        let showing = cc
+            .storage
+            .and_then(|s| s.get_string("showing"))
+            .and_then(|showing| showing.parse().ok())
+            .unwrap_or(50);
+
         Self {
             event_handler,
             articles: Vec::new(),
             fetching: true,
             local_sender,
-            showing: 50,
-            visited: visited.unwrap_or_default(),
+            showing,
+            visited,
             comments_state: Default::default(),
             error: None,
-            article_type: ArticleType::Top,
+            article_type,
             viewing_comments: Vec::new(),
             user: None,
             viewing_user: false,
@@ -246,5 +280,7 @@ impl eframe::App for HackerNewsApp {
                 .collect::<Vec<_>>();
             strs.join(",")
         });
+        storage.set_string("showing", format!("{}", self.showing));
+        storage.set_string("article_type", self.article_type.as_str().into());
     }
 }

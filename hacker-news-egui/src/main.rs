@@ -45,11 +45,7 @@ async fn main() -> anyhow::Result<()> {
             let (sender, mut receiver) = mpsc::unbounded_channel::<ClientEvent>();
             let (local_sender, client_receiver) = mpsc::unbounded_channel::<Event>();
 
-            sender
-                .send(ClientEvent::TopStories(50))
-                .expect("Failed to request initial top stories");
-
-            let event_handler = EventHandler::new(sender, client_receiver);
+            let event_handler = EventHandler::new(sender.clone(), client_receiver);
             let client_event_handler =
                 ClientEventHandler::new(client.clone(), ctx, local_sender.clone());
 
@@ -61,13 +57,11 @@ async fn main() -> anyhow::Result<()> {
                 }
             });
 
-            let visited = cc.storage.and_then(|s| s.get_string("visited")).map(|v| {
-                v.split(',')
-                    .flat_map(|n| n.parse::<u64>())
-                    .collect::<Vec<_>>()
-            });
+            let app = HackerNewsApp::new(cc, event_handler, local_sender);
+            let last_request = app.last_request();
+            sender.send(last_request(app.showing)).unwrap_or_default();
 
-            Box::new(HackerNewsApp::new(cc, event_handler, local_sender, visited))
+            Box::new(app)
         }),
     )
     .map_err(|e| anyhow::Error::msg(format!("failed to launch: {e}")))?;
