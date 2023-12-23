@@ -26,7 +26,9 @@ cargo tauri build
 - View top/best/new stories.
 - Search text in title.
 - Read comments and nested comments.
-- Highlights rust articles with badge.
+- View user information.
+- Highlights Rust articles with badge.
+- Track visisted/Filter visisted/Reset visisted.
 
 ### Install prerequisites
 Each install method will build and package from source. You'll first need to clone this repo.
@@ -58,12 +60,12 @@ make
 This will create a `dist/Hacker News.dmg` file and open/mount it. Simply copy the contents into your `Application` folder.
 
 ### Articles
-<img width="1184" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/72e817d1-4157-4021-9c0b-5130d76c58cd">
+<img width="1047" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/c41c32f2-f75a-4775-8d6c-b5fa36f1d8b7">
 
 ### Title search
-<img width="1184" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/fc8af470-497d-4626-a881-5f61c65e94f1">
+<img width="1047" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/bb1a08f4-77e0-4d66-91a1-4cb8bc46d4d3">
 
 ### View comments
-<img width="1098" alt="Screenshot 2023-12-21 at 4 28 46 PM" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/facddeae-cde0-4a8e-b147-f9ad4e157933">
+<img width="1047" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/6a99a876-4079-4a80-8cab-777229b8b3e3">
 
 
