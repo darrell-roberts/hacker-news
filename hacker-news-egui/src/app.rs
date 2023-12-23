@@ -267,8 +267,12 @@ impl eframe::App for HackerNewsApp {
 
         Renderer::new(ctx, self, &mut mutable_state).render();
 
-        self.viewing_comments = mutable_state.viewing_comments;
-        self.search = mutable_state.search;
+        if mutable_state.viewing_comments != self.viewing_comments {
+            self.viewing_comments = mutable_state.viewing_comments
+        }
+        if mutable_state.search != self.search {
+            self.search = mutable_state.search;
+        }
         self.viewing_user = mutable_state.viewing_user;
         self.viewing_item_text = mutable_state.viewing_item_text;
     }

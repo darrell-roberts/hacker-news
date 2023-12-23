@@ -6,8 +6,8 @@ use crate::{
 use chrono::{DateTime, Utc};
 use comments::Comments;
 use egui::{
-    epaint::Shadow, style::Spacing, widgets::Widget, Button, Color32, CursorIcon, Frame, Grid, Id,
-    Key, Margin, RichText, Rounding, Stroke, TextStyle, Vec2, Window,
+    epaint::Shadow, include_image, style::Spacing, widgets::Widget, Button, Color32, CursorIcon,
+    Frame, Grid, Id, Key, Margin, RichText, Rounding, Stroke, TextStyle, Vec2, Window,
 };
 
 mod comments;
@@ -238,9 +238,11 @@ impl<'a, 'b> Renderer<'a, 'b> {
 
                 ui.separator();
 
-                ui.label("Visited");
-                ui.label(format!("{}", self.app_state.visited.len()));
-                if ui.button("F").on_hover_text("Filter visited").clicked() {
+                ui.label(format!("{}", self.app_state.visited.len()))
+                    .on_hover_text("Visited");
+                let button = Button::image(include_image!("../assets/filter.png"))
+                    .selected(self.app_state.filter_visited);
+                if button.ui(ui).on_hover_text("Filter visited").clicked() {
                     self.app_state
                         .local_sender
                         .send(Event::FilterVisited)
