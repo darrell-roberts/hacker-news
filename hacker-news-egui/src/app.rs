@@ -1,3 +1,4 @@
+//! Application state and type definitions.
 use crate::{
     event::{ClientEvent, Event, EventHandler},
     renderer::Renderer,
@@ -8,8 +9,6 @@ use egui::{os::OperatingSystem, Id};
 use hacker_news_api::{Item, User};
 use std::{str::FromStr, sync::atomic::Ordering};
 use tokio::sync::mpsc::UnboundedSender;
-
-// mod comments;
 
 #[derive(Eq, PartialEq, Copy, Clone, Hash)]
 pub enum ArticleType {
@@ -41,9 +40,15 @@ impl FromStr for ArticleType {
     }
 }
 
+/// A list of child comment ids for a given comment.
 pub struct CommentItem {
+    /// Sub comments.
     pub comments: Vec<Item>,
+    /// parent of sub comment
     pub parent: Option<Item>,
+    /// Id for widget uniqueness. Can be
+    /// the article item if this is a top level
+    /// comment otherwise the parent comment id.
     pub id: Id,
 }
 
@@ -94,6 +99,9 @@ pub struct HackerNewsApp {
     pub filter_visited: bool,
 }
 
+/// State that requires mutation by a widget. This is the
+/// case for text edit and windows which take a `&mut String`
+/// or `&mut bool`
 pub struct MutableWidgetState {
     pub search: String,
     pub viewing_comments: Vec<bool>,

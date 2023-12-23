@@ -1,13 +1,12 @@
+//! Render the comment windows.
+use super::styles::{comment_bubble_frame, comment_window_frame};
 use crate::{
     app::{HackerNewsApp, MutableWidgetState},
     event::Event,
     renderer::scroll_delta,
     text::{parse_date, render_rich_text},
 };
-use egui::{
-    containers::Frame, epaint::Shadow, style::Spacing, widgets::Widget, Button, Color32, Id,
-    Margin, RichText, Rounding, Stroke, Vec2,
-};
+use egui::{style::Spacing, widgets::Widget, Button, Color32, Id, RichText, Vec2};
 use hacker_news_api::Item;
 
 /// Renderer for comment window.
@@ -31,35 +30,15 @@ impl<'a, 'b> Comments<'a, 'b> {
     }
 
     /// Render comments if requested.
-    pub fn render(&mut self, ctx: &egui::Context) {
-        let frame = Frame::none()
-            .fill(Color32::from_rgb(246, 247, 176))
-            .inner_margin(Margin {
-                left: 5.,
-                right: 5.,
-                top: 5.,
-                bottom: 5.,
-            })
-            .rounding(Rounding {
-                nw: 8.,
-                ne: 8.,
-                sw: 8.,
-                se: 8.,
-            })
-            .stroke(Stroke {
-                color: Color32::BLACK,
-                width: 1.,
-            })
-            .shadow(Shadow::small_light());
-
+    pub fn render(&mut self) {
         for (comment_item, index) in self.app_state.comments_state.comment_trail.iter().zip(0..) {
             egui::Window::new("")
                 .id(comment_item.id)
-                .frame(frame)
+                .frame(comment_window_frame())
                 .vscroll(true)
                 .open(&mut self.mutable_state.viewing_comments[index])
                 .collapsible(false)
-                .show(ctx, |ui| {
+                .show(self.context, |ui| {
                     let render_by = |ui: &mut egui::Ui, item: &Item, comments: bool| {
                         ui.horizontal(|ui| {
                             ui.style_mut().spacing = Spacing {
@@ -113,61 +92,39 @@ impl<'a, 'b> Comments<'a, 'b> {
                     ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
 
                     for comment in comment_item.comments.iter() {
-                        Frame::none()
-                            .fill(Color32::LIGHT_YELLOW)
-                            .outer_margin(Margin {
-                                top: 5.,
-                                left: 10.,
-                                right: 10.,
-                                bottom: 5.,
-                            })
-                            .inner_margin(Margin {
-                                top: 10.,
-                                left: 10.,
-                                right: 10.,
-                                bottom: 10.,
-                            })
-                            .rounding(Rounding {
-                                nw: 8.,
-                                ne: 8.,
-                                sw: 8.,
-                                se: 8.,
-                            })
-                            .show(ui, |ui| {
-                                render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
+                        comment_bubble_frame().show(ui, |ui| {
+                            render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
 
-                                ui.add_space(5.0);
-                                ui.horizontal(|ui| {
-                                    ui.style_mut().spacing = Spacing {
-                                        item_spacing: Vec2 { y: 1., x: 2. },
-                                        ..Default::default()
-                                    };
+                            ui.add_space(5.0);
+                            ui.horizontal(|ui| {
+                                ui.style_mut().spacing = Spacing {
+                                    item_spacing: Vec2 { y: 1., x: 2. },
+                                    ..Default::default()
+                                };
+                                ui.style_mut().visuals.override_text_color = Some(Color32::GRAY);
+                                render_by(ui, comment, false);
+                                if !comment.kids.is_empty() {
                                     ui.style_mut().visuals.override_text_color =
-                                        Some(Color32::GRAY);
-                                    render_by(ui, comment, false);
-                                    if !comment.kids.is_empty() {
-                                        ui.style_mut().visuals.override_text_color =
-                                            Some(Color32::BLACK);
-                                        let button =
-                                            Button::new(format!("💬{}", comment.kids.len()))
-                                                .fill(Color32::LIGHT_YELLOW)
-                                                .ui(ui);
+                                        Some(Color32::BLACK);
+                                    let button = Button::new(format!("💬{}", comment.kids.len()))
+                                        .fill(Color32::LIGHT_YELLOW)
+                                        .ui(ui);
 
-                                        if button.clicked() {
-                                            self.app_state
-                                                .local_sender
-                                                .send(Event::FetchComments {
-                                                    ids: comment.kids.clone(),
-                                                    parent: Some(comment.to_owned()),
-                                                    id: Id::new(comment.id),
-                                                    active_item: None,
-                                                })
-                                                .unwrap_or_default();
-                                        }
+                                    if button.clicked() {
+                                        self.app_state
+                                            .local_sender
+                                            .send(Event::FetchComments {
+                                                ids: comment.kids.clone(),
+                                                parent: Some(comment.to_owned()),
+                                                id: Id::new(comment.id),
+                                                active_item: None,
+                                            })
+                                            .unwrap_or_default();
                                     }
-                                });
-                                ui.set_width(ui.available_width());
+                                }
                             });
+                            ui.set_width(ui.available_width());
+                        });
                     }
                 });
         }

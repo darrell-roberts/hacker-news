@@ -1,3 +1,8 @@
+//! Main renderer invoked on every update.
+use self::styles::{
+    article_text_bubble_frame, article_text_window_frame, central_panel_frame, user_bubble_frame,
+    user_window_frame,
+};
 use crate::{
     app::{ArticleType, HackerNewsApp, MutableWidgetState},
     event::{ClientEvent, Event},
@@ -6,12 +11,12 @@ use crate::{
 use chrono::{DateTime, Utc};
 use comments::Comments;
 use egui::{
-    epaint::Shadow, include_image, style::Spacing, widgets::Widget, Align, Button, Color32,
-    CursorIcon, Frame, Grid, Id, Key, Layout, Margin, RichText, Rounding, Stroke, TextEdit,
-    TextStyle, Vec2, Window,
+    include_image, style::Spacing, widgets::Widget, Align, Button, Color32, CursorIcon, Grid, Id,
+    Key, Layout, RichText, TextEdit, TextStyle, Vec2, Window,
 };
 
 mod comments;
+mod styles;
 
 pub struct Renderer<'a, 'b> {
     context: &'a egui::Context,
@@ -41,19 +46,8 @@ impl<'a, 'b> Renderer<'a, 'b> {
 
         self.render_header();
 
-        let frame = Frame {
-            fill: Color32::from_rgb(245, 243, 240),
-            inner_margin: Margin {
-                left: 5.,
-                right: 5.,
-                top: 5.,
-                bottom: 5.,
-            },
-            ..Default::default()
-        };
-
         egui::CentralPanel::default()
-            .frame(frame)
+            .frame(central_panel_frame())
             .show(self.context, |ui| {
                 ui.visuals_mut().widgets.noninteractive.fg_stroke.color = Color32::BLACK;
                 ui.visuals_mut().widgets.active.fg_stroke.color = Color32::BLACK;
@@ -69,7 +63,7 @@ impl<'a, 'b> Renderer<'a, 'b> {
 
     /// Render comments if requested.
     fn render_comments(&mut self) {
-        Comments::new(self.context, self.app_state, self.mutable_state).render(self.context);
+        Comments::new(self.context, self.app_state, self.mutable_state).render();
     }
 
     /// Render the articles.
@@ -312,56 +306,16 @@ impl<'a, 'b> Renderer<'a, 'b> {
     /// Render a user window.
     fn render_user(&mut self) {
         if let Some(user) = self.app_state.user.as_ref() {
-            let frame = Frame::none()
-                .inner_margin(Margin {
-                    left: 5.,
-                    right: 5.,
-                    top: 5.,
-                    bottom: 5.,
-                })
-                .rounding(Rounding {
-                    nw: 8.,
-                    ne: 8.,
-                    sw: 8.,
-                    se: 8.,
-                })
-                .stroke(Stroke {
-                    color: Color32::BLACK,
-                    width: 1.,
-                })
-                .shadow(Shadow::small_light())
-                .fill(Color32::from_rgb(220, 245, 247));
-
             Window::new(&user.id)
                 .open(&mut self.mutable_state.viewing_user)
-                .frame(frame)
+                .frame(user_window_frame())
                 .collapsible(false)
                 .vscroll(true)
                 .show(self.context, |ui| {
                     if let Some(about) = user.about.as_deref() {
-                        Frame::none()
-                            .fill(Color32::LIGHT_BLUE)
-                            .outer_margin(Margin {
-                                top: 5.,
-                                left: 10.,
-                                right: 10.,
-                                bottom: 5.,
-                            })
-                            .inner_margin(Margin {
-                                top: 10.,
-                                left: 10.,
-                                right: 10.,
-                                bottom: 10.,
-                            })
-                            .rounding(Rounding {
-                                nw: 8.,
-                                ne: 8.,
-                                sw: 8.,
-                                se: 8.,
-                            })
-                            .show(ui, |ui| {
-                                render_rich_text(about, ui);
-                            });
+                        user_bubble_frame().show(ui, |ui| {
+                            render_rich_text(about, ui);
+                        });
                     }
 
                     let created = DateTime::<Utc>::from_timestamp(user.created as i64, 0);
@@ -386,55 +340,16 @@ impl<'a, 'b> Renderer<'a, 'b> {
     fn render_item_text(&mut self) {
         if let Some(item) = self.app_state.comments_state.active_item.as_ref() {
             if self.app_state.viewing_item_text {
-                let frame = Frame::none()
-                    .fill(Color32::from_rgb(195, 250, 248))
-                    .inner_margin(Margin {
-                        left: 5.,
-                        right: 5.,
-                        top: 5.,
-                        bottom: 5.,
-                    })
-                    .rounding(Rounding {
-                        nw: 8.,
-                        ne: 8.,
-                        sw: 8.,
-                        se: 8.,
-                    })
-                    .stroke(Stroke {
-                        color: Color32::BLACK,
-                        width: 1.,
-                    })
-                    .shadow(Shadow::small_light());
                 egui::Window::new("")
                     .id(Id::new(item.id))
-                    .frame(frame)
+                    .frame(article_text_window_frame())
                     .vscroll(true)
                     .collapsible(false)
                     .open(&mut self.mutable_state.viewing_item_text)
                     .show(self.context, |ui| {
-                        Frame::none()
-                            .fill(Color32::from_rgb(195, 231, 250))
-                            .outer_margin(Margin {
-                                top: 5.,
-                                left: 10.,
-                                right: 10.,
-                                bottom: 5.,
-                            })
-                            .inner_margin(Margin {
-                                top: 10.,
-                                left: 10.,
-                                right: 10.,
-                                bottom: 10.,
-                            })
-                            .rounding(Rounding {
-                                nw: 8.,
-                                ne: 8.,
-                                sw: 8.,
-                                se: 8.,
-                            })
-                            .show(ui, |ui| {
-                                render_rich_text(item.text.as_deref().unwrap_or_default(), ui);
-                            });
+                        article_text_bubble_frame().show(ui, |ui| {
+                            render_rich_text(item.text.as_deref().unwrap_or_default(), ui);
+                        });
                         ui.horizontal(|ui| {
                             ui.style_mut().spacing = Spacing {
                                 item_spacing: Vec2 { y: 1., x: 2. },
