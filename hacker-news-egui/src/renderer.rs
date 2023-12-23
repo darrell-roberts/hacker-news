@@ -6,23 +6,24 @@ use crate::{
 use chrono::{DateTime, Utc};
 use comments::Comments;
 use egui::{
-    epaint::Shadow, style::Spacing, widgets::Widget, Button, Color32, CursorIcon, Frame, Grid, Id,
-    Key, Margin, RichText, Rounding, Stroke, TextStyle, Vec2, Window,
+    epaint::Shadow, include_image, style::Spacing, widgets::Widget, Align, Button, Color32,
+    CursorIcon, Frame, Grid, Id, Key, Layout, Margin, RichText, Rounding, Stroke, TextEdit,
+    TextStyle, Vec2, Window,
 };
 
 mod comments;
 
-pub struct Renderer<'a> {
+pub struct Renderer<'a, 'b> {
     context: &'a egui::Context,
     app_state: &'a HackerNewsApp,
-    mutable_state: MutableWidgetState,
+    mutable_state: &'b mut MutableWidgetState,
 }
 
-impl<'a> Renderer<'a> {
+impl<'a, 'b> Renderer<'a, 'b> {
     pub fn new(
         context: &'a egui::Context,
         app_state: &'a HackerNewsApp,
-        mutable_state: MutableWidgetState,
+        mutable_state: &'b mut MutableWidgetState,
     ) -> Self {
         Self {
             context,
@@ -31,7 +32,7 @@ impl<'a> Renderer<'a> {
         }
     }
 
-    pub fn render(mut self) -> MutableWidgetState {
+    pub fn render(mut self) {
         if self.app_state.fetching {
             self.context.set_cursor_icon(CursorIcon::Progress);
         } else {
@@ -64,13 +65,11 @@ impl<'a> Renderer<'a> {
                 self.render_articles(ui);
                 self.render_user();
             });
-
-        self.mutable_state
     }
 
     /// Render comments if requested.
     fn render_comments(&mut self) {
-        Comments::new(self.context, self.app_state, &mut self.mutable_state).render(self.context);
+        Comments::new(self.context, self.app_state, self.mutable_state).render(self.context);
     }
 
     /// Render the articles.
@@ -87,22 +86,31 @@ impl<'a> Renderer<'a> {
                     .spacing((0., 5.))
                     .striped(true)
                     .show(ui, |ui| {
-                        for article in self.app_state.articles.iter().filter(|article| {
-                            if !self.app_state.search.is_empty() {
-                                article
-                                    .title
-                                    .as_deref()
-                                    .map(|title| {
-                                        title.split_whitespace().any(|word| {
-                                            word.to_lowercase()
-                                                .contains(&self.app_state.search.to_lowercase())
+                        let article_iter = self
+                            .app_state
+                            .articles
+                            .iter()
+                            .filter(|article| {
+                                if !self.app_state.search.is_empty() {
+                                    article
+                                        .title
+                                        .as_deref()
+                                        .map(|title| {
+                                            title.split_whitespace().any(|word| {
+                                                word.to_lowercase()
+                                                    .contains(&self.app_state.search.to_lowercase())
+                                            })
                                         })
-                                    })
-                                    .unwrap_or(false)
-                            } else {
-                                true
-                            }
-                        }) {
+                                        .unwrap_or(false)
+                                } else {
+                                    true
+                                }
+                            })
+                            .filter(|article| {
+                                !self.app_state.filter_visited
+                                    || !self.app_state.visited.contains(&article.id)
+                            });
+                        for article in article_iter {
                             self.render_article(ui, article);
                         }
                     })
@@ -224,15 +232,43 @@ impl<'a> Renderer<'a> {
                 ui.separator();
 
                 ui.label("🔎");
-                ui.text_edit_singleline(&mut self.mutable_state.search);
+                ui.add_sized(
+                    (200., 15.),
+                    TextEdit::singleline(&mut self.mutable_state.search),
+                );
+                // ui.text_edit_singleline(&mut self.mutable_state.search);
                 if ui.button("🗑").on_hover_text("Clear search").clicked() {
                     self.mutable_state.search = String::new();
                 }
 
                 ui.separator();
 
+                ui.label(format!("{}", self.app_state.visited.len()))
+                    .on_hover_text("Visited");
+                let filter_button = Button::image(include_image!("../assets/filter.png"))
+                    .selected(self.app_state.filter_visited);
+                if filter_button
+                    .ui(ui)
+                    .on_hover_text("Filter visited")
+                    .clicked()
+                {
+                    self.app_state
+                        .local_sender
+                        .send(Event::FilterVisited)
+                        .unwrap_or_default();
+                }
+                let reset_button = Button::image(include_image!("../assets/reset.png"));
+                if reset_button.ui(ui).on_hover_text("Reset visited").clicked() {
+                    self.app_state
+                        .local_sender
+                        .send(Event::ResetVisited)
+                        .unwrap_or_default();
+                };
+
                 if self.app_state.fetching {
-                    ui.spinner();
+                    ui.with_layout(Layout::right_to_left(Align::RIGHT), |ui| {
+                        ui.spinner();
+                    });
                 }
             });
 
