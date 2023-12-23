@@ -6,8 +6,9 @@ use crate::{
 use chrono::{DateTime, Utc};
 use comments::Comments;
 use egui::{
-    epaint::Shadow, include_image, style::Spacing, widgets::Widget, Button, Color32, CursorIcon,
-    Frame, Grid, Id, Key, Margin, RichText, Rounding, Stroke, TextStyle, Vec2, Window,
+    epaint::Shadow, include_image, style::Spacing, widgets::Widget, Align, Button, Color32,
+    CursorIcon, Frame, Grid, Id, Key, Layout, Margin, RichText, Rounding, Stroke, TextEdit,
+    TextStyle, Vec2, Window,
 };
 
 mod comments;
@@ -231,7 +232,11 @@ impl<'a, 'b> Renderer<'a, 'b> {
                 ui.separator();
 
                 ui.label("🔎");
-                ui.text_edit_singleline(&mut self.mutable_state.search);
+                ui.add_sized(
+                    (200., 15.),
+                    TextEdit::singleline(&mut self.mutable_state.search),
+                );
+                // ui.text_edit_singleline(&mut self.mutable_state.search);
                 if ui.button("🗑").on_hover_text("Clear search").clicked() {
                     self.mutable_state.search = String::new();
                 }
@@ -248,9 +253,10 @@ impl<'a, 'b> Renderer<'a, 'b> {
                         .send(Event::FilterVisited)
                         .unwrap_or_default();
                 }
-
                 if self.app_state.fetching {
-                    ui.spinner();
+                    ui.with_layout(Layout::right_to_left(Align::RIGHT), |ui| {
+                        ui.spinner();
+                    });
                 }
             });
 
