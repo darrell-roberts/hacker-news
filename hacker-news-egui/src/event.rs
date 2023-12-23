@@ -27,6 +27,7 @@ pub enum Event {
     FetchArticles(ClientEvent),
     ShowItemText(Item),
     FilterVisited,
+    ResetVisited,
 }
 
 /// Client event.

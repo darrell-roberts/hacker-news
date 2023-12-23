@@ -224,6 +224,9 @@ impl HackerNewsApp {
             Event::FilterVisited => {
                 self.filter_visited = !self.filter_visited;
             }
+            Event::ResetVisited => {
+                self.visited.clear();
+            }
         }
     }
 

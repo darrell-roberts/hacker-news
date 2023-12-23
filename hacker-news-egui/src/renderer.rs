@@ -245,14 +245,26 @@ impl<'a, 'b> Renderer<'a, 'b> {
 
                 ui.label(format!("{}", self.app_state.visited.len()))
                     .on_hover_text("Visited");
-                let button = Button::image(include_image!("../assets/filter.png"))
+                let filter_button = Button::image(include_image!("../assets/filter.png"))
                     .selected(self.app_state.filter_visited);
-                if button.ui(ui).on_hover_text("Filter visited").clicked() {
+                if filter_button
+                    .ui(ui)
+                    .on_hover_text("Filter visited")
+                    .clicked()
+                {
                     self.app_state
                         .local_sender
                         .send(Event::FilterVisited)
                         .unwrap_or_default();
                 }
+                let reset_button = Button::image(include_image!("../assets/reset.png"));
+                if reset_button.ui(ui).on_hover_text("Reset visited").clicked() {
+                    self.app_state
+                        .local_sender
+                        .send(Event::ResetVisited)
+                        .unwrap_or_default();
+                };
+
                 if self.app_state.fetching {
                     ui.with_layout(Layout::right_to_left(Align::RIGHT), |ui| {
                         ui.spinner();
