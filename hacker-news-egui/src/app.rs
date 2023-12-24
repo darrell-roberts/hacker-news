@@ -1,8 +1,7 @@
 //! Application state and type definitions.
 use crate::{
     event::{ClientEvent, Event, EventHandler},
-    renderer::Renderer,
-    SHUT_DOWN,
+    renderer, SHUT_DOWN,
 };
 use eframe::Storage;
 use egui::{os::OperatingSystem, Id};
@@ -276,7 +275,7 @@ impl eframe::App for HackerNewsApp {
             viewing_item_text: self.viewing_item_text,
         };
 
-        Renderer::new(ctx, self, &mut mutable_state).render();
+        renderer::render(ctx, self, &mut mutable_state);
 
         if mutable_state.viewing_comments != self.viewing_comments {
             self.viewing_comments = mutable_state.viewing_comments
