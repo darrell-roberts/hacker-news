@@ -3,6 +3,7 @@ use app::HackerNewsApp;
 use eframe::{icon_data::from_png_bytes, Theme};
 use egui::ViewportBuilder;
 use event::{ClientEvent, ClientEventHandler, Event, EventHandler};
+use hacker_news_api::ResultExt;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -58,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
 
             let app = HackerNewsApp::new(cc, event_handler, local_sender);
             let last_request = app.last_request();
-            sender.send(last_request(app.showing)).unwrap_or_default();
+            sender.send(last_request(app.showing)).log_error_consume();
 
             Box::new(app)
         }),

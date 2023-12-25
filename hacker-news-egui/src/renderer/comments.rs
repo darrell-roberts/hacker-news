@@ -9,7 +9,7 @@ use crate::{
     renderer::scroll_delta,
 };
 use egui::{style::Spacing, widgets::Widget, Button, Color32, Id, RichText, Vec2};
-use hacker_news_api::Item;
+use hacker_news_api::{Item, ResultExt};
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Render comments if requested.
@@ -69,7 +69,7 @@ fn render_by(ui: &mut egui::Ui, sender: &UnboundedSender<Event>, item: &Item, co
         {
             sender
                 .send(Event::FetchUser(item.by.clone()))
-                .unwrap_or_default();
+                .log_error_consume();
         };
 
         if let Some(time) = parse_date(item.time) {
@@ -113,7 +113,7 @@ fn render_comments(
                                 id: Id::new(comment.id),
                                 active_item: None,
                             })
-                            .unwrap_or_default();
+                            .log_error_consume();
                     }
                 }
             });

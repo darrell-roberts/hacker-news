@@ -3,9 +3,10 @@ use crate::{
     event::{ClientEvent, Event, EventHandler},
     renderer, SHUT_DOWN,
 };
+use anyhow::Context;
 use eframe::Storage;
 use egui::{os::OperatingSystem, Id};
-use hacker_news_api::{Item, User};
+use hacker_news_api::{Item, ResultExt, User};
 use std::{str::FromStr, sync::atomic::Ordering};
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -197,7 +198,7 @@ impl HackerNewsApp {
                 self.fetching = true;
                 self.event_handler
                     .emit(ClientEvent::User(user))
-                    .unwrap_or_default();
+                    .log_error_consume();
             }
             Event::FetchComments {
                 ids,
@@ -214,14 +215,14 @@ impl HackerNewsApp {
                 }
                 self.event_handler
                     .emit(ClientEvent::Comments { ids, parent, id })
-                    .unwrap_or_default();
+                    .log_error_consume();
             }
             Event::Visited(id) => {
                 self.visited.push(id);
             }
             Event::FetchArticles(event) => {
                 self.fetching = true;
-                self.event_handler.emit(event).unwrap_or_default();
+                self.event_handler.emit(event).log_error_consume();
             }
             Event::ShowItemText(item) => {
                 self.visited.push(item.id);
@@ -250,7 +251,8 @@ impl HackerNewsApp {
         self.event_handler
             .next_event()
             .map(|event| self.handle_event(event))
-            .unwrap_or_default();
+            .context("Failed to get next event")
+            .log_error_consume();
     }
 }
 

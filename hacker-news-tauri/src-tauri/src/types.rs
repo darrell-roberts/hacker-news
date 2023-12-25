@@ -41,7 +41,6 @@ impl From<Item> for HNItem {
         Self {
             id: item.id,
             kids: item.kids,
-            // text: item.text.map(sanitize_html),
             text: item.text.as_deref().map(to_rich_text).unwrap_or_default(),
             url: item.url,
             score: item.score,

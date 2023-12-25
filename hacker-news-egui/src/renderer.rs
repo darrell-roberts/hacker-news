@@ -12,6 +12,7 @@ use egui::{
     include_image, style::Spacing, widgets::Widget, Align, Button, Color32, CursorIcon, Grid, Id,
     Key, Layout, RichText, TextEdit, TextStyle, Vec2, Window,
 };
+use hacker_news_api::ResultExt;
 
 mod comments;
 mod styles;
@@ -107,7 +108,7 @@ fn render_article(app_state: &HackerNewsApp, ui: &mut egui::Ui, article: &hacker
                     id: Id::new(article.id),
                     active_item: Some(article.to_owned()),
                 })
-                .unwrap_or_default();
+                .log_error_consume();
         }
     } else {
         ui.label("");
@@ -142,7 +143,7 @@ fn render_article(app_state: &HackerNewsApp, ui: &mut egui::Ui, article: &hacker
                     app_state
                         .local_sender
                         .send(Event::ShowItemText(article.clone()))
-                        .unwrap_or_default();
+                        .log_error_consume();
                 }
             }
             (Some(url), Some(title)) => {
@@ -153,7 +154,7 @@ fn render_article(app_state: &HackerNewsApp, ui: &mut egui::Ui, article: &hacker
                     app_state
                         .local_sender
                         .send(Event::Visited(article.id))
-                        .unwrap_or_default();
+                        .log_error_consume();
                 }
             }
         }
@@ -168,7 +169,7 @@ fn render_article(app_state: &HackerNewsApp, ui: &mut egui::Ui, article: &hacker
             app_state
                 .local_sender
                 .send(Event::FetchUser(article.by.clone()))
-                .unwrap_or_default();
+                .log_error_consume();
         };
         if let Some(time) = text::parse_date(article.time) {
             ui.label(RichText::new(time).italics());
@@ -227,14 +228,14 @@ fn render_header<'a>(
                 app_state
                     .local_sender
                     .send(Event::FilterVisited)
-                    .unwrap_or_default();
+                    .log_error_consume();
             }
             let reset_button = Button::image(include_image!("../assets/reset.png"));
             if reset_button.ui(ui).on_hover_text("Reset visited").clicked() {
                 app_state
                     .local_sender
                     .send(Event::ResetVisited)
-                    .unwrap_or_default();
+                    .log_error_consume();
             };
 
             if app_state.fetching {
@@ -258,7 +259,7 @@ fn add_total_select_label(app_state: &HackerNewsApp, ui: &mut egui::Ui, total: u
         app_state
             .local_sender
             .send(Event::FetchArticles(app_state.last_request()(total)))
-            .unwrap_or_default();
+            .log_error_consume();
     }
 }
 
@@ -281,7 +282,7 @@ fn add_article_type_selet_label(
                 ArticleType::Best => ClientEvent::BestStories(app_state.showing),
                 ArticleType::Top => ClientEvent::TopStories(app_state.showing),
             }))
-            .unwrap_or_default();
+            .log_error_consume();
     }
 }
 
@@ -355,7 +356,7 @@ fn render_item_text<'a>(
                             app_state
                                 .local_sender
                                 .send(Event::FetchUser(item.by.clone()))
-                                .unwrap_or_default();
+                                .log_error_consume();
                         };
 
                         if let Some(time) = text::parse_date(item.time) {
