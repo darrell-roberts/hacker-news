@@ -9,7 +9,6 @@ use serde::Serialize;
 pub struct HNItem {
     pub id: u64,
     pub kids: Vec<u64>,
-    // pub text: Option<String>,
     pub text: Vec<RichText>,
     pub url: Option<String>,
     pub title: Option<String>,

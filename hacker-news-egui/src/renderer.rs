@@ -193,17 +193,15 @@ fn render_header<'a>(
         ui.horizontal(|ui| {
             ui.style_mut().visuals.window_fill = Color32::DARK_BLUE;
 
-            add_article_type_selet_label(app_state, ui, ArticleType::Top);
-            add_article_type_selet_label(app_state, ui, ArticleType::Best);
-            add_article_type_selet_label(app_state, ui, ArticleType::New);
+            [ArticleType::Top, ArticleType::Best, ArticleType::New]
+                .into_iter()
+                .for_each(add_article_type_select_label(app_state, ui));
 
             ui.separator();
 
-            add_total_select_label(app_state, ui, 25);
-            add_total_select_label(app_state, ui, 50);
-            add_total_select_label(app_state, ui, 75);
-            add_total_select_label(app_state, ui, 100);
-            add_total_select_label(app_state, ui, 500);
+            [25, 50, 75, 100, 500]
+                .into_iter()
+                .for_each(add_total_select_label(app_state, ui));
 
             ui.separator();
 
@@ -251,38 +249,44 @@ fn render_header<'a>(
     });
 }
 
-fn add_total_select_label(app_state: &HackerNewsApp, ui: &mut egui::Ui, total: usize) {
-    if ui
-        .selectable_label(app_state.showing == total, format!("{total}"))
-        .clicked()
-    {
-        app_state
-            .local_sender
-            .send(Event::FetchArticles(app_state.last_request()(total)))
-            .log_error_consume();
+fn add_total_select_label<'a, 'b: 'a>(
+    app_state: &'a HackerNewsApp,
+    ui: &'b mut egui::Ui,
+) -> impl FnMut(usize) + 'a {
+    |total| {
+        if ui
+            .selectable_label(app_state.showing == total, format!("{total}"))
+            .clicked()
+        {
+            app_state
+                .local_sender
+                .send(Event::FetchArticles(app_state.last_request()(total)))
+                .log_error_consume();
+        }
     }
 }
 
-fn add_article_type_selet_label(
-    app_state: &HackerNewsApp,
-    ui: &mut egui::Ui,
-    article_type: ArticleType,
-) {
-    if ui
-        .selectable_label(
-            app_state.article_type == article_type,
-            article_type.as_str(),
-        )
-        .clicked()
-    {
-        app_state
-            .local_sender
-            .send(Event::FetchArticles(match article_type {
-                ArticleType::New => ClientEvent::NewStories(app_state.showing),
-                ArticleType::Best => ClientEvent::BestStories(app_state.showing),
-                ArticleType::Top => ClientEvent::TopStories(app_state.showing),
-            }))
-            .log_error_consume();
+fn add_article_type_select_label<'a, 'b: 'a>(
+    app_state: &'b HackerNewsApp,
+    ui: &'a mut egui::Ui,
+) -> impl FnMut(ArticleType) + 'a {
+    |article_type: ArticleType| {
+        if ui
+            .selectable_label(
+                app_state.article_type == article_type,
+                article_type.as_str(),
+            )
+            .clicked()
+        {
+            app_state
+                .local_sender
+                .send(Event::FetchArticles(match article_type {
+                    ArticleType::New => ClientEvent::NewStories(app_state.showing),
+                    ArticleType::Best => ClientEvent::BestStories(app_state.showing),
+                    ArticleType::Top => ClientEvent::TopStories(app_state.showing),
+                }))
+                .log_error_consume();
+        }
     }
 }
 
@@ -369,9 +373,9 @@ fn render_item_text<'a>(
 }
 
 // Key bindings that change scrolling position.
-fn scroll_delta(ui: &mut egui::Ui) -> Vec2 {
+fn scroll_delta(ui: &egui::Ui) -> Vec2 {
     let mut scroll_delta = Vec2::ZERO;
-    ui.input_mut(|input| {
+    ui.input(|input| {
         if input.key_released(Key::PageDown) {
             scroll_delta.y -= ui.available_height();
         }

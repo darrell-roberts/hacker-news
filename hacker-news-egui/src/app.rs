@@ -3,7 +3,6 @@ use crate::{
     event::{ClientEvent, Event, EventHandler},
     renderer, SHUT_DOWN,
 };
-use anyhow::Context;
 use eframe::Storage;
 use egui::{os::OperatingSystem, Id};
 use hacker_news_api::{Item, ResultExt, User};
@@ -251,8 +250,7 @@ impl HackerNewsApp {
         self.event_handler
             .next_event()
             .map(|event| self.handle_event(event))
-            .context("Failed to get next event")
-            .log_error_consume();
+            .unwrap_or_default();
     }
 }
 
