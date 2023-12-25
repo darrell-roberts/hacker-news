@@ -1,10 +1,12 @@
 //! Render the comment windows.
-use super::styles::{comment_bubble_frame, comment_window_frame};
+use super::{
+    styles::{comment_bubble_frame, comment_window_frame},
+    text::{parse_date, render_rich_text},
+};
 use crate::{
     app::{HackerNewsApp, MutableWidgetState},
     event::Event,
     renderer::scroll_delta,
-    text::{parse_date, render_rich_text},
 };
 use egui::{style::Spacing, widgets::Widget, Button, Color32, Id, RichText, Vec2};
 use hacker_news_api::Item;

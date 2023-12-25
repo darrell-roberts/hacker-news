@@ -6,7 +6,6 @@ use self::styles::{
 use crate::{
     app::{ArticleType, HackerNewsApp, MutableWidgetState},
     event::{ClientEvent, Event},
-    text::{parse_date, render_rich_text},
 };
 use chrono::{DateTime, Utc};
 use egui::{
@@ -16,6 +15,7 @@ use egui::{
 
 mod comments;
 mod styles;
+mod text;
 
 /// Render the central panel and all child widgets.
 pub fn render<'a>(
@@ -170,7 +170,7 @@ fn render_article(app_state: &HackerNewsApp, ui: &mut egui::Ui, article: &hacker
                 .send(Event::FetchUser(article.by.clone()))
                 .unwrap_or_default();
         };
-        if let Some(time) = parse_date(article.time) {
+        if let Some(time) = text::parse_date(article.time) {
             ui.label(RichText::new(time).italics());
         }
         ui.add_space(5.0);
@@ -208,7 +208,7 @@ fn render_header<'a>(
 
             ui.label("🔎");
             ui.add_sized((200., 15.), TextEdit::singleline(&mut mutable_state.search));
-            // ui.text_edit_singleline(&mut self.mutable_state.search);
+
             if ui.button("🗑").on_hover_text("Clear search").clicked() {
                 mutable_state.search = String::new();
             }
@@ -300,7 +300,7 @@ fn render_user<'a>(
             .show(context, |ui| {
                 if let Some(about) = user.about.as_deref() {
                     user_bubble_frame().show(ui, |ui| {
-                        render_rich_text(about, ui);
+                        text::render_rich_text(about, ui);
                     });
                 }
 
@@ -338,7 +338,7 @@ fn render_item_text<'a>(
                 .open(&mut mutable_state.viewing_item_text)
                 .show(context, |ui| {
                     article_text_bubble_frame().show(ui, |ui| {
-                        render_rich_text(item.text.as_deref().unwrap_or_default(), ui);
+                        text::render_rich_text(item.text.as_deref().unwrap_or_default(), ui);
                     });
                     ui.horizontal(|ui| {
                         ui.style_mut().spacing = Spacing {
@@ -358,7 +358,7 @@ fn render_item_text<'a>(
                                 .unwrap_or_default();
                         };
 
-                        if let Some(time) = parse_date(item.time) {
+                        if let Some(time) = text::parse_date(item.time) {
                             ui.label(RichText::new(time).italics());
                         }
                     });
