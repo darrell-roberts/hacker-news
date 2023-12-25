@@ -9,7 +9,6 @@ use serde::Serialize;
 pub struct HNItem {
     pub id: u64,
     pub kids: Vec<u64>,
-    // pub text: Option<String>,
     pub text: Vec<RichText>,
     pub url: Option<String>,
     pub title: Option<String>,
@@ -41,7 +40,6 @@ impl From<Item> for HNItem {
         Self {
             id: item.id,
             kids: item.kids,
-            // text: item.text.map(sanitize_html),
             text: item.text.as_deref().map(to_rich_text).unwrap_or_default(),
             url: item.url,
             score: item.score,
