@@ -58,7 +58,11 @@ fn render_articles(app_state: &HackerNewsApp, ui: &mut egui::Ui) {
             ui.scroll_with_delta(scroll_delta);
 
             Grid::new("articles")
-                .num_columns(3)
+                .num_columns(if app_state.article_type == ArticleType::Job {
+                    1
+                } else {
+                    3
+                })
                 .spacing((0., 5.))
                 .striped(true)
                 .show(ui, |ui| {
@@ -107,26 +111,29 @@ fn render_article<'a: 'b, 'b>(
     ui: &'b mut egui::Ui,
 ) -> impl FnMut(&'b Item) + 'b {
     |article| {
-        ui.label(format!("🔼{}", article.score));
+        // No comments / score for Job view so we remove these columns
+        if app_state.article_type != ArticleType::Job {
+            ui.label(format!("🔼{}", article.score));
 
-        if !article.kids.is_empty() {
-            let button = Button::new(format!("💬{}", article.kids.len()))
-                .fill(ui.style().visuals.window_fill())
-                .ui(ui);
+            if !article.kids.is_empty() {
+                let button = Button::new(format!("💬{}", article.kids.len()))
+                    .fill(ui.style().visuals.window_fill())
+                    .ui(ui);
 
-            if button.clicked() {
-                app_state
-                    .local_sender
-                    .send(Event::FetchComments {
-                        ids: article.kids.clone(),
-                        parent: None,
-                        id: Id::new(article.id),
-                        active_item: Some(article.to_owned()),
-                    })
-                    .log_error_consume();
+                if button.clicked() {
+                    app_state
+                        .local_sender
+                        .send(Event::FetchComments {
+                            ids: article.kids.clone(),
+                            parent: None,
+                            id: Id::new(article.id),
+                            active_item: Some(article.to_owned()),
+                        })
+                        .log_error_consume();
+                }
+            } else {
+                ui.label("");
             }
-        } else {
-            ui.label("");
         }
 
         ui.horizontal(|ui| {
