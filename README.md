@@ -46,7 +46,7 @@ This will create a `dist/Hacker News.dmg` file and open/mount it. Simply copy th
 <img width="1057" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/b639ccdc-64c5-4dff-8970-79783da014dc">
 
 ### View comments
-<img width="1057" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/d268db1a-4419-47b4-834a-cbbc33ee1c7b">
+<img width="1057" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/8458d9dd-55a9-4cd5-bf42-a70bc909df5f">
 
 ## hacker-news Tauri
 Hacker news top stories dashboard reader.
