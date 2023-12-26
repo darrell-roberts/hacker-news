@@ -2,7 +2,7 @@ use anyhow::Context;
 use app::HackerNewsApp;
 use eframe::{icon_data::from_png_bytes, Theme};
 use egui::ViewportBuilder;
-use event::{ClientEvent, ClientEventHandler, Event, EventHandler};
+use event::{ApiEvent, ApiEventHandler, Event, EventHandler};
 use hacker_news_api::ResultExt;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
@@ -40,12 +40,12 @@ async fn main() -> anyhow::Result<()> {
         Box::new(move |cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
             let ctx = cc.egui_ctx.clone();
-            let (sender, mut receiver) = mpsc::unbounded_channel::<ClientEvent>();
+            let (sender, mut receiver) = mpsc::unbounded_channel::<ApiEvent>();
             let (local_sender, client_receiver) = mpsc::unbounded_channel::<Event>();
 
             let event_handler = EventHandler::new(sender.clone(), client_receiver);
             let client_event_handler =
-                ClientEventHandler::new(client.clone(), ctx, local_sender.clone());
+                ApiEventHandler::new(client.clone(), ctx, local_sender.clone());
 
             let _handle = tokio::spawn(async move {
                 while !(SHUT_DOWN.load(Ordering::Acquire)) {

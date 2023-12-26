@@ -6,7 +6,7 @@ use log::error;
 use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
-/// Background event.
+/// Client Event.
 pub enum Event {
     Articles(ArticleType, Vec<Item>),
     Comments {
@@ -24,15 +24,15 @@ pub enum Event {
         active_item: Option<Item>,
     },
     Visited(u64),
-    FetchArticles(ClientEvent),
+    FetchArticles(ApiEvent),
     ShowItemText(Item),
     ToggleFilter(Filter),
     ResetVisited,
     ToggleOpenSearch,
 }
 
-/// Client event.
-pub enum ClientEvent {
+/// API Event.
+pub enum ApiEvent {
     TopStories(usize),
     BestStories(usize),
     NewStories(usize),
@@ -48,14 +48,14 @@ pub enum ClientEvent {
 }
 
 pub struct EventHandler {
-    sender: UnboundedSender<ClientEvent>,
+    sender: UnboundedSender<ApiEvent>,
     client_receiver: UnboundedReceiver<Event>,
 }
 
 impl EventHandler {
     /// Create a new [`EventHandler`].
     pub fn new(
-        sender: UnboundedSender<ClientEvent>,
+        sender: UnboundedSender<ApiEvent>,
         client_receiver: UnboundedReceiver<Event>,
     ) -> Self {
         Self {
@@ -65,7 +65,7 @@ impl EventHandler {
     }
 
     /// Emit a client event.
-    pub fn emit(&self, event: ClientEvent) -> Result<()> {
+    pub fn emit(&self, event: ApiEvent) -> Result<()> {
         Ok(self.sender.send(event)?)
     }
 
@@ -75,14 +75,14 @@ impl EventHandler {
     }
 }
 
-pub struct ClientEventHandler {
+pub struct ApiEventHandler {
     client: Arc<ApiClient>,
     context: Context,
     sender: UnboundedSender<Event>,
 }
 
-impl ClientEventHandler {
-    /// Create a new ['ClientEventHandler'].
+impl ApiEventHandler {
+    /// Create a new ['ApiEventHandler'].
     pub fn new(client: Arc<ApiClient>, context: Context, sender: UnboundedSender<Event>) -> Self {
         Self {
             client,
@@ -91,48 +91,48 @@ impl ClientEventHandler {
         }
     }
 
-    /// Handle a client event.
-    pub async fn handle_event(&self, event: ClientEvent) {
+    /// Handle an api event.
+    pub async fn handle_event(&self, event: ApiEvent) {
         let result = match event {
-            ClientEvent::TopStories(total) => {
+            ApiEvent::TopStories(total) => {
                 match self.client.articles(total, ArticleType::Top).await {
                     Ok(ts) => self.sender.send(Event::Articles(ArticleType::Top, ts)),
                     Err(err) => self.sender.send(Event::Error(err.to_string())),
                 }
             }
-            ClientEvent::Comments { ids, parent, id } => match self.client.items(&ids).await {
+            ApiEvent::Comments { ids, parent, id } => match self.client.items(&ids).await {
                 Ok(items) => self.sender.send(Event::Comments { items, parent, id }),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
             },
-            ClientEvent::BestStories(total) => {
+            ApiEvent::BestStories(total) => {
                 match self.client.articles(total, ArticleType::Best).await {
                     Ok(bs) => self.sender.send(Event::Articles(ArticleType::Best, bs)),
                     Err(err) => self.sender.send(Event::Error(err.to_string())),
                 }
             }
-            ClientEvent::NewStories(total) => {
+            ApiEvent::NewStories(total) => {
                 match self.client.articles(total, ArticleType::New).await {
                     Ok(ns) => self.sender.send(Event::Articles(ArticleType::New, ns)),
                     Err(err) => self.sender.send(Event::Error(err.to_string())),
                 }
             }
-            ClientEvent::User(user) => match self.client.user(&user).await {
+            ApiEvent::User(user) => match self.client.user(&user).await {
                 Ok(user) => self.sender.send(Event::User(user)),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
             },
-            ClientEvent::AskStories(total) => {
+            ApiEvent::AskStories(total) => {
                 match self.client.articles(total, ArticleType::Ask).await {
                     Ok(items) => self.sender.send(Event::Articles(ArticleType::Ask, items)),
                     Err(err) => self.sender.send(Event::Error(err.to_string())),
                 }
             }
-            ClientEvent::ShowStories(total) => {
+            ApiEvent::ShowStories(total) => {
                 match self.client.articles(total, ArticleType::Show).await {
                     Ok(items) => self.sender.send(Event::Articles(ArticleType::Show, items)),
                     Err(err) => self.sender.send(Event::Error(err.to_string())),
                 }
             }
-            ClientEvent::JobStories(total) => {
+            ApiEvent::JobStories(total) => {
                 match self.client.articles(total, ArticleType::Job).await {
                     Ok(items) => self.sender.send(Event::Articles(ArticleType::Job, items)),
                     Err(err) => self.sender.send(Event::Error(err.to_string())),

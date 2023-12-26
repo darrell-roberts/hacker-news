@@ -1,6 +1,6 @@
 //! Application state and type definitions.
 use crate::{
-    event::{ClientEvent, Event, EventHandler},
+    event::{ApiEvent, Event, EventHandler},
     renderer, SHUT_DOWN,
 };
 use chrono::{DateTime, Local};
@@ -183,7 +183,7 @@ impl HackerNewsApp {
             Event::FetchUser(user) => {
                 self.fetching = true;
                 self.event_handler
-                    .emit(ClientEvent::User(user))
+                    .emit(ApiEvent::User(user))
                     .log_error_consume();
             }
             Event::FetchComments {
@@ -200,7 +200,7 @@ impl HackerNewsApp {
                     self.comments_state.active_item = Some(item);
                 }
                 self.event_handler
-                    .emit(ClientEvent::Comments { ids, parent, id })
+                    .emit(ApiEvent::Comments { ids, parent, id })
                     .log_error_consume();
             }
             Event::Visited(id) => {
@@ -230,14 +230,14 @@ impl HackerNewsApp {
         }
     }
 
-    pub fn last_request(&self) -> impl Fn(usize) -> ClientEvent {
+    pub fn last_request(&self) -> impl Fn(usize) -> ApiEvent {
         match self.article_type {
-            ArticleType::New => ClientEvent::NewStories,
-            ArticleType::Best => ClientEvent::BestStories,
-            ArticleType::Top => ClientEvent::TopStories,
-            ArticleType::Ask => ClientEvent::AskStories,
-            ArticleType::Show => ClientEvent::ShowStories,
-            ArticleType::Job => ClientEvent::JobStories,
+            ArticleType::New => ApiEvent::NewStories,
+            ArticleType::Best => ApiEvent::BestStories,
+            ArticleType::Top => ApiEvent::TopStories,
+            ArticleType::Ask => ApiEvent::AskStories,
+            ArticleType::Show => ApiEvent::ShowStories,
+            ArticleType::Job => ApiEvent::JobStories,
         }
     }
 
