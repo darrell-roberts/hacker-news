@@ -10,7 +10,7 @@ use crate::{
 use chrono::{DateTime, Utc};
 use egui::{
     include_image, style::Spacing, widgets::Widget, Align, Button, Color32, CursorIcon, Grid, Id,
-    Key, Layout, RichText, TextEdit, TextStyle, Vec2, Window,
+    Key, Layout, RichText, TextStyle, Vec2, Window,
 };
 use hacker_news_api::{Item, ResultExt};
 
@@ -217,19 +217,29 @@ fn render_header<'a>(
 
             ui.separator();
 
+            [ArticleType::Ask, ArticleType::Show, ArticleType::Job]
+                .into_iter()
+                .for_each(add_article_type_select_label(app_state, ui));
+
+            ui.separator();
+
             [25, 50, 75, 100, 500]
                 .into_iter()
                 .for_each(add_total_select_label(app_state, ui));
 
             ui.separator();
 
-            ui.label("🔎");
-            ui.add_sized((200., 15.), TextEdit::singleline(&mut mutable_state.search));
-
-            if ui.button("🗑").on_hover_text("Clear search").clicked() {
-                mutable_state.search = String::new();
+            if Button::new("🔎")
+                .selected(app_state.search_open)
+                .ui(ui)
+                .on_hover_text("Open search")
+                .clicked()
+            {
+                app_state
+                    .local_sender
+                    .send(Event::ToggleOpenSearch)
+                    .log_error_consume();
             }
-
             ui.separator();
 
             ui.label(format!("{}", app_state.visited.len()))
@@ -254,6 +264,17 @@ fn render_header<'a>(
                     .log_error_consume();
             };
         });
+
+        if app_state.search_open {
+            ui.horizontal(|ui| {
+                ui.label("🔎");
+                ui.text_edit_singleline(&mut mutable_state.search);
+
+                if ui.button("🗑").on_hover_text("Clear search").clicked() {
+                    mutable_state.search = String::new();
+                }
+            });
+        }
 
         if let Some(error) = app_state.error.as_deref() {
             ui.label(RichText::new(error).color(Color32::RED).strong());
@@ -296,6 +317,9 @@ fn add_article_type_select_label<'a, 'b: 'a>(
                     ArticleType::New => ClientEvent::NewStories(app_state.showing),
                     ArticleType::Best => ClientEvent::BestStories(app_state.showing),
                     ArticleType::Top => ClientEvent::TopStories(app_state.showing),
+                    ArticleType::Ask => ClientEvent::AskStories(app_state.showing),
+                    ArticleType::Show => ClientEvent::ShowStories(app_state.showing),
+                    ArticleType::Job => ClientEvent::JobStories(app_state.showing),
                 }))
                 .log_error_consume();
         }

@@ -15,6 +15,9 @@ pub enum ArticleType {
     New,
     Best,
     Top,
+    Ask,
+    Show,
+    Job,
 }
 
 impl ArticleType {
@@ -23,6 +26,9 @@ impl ArticleType {
             ArticleType::New => "New",
             ArticleType::Best => "Best",
             ArticleType::Top => "Top",
+            ArticleType::Ask => "Ask",
+            ArticleType::Show => "Show",
+            ArticleType::Job => "Job",
         }
     }
 }
@@ -108,6 +114,7 @@ pub struct HackerNewsApp {
     pub filters: HashSet<Filter>,
     /// Last update of articles.
     pub last_update: Option<DateTime<Local>>,
+    pub search_open: bool,
 }
 
 /// State that requires mutation by a widget. This is the
@@ -166,6 +173,7 @@ impl HackerNewsApp {
             viewing_item_text: false,
             filters: HashSet::new(),
             last_update: None,
+            search_open: false,
         }
     }
 
@@ -251,6 +259,9 @@ impl HackerNewsApp {
             Event::ResetVisited => {
                 self.visited.clear();
             }
+            Event::ToggleOpenSearch => {
+                self.search_open = !self.search_open;
+            }
         }
     }
 
@@ -259,6 +270,9 @@ impl HackerNewsApp {
             ArticleType::New => ClientEvent::NewStories,
             ArticleType::Best => ClientEvent::BestStories,
             ArticleType::Top => ClientEvent::TopStories,
+            ArticleType::Ask => ClientEvent::AskStories,
+            ArticleType::Show => ClientEvent::ShowStories,
+            ArticleType::Job => ClientEvent::JobStories,
         }
     }
 

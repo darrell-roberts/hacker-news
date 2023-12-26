@@ -28,6 +28,7 @@ pub enum Event {
     ShowItemText(Item),
     ToggleFilter(Filter),
     ResetVisited,
+    ToggleOpenSearch,
 }
 
 /// Client event.
@@ -35,6 +36,9 @@ pub enum ClientEvent {
     TopStories(usize),
     BestStories(usize),
     NewStories(usize),
+    AskStories(usize),
+    ShowStories(usize),
+    JobStories(usize),
     Comments {
         ids: Vec<u64>,
         parent: Option<Item>,
@@ -108,6 +112,18 @@ impl ClientEventHandler {
             },
             ClientEvent::User(user) => match self.client.user(&user).await {
                 Ok(user) => self.sender.send(Event::User(user)),
+                Err(err) => self.sender.send(Event::Error(err.to_string())),
+            },
+            ClientEvent::AskStories(total) => match self.client.ask_stories(total).await {
+                Ok(items) => self.sender.send(Event::Articles(ArticleType::Ask, items)),
+                Err(err) => self.sender.send(Event::Error(err.to_string())),
+            },
+            ClientEvent::ShowStories(total) => match self.client.show_stories(total).await {
+                Ok(items) => self.sender.send(Event::Articles(ArticleType::Show, items)),
+                Err(err) => self.sender.send(Event::Error(err.to_string())),
+            },
+            ClientEvent::JobStories(total) => match self.client.job_stories(total).await {
+                Ok(items) => self.sender.send(Event::Articles(ArticleType::Job, items)),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
             },
         };

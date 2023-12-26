@@ -51,6 +51,18 @@ impl ApiClient {
         self.call(limit, "newstories.json").await
     }
 
+    pub async fn ask_stories(&self, limit: usize) -> Result<Vec<Item>> {
+        self.call(limit, "askstories.json").await
+    }
+
+    pub async fn show_stories(&self, limit: usize) -> Result<Vec<Item>> {
+        self.call(limit, "showstories.json").await
+    }
+
+    pub async fn job_stories(&self, limit: usize) -> Result<Vec<Item>> {
+        self.call(limit, "jobstories.json").await
+    }
+
     /// Get a single item via item id.
     pub async fn item(&self, id: u64) -> Result<Item> {
         self.client
