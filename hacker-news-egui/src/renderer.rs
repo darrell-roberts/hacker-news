@@ -5,7 +5,7 @@ use self::styles::{
 };
 use crate::{
     app::{Filter, HackerNewsApp, MutableWidgetState},
-    event::{ClientEvent, Event},
+    event::{ApiEvent, Event},
 };
 use chrono::{DateTime, Utc};
 use egui::{
@@ -325,12 +325,12 @@ fn add_article_type_select_label<'a, 'b: 'a>(
             app_state
                 .local_sender
                 .send(Event::FetchArticles(match article_type {
-                    ArticleType::New => ClientEvent::NewStories(app_state.showing),
-                    ArticleType::Best => ClientEvent::BestStories(app_state.showing),
-                    ArticleType::Top => ClientEvent::TopStories(app_state.showing),
-                    ArticleType::Ask => ClientEvent::AskStories(app_state.showing),
-                    ArticleType::Show => ClientEvent::ShowStories(app_state.showing),
-                    ArticleType::Job => ClientEvent::JobStories(app_state.showing),
+                    ArticleType::New => ApiEvent::NewStories(app_state.showing),
+                    ArticleType::Best => ApiEvent::BestStories(app_state.showing),
+                    ArticleType::Top => ApiEvent::TopStories(app_state.showing),
+                    ArticleType::Ask => ApiEvent::AskStories(app_state.showing),
+                    ArticleType::Show => ApiEvent::ShowStories(app_state.showing),
+                    ArticleType::Job => ApiEvent::JobStories(app_state.showing),
                 }))
                 .log_error_consume();
         }
