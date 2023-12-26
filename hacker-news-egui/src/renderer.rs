@@ -238,7 +238,11 @@ fn render_header<'a>(
             if Button::new("🔎")
                 .selected(app_state.search_open)
                 .ui(ui)
-                .on_hover_text("Open search")
+                .on_hover_text(if app_state.search_open {
+                    "Close search"
+                } else {
+                    "Open search"
+                })
                 .clicked()
             {
                 app_state
