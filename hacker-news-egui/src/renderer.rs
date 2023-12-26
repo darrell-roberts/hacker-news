@@ -12,7 +12,7 @@ use egui::{
     include_image, style::Spacing, widgets::Widget, Align, Button, Color32, CursorIcon, Grid, Id,
     Key, Layout, RichText, TextEdit, TextStyle, Vec2, Window,
 };
-use hacker_news_api::ResultExt;
+use hacker_news_api::{Item, ResultExt};
 
 mod comments;
 mod styles;
@@ -31,6 +31,7 @@ pub fn render<'a>(
     }
 
     render_header(context, app_state, mutable_state);
+    render_footer(context, app_state);
 
     egui::CentralPanel::default()
         .frame(central_panel_frame())
@@ -83,103 +84,104 @@ fn render_articles(app_state: &HackerNewsApp, ui: &mut egui::Ui) {
                         .filter(|article| {
                             !app_state.filter_visited || !app_state.visited.contains(&article.id)
                         });
-                    for article in article_iter {
-                        render_article(app_state, ui, article);
-                    }
+
+                    article_iter.for_each(render_article(app_state, ui));
                 })
         });
 }
 
 /// Render an article.
-fn render_article(app_state: &HackerNewsApp, ui: &mut egui::Ui, article: &hacker_news_api::Item) {
-    ui.label(format!("🔼{}", article.score));
+fn render_article<'a: 'b, 'b>(
+    app_state: &'a HackerNewsApp,
+    ui: &'b mut egui::Ui,
+) -> impl FnMut(&'b Item) + 'b {
+    |article| {
+        ui.label(format!("🔼{}", article.score));
 
-    if !article.kids.is_empty() {
-        let button = Button::new(format!("💬{}", article.kids.len()))
-            .fill(ui.style().visuals.window_fill())
-            .ui(ui);
+        if !article.kids.is_empty() {
+            let button = Button::new(format!("💬{}", article.kids.len()))
+                .fill(ui.style().visuals.window_fill())
+                .ui(ui);
 
-        if button.clicked() {
-            app_state
-                .local_sender
-                .send(Event::FetchComments {
-                    ids: article.kids.clone(),
-                    parent: None,
-                    id: Id::new(article.id),
-                    active_item: Some(article.to_owned()),
-                })
-                .log_error_consume();
-        }
-    } else {
-        ui.label("");
-    }
-
-    ui.horizontal(|ui| {
-        // Add rust icon.
-        if article
-            .title
-            .as_deref()
-            .unwrap_or_default()
-            .split_whitespace()
-            .any(|word| word.to_lowercase() == "rust")
-        {
-            ui.image(egui::include_image!("../assets/rust-logo-32x32.png"));
-        }
-
-        ui.style_mut().visuals.hyperlink_color = if app_state.visited.contains(&article.id) {
-            Color32::DARK_GRAY
+            if button.clicked() {
+                app_state
+                    .local_sender
+                    .send(Event::FetchComments {
+                        ids: article.kids.clone(),
+                        parent: None,
+                        id: Id::new(article.id),
+                        active_item: Some(article.to_owned()),
+                    })
+                    .log_error_consume();
+            }
         } else {
-            Color32::BLACK
-        };
-        if app_state.visited.contains(&article.id) {
-            ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
+            ui.label("");
         }
 
-        match (article.url.as_deref(), article.title.as_deref()) {
-            (None, None) => (),
-            (Some(_), None) => (),
-            (None, Some(title)) => {
-                if ui.link(title).clicked() {
-                    app_state
-                        .local_sender
-                        .send(Event::ShowItemText(article.clone()))
-                        .log_error_consume();
+        ui.horizontal(|ui| {
+            // Add rust icon.
+            if article
+                .title
+                .as_deref()
+                .unwrap_or_default()
+                .split_whitespace()
+                .any(|word| word.to_lowercase() == "rust")
+            {
+                ui.image(egui::include_image!("../assets/rust-logo-32x32.png"));
+            }
+
+            ui.style_mut().visuals.hyperlink_color = if app_state.visited.contains(&article.id) {
+                Color32::DARK_GRAY
+            } else {
+                Color32::BLACK
+            };
+            if app_state.visited.contains(&article.id) {
+                ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
+            }
+
+            match (article.url.as_deref(), article.title.as_deref()) {
+                (None, None) => (),
+                (Some(_), None) => (),
+                (None, Some(title)) => {
+                    if ui.link(title).clicked() {
+                        app_state
+                            .local_sender
+                            .send(Event::ShowItemText(article.clone()))
+                            .log_error_consume();
+                    }
+                }
+                (Some(url), Some(title)) => {
+                    if ui
+                        .hyperlink_to(RichText::new(title).strong().color(Color32::BLACK), url)
+                        .clicked()
+                    {
+                        app_state
+                            .local_sender
+                            .send(Event::Visited(article.id))
+                            .log_error_consume();
+                    }
                 }
             }
-            (Some(url), Some(title)) => {
-                if ui
-                    .hyperlink_to(RichText::new(title).strong().color(Color32::BLACK), url)
-                    .clicked()
-                {
-                    app_state
-                        .local_sender
-                        .send(Event::Visited(article.id))
-                        .log_error_consume();
-                }
+
+            ui.style_mut().override_text_style = Some(TextStyle::Small);
+            ui.style_mut().spacing = Spacing {
+                item_spacing: Vec2 { y: 1., x: 2. },
+                ..Default::default()
+            };
+
+            if ui.link(RichText::new(&article.by).italics()).clicked() {
+                app_state
+                    .local_sender
+                    .send(Event::FetchUser(article.by.clone()))
+                    .log_error_consume();
+            };
+            if let Some(time) = text::parse_date(article.time) {
+                ui.label(RichText::new(time).italics());
             }
-        }
-
-        ui.style_mut().override_text_style = Some(TextStyle::Small);
-        ui.style_mut().spacing = Spacing {
-            item_spacing: Vec2 { y: 1., x: 2. },
-            ..Default::default()
-        };
-
-        if ui.link(RichText::new(&article.by).italics()).clicked() {
-            app_state
-                .local_sender
-                .send(Event::FetchUser(article.by.clone()))
-                .log_error_consume();
-        };
-        if let Some(time) = text::parse_date(article.time) {
-            ui.label(RichText::new(time).italics());
-        }
-        ui.add_space(5.0);
-
-        ui.allocate_space(ui.available_size());
-    });
-
-    ui.end_row();
+            ui.allocate_space(ui.available_size());
+        });
+        ui.end_row();
+    }
 }
 
 /// Render the header.
@@ -188,7 +190,7 @@ fn render_header<'a>(
     app_state: &'a HackerNewsApp,
     mutable_state: &mut MutableWidgetState,
 ) {
-    egui::TopBottomPanel::top("Hello").show(context, |ui| {
+    egui::TopBottomPanel::top("header").show(context, |ui| {
         // Header
         ui.horizontal(|ui| {
             ui.style_mut().visuals.window_fill = Color32::DARK_BLUE;
@@ -235,12 +237,6 @@ fn render_header<'a>(
                     .send(Event::ResetVisited)
                     .log_error_consume();
             };
-
-            if app_state.fetching {
-                ui.with_layout(Layout::right_to_left(Align::RIGHT), |ui| {
-                    ui.spinner();
-                });
-            }
         });
 
         if let Some(error) = app_state.error.as_deref() {
@@ -396,4 +392,20 @@ fn scroll_delta(ui: &egui::Ui) -> Vec2 {
         }
     });
     scroll_delta
+}
+
+fn render_footer<'a>(context: &'a egui::Context, app_state: &'a HackerNewsApp) {
+    egui::TopBottomPanel::bottom("bottom").show(context, |ui| {
+        ui.horizontal(|ui| {
+            if let Some(dt) = app_state.last_update.as_ref() {
+                ui.label(format!("Updated: {}", dt.format("%d/%m/%Y %r")));
+            }
+
+            if app_state.fetching {
+                ui.with_layout(Layout::right_to_left(Align::RIGHT), |ui| {
+                    ui.spinner();
+                });
+            }
+        });
+    });
 }

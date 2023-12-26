@@ -3,6 +3,7 @@ use crate::{
     event::{ClientEvent, Event, EventHandler},
     renderer, SHUT_DOWN,
 };
+use chrono::{DateTime, Local};
 use eframe::Storage;
 use egui::{os::OperatingSystem, Id};
 use hacker_news_api::{Item, ResultExt, User};
@@ -96,6 +97,8 @@ pub struct HackerNewsApp {
     pub viewing_item_text: bool,
     /// Filter visited.
     pub filter_visited: bool,
+
+    pub last_update: Option<DateTime<Local>>,
 }
 
 /// State that requires mutation by a widget. This is the
@@ -153,6 +156,7 @@ impl HackerNewsApp {
             search: String::new(),
             viewing_item_text: false,
             filter_visited: false,
+            last_update: None,
         }
     }
 
@@ -165,6 +169,7 @@ impl HackerNewsApp {
                 self.error = None;
                 self.article_type = article_type;
                 self.fetching = false;
+                self.last_update = Some(Local::now())
             }
             Event::Comments { items, parent, id } => {
                 let comment_item = CommentItem {

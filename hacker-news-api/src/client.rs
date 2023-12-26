@@ -1,6 +1,6 @@
 //! Hacker News API Client.
 use crate::types::{EventData, Item, ResultExt, User};
-use anyhow::Context;
+use anyhow::{Context, Result};
 use futures::TryFutureExt;
 use log::{error, info};
 use std::time::Duration;
@@ -13,9 +13,6 @@ use tokio::{
 pub struct ApiClient {
     client: reqwest::Client,
 }
-
-/// Result using anyhow.
-type Result<T> = anyhow::Result<T>;
 
 impl ApiClient {
     const API_END_POINT: &'static str = "https://hacker-news.firebaseio.com/v0";
