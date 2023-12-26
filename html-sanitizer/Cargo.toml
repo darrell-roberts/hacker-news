@@ -7,6 +7,6 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1"
+anyhow.workspace = true
+log.workspace = true
 nom = "7"
-log = "0.4"

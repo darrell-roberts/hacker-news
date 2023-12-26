@@ -77,6 +77,10 @@ fn bubble_frame(fill_color: Color32) -> Frame {
             sw: 8.,
             se: 8.,
         })
+        .stroke(Stroke {
+            color: Color32::GRAY,
+            width: 1.0,
+        })
 }
 
 pub fn article_text_bubble_frame() -> Frame {
