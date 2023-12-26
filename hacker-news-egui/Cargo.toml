@@ -1,20 +1,20 @@
 [package]
 name = "hacker-news-egui"
 version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 license.workspace = true
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-eframe = { version = "0.24.1", features = ["persistence"] }
-egui = "0.24.1"
+log.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+tokio.workspace = true
 
-tokio = { version = "1.35.0", features = ["full"] }
-env_logger = "0.10.1"
-log = "0.4.20"
-anyhow = "1.0.75"
+env_logger = "0.10"
+
+eframe = { version = "0.24", features = ["persistence"] }
+egui = "0.24"
+egui_extras = { version = "0.24", features = ["image"] }
 
 hacker-news-api = { path = "../hacker-news-api" }
 html-sanitizer = { path = "../html-sanitizer" }
-chrono = "0.4.31"
-egui_extras = { version = "0.24.2", features = ["image"] }
