@@ -60,12 +60,13 @@ make
 This will create a `dist/Hacker News.dmg` file and open/mount it. Simply copy the contents into your `Application` folder.
 
 ### Articles
-<img width="1047" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/c41c32f2-f75a-4775-8d6c-b5fa36f1d8b7">
+<img width="1057" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/0c245a88-dd2a-4ae3-9b61-20d262fc1477">
 
 ### Title search
-<img width="1047" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/bb1a08f4-77e0-4d66-91a1-4cb8bc46d4d3">
+<img width="1057" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/cc15b4bc-7f29-449b-b1b6-fafd0c064942">
 
 ### View comments
-<img width="1047" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/6a99a876-4079-4a80-8cab-777229b8b3e3">
+<img width="1057" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/eed0e011-a9b3-4462-aa67-71153f1321d6">
+
 
 
