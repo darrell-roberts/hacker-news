@@ -4,7 +4,7 @@ use self::styles::{
     user_window_frame,
 };
 use crate::{
-    app::{ArticleType, Filter, HackerNewsApp, MutableWidgetState},
+    app::{Filter, HackerNewsApp, MutableWidgetState},
     event::{ClientEvent, Event},
 };
 use chrono::{DateTime, Utc};
@@ -12,7 +12,7 @@ use egui::{
     include_image, style::Spacing, widgets::Widget, Align, Button, Color32, CursorIcon, Grid, Id,
     Key, Layout, RichText, TextStyle, Vec2, Window,
 };
-use hacker_news_api::{Item, ResultExt};
+use hacker_news_api::{ArticleType, Item, ResultExt};
 
 mod comments;
 mod styles;
@@ -274,7 +274,8 @@ fn render_header<'a>(
         if app_state.search_open {
             ui.horizontal(|ui| {
                 ui.label("🔎");
-                ui.text_edit_singleline(&mut mutable_state.search);
+                ui.text_edit_singleline(&mut mutable_state.search)
+                    .request_focus();
 
                 if ui.button("🗑").on_hover_text("Clear search").clicked() {
                     mutable_state.search = String::new();

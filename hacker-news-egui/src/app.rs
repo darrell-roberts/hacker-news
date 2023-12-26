@@ -6,45 +6,9 @@ use crate::{
 use chrono::{DateTime, Local};
 use eframe::Storage;
 use egui::{os::OperatingSystem, Id};
-use hacker_news_api::{Item, ResultExt, User};
-use std::{collections::HashSet, str::FromStr, sync::atomic::Ordering};
+use hacker_news_api::{ArticleType, Item, ResultExt, User};
+use std::{collections::HashSet, sync::atomic::Ordering};
 use tokio::sync::mpsc::UnboundedSender;
-
-#[derive(Eq, PartialEq, Copy, Clone, Hash)]
-pub enum ArticleType {
-    New,
-    Best,
-    Top,
-    Ask,
-    Show,
-    Job,
-}
-
-impl ArticleType {
-    pub fn as_str(&self) -> &str {
-        match self {
-            ArticleType::New => "New",
-            ArticleType::Best => "Best",
-            ArticleType::Top => "Top",
-            ArticleType::Ask => "Ask",
-            ArticleType::Show => "Show",
-            ArticleType::Job => "Job",
-        }
-    }
-}
-
-impl FromStr for ArticleType {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "New" => ArticleType::New,
-            "Best" => ArticleType::Best,
-            "Top" => ArticleType::Top,
-            _ => return Err(()),
-        })
-    }
-}
 
 /// A list of child comment ids for a given comment.
 pub struct CommentItem {
