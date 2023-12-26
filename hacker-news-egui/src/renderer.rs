@@ -4,7 +4,7 @@ use self::styles::{
     user_window_frame,
 };
 use crate::{
-    app::{ArticleType, HackerNewsApp, MutableWidgetState},
+    app::{ArticleType, Filter, HackerNewsApp, MutableWidgetState},
     event::{ClientEvent, Event},
 };
 use chrono::{DateTime, Utc};
@@ -82,7 +82,18 @@ fn render_articles(app_state: &HackerNewsApp, ui: &mut egui::Ui) {
                             }
                         })
                         .filter(|article| {
-                            !app_state.filter_visited || !app_state.visited.contains(&article.id)
+                            !app_state.filters.contains(&crate::app::Filter::Visisted)
+                                || !app_state.visited.contains(&article.id)
+                        })
+                        .filter(|article| {
+                            !app_state.filters.iter().any(|&f| {
+                                f == Filter::Jobs || f == Filter::Polls || f == Filter::Stories
+                            }) || match article.ty.as_str() {
+                                "story" => app_state.filters.contains(&Filter::Stories),
+                                "job" => app_state.filters.contains(&Filter::Jobs),
+                                "poll" => app_state.filters.contains(&Filter::Polls),
+                                _ => false,
+                            }
                         });
 
                     article_iter.for_each(render_article(app_state, ui));
@@ -219,7 +230,7 @@ fn render_header<'a>(
             ui.label(format!("{}", app_state.visited.len()))
                 .on_hover_text("Visited");
             let filter_button = Button::image(include_image!("../assets/filter.png"))
-                .selected(app_state.filter_visited);
+                .selected(app_state.filters.contains(&Filter::Visisted));
             if filter_button
                 .ui(ui)
                 .on_hover_text("Filter visited")
@@ -227,7 +238,7 @@ fn render_header<'a>(
             {
                 app_state
                     .local_sender
-                    .send(Event::FilterVisited)
+                    .send(Event::ToggleFilter(Filter::Visisted))
                     .log_error_consume();
             }
             let reset_button = Button::image(include_image!("../assets/reset.png"));
@@ -402,10 +413,46 @@ fn render_footer<'a>(context: &'a egui::Context, app_state: &'a HackerNewsApp) {
             }
 
             if app_state.fetching {
-                ui.with_layout(Layout::right_to_left(Align::RIGHT), |ui| {
-                    ui.spinner();
-                });
+                ui.spinner();
             }
+
+            ui.with_layout(Layout::right_to_left(Align::RIGHT), |ui| {
+                let (stories, polls, jobs) =
+                    app_state
+                        .articles
+                        .iter()
+                        .fold((0, 0, 0), |(stories, polls, jobs), item| {
+                            match item.ty.as_str() {
+                                "job" => (stories, polls, jobs + 1),
+                                "story" => (stories + 1, polls, jobs),
+                                "poll" => (stories, polls + 1, jobs),
+                                _ => (stories, polls, jobs),
+                            }
+                        });
+
+                let mut filter_button = |name, hover_text, filter| {
+                    if Button::new(name)
+                        .selected(app_state.filters.contains(&filter))
+                        .ui(ui)
+                        .on_hover_text(hover_text)
+                        .clicked()
+                    {
+                        // dispatch filter change
+                        app_state
+                            .local_sender
+                            .send(Event::ToggleFilter(filter))
+                            .log_error_consume();
+                    };
+                };
+
+                filter_button(
+                    format!("stories: {stories}"),
+                    "Filter stories",
+                    Filter::Stories,
+                );
+                filter_button(format!("polls: {polls}"), "Filter polls", Filter::Polls);
+                filter_button(format!("jobs: {jobs}"), "Filter jobs", Filter::Jobs);
+            });
         });
     });
 }
