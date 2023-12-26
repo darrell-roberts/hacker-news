@@ -2,7 +2,7 @@
 This repo has two user interfaces you can build. One is a tauri desktop app and the other is an egui/eframe desktop app. There are shared crates that support making api calls to the hacker news firebase backend and for parsing the payloads.
 
 ## hacker-news egui
-- View top/best/new stories.
+- View top/best/new/ask/show/job stories.
 - Search text in title.
 - Read comments and nested comments.
 - View user information.
@@ -40,13 +40,13 @@ make
 This will create a `dist/Hacker News.dmg` file and open/mount it. Simply copy the contents into your `Application` folder.
 
 ### Articles
-<img width="1057" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/ff499c9b-b4c7-47fd-8c7a-b0d5869e3fac">
+<img width="953" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/e5fcb7af-3dab-4c41-81bf-832f68b16e84">
 
 ### Title search
-<img width="1057" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/b639ccdc-64c5-4dff-8970-79783da014dc">
+<img width="953" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/adb8ce76-cb02-404a-b7b6-407a79329eaa">
 
 ### View comments
-<img width="1057" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/8458d9dd-55a9-4cd5-bf42-a70bc909df5f">
+<img width="953" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/2b507213-3f16-47bd-b21b-c6c79ea3d5ec">
 
 ## hacker-news Tauri
 Hacker news top stories dashboard reader.
