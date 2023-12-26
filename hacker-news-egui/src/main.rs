@@ -23,9 +23,7 @@ async fn main() -> anyhow::Result<()> {
     let client =
         Arc::new(hacker_news_api::ApiClient::new().context("Could not create api client")?);
 
-    let icon = from_png_bytes(include_bytes!(
-        "../../hacker-news-tauri/src-tauri/icons/icon.png"
-    ))?;
+    let icon = from_png_bytes(include_bytes!("../assets/icon.png"))?;
 
     let native_options = eframe::NativeOptions {
         viewport: ViewportBuilder::default().with_icon(icon),
