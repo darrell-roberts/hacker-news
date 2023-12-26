@@ -141,6 +141,11 @@ fn render_article<'a: 'b, 'b>(
                 ui.image(egui::include_image!("../assets/rust-logo-32x32.png"));
             }
 
+            // Add job icon.
+            if article.ty == "job" {
+                ui.label("🏢");
+            }
+
             ui.style_mut().visuals.hyperlink_color = if app_state.visited.contains(&article.id) {
                 Color32::DARK_GRAY
             } else {
