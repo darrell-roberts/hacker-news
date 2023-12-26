@@ -114,6 +114,7 @@ pub struct HackerNewsApp {
     pub filters: HashSet<Filter>,
     /// Last update of articles.
     pub last_update: Option<DateTime<Local>>,
+    /// Search input is open.
     pub search_open: bool,
 }
 
