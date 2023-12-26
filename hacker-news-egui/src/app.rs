@@ -3,10 +3,11 @@ use crate::{
     event::{ClientEvent, Event, EventHandler},
     renderer, SHUT_DOWN,
 };
+use chrono::{DateTime, Local};
 use eframe::Storage;
 use egui::{os::OperatingSystem, Id};
 use hacker_news_api::{Item, ResultExt, User};
-use std::{str::FromStr, sync::atomic::Ordering};
+use std::{collections::HashSet, str::FromStr, sync::atomic::Ordering};
 use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Eq, PartialEq, Copy, Clone, Hash)]
@@ -64,6 +65,15 @@ pub struct CommentsState {
     pub active_item: Option<Item>,
 }
 
+/// Article filters.
+#[derive(Eq, PartialEq, Hash, Copy, Clone)]
+pub enum Filter {
+    Jobs,
+    Stories,
+    Polls,
+    Visisted,
+}
+
 /// Application State.
 pub struct HackerNewsApp {
     /// Top stories.
@@ -94,8 +104,10 @@ pub struct HackerNewsApp {
     pub search: String,
     /// Showing window for item text.
     pub viewing_item_text: bool,
-    /// Filter visited.
-    pub filter_visited: bool,
+    /// Filters.
+    pub filters: HashSet<Filter>,
+    /// Last update of articles.
+    pub last_update: Option<DateTime<Local>>,
 }
 
 /// State that requires mutation by a widget. This is the
@@ -152,7 +164,8 @@ impl HackerNewsApp {
             viewing_user: false,
             search: String::new(),
             viewing_item_text: false,
-            filter_visited: false,
+            filters: HashSet::new(),
+            last_update: None,
         }
     }
 
@@ -165,6 +178,7 @@ impl HackerNewsApp {
                 self.error = None;
                 self.article_type = article_type;
                 self.fetching = false;
+                self.last_update = Some(Local::now())
             }
             Event::Comments { items, parent, id } => {
                 let comment_item = CommentItem {
@@ -228,8 +242,11 @@ impl HackerNewsApp {
                 self.comments_state.active_item = Some(item);
                 self.viewing_item_text = true;
             }
-            Event::FilterVisited => {
-                self.filter_visited = !self.filter_visited;
+            Event::ToggleFilter(filter) => {
+                let removed = self.filters.remove(&filter);
+                if !removed {
+                    self.filters.insert(filter);
+                }
             }
             Event::ResetVisited => {
                 self.visited.clear();

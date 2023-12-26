@@ -1,4 +1,4 @@
-use crate::app::ArticleType;
+use crate::app::{ArticleType, Filter};
 use anyhow::Result;
 use egui::{Context, Id};
 use hacker_news_api::{ApiClient, Item, User};
@@ -26,7 +26,7 @@ pub enum Event {
     Visited(u64),
     FetchArticles(ClientEvent),
     ShowItemText(Item),
-    FilterVisited,
+    ToggleFilter(Filter),
     ResetVisited,
 }
 
