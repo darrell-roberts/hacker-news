@@ -3,4 +3,4 @@ mod client;
 mod types;
 
 pub use crate::client::{subscribe_top_stories, ApiClient};
-pub use types::{Item, ResultExt, User};
+pub use types::{ArticleType, Item, ResultExt, User};

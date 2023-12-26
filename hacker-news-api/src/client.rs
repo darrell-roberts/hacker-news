@@ -1,5 +1,8 @@
 //! Hacker News API Client.
-use crate::types::{EventData, Item, ResultExt, User};
+use crate::{
+    types::{EventData, Item, ResultExt, User},
+    ArticleType,
+};
 use anyhow::{Context, Result};
 use futures::TryFutureExt;
 use log::{error, info};
@@ -26,6 +29,7 @@ impl ApiClient {
         })
     }
 
+    /// Make firebase api call.
     async fn call(&self, limit: usize, api: &str) -> Result<Vec<Item>> {
         let mut ids = self
             .client
@@ -38,17 +42,15 @@ impl ApiClient {
         self.items(&ids).await
     }
 
-    /// Get `limit` number of top stories.
-    pub async fn top_stories(&self, limit: usize) -> Result<Vec<Item>> {
-        self.call(limit, "topstories.json").await
-    }
-
-    pub async fn best_stories(&self, limit: usize) -> Result<Vec<Item>> {
-        self.call(limit, "beststories.json").await
-    }
-
-    pub async fn new_stories(&self, limit: usize) -> Result<Vec<Item>> {
-        self.call(limit, "newstories.json").await
+    pub async fn articles(&self, limit: usize, article_type: ArticleType) -> Result<Vec<Item>> {
+        match article_type {
+            ArticleType::New => self.call(limit, "newstories.json").await,
+            ArticleType::Best => self.call(limit, "beststories.json").await,
+            ArticleType::Top => self.call(limit, "topstories.json").await,
+            ArticleType::Ask => self.call(limit, "askstories.json").await,
+            ArticleType::Show => self.call(limit, "showstories.json").await,
+            ArticleType::Job => self.call(limit, "jobstories.json").await,
+        }
     }
 
     /// Get a single item via item id.

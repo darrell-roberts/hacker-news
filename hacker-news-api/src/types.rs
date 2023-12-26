@@ -1,7 +1,10 @@
 //! API Client types.
 use log::error;
 use serde::{Deserialize, Serialize};
-use std::fmt::{Debug, Display};
+use std::{
+    fmt::{Debug, Display},
+    str::FromStr,
+};
 
 /// Hacker news item.
 ///
@@ -70,5 +73,44 @@ where
 
     fn log_error_consume(self) {
         let _ = self.log_error();
+    }
+}
+
+#[derive(Eq, PartialEq, Copy, Clone, Hash)]
+pub enum ArticleType {
+    New,
+    Best,
+    Top,
+    Ask,
+    Show,
+    Job,
+}
+
+impl ArticleType {
+    pub fn as_str(&self) -> &str {
+        match self {
+            ArticleType::New => "New",
+            ArticleType::Best => "Best",
+            ArticleType::Top => "Top",
+            ArticleType::Ask => "Ask",
+            ArticleType::Show => "Show",
+            ArticleType::Job => "Job",
+        }
+    }
+}
+
+impl FromStr for ArticleType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
+            "New" => ArticleType::New,
+            "Best" => ArticleType::Best,
+            "Top" => ArticleType::Top,
+            "Ask" => ArticleType::Ask,
+            "Show" => ArticleType::Show,
+            "Job" => ArticleType::Job,
+            _ => return Err(()),
+        })
     }
 }
