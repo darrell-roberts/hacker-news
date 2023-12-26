@@ -163,8 +163,6 @@ fn render_article<'a: 'b, 'b>(
             }
 
             match (article.url.as_deref(), article.title.as_deref()) {
-                (None, None) => (),
-                (Some(_), None) => (),
                 (None, Some(title)) => {
                     if ui.link(title).clicked() {
                         app_state
@@ -184,6 +182,7 @@ fn render_article<'a: 'b, 'b>(
                             .log_error_consume();
                     }
                 }
+                _ => (),
             }
 
             ui.style_mut().override_text_style = Some(TextStyle::Small);
