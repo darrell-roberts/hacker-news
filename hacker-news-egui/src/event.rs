@@ -8,7 +8,11 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 /// Client Event.
 pub enum Event {
-    Articles(ArticleType, Vec<Item>),
+    Articles {
+        ty: ArticleType,
+        items: Vec<Item>,
+        requested: usize,
+    },
     Comments {
         items: Vec<Item>,
         parent: Option<Item>,
@@ -93,51 +97,31 @@ impl ApiEventHandler {
 
     /// Handle an api event.
     pub async fn handle_event(&self, event: ApiEvent) {
-        let result = match event {
-            ApiEvent::TopStories(total) => {
-                match self.client.articles(total, ArticleType::Top).await {
-                    Ok(ts) => self.sender.send(Event::Articles(ArticleType::Top, ts)),
-                    Err(err) => self.sender.send(Event::Error(err.to_string())),
-                }
+        let request_articles = |ty: ArticleType, total: usize| async move {
+            match self.client.articles(total, ty).await {
+                Ok(items) => self.sender.send(Event::Articles {
+                    ty,
+                    items,
+                    requested: total,
+                }),
+                Err(err) => self.sender.send(Event::Error(err.to_string())),
             }
+        };
+        let result = match event {
+            ApiEvent::TopStories(total) => request_articles(ArticleType::Top, total).await,
+            ApiEvent::BestStories(total) => request_articles(ArticleType::Best, total).await,
+            ApiEvent::NewStories(total) => request_articles(ArticleType::New, total).await,
+            ApiEvent::AskStories(total) => request_articles(ArticleType::Ask, total).await,
+            ApiEvent::ShowStories(total) => request_articles(ArticleType::Show, total).await,
+            ApiEvent::JobStories(total) => request_articles(ArticleType::Job, total).await,
             ApiEvent::Comments { ids, parent, id } => match self.client.items(&ids).await {
                 Ok(items) => self.sender.send(Event::Comments { items, parent, id }),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
             },
-            ApiEvent::BestStories(total) => {
-                match self.client.articles(total, ArticleType::Best).await {
-                    Ok(bs) => self.sender.send(Event::Articles(ArticleType::Best, bs)),
-                    Err(err) => self.sender.send(Event::Error(err.to_string())),
-                }
-            }
-            ApiEvent::NewStories(total) => {
-                match self.client.articles(total, ArticleType::New).await {
-                    Ok(ns) => self.sender.send(Event::Articles(ArticleType::New, ns)),
-                    Err(err) => self.sender.send(Event::Error(err.to_string())),
-                }
-            }
             ApiEvent::User(user) => match self.client.user(&user).await {
                 Ok(user) => self.sender.send(Event::User(user)),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
             },
-            ApiEvent::AskStories(total) => {
-                match self.client.articles(total, ArticleType::Ask).await {
-                    Ok(items) => self.sender.send(Event::Articles(ArticleType::Ask, items)),
-                    Err(err) => self.sender.send(Event::Error(err.to_string())),
-                }
-            }
-            ApiEvent::ShowStories(total) => {
-                match self.client.articles(total, ArticleType::Show).await {
-                    Ok(items) => self.sender.send(Event::Articles(ArticleType::Show, items)),
-                    Err(err) => self.sender.send(Event::Error(err.to_string())),
-                }
-            }
-            ApiEvent::JobStories(total) => {
-                match self.client.articles(total, ArticleType::Job).await {
-                    Ok(items) => self.sender.send(Event::Articles(ArticleType::Job, items)),
-                    Err(err) => self.sender.send(Event::Error(err.to_string())),
-                }
-            }
         };
 
         self.context.request_repaint();
