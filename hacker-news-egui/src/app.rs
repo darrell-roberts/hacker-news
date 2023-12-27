@@ -5,7 +5,7 @@ use crate::{
 };
 use chrono::{DateTime, Local};
 use eframe::Storage;
-use egui::{os::OperatingSystem, Id};
+use egui::Id;
 use hacker_news_api::{ArticleType, Item, ResultExt, User};
 use std::{collections::HashSet, sync::atomic::Ordering};
 use tokio::sync::mpsc::UnboundedSender;
@@ -254,11 +254,11 @@ impl eframe::App for HackerNewsApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_next_event();
 
-        if ctx.os() == OperatingSystem::Mac {
-            ctx.set_pixels_per_point(2.5);
-        } else {
-            ctx.set_pixels_per_point(3.0);
-        }
+        // if ctx.os() == OperatingSystem::Mac {
+        //     ctx.set_pixels_per_point(2.5);
+        // } else {
+        //     ctx.set_pixels_per_point(3.0);
+        // }
 
         // I would prefer having Render not mutate state however
         // Window widget requires a mutable reference for the close
