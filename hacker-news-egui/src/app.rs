@@ -145,11 +145,15 @@ impl HackerNewsApp {
     /// Handle emitted events.
     fn handle_event(&mut self, event: Event) {
         match event {
-            Event::Articles(article_type, ts) => {
-                self.showing = ts.len();
-                self.articles = ts;
+            Event::Articles {
+                ty,
+                items,
+                requested,
+            } => {
+                self.showing = requested;
+                self.articles = items;
                 self.error = None;
-                self.article_type = article_type;
+                self.article_type = ty;
                 self.fetching = false;
                 self.last_update = Some(Local::now())
             }

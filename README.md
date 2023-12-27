@@ -27,14 +27,25 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install --path hacker-news-egui --bin hacker-news-egui
 ```
 ## Install as Mac app
-Run the provided `Makefile`
+Run the provided `Makefile` target
 
 
 ```bash
-make
+make bundle-mac
 ```
 
 This will create a `dist/Hacker News.dmg` file and open/mount it. Simply copy the contents into your `Application` folder.
+
+## Install as Linux Desktop App.
+Run the provided `Makefile` target
+
+```bash
+make install-local-linux
+```
+
+This copies the binary and other assets into your `~/.local`.
+
+## Screenshots
 
 ### Articles
 <img width="909" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/c2d0eb69-76a8-434a-9ada-3e4a7988eac8">
