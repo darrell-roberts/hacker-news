@@ -84,5 +84,5 @@ fn bubble_frame(fill_color: Color32) -> Frame {
 }
 
 pub fn article_text_bubble_frame() -> Frame {
-    bubble_frame(Color32::from_rgb(195, 231, 250))
+    bubble_frame(Color32::from_rgb(224, 251, 255))
 }
