@@ -31,7 +31,7 @@ Run the provided `Makefile` target
 
 
 ```bash
-make bundle-mac
+make install
 ```
 
 This will create a `dist/Hacker News.dmg` file and open/mount it. Simply copy the contents into your `Application` folder.
@@ -40,7 +40,7 @@ This will create a `dist/Hacker News.dmg` file and open/mount it. Simply copy th
 Run the provided `Makefile` target
 
 ```bash
-make install-local-linux
+make install
 ```
 
 This copies the binary and other assets into your `~/.local`.

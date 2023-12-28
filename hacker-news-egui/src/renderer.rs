@@ -470,7 +470,7 @@ fn render_footer<'a>(context: &'a egui::Context, app_state: &'a HackerNewsApp) {
                             }
                         });
 
-                let mut filter_button = |name, hover_text, filter| {
+                let filter_button = |(name, hover_text, filter)| {
                     if Button::new(name)
                         .selected(app_state.filters.contains(&filter))
                         .ui(ui)
@@ -485,13 +485,17 @@ fn render_footer<'a>(context: &'a egui::Context, app_state: &'a HackerNewsApp) {
                     };
                 };
 
-                filter_button(
-                    format!("stories: {stories}"),
-                    "Filter stories",
-                    Filter::Stories,
-                );
-                filter_button(format!("polls: {polls}"), "Filter polls", Filter::Polls);
-                filter_button(format!("jobs: {jobs}"), "Filter jobs", Filter::Jobs);
+                [
+                    (
+                        format!("stories: {stories}"),
+                        "Filter stories",
+                        Filter::Stories,
+                    ),
+                    (format!("polls: {polls}"), "Filter polls", Filter::Polls),
+                    (format!("jobs: {jobs}"), "Filter jobs", Filter::Jobs),
+                ]
+                .into_iter()
+                .for_each(filter_button);
             });
         });
     });
