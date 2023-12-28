@@ -1,3 +1,5 @@
+PLATFORM := $(shell uname)
+
 all: build
 
 clean-dist:
@@ -26,4 +28,15 @@ install-local-linux: build
 	cp hacker-news-egui/assets/hacker-news.desktop ~/.local/share/applications
 	tar zxvf hacker-news-egui/assets/icons.tar.gz -C ~/.local/share
 
-.PHONY: clean-dist check build bundle-mac install-local-linux
+install:
+ifeq ($(PLATFORM), Darwin)
+	@echo "Installing for Mac"
+	@$(MAKE) bundle-mac
+else ifeq ($(PLATFORM), Linux)
+	@echo "Installing for Linux"
+	@$(MAKE) install-local-linux
+else
+	@echo "Unsupported platform for install: " $(PLATFORM)
+endif
+	
+.PHONY: all clean-dist check build bundle-mac install-local-linux install
