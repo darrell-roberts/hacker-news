@@ -1,6 +1,6 @@
 use crate::app::Filter;
 use anyhow::Result;
-use egui::{Context, Id};
+use egui::Id;
 use hacker_news_api::{ApiClient, ArticleType, Item, User};
 use log::error;
 use std::sync::Arc;
@@ -81,18 +81,13 @@ impl EventHandler {
 
 pub struct ApiEventHandler {
     client: Arc<ApiClient>,
-    context: Context,
     sender: UnboundedSender<Event>,
 }
 
 impl ApiEventHandler {
     /// Create a new ['ApiEventHandler'].
-    pub fn new(client: Arc<ApiClient>, context: Context, sender: UnboundedSender<Event>) -> Self {
-        Self {
-            client,
-            context,
-            sender,
-        }
+    pub fn new(client: Arc<ApiClient>, sender: UnboundedSender<Event>) -> Self {
+        Self { client, sender }
     }
 
     /// Handle an api event.
@@ -124,7 +119,6 @@ impl ApiEventHandler {
             },
         };
 
-        self.context.request_repaint();
         if let Err(err) = result {
             error!("handle_event failed: {err}")
         }

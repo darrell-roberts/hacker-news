@@ -46,6 +46,8 @@ pub enum Filter {
 
 /// Application State.
 pub struct HackerNewsApp {
+    /// Egui context.
+    context: egui::Context,
     /// Top stories.
     pub articles: Vec<Item>,
     /// Event handler for background events.
@@ -122,6 +124,7 @@ impl HackerNewsApp {
             .unwrap_or(50);
 
         Self {
+            context: cc.egui_ctx.clone(),
             event_handler,
             articles: Vec::new(),
             fetching: true,
@@ -189,6 +192,7 @@ impl HackerNewsApp {
                 self.event_handler
                     .emit(ApiEvent::User(user))
                     .log_error_consume();
+                self.context.request_repaint();
             }
             Event::FetchComments {
                 ids,
@@ -206,6 +210,7 @@ impl HackerNewsApp {
                 self.event_handler
                     .emit(ApiEvent::Comments { ids, parent, id })
                     .log_error_consume();
+                self.context.request_repaint();
             }
             Event::Visited(id) => {
                 self.visited.push(id);
@@ -213,6 +218,7 @@ impl HackerNewsApp {
             Event::FetchArticles(event) => {
                 self.fetching = true;
                 self.event_handler.emit(event).log_error_consume();
+                self.context.request_repaint();
             }
             Event::ShowItemText(item) => {
                 self.visited.push(item.id);
@@ -257,12 +263,6 @@ impl HackerNewsApp {
 impl eframe::App for HackerNewsApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_next_event();
-
-        // if ctx.os() == OperatingSystem::Mac {
-        //     ctx.set_pixels_per_point(2.5);
-        // } else {
-        //     ctx.set_pixels_per_point(3.0);
-        // }
 
         // I would prefer having Render not mutate state however
         // Window widget requires a mutable reference for the close
