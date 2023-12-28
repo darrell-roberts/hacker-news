@@ -143,7 +143,12 @@ fn render_article<'a: 'b, 'b>(
                 .as_deref()
                 .unwrap_or_default()
                 .split_whitespace()
-                .any(|word| word.to_lowercase() == "rust")
+                .any(|word| {
+                    word.chars()
+                        .flat_map(|c| c.to_lowercase())
+                        .filter(|c| c.is_alphabetic())
+                        .eq("rust".chars())
+                })
             {
                 ui.image(egui::include_image!("../assets/rust-logo-32x32.png"));
             }
