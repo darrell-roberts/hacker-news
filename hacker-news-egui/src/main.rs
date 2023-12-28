@@ -39,25 +39,25 @@ async fn main() -> anyhow::Result<()> {
         native_options,
         Box::new(move |cc| {
             egui_extras::install_image_loaders(&cc.egui_ctx);
-            let ctx = cc.egui_ctx.clone();
-            let (sender, mut receiver) = mpsc::unbounded_channel::<ApiEvent>();
-            let (local_sender, client_receiver) = mpsc::unbounded_channel::<Event>();
+            let (api_sender, mut receiver) = mpsc::unbounded_channel::<ApiEvent>();
+            let (client_sender, client_receiver) = mpsc::unbounded_channel::<Event>();
 
-            let event_handler = EventHandler::new(sender.clone(), client_receiver);
-            let client_event_handler =
-                ApiEventHandler::new(client.clone(), ctx, local_sender.clone());
+            let event_handler = EventHandler::new(api_sender.clone(), client_receiver);
+            let api_event_handler = ApiEventHandler::new(client, client_sender.clone());
 
             let _handle = tokio::spawn(async move {
                 while !(SHUT_DOWN.load(Ordering::Acquire)) {
                     if let Some(event) = receiver.recv().await {
-                        client_event_handler.handle_event(event).await;
+                        api_event_handler.handle_event(event).await;
                     }
                 }
             });
 
-            let app = HackerNewsApp::new(cc, event_handler, local_sender);
+            let app = HackerNewsApp::new(cc, event_handler, client_sender);
             let last_request = app.last_request();
-            sender.send(last_request(app.showing)).log_error_consume();
+            api_sender
+                .send(last_request(app.showing))
+                .log_error_consume();
 
             Box::new(app)
         }),
