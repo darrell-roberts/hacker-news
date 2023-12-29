@@ -215,9 +215,20 @@ impl HackerNewsApp {
             Event::Visited(id) => {
                 self.visited.push(id);
             }
-            Event::FetchArticles(event) => {
+            Event::FetchArticles {
+                article_type,
+                total,
+            } => {
+                let api_event = match article_type {
+                    ArticleType::New => ApiEvent::NewStories(total),
+                    ArticleType::Best => ApiEvent::BestStories(total),
+                    ArticleType::Top => ApiEvent::TopStories(total),
+                    ArticleType::Ask => ApiEvent::AskStories(total),
+                    ArticleType::Show => ApiEvent::ShowStories(total),
+                    ArticleType::Job => ApiEvent::JobStories(total),
+                };
                 self.fetching = true;
-                self.event_handler.emit(event).log_error_consume();
+                self.event_handler.emit(api_event).log_error_consume();
                 self.context.request_repaint();
             }
             Event::ShowItemText(item) => {

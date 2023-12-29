@@ -28,7 +28,10 @@ pub enum Event {
         active_item: Option<Item>,
     },
     Visited(u64),
-    FetchArticles(ApiEvent),
+    FetchArticles {
+        article_type: ArticleType,
+        total: usize,
+    },
     ShowItemText(Item),
     ToggleFilter(Filter),
     ResetVisited,
