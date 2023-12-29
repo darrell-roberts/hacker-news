@@ -31,12 +31,14 @@ pub fn render<'a>(
     }
 
     context.input(|input| {
-        if input.key_pressed(Key::Minus) {
-            app_state.emit(Event::ZoomOut);
-        }
+        if !app_state.search_open {
+            if input.key_pressed(Key::Minus) {
+                app_state.emit(Event::ZoomOut);
+            }
 
-        if input.key_pressed(Key::PlusEquals) {
-            app_state.emit(Event::ZoomIn);
+            if input.key_pressed(Key::PlusEquals) {
+                app_state.emit(Event::ZoomIn);
+            }
         }
     });
 
