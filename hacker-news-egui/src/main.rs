@@ -57,9 +57,8 @@ fn main() -> Result<()> {
             egui_extras::install_image_loaders(&cc.egui_ctx);
 
             let app = HackerNewsApp::new(cc, event_handler, client_sender);
-            let last_request = app.last_request();
             api_sender
-                .send(last_request(app.showing))
+                .send(app.last_request())
                 .context("Intitial request")
                 .log_error_consume();
 

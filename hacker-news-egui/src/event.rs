@@ -41,12 +41,10 @@ pub enum Event {
 
 /// API Event.
 pub enum ApiEvent {
-    TopStories(usize),
-    BestStories(usize),
-    NewStories(usize),
-    AskStories(usize),
-    ShowStories(usize),
-    JobStories(usize),
+    Articles {
+        ty: ArticleType,
+        limit: usize,
+    },
     Comments {
         ids: Vec<u64>,
         parent: Option<Item>,
@@ -107,12 +105,7 @@ impl ApiEventHandler {
             }
         };
         let result = match event {
-            ApiEvent::TopStories(total) => request_articles(ArticleType::Top, total).await,
-            ApiEvent::BestStories(total) => request_articles(ArticleType::Best, total).await,
-            ApiEvent::NewStories(total) => request_articles(ArticleType::New, total).await,
-            ApiEvent::AskStories(total) => request_articles(ArticleType::Ask, total).await,
-            ApiEvent::ShowStories(total) => request_articles(ArticleType::Show, total).await,
-            ApiEvent::JobStories(total) => request_articles(ArticleType::Job, total).await,
+            ApiEvent::Articles { ty, limit } => request_articles(ty, limit).await,
             ApiEvent::Comments { ids, parent, id } => match self.client.items(&ids).await {
                 Ok(items) => self.sender.send(Event::Comments { items, parent, id }),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
