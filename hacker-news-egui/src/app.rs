@@ -55,7 +55,7 @@ pub struct HackerNewsApp {
     /// API request in progress.
     pub fetching: bool,
     /// Emit local events.
-    pub local_sender: UnboundedSender<Event>,
+    local_sender: UnboundedSender<Event>,
     /// Number of articles to show.
     pub showing: usize,
     /// Articles visited.
@@ -257,6 +257,11 @@ impl HackerNewsApp {
             .next_event()
             .map(|event| self.handle_event(event))
             .unwrap_or_default();
+    }
+
+    /// Emit state changes.
+    pub fn emit(&self, event: Event) {
+        self.local_sender.send(event).log_error_consume();
     }
 }
 

@@ -9,8 +9,7 @@ use crate::{
     renderer::scroll_delta,
 };
 use egui::{style::Spacing, widgets::Widget, Button, Color32, Id, RichText, Vec2};
-use hacker_news_api::{Item, ResultExt};
-use tokio::sync::mpsc::UnboundedSender;
+use hacker_news_api::Item;
 
 /// Render comments if requested.
 pub fn render<'a>(
@@ -40,21 +39,21 @@ pub fn render<'a>(
                     if let Some(text) = item.text.as_deref() {
                         render_rich_text(text, ui);
                     }
-                    render_by(ui, &app_state.local_sender, item, true);
+                    render_by(ui, app_state, item, true);
                 }
                 if let Some(parent_comment) = comment_item.parent.as_ref() {
                     ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
                     render_rich_text(parent_comment.text.as_deref().unwrap_or_default(), ui);
-                    render_by(ui, &app_state.local_sender, parent_comment, true);
+                    render_by(ui, app_state, parent_comment, true);
                 }
                 ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
 
-                render_comments(comment_item, &app_state.local_sender, ui);
+                render_comments(comment_item, app_state, ui);
             });
     }
 }
 
-fn render_by(ui: &mut egui::Ui, sender: &UnboundedSender<Event>, item: &Item, comments: bool) {
+fn render_by(ui: &mut egui::Ui, app_state: &HackerNewsApp, item: &Item, comments: bool) {
     ui.horizontal(|ui| {
         ui.style_mut().spacing = Spacing {
             item_spacing: Vec2 { y: 1., x: 2. },
@@ -67,9 +66,7 @@ fn render_by(ui: &mut egui::Ui, sender: &UnboundedSender<Event>, item: &Item, co
             .link(RichText::new(&item.by).italics().color(Color32::GRAY))
             .clicked()
         {
-            sender
-                .send(Event::FetchUser(item.by.clone()))
-                .log_error_consume();
+            app_state.emit(Event::FetchUser(item.by.clone()));
         };
 
         if let Some(time) = parse_date(item.time) {
@@ -84,7 +81,7 @@ fn render_by(ui: &mut egui::Ui, sender: &UnboundedSender<Event>, item: &Item, co
 
 fn render_comments(
     comment_item: &crate::app::CommentItem,
-    sender: &UnboundedSender<Event>,
+    app_state: &HackerNewsApp,
     ui: &mut egui::Ui,
 ) {
     for comment in comment_item.comments.iter() {
@@ -98,7 +95,7 @@ fn render_comments(
                     ..Default::default()
                 };
                 ui.style_mut().visuals.override_text_color = Some(Color32::GRAY);
-                render_by(ui, sender, comment, false);
+                render_by(ui, app_state, comment, false);
                 if !comment.kids.is_empty() {
                     ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
                     let button = Button::new(format!("💬{}", comment.kids.len()))
@@ -106,14 +103,12 @@ fn render_comments(
                         .ui(ui);
 
                     if button.clicked() {
-                        sender
-                            .send(Event::FetchComments {
-                                ids: comment.kids.clone(),
-                                parent: Some(comment.to_owned()),
-                                id: Id::new(comment.id),
-                                active_item: None,
-                            })
-                            .log_error_consume();
+                        app_state.emit(Event::FetchComments {
+                            ids: comment.kids.clone(),
+                            parent: Some(comment.to_owned()),
+                            id: Id::new(comment.id),
+                            active_item: None,
+                        });
                     }
                 }
             });
