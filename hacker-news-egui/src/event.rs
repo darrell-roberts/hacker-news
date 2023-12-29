@@ -3,7 +3,6 @@ use anyhow::Result;
 use egui::Id;
 use hacker_news_api::{ApiClient, ArticleType, Item, User};
 use log::error;
-use std::sync::Arc;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 
 /// Client Event.
@@ -83,13 +82,13 @@ impl EventHandler {
 }
 
 pub struct ApiEventHandler {
-    client: Arc<ApiClient>,
+    client: ApiClient,
     sender: UnboundedSender<Event>,
 }
 
 impl ApiEventHandler {
     /// Create a new ['ApiEventHandler'].
-    pub fn new(client: Arc<ApiClient>, sender: UnboundedSender<Event>) -> Self {
+    pub fn new(client: ApiClient, sender: UnboundedSender<Event>) -> Self {
         Self { client, sender }
     }
 
