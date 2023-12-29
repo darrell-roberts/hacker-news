@@ -94,18 +94,15 @@ impl ApiEventHandler {
 
     /// Handle an api event.
     pub async fn handle_event(&self, event: ApiEvent) {
-        let request_articles = |ty: ArticleType, total: usize| async move {
-            match self.client.articles(total, ty).await {
+        let result = match event {
+            ApiEvent::Articles { ty, limit } => match self.client.articles(limit, ty).await {
                 Ok(items) => self.sender.send(Event::Articles {
                     ty,
                     items,
-                    requested: total,
+                    requested: limit,
                 }),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
-            }
-        };
-        let result = match event {
-            ApiEvent::Articles { ty, limit } => request_articles(ty, limit).await,
+            },
             ApiEvent::Comments { ids, parent, id } => match self.client.items(&ids).await {
                 Ok(items) => self.sender.send(Event::Comments { items, parent, id }),
                 Err(err) => self.sender.send(Event::Error(err.to_string())),
