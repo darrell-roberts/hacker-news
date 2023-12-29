@@ -5,7 +5,7 @@ use self::styles::{
 };
 use crate::{
     app::{Filter, HackerNewsApp, MutableWidgetState},
-    event::{ApiEvent, Event},
+    event::Event,
 };
 use chrono::{DateTime, Utc};
 use egui::{
@@ -295,7 +295,10 @@ fn add_total_select_label<'a, 'b: 'a>(
             .selectable_label(app_state.showing == total, format!("{total}"))
             .clicked()
         {
-            app_state.emit(Event::FetchArticles(app_state.last_request()(total)));
+            app_state.emit(Event::FetchArticles {
+                article_type: app_state.article_type,
+                total,
+            });
         }
     }
 }
@@ -312,14 +315,10 @@ fn add_article_type_select_label<'a, 'b: 'a>(
             )
             .clicked()
         {
-            app_state.emit(Event::FetchArticles(match article_type {
-                ArticleType::New => ApiEvent::NewStories(app_state.showing),
-                ArticleType::Best => ApiEvent::BestStories(app_state.showing),
-                ArticleType::Top => ApiEvent::TopStories(app_state.showing),
-                ArticleType::Ask => ApiEvent::AskStories(app_state.showing),
-                ArticleType::Show => ApiEvent::ShowStories(app_state.showing),
-                ArticleType::Job => ApiEvent::JobStories(app_state.showing),
-            }));
+            app_state.emit(Event::FetchArticles {
+                article_type,
+                total: app_state.showing,
+            });
         }
     }
 }
