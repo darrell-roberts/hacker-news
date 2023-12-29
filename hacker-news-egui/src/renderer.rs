@@ -12,7 +12,7 @@ use egui::{
     include_image, style::Spacing, widgets::Widget, Align, Button, Color32, CursorIcon, Grid, Id,
     Key, Layout, RichText, TextStyle, Vec2, Window,
 };
-use hacker_news_api::{ArticleType, Item, ResultExt};
+use hacker_news_api::{ArticleType, Item};
 
 mod comments;
 mod styles;
@@ -76,8 +76,10 @@ fn render_articles(app_state: &HackerNewsApp, ui: &mut egui::Ui) {
                                     .as_deref()
                                     .map(|title| {
                                         title.split_whitespace().any(|word| {
-                                            word.to_lowercase()
-                                                .contains(&app_state.search.to_lowercase())
+                                            app_state.search.split_whitespace().any(|search_term| {
+                                                word.to_lowercase()
+                                                    .contains(&search_term.to_lowercase())
+                                            })
                                         })
                                     })
                                     .unwrap_or(false)
@@ -121,15 +123,12 @@ fn render_article<'a: 'b, 'b>(
                     .ui(ui);
 
                 if button.clicked() {
-                    app_state
-                        .local_sender
-                        .send(Event::FetchComments {
-                            ids: article.kids.clone(),
-                            parent: None,
-                            id: Id::new(article.id),
-                            active_item: Some(article.to_owned()),
-                        })
-                        .log_error_consume();
+                    app_state.emit(Event::FetchComments {
+                        ids: article.kids.clone(),
+                        parent: None,
+                        id: Id::new(article.id),
+                        active_item: Some(article.to_owned()),
+                    });
                 }
             } else {
                 ui.label("");
@@ -170,10 +169,7 @@ fn render_article<'a: 'b, 'b>(
             match (article.url.as_deref(), article.title.as_deref()) {
                 (None, Some(title)) => {
                     if ui.link(title).clicked() {
-                        app_state
-                            .local_sender
-                            .send(Event::ShowItemText(article.clone()))
-                            .log_error_consume();
+                        app_state.emit(Event::ShowItemText(article.clone()));
                     }
                 }
                 (Some(url), Some(title)) => {
@@ -181,10 +177,7 @@ fn render_article<'a: 'b, 'b>(
                         .hyperlink_to(RichText::new(title).strong().color(Color32::BLACK), url)
                         .clicked()
                     {
-                        app_state
-                            .local_sender
-                            .send(Event::Visited(article.id))
-                            .log_error_consume();
+                        app_state.emit(Event::Visited(article.id));
                     }
                 }
                 _ => (),
@@ -197,10 +190,7 @@ fn render_article<'a: 'b, 'b>(
             };
 
             if ui.link(RichText::new(&article.by).italics()).clicked() {
-                app_state
-                    .local_sender
-                    .send(Event::FetchUser(article.by.clone()))
-                    .log_error_consume();
+                app_state.emit(Event::FetchUser(article.by.clone()));
             };
             if let Some(time) = text::parse_date(article.time) {
                 ui.label(RichText::new(time).italics());
@@ -250,10 +240,7 @@ fn render_header<'a>(
                 })
                 .clicked()
             {
-                app_state
-                    .local_sender
-                    .send(Event::ToggleOpenSearch)
-                    .log_error_consume();
+                app_state.emit(Event::ToggleOpenSearch);
             }
             ui.separator();
 
@@ -266,17 +253,11 @@ fn render_header<'a>(
                 .on_hover_text("Filter visited")
                 .clicked()
             {
-                app_state
-                    .local_sender
-                    .send(Event::ToggleFilter(Filter::Visisted))
-                    .log_error_consume();
+                app_state.emit(Event::ToggleFilter(Filter::Visisted));
             }
             let reset_button = Button::image(include_image!("../assets/reset.png"));
             if reset_button.ui(ui).on_hover_text("Reset visited").clicked() {
-                app_state
-                    .local_sender
-                    .send(Event::ResetVisited)
-                    .log_error_consume();
+                app_state.emit(Event::ResetVisited);
             };
         });
 
@@ -290,6 +271,13 @@ fn render_header<'a>(
                     mutable_state.search = String::new();
                 }
             });
+
+            ui.input(|input| {
+                if input.key_pressed(Key::Escape) {
+                    mutable_state.search = String::new();
+                    app_state.emit(Event::ToggleOpenSearch);
+                }
+            })
         }
 
         if let Some(error) = app_state.error.as_deref() {
@@ -307,10 +295,7 @@ fn add_total_select_label<'a, 'b: 'a>(
             .selectable_label(app_state.showing == total, format!("{total}"))
             .clicked()
         {
-            app_state
-                .local_sender
-                .send(Event::FetchArticles(app_state.last_request()(total)))
-                .log_error_consume();
+            app_state.emit(Event::FetchArticles(app_state.last_request()(total)));
         }
     }
 }
@@ -327,17 +312,14 @@ fn add_article_type_select_label<'a, 'b: 'a>(
             )
             .clicked()
         {
-            app_state
-                .local_sender
-                .send(Event::FetchArticles(match article_type {
-                    ArticleType::New => ApiEvent::NewStories(app_state.showing),
-                    ArticleType::Best => ApiEvent::BestStories(app_state.showing),
-                    ArticleType::Top => ApiEvent::TopStories(app_state.showing),
-                    ArticleType::Ask => ApiEvent::AskStories(app_state.showing),
-                    ArticleType::Show => ApiEvent::ShowStories(app_state.showing),
-                    ArticleType::Job => ApiEvent::JobStories(app_state.showing),
-                }))
-                .log_error_consume();
+            app_state.emit(Event::FetchArticles(match article_type {
+                ArticleType::New => ApiEvent::NewStories(app_state.showing),
+                ArticleType::Best => ApiEvent::BestStories(app_state.showing),
+                ArticleType::Top => ApiEvent::TopStories(app_state.showing),
+                ArticleType::Ask => ApiEvent::AskStories(app_state.showing),
+                ArticleType::Show => ApiEvent::ShowStories(app_state.showing),
+                ArticleType::Job => ApiEvent::JobStories(app_state.showing),
+            }));
         }
     }
 }
@@ -409,10 +391,7 @@ fn render_item_text<'a>(
                             .link(RichText::new(&item.by).italics().color(Color32::GRAY))
                             .clicked()
                         {
-                            app_state
-                                .local_sender
-                                .send(Event::FetchUser(item.by.clone()))
-                                .log_error_consume();
+                            app_state.emit(Event::FetchUser(item.by.clone()));
                         };
 
                         if let Some(time) = text::parse_date(item.time) {
@@ -483,10 +462,7 @@ fn render_footer<'a>(context: &'a egui::Context, app_state: &'a HackerNewsApp) {
                         .clicked()
                     {
                         // dispatch filter change
-                        app_state
-                            .local_sender
-                            .send(Event::ToggleFilter(filter))
-                            .log_error_consume();
+                        app_state.emit(Event::ToggleFilter(filter));
                     };
                 };
 
