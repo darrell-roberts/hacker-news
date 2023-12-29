@@ -32,12 +32,16 @@ pub fn render<'a>(
 
     context.input(|input| {
         if !app_state.search_open {
-            if input.key_pressed(Key::Minus) {
+            if input.key_pressed(Key::Minus) && input.modifiers.ctrl {
                 app_state.emit(Event::ZoomOut);
             }
 
-            if input.key_pressed(Key::PlusEquals) {
+            if input.key_pressed(Key::PlusEquals) && input.modifiers.ctrl {
                 app_state.emit(Event::ZoomIn);
+            }
+
+            if input.key_pressed(Key::F) && input.modifiers.command {
+                app_state.emit(Event::ToggleOpenSearch);
             }
         }
     });
