@@ -3,11 +3,9 @@ use app::HackerNewsApp;
 use eframe::{icon_data::from_png_bytes, Theme};
 use egui::ViewportBuilder;
 use event::{ApiEvent, ApiEventHandler, Event, EventHandler};
+use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 use hacker_news_api::ResultExt;
-use std::sync::{
-    atomic::{AtomicBool, Ordering},
-    Arc,
-};
+use std::sync::atomic::{AtomicBool, Ordering};
 use tokio::sync::mpsc::{self, UnboundedReceiver};
 
 pub mod app;
@@ -17,10 +15,21 @@ pub mod renderer;
 pub static SHUT_DOWN: AtomicBool = AtomicBool::new(false);
 
 fn main() -> Result<()> {
-    env_logger::init();
+    let log_file_spec = FileSpec::default()
+        .directory(eframe::storage_dir("Hacker News").expect("No storage folder"))
+        .basename("hacker_news")
+        .suffix("log");
 
-    let client =
-        Arc::new(hacker_news_api::ApiClient::new().context("Could not create api client")?);
+    flexi_logger::Logger::try_with_env()?
+        .log_to_file(log_file_spec)
+        .rotate(
+            Criterion::Age(Age::Day),
+            Naming::Timestamps,
+            Cleanup::KeepLogFiles(4),
+        )
+        .start()?;
+
+    let client = hacker_news_api::ApiClient::new().context("Could not create api client")?;
 
     let icon = from_png_bytes(include_bytes!("../assets/icon.png"))?;
 
@@ -81,5 +90,6 @@ fn start_background(
             }
         });
     });
+
     Ok(())
 }
