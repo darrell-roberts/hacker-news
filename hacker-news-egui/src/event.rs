@@ -35,6 +35,8 @@ pub enum Event {
     ToggleFilter(Filter),
     ResetVisited,
     ToggleOpenSearch,
+    ZoomIn,
+    ZoomOut,
 }
 
 /// API Event.

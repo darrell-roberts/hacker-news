@@ -248,6 +248,14 @@ impl HackerNewsApp {
             Event::ToggleOpenSearch => {
                 self.search_open = !self.search_open;
             }
+            Event::ZoomIn => {
+                self.context
+                    .set_zoom_factor(self.context.zoom_factor() + 0.1);
+            }
+            Event::ZoomOut => {
+                self.context
+                    .set_zoom_factor(self.context.zoom_factor() - 0.1);
+            }
         }
     }
 
