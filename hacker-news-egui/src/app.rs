@@ -219,16 +219,13 @@ impl HackerNewsApp {
                 article_type,
                 total,
             } => {
-                let api_event = match article_type {
-                    ArticleType::New => ApiEvent::NewStories(total),
-                    ArticleType::Best => ApiEvent::BestStories(total),
-                    ArticleType::Top => ApiEvent::TopStories(total),
-                    ArticleType::Ask => ApiEvent::AskStories(total),
-                    ArticleType::Show => ApiEvent::ShowStories(total),
-                    ArticleType::Job => ApiEvent::JobStories(total),
-                };
                 self.fetching = true;
-                self.event_handler.emit(api_event).log_error_consume();
+                self.event_handler
+                    .emit(ApiEvent::Articles {
+                        ty: article_type,
+                        limit: total,
+                    })
+                    .log_error_consume();
                 self.context.request_repaint();
             }
             Event::ShowItemText(item) => {
@@ -259,14 +256,10 @@ impl HackerNewsApp {
         }
     }
 
-    pub fn last_request(&self) -> impl Fn(usize) -> ApiEvent {
-        match self.article_type {
-            ArticleType::New => ApiEvent::NewStories,
-            ArticleType::Best => ApiEvent::BestStories,
-            ArticleType::Top => ApiEvent::TopStories,
-            ArticleType::Ask => ApiEvent::AskStories,
-            ArticleType::Show => ApiEvent::ShowStories,
-            ArticleType::Job => ApiEvent::JobStories,
+    pub fn last_request(&self) -> ApiEvent {
+        ApiEvent::Articles {
+            ty: self.article_type,
+            limit: self.showing,
         }
     }
 
