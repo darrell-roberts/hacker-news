@@ -10,8 +10,6 @@ anyhow.workspace = true
 chrono.workspace = true
 tokio.workspace = true
 
-# env_logger = "0.10"
-
 flexi_logger = "0.27"
 
 eframe = { version = "0.24", features = ["persistence"] }

@@ -6,6 +6,7 @@
 - Highlights Rust articles with badge.
 - Track visisted/Filter visisted/Reset visisted.
 - Filter by article type (job, poll, story).
+- Adjust zoom (font sizes) with + - keys.
 
 ## Install prerequisites
 Each install method will build and package from source. You'll first need to clone this repo.
