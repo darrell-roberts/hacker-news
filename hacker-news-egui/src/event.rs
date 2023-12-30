@@ -1,9 +1,11 @@
+use std::sync::mpsc::{Receiver, Sender};
+
 use crate::app::Filter;
 use anyhow::Result;
 use egui::Id;
 use hacker_news_api::{ApiClient, ArticleType, Item, User};
 use log::error;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
+use tokio::sync::mpsc::UnboundedSender;
 
 /// Client Event.
 pub enum Event {
@@ -55,15 +57,12 @@ pub enum ApiEvent {
 
 pub struct EventHandler {
     sender: UnboundedSender<ApiEvent>,
-    client_receiver: UnboundedReceiver<Event>,
+    client_receiver: Receiver<Event>,
 }
 
 impl EventHandler {
     /// Create a new [`EventHandler`].
-    pub fn new(
-        sender: UnboundedSender<ApiEvent>,
-        client_receiver: UnboundedReceiver<Event>,
-    ) -> Self {
+    pub fn new(sender: UnboundedSender<ApiEvent>, client_receiver: Receiver<Event>) -> Self {
         Self {
             sender,
             client_receiver,
@@ -83,12 +82,12 @@ impl EventHandler {
 
 pub struct ApiEventHandler {
     client: ApiClient,
-    sender: UnboundedSender<Event>,
+    sender: Sender<Event>,
 }
 
 impl ApiEventHandler {
     /// Create a new ['ApiEventHandler'].
-    pub fn new(client: ApiClient, sender: UnboundedSender<Event>) -> Self {
+    pub fn new(client: ApiClient, sender: Sender<Event>) -> Self {
         Self { client, sender }
     }
 

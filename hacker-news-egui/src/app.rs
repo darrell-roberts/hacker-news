@@ -7,8 +7,10 @@ use chrono::{DateTime, Local};
 use eframe::Storage;
 use egui::Id;
 use hacker_news_api::{ArticleType, Item, ResultExt, User};
-use std::{collections::HashSet, sync::atomic::Ordering};
-use tokio::sync::mpsc::UnboundedSender;
+use std::{
+    collections::HashSet,
+    sync::{atomic::Ordering, mpsc::Sender},
+};
 
 /// A list of child comment ids for a given comment.
 pub struct CommentItem {
@@ -55,7 +57,7 @@ pub struct HackerNewsApp {
     /// API request in progress.
     pub fetching: bool,
     /// Emit local events.
-    local_sender: UnboundedSender<Event>,
+    local_sender: Sender<Event>,
     /// Number of articles to show.
     pub showing: usize,
     /// Articles visited.
@@ -99,7 +101,7 @@ impl HackerNewsApp {
     pub fn new(
         cc: &eframe::CreationContext<'_>,
         event_handler: EventHandler,
-        local_sender: UnboundedSender<Event>,
+        local_sender: Sender<Event>,
     ) -> Self {
         let visited = cc
             .storage
