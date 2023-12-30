@@ -5,7 +5,10 @@ use egui::ViewportBuilder;
 use event::{ApiEvent, ApiEventHandler, Event, EventHandler};
 use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 use hacker_news_api::ResultExt;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    mpsc::channel,
+};
 use tokio::sync::mpsc::{self, UnboundedReceiver};
 
 pub mod app;
@@ -43,7 +46,7 @@ fn main() -> Result<()> {
     };
 
     let (api_sender, api_receiver) = mpsc::unbounded_channel::<ApiEvent>();
-    let (client_sender, client_receiver) = mpsc::unbounded_channel::<Event>();
+    let (client_sender, client_receiver) = channel::<Event>();
 
     let event_handler = EventHandler::new(api_sender.clone(), client_receiver);
     let api_event_handler = ApiEventHandler::new(client, client_sender.clone());
