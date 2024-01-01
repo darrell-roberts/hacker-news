@@ -1,4 +1,4 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, TryRecvError};
 
 use crate::app::Filter;
 use anyhow::Result;
@@ -74,9 +74,17 @@ impl EventHandler {
         Ok(self.sender.send(event)?)
     }
 
-    /// Get the next background event.
-    pub fn next_event(&mut self) -> Result<Event> {
-        Ok(self.client_receiver.try_recv()?)
+    pub fn next_event(&mut self) -> Option<Event> {
+        match self.client_receiver.try_recv() {
+            Ok(event) => Some(event),
+            Err(err) => match err {
+                TryRecvError::Empty => None,
+                TryRecvError::Disconnected => {
+                    error!("Invalid state. Receiver has disconnected");
+                    panic!("Receiver has disconnected");
+                }
+            },
+        }
     }
 }
 

@@ -267,10 +267,9 @@ impl HackerNewsApp {
 
     /// Handle background emitted events.
     fn handle_next_event(&mut self) {
-        self.event_handler
-            .next_event()
-            .map(|event| self.handle_event(event))
-            .unwrap_or_default();
+        if let Some(event) = self.event_handler.next_event() {
+            self.handle_event(event)
+        }
     }
 
     /// Emit state changes.

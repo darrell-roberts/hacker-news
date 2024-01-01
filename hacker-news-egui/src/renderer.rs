@@ -116,7 +116,8 @@ fn render_articles(app_state: &HackerNewsApp, ui: &mut egui::Ui) {
                                 "poll" => app_state.filters.contains(&Filter::Polls),
                                 _ => false,
                             }
-                        });
+                        })
+                        .zip(0..);
 
                     article_iter.for_each(render_article(app_state, ui));
                 })
@@ -127,15 +128,19 @@ fn render_articles(app_state: &HackerNewsApp, ui: &mut egui::Ui) {
 fn render_article<'a: 'b, 'b>(
     app_state: &'a HackerNewsApp,
     ui: &'b mut egui::Ui,
-) -> impl FnMut(&'b Item) + 'b {
-    |article| {
+) -> impl FnMut((&'b Item, usize)) + 'b {
+    |(article, index)| {
         // No comments / score for Job view so we remove these columns
         if app_state.article_type != ArticleType::Job {
             ui.label(format!("🔼{}", article.score));
 
             if !article.kids.is_empty() {
                 let button = Button::new(format!("💬{}", article.kids.len()))
-                    .fill(ui.style().visuals.window_fill())
+                    .fill(if index % 2 == 1 {
+                        ui.style().visuals.window_fill()
+                    } else {
+                        Color32::from_rgb(245, 243, 240)
+                    })
                     .ui(ui);
 
                 if button.clicked() {
