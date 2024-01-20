@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use app::HackerNewsApp;
 use eframe::{icon_data::from_png_bytes, Theme};
-use egui::ViewportBuilder;
+use egui::{FontData, FontDefinitions, FontFamily, ViewportBuilder};
 use event::{ApiEvent, ApiEventHandler, Event, EventHandler};
 use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 use hacker_news_api::ResultExt;
@@ -57,7 +57,10 @@ fn main() -> Result<()> {
         "Hacker News",
         native_options,
         Box::new(move |cc| {
+            let theme = cc.integration_info.system_theme;
+            dbg!(theme);
             egui_extras::install_image_loaders(&cc.egui_ctx);
+            add_fonts(&cc.egui_ctx);
 
             let app = HackerNewsApp::new(cc, event_handler, client_sender);
             api_sender
@@ -94,4 +97,46 @@ fn start_background(
     });
 
     Ok(())
+}
+
+#[cfg(target_os = "linux")]
+fn add_fonts(context: &egui::Context) {
+    let mut fonts = FontDefinitions::default();
+
+    fonts.font_data.insert(
+        "my_font".to_owned(),
+        FontData::from_static(include_bytes!("../assets/fonts/DejaVuSans.ttf")),
+    );
+    fonts.font_data.insert(
+        "my_mono".to_owned(),
+        FontData::from_static(include_bytes!("../assets/fonts/FiraCode-Retina.ttf")),
+    );
+    fonts
+        .families
+        .get_mut(&FontFamily::Proportional)
+        .unwrap()
+        .insert(0, "my_font".to_owned());
+
+    fonts
+        .families
+        .get_mut(&FontFamily::Monospace)
+        .unwrap()
+        .push("my_mono".to_owned());
+
+    context.set_fonts(fonts);
+}
+
+#[cfg(not(target_os = "linux"))]
+fn add_fonts(context: &egui::Context) {
+    fonts.font_data.insert(
+        "my_mono".to_owned(),
+        FontData::from_static(include_bytes!("../assets/fonts/FiraCode-Retina.ttf")),
+    );
+    fonts
+        .families
+        .get_mut(&FontFamily::Monospace)
+        .unwrap()
+        .push("my_mono".to_owned());
+
+    context.set_fonts(fonts);
 }

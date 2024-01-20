@@ -4,7 +4,7 @@ use crate::{
     renderer, SHUT_DOWN,
 };
 use chrono::{DateTime, Local};
-use eframe::Storage;
+use eframe::{Storage, Theme};
 use egui::Id;
 use hacker_news_api::{ArticleType, Item, ResultExt, User};
 use std::{
@@ -84,6 +84,8 @@ pub struct HackerNewsApp {
     pub last_update: Option<DateTime<Local>>,
     /// Search input is open.
     pub search_open: bool,
+    /// Theme.
+    pub theme: Theme,
 }
 
 /// State that requires mutation by a widget. This is the
@@ -144,6 +146,7 @@ impl HackerNewsApp {
             filters: HashSet::new(),
             last_update: None,
             search_open: false,
+            theme: Theme::Light,
         }
     }
 
@@ -254,6 +257,12 @@ impl HackerNewsApp {
             Event::ZoomOut => {
                 self.context
                     .set_zoom_factor(self.context.zoom_factor() - 0.1);
+            }
+            Event::ToggleTheme => {
+                self.theme = match self.theme {
+                    Theme::Dark => Theme::Light,
+                    Theme::Light => Theme::Dark,
+                }
             }
         }
     }

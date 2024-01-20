@@ -20,7 +20,7 @@ pub fn render<'a>(
     for (comment_item, index) in app_state.comments_state.comment_trail.iter().zip(0..) {
         egui::Window::new("")
             .id(comment_item.id)
-            .frame(comment_window_frame())
+            .frame(comment_window_frame(&app_state.theme))
             .vscroll(true)
             .open(&mut mutable_state.viewing_comments[index])
             .collapsible(false)
@@ -85,7 +85,7 @@ fn render_comments(
     ui: &mut egui::Ui,
 ) {
     for comment in comment_item.comments.iter() {
-        comment_bubble_frame().show(ui, |ui| {
+        comment_bubble_frame(&app_state.theme).show(ui, |ui| {
             render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
 
             ui.add_space(5.0);

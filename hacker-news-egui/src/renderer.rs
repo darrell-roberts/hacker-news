@@ -36,7 +36,7 @@ pub fn render<'a>(
                 app_state.emit(Event::ZoomOut);
             }
 
-            if input.key_pressed(Key::PlusEquals) && input.modifiers.ctrl {
+            if input.key_pressed(Key::Equals) && input.modifiers.ctrl {
                 app_state.emit(Event::ZoomIn);
             }
 
@@ -50,11 +50,11 @@ pub fn render<'a>(
     render_footer(context, app_state);
 
     egui::CentralPanel::default()
-        .frame(central_panel_frame())
+        .frame(central_panel_frame(&app_state.theme))
         .show(context, |ui| {
-            ui.visuals_mut().widgets.noninteractive.fg_stroke.color = Color32::BLACK;
-            ui.visuals_mut().widgets.active.fg_stroke.color = Color32::BLACK;
-            ui.visuals_mut().widgets.hovered.fg_stroke.color = Color32::BLACK;
+            // ui.visuals_mut().widgets.noninteractive.fg_stroke.color = Color32::BLACK;
+            // ui.visuals_mut().widgets.active.fg_stroke.color = Color32::BLACK;
+            // ui.visuals_mut().widgets.hovered.fg_stroke.color = Color32::BLACK;
 
             ui.add_space(2.);
             comments::render(context, app_state, mutable_state);
@@ -139,7 +139,10 @@ fn render_article<'a: 'b, 'b>(
                     .fill(if index % 2 == 1 {
                         ui.style().visuals.window_fill()
                     } else {
-                        Color32::from_rgb(245, 243, 240)
+                        match app_state.theme {
+                            eframe::Theme::Dark => Color32::from_rgb(33, 37, 41),
+                            eframe::Theme::Light => Color32::from_rgb(245, 243, 240),
+                        }
                     })
                     .ui(ui);
 
@@ -181,10 +184,16 @@ fn render_article<'a: 'b, 'b>(
             ui.style_mut().visuals.hyperlink_color = if app_state.visited.contains(&article.id) {
                 Color32::DARK_GRAY
             } else {
-                Color32::BLACK
+                match app_state.theme {
+                    eframe::Theme::Dark => Color32::WHITE,
+                    eframe::Theme::Light => Color32::BLACK,
+                }
             };
             if app_state.visited.contains(&article.id) {
-                ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
+                ui.style_mut().visuals.override_text_color = Some(match app_state.theme {
+                    eframe::Theme::Dark => Color32::GRAY,
+                    eframe::Theme::Light => Color32::DARK_GRAY,
+                })
             }
 
             match (article.url.as_deref(), article.title.as_deref()) {
@@ -195,7 +204,13 @@ fn render_article<'a: 'b, 'b>(
                 }
                 (Some(url), Some(title)) => {
                     if ui
-                        .hyperlink_to(RichText::new(title).strong().color(Color32::BLACK), url)
+                        .hyperlink_to(
+                            RichText::new(title).strong().color(match app_state.theme {
+                                eframe::Theme::Dark => Color32::WHITE,
+                                eframe::Theme::Light => Color32::BLACK,
+                            }),
+                            url,
+                        )
                         .clicked()
                     {
                         app_state.emit(Event::Visited(article.id));
@@ -280,6 +295,10 @@ fn render_header<'a>(
             if reset_button.ui(ui).on_hover_text("Reset visited").clicked() {
                 app_state.emit(Event::ResetVisited);
             };
+
+            if ui.button("theme").clicked() {
+                app_state.emit(Event::ToggleTheme);
+            }
         });
 
         if app_state.search_open {
@@ -353,12 +372,12 @@ fn render_user<'a>(
     if let Some(user) = app_state.user.as_ref() {
         Window::new(&user.id)
             .open(&mut mutable_state.viewing_user)
-            .frame(user_window_frame())
+            .frame(user_window_frame(&app_state.theme))
             .collapsible(false)
             .vscroll(true)
             .show(context, |ui| {
                 if let Some(about) = user.about.as_deref() {
-                    user_bubble_frame().show(ui, |ui| {
+                    user_bubble_frame(&app_state.theme).show(ui, |ui| {
                         text::render_rich_text(about, ui);
                     });
                 }
@@ -391,12 +410,12 @@ fn render_item_text<'a>(
         if app_state.viewing_item_text {
             egui::Window::new("")
                 .id(Id::new(item.id))
-                .frame(article_text_window_frame())
+                .frame(article_text_window_frame(&app_state.theme))
                 .vscroll(true)
                 .collapsible(false)
                 .open(&mut mutable_state.viewing_item_text)
                 .show(context, |ui| {
-                    article_text_bubble_frame().show(ui, |ui| {
+                    article_text_bubble_frame(&app_state.theme).show(ui, |ui| {
                         text::render_rich_text(item.text.as_deref().unwrap_or_default(), ui);
                     });
                     ui.horizontal(|ui| {
