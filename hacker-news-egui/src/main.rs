@@ -138,6 +138,12 @@ fn add_fonts(context: &egui::Context) {
         "my_mono".to_owned(),
         FontData::from_static(include_bytes!("../assets/fonts/FiraCode-Retina.ttf")),
     );
+
+    fonts
+        .families
+        .get_mut(&FontFamily::Proportional)
+        .unwrap()
+        .insert(0, "my_font".to_owned());
     fonts
         .families
         .get_mut(&FontFamily::Monospace)

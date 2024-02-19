@@ -1,0 +1,17 @@
+[package]
+name = "hacker-news-iced"
+version = "0.1.0"
+license.workspace = true
+edition.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+iced = { version = "0.12", features = ["lazy", "tokio", "advanced"] }
+
+hacker-news-api.workspace = true
+html-sanitizer.workspace = true
+log.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+open = "5"
