@@ -8,48 +8,62 @@ use crate::{
     event::Event,
     renderer::scroll_delta,
 };
-use egui::{style::Spacing, widgets::Widget, Button, Color32, Id, RichText, Vec2};
+use egui::{style::Spacing, widgets::Widget, Align, Button, Color32, Id, Layout, RichText, Vec2};
 use hacker_news_api::Item;
 
 /// Render comments if requested.
-pub fn render<'a>(
-    context: &'a egui::Context,
-    app_state: &'a HackerNewsApp,
-    mutable_state: &mut MutableWidgetState,
-) {
-    for (comment_item, index) in app_state.comments_state.comment_trail.iter().zip(0..) {
-        egui::Window::new("")
-            .id(comment_item.id)
-            .frame(comment_window_frame(&app_state.theme))
-            .vscroll(true)
-            .open(&mut mutable_state.viewing_comments[index])
-            .collapsible(false)
-            .show(context, |ui| {
-                let scroll_delta = scroll_delta(ui);
-                ui.scroll_with_delta(scroll_delta);
-                if let Some(item) = app_state.comments_state.active_item.as_ref() {
-                    ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
-                    ui.style_mut().visuals.hyperlink_color = Color32::BLACK;
-                    if let Some(title) = item.title.as_deref() {
-                        match item.url.as_deref() {
-                            Some(url) => ui.hyperlink_to(RichText::new(title).heading(), url),
-                            None => ui.heading(title),
-                        };
-                    }
-                    if let Some(text) = item.text.as_deref() {
-                        render_rich_text(text, ui);
-                    }
-                    render_by(ui, app_state, item, true);
-                }
-                if let Some(parent_comment) = comment_item.parent.as_ref() {
-                    ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
-                    render_rich_text(parent_comment.text.as_deref().unwrap_or_default(), ui);
-                    render_by(ui, app_state, parent_comment, true);
-                }
-                ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
+pub fn render(app_state: &HackerNewsApp, mutable_state: &MutableWidgetState, ui: &mut egui::Ui) {
+    if let Some((index, _)) = mutable_state
+        .viewing_comments
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|&(_, open)| *open)
+    {
+        let comment_item = &app_state.comments_state.comment_trail[index];
 
-                render_comments(comment_item, app_state, ui);
+        egui::ScrollArea::vertical()
+            .id_source(Id::new(comment_item.id))
+            .show(ui, |ui| {
+                // egui::Frame::none().fill(Color32::BLACK).show(ui, |ui| {
+                comment_window_frame(&app_state.theme).show(ui, |ui| {
+                    let scroll_delta = scroll_delta(ui);
+                    ui.scroll_with_delta(scroll_delta);
+
+                    ui.with_layout(Layout::right_to_left(Align::TOP), |ui| {
+                        ui.add_space(4.);
+                        if ui.button("X").clicked() {
+                            app_state.emit(Event::CloseComment(index));
+                        }
+                    });
+
+                    if let Some(item) = app_state.comments_state.active_item.as_ref() {
+                        ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
+                        ui.style_mut().visuals.hyperlink_color = Color32::BLACK;
+                        if let Some(title) = item.title.as_deref() {
+                            match item.url.as_deref() {
+                                Some(url) => ui
+                                    .hyperlink_to(RichText::new(title).heading(), url)
+                                    .on_hover_text(url),
+                                None => ui.heading(title),
+                            };
+                        }
+                        if let Some(text) = item.text.as_deref() {
+                            render_rich_text(text, ui);
+                        }
+                        render_by(ui, app_state, item, true);
+                    }
+                    if let Some(parent_comment) = comment_item.parent.as_ref() {
+                        ui.style_mut().visuals.override_text_color = Some(Color32::DARK_GRAY);
+                        render_rich_text(parent_comment.text.as_deref().unwrap_or_default(), ui);
+                        render_by(ui, app_state, parent_comment, true);
+                    }
+                    ui.style_mut().visuals.override_text_color = Some(Color32::BLACK);
+
+                    render_comments(comment_item, app_state, ui);
+                });
             });
+        // });
     }
 }
 

@@ -40,6 +40,7 @@ pub enum Event {
     ZoomIn,
     ZoomOut,
     ToggleTheme,
+    CloseComment(usize),
 }
 
 /// API Event.

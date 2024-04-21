@@ -7,10 +7,11 @@ pub fn central_panel_frame(theme: &Theme) -> Frame {
         fill: match theme {
             Theme::Dark => Color32::from_rgb(33, 37, 41),
             Theme::Light => Color32::from_rgb(245, 243, 240),
+            // Theme::Light => Color32::BLACK,
         },
         inner_margin: Margin {
             left: 5.,
-            right: 5.,
+            right: 0.,
             top: 5.,
             bottom: 5.,
         },
@@ -28,7 +29,7 @@ pub fn user_window_frame(theme: &Theme) -> Frame {
 pub fn comment_window_frame(theme: &Theme) -> Frame {
     window_frame(match theme {
         Theme::Dark => Color32::from_rgb(246, 247, 176),
-        Theme::Light => Color32::from_rgb(246, 247, 176),
+        Theme::Light => Color32::from_rgb(252, 246, 228),
     })
 }
 
@@ -58,7 +59,14 @@ fn window_frame(fill_color: Color32) -> Frame {
             color: Color32::BLACK,
             width: 1.,
         })
-        .shadow(Shadow::small_light())
+        .shadow(Shadow {
+            offset: [1.0, 2.0].into(),
+            ..Default::default()
+        })
+        .outer_margin(Margin {
+            right: 5.,
+            ..Default::default()
+        })
 }
 
 pub fn user_bubble_frame(theme: &Theme) -> Frame {

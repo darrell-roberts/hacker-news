@@ -14,6 +14,6 @@ html-sanitizer.workspace = true
 
 flexi_logger = "0.27"
 
-eframe = { version = "0.26", features = ["persistence"] }
-egui = "0.26"
-egui_extras = { version = "0.26", features = ["image"] }
+eframe = { version = "0.27", features = ["persistence"] }
+egui = "0.27"
+egui_extras = { version = "0.27", features = ["image"] }

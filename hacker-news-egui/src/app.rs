@@ -13,6 +13,7 @@ use std::{
 };
 
 /// A list of child comment ids for a given comment.
+#[derive(Clone)]
 pub struct CommentItem {
     /// Sub comments.
     pub comments: Vec<Item>,
@@ -22,6 +23,8 @@ pub struct CommentItem {
     /// the article item if this is a top level
     /// comment otherwise the parent comment id.
     pub id: Id,
+
+    pub open: bool,
 }
 
 /// Comment state data.
@@ -170,6 +173,7 @@ impl HackerNewsApp {
                     comments: items,
                     parent,
                     id,
+                    open: true,
                 };
                 if comment_item.parent.is_some() {
                     self.comments_state.comment_trail.push(comment_item);
@@ -263,6 +267,9 @@ impl HackerNewsApp {
                     Theme::Dark => Theme::Light,
                     Theme::Light => Theme::Dark,
                 }
+            }
+            Event::CloseComment(index) => {
+                self.viewing_comments[index] = false;
             }
         }
     }

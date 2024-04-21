@@ -52,14 +52,13 @@ pub fn render<'a>(
     egui::CentralPanel::default()
         .frame(central_panel_frame(&app_state.theme))
         .show(context, |ui| {
-            // ui.visuals_mut().widgets.noninteractive.fg_stroke.color = Color32::BLACK;
-            // ui.visuals_mut().widgets.active.fg_stroke.color = Color32::BLACK;
-            // ui.visuals_mut().widgets.hovered.fg_stroke.color = Color32::BLACK;
+            if mutable_state.viewing_comments.iter().any(|&open| open) {
+                comments::render(app_state, mutable_state, ui);
+            } else {
+                render_articles(app_state, ui);
+            }
 
-            ui.add_space(2.);
-            comments::render(context, app_state, mutable_state);
             render_item_text(context, app_state, mutable_state);
-            render_articles(app_state, ui);
             render_user(context, app_state, mutable_state);
         });
 }
@@ -120,7 +119,7 @@ fn render_articles(app_state: &HackerNewsApp, ui: &mut egui::Ui) {
                         .zip(0..);
 
                     article_iter.for_each(render_article(app_state, ui));
-                })
+                });
         });
 }
 
@@ -211,6 +210,7 @@ fn render_article<'a: 'b, 'b>(
                             }),
                             url,
                         )
+                        .on_hover_text(url)
                         .clicked()
                     {
                         app_state.emit(Event::Visited(article.id));
