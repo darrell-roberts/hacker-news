@@ -270,6 +270,7 @@ impl HackerNewsApp {
             }
             Event::CloseComment(index) => {
                 self.viewing_comments[index] = false;
+                self.comments_state.comment_trail[index].open = false;
             }
         }
     }

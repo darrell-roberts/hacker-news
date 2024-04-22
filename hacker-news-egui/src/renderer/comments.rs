@@ -25,16 +25,33 @@ pub fn render(app_state: &HackerNewsApp, mutable_state: &MutableWidgetState, ui:
         egui::ScrollArea::vertical()
             .id_source(Id::new(comment_item.id))
             .show(ui, |ui| {
-                // egui::Frame::none().fill(Color32::BLACK).show(ui, |ui| {
                 comment_window_frame(&app_state.theme).show(ui, |ui| {
                     let scroll_delta = scroll_delta(ui);
                     ui.scroll_with_delta(scroll_delta);
 
-                    ui.with_layout(Layout::right_to_left(Align::TOP), |ui| {
-                        ui.add_space(4.);
-                        if ui.button("X").clicked() {
-                            app_state.emit(Event::CloseComment(index));
+                    let ids = app_state
+                        .comments_state
+                        .comment_trail
+                        .iter()
+                        .filter(|item| item.open)
+                        .flat_map(|item| item.parent.as_ref())
+                        .map(|item| format!("{}", item.id))
+                        .collect::<Vec<_>>();
+
+                    let trail = ids.as_slice().join(" > ");
+
+                    // breadcrumb
+                    ui.horizontal(|ui| {
+                        if !trail.is_empty() {
+                            ui.label(trail);
                         }
+
+                        ui.with_layout(Layout::right_to_left(Align::TOP), |ui| {
+                            ui.add_space(4.);
+                            if ui.button("X").clicked() {
+                                app_state.emit(Event::CloseComment(index));
+                            }
+                        });
                     });
 
                     if let Some(item) = app_state.comments_state.active_item.as_ref() {
@@ -63,7 +80,6 @@ pub fn render(app_state: &HackerNewsApp, mutable_state: &MutableWidgetState, ui:
                     render_comments(comment_item, app_state, ui);
                 });
             });
-        // });
     }
 }
 
