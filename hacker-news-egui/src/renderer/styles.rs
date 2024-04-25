@@ -10,7 +10,7 @@ pub fn central_panel_frame(theme: &Theme) -> Frame {
             // Theme::Light => Color32::BLACK,
         },
         inner_margin: Margin {
-            left: 5.,
+            left: 0.,
             right: 0.,
             top: 5.,
             bottom: 5.,
@@ -27,10 +27,33 @@ pub fn user_window_frame(theme: &Theme) -> Frame {
 }
 
 pub fn comment_window_frame(theme: &Theme) -> Frame {
-    window_frame(match theme {
+    let fill_color = match theme {
         Theme::Dark => Color32::from_rgb(246, 247, 176),
         Theme::Light => Color32::from_rgb(252, 246, 228),
-    })
+    };
+    Frame::none()
+        .fill(fill_color)
+        .inner_margin(Margin {
+            left: 5.,
+            right: 5.,
+            top: 5.,
+            bottom: 5.,
+        })
+        .rounding(Rounding {
+            nw: 8.,
+            ne: 8.,
+            sw: 8.,
+            se: 8.,
+        })
+        .stroke(Stroke {
+            color: Color32::BLACK,
+            width: 1.,
+        })
+        .outer_margin(Margin {
+            right: 5.,
+            left: 5.,
+            ..Default::default()
+        })
 }
 
 pub fn article_text_window_frame(theme: &Theme) -> Frame {
@@ -63,10 +86,6 @@ fn window_frame(fill_color: Color32) -> Frame {
             offset: [1.0, 2.0].into(),
             ..Default::default()
         })
-        .outer_margin(Margin {
-            right: 5.,
-            ..Default::default()
-        })
 }
 
 pub fn user_bubble_frame(theme: &Theme) -> Frame {
@@ -87,10 +106,10 @@ fn bubble_frame(fill_color: Color32) -> Frame {
     Frame::none()
         .fill(fill_color)
         .outer_margin(Margin {
-            top: 5.,
+            top: 2.,
             left: 10.,
             right: 10.,
-            bottom: 5.,
+            bottom: 2.,
         })
         .inner_margin(Margin {
             top: 10.,
