@@ -35,7 +35,11 @@ fn main() -> Result<()> {
     let client = hacker_news_api::ApiClient::new().context("Could not create api client")?;
     let icon = from_png_bytes(include_bytes!("../assets/icon.png"))?;
     let native_options = eframe::NativeOptions {
-        viewport: ViewportBuilder::default().with_icon(icon),
+        viewport: ViewportBuilder::default()
+            .with_icon(icon)
+            .with_app_id("hacker-news")
+            .with_title("Hacker News"),
+
         persist_window: true,
         // For now only light theme.
         follow_system_theme: false,
@@ -51,7 +55,7 @@ fn main() -> Result<()> {
     start_background(api_receiver, api_event_handler)?;
 
     eframe::run_native(
-        "Hacker News",
+        "hacker-news",
         native_options,
         Box::new(move |cc| {
             // let theme = cc.integration_info.system_theme;
