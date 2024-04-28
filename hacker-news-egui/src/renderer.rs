@@ -79,7 +79,7 @@ fn render_articles(app_state: &HackerNewsApp, ui: &mut egui::Ui) {
                     3
                 })
                 .spacing((0., 5.))
-                .striped(true)
+                // .striped(true)
                 .show(ui, |ui| {
                     let article_iter = app_state
                         .articles
@@ -128,21 +128,22 @@ fn render_article<'a: 'b, 'b>(
     app_state: &'a HackerNewsApp,
     ui: &'b mut egui::Ui,
 ) -> impl FnMut((&'b Item, usize)) + 'b {
-    |(article, index)| {
+    |(article, _index)| {
         // No comments / score for Job view so we remove these columns
         if app_state.article_type != ArticleType::Job {
             ui.label(format!("🔼{}", article.score));
 
             if !article.kids.is_empty() {
                 let button = Button::new(format!("💬{}", article.kids.len()))
-                    .fill(if index % 2 == 1 {
-                        ui.style().visuals.window_fill()
-                    } else {
+                    .fill(
+                        //     if index % 2 == 1 {
+                        //     ui.style().visuals.window_fill()
+                        // } else {
                         match app_state.theme {
                             eframe::Theme::Dark => Color32::from_rgb(33, 37, 41),
                             eframe::Theme::Light => Color32::from_rgb(245, 243, 240),
-                        }
-                    })
+                        }, // }
+                    )
                     .ui(ui);
 
                 if button.clicked() {
@@ -296,7 +297,16 @@ fn render_header<'a>(
                 app_state.emit(Event::ResetVisited);
             };
 
-            if ui.button("theme").clicked() {
+            let theme_label = match app_state.theme {
+                eframe::Theme::Dark => "Light",
+                eframe::Theme::Light => "Dark",
+            };
+
+            if ui
+                .button(theme_label)
+                .on_hover_text("Change Theme")
+                .clicked()
+            {
                 app_state.emit(Event::ToggleTheme);
             }
         });

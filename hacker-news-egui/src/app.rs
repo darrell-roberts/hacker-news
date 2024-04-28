@@ -23,7 +23,7 @@ pub struct CommentItem {
     /// the article item if this is a top level
     /// comment otherwise the parent comment id.
     pub id: Id,
-
+    /// Comment viewing status.
     pub open: bool,
 }
 
@@ -130,6 +130,21 @@ impl HackerNewsApp {
             .and_then(|showing| showing.parse().ok())
             .unwrap_or(50);
 
+        let theme = cc
+            .storage
+            .and_then(|s| s.get_string("theme"))
+            .and_then(|theme| {
+                Some(match theme.as_str() {
+                    "light" => Theme::Light,
+                    "dark" => Theme::Dark,
+                    _ => return None,
+                })
+            })
+            .unwrap_or(Theme::Light);
+
+        // Initial theme colors.
+        cc.egui_ctx.set_visuals(theme.egui_visuals());
+
         Self {
             context: cc.egui_ctx.clone(),
             event_handler,
@@ -149,7 +164,7 @@ impl HackerNewsApp {
             filters: HashSet::new(),
             last_update: None,
             search_open: false,
-            theme: Theme::Light,
+            theme,
         }
     }
 
@@ -266,7 +281,8 @@ impl HackerNewsApp {
                 self.theme = match self.theme {
                     Theme::Dark => Theme::Light,
                     Theme::Light => Theme::Dark,
-                }
+                };
+                self.context.set_visuals(self.theme.egui_visuals());
             }
             Event::CloseComment(index) => {
                 self.viewing_comments[index] = false;
@@ -337,5 +353,12 @@ impl eframe::App for HackerNewsApp {
         });
         storage.set_string("showing", format!("{}", self.showing));
         storage.set_string("article_type", self.article_type.as_str().into());
+        storage.set_string(
+            "theme",
+            match self.theme {
+                Theme::Dark => "dark".into(),
+                Theme::Light => "light".into(),
+            },
+        )
     }
 }

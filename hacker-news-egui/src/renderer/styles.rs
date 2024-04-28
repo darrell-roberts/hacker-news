@@ -28,7 +28,7 @@ pub fn user_window_frame(theme: &Theme) -> Frame {
 
 pub fn comment_window_frame(theme: &Theme) -> Frame {
     let fill_color = match theme {
-        Theme::Dark => Color32::from_rgb(246, 247, 176),
+        Theme::Dark => Color32::from_hex("#344955").unwrap(),
         Theme::Light => Color32::from_rgb(252, 246, 228),
     };
     Frame::none()
@@ -96,10 +96,21 @@ pub fn user_bubble_frame(theme: &Theme) -> Frame {
 }
 
 pub fn comment_bubble_frame(theme: &Theme) -> Frame {
-    bubble_frame(match theme {
-        Theme::Dark => Color32::LIGHT_YELLOW,
+    bubble_frame(comment_bubble_color(theme))
+}
+
+pub fn comment_bubble_text(theme: &Theme) -> Color32 {
+    match theme {
+        eframe::Theme::Dark => Color32::WHITE,
+        eframe::Theme::Light => Color32::BLACK,
+    }
+}
+
+pub fn comment_bubble_color(theme: &Theme) -> Color32 {
+    match theme {
+        Theme::Dark => Color32::from_hex("#50727B").unwrap(),
         Theme::Light => Color32::LIGHT_YELLOW,
-    })
+    }
 }
 
 fn bubble_frame(fill_color: Color32) -> Frame {

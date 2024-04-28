@@ -33,9 +33,7 @@ fn main() -> Result<()> {
         .start()?;
 
     let client = hacker_news_api::ApiClient::new().context("Could not create api client")?;
-
     let icon = from_png_bytes(include_bytes!("../assets/icon.png"))?;
-
     let native_options = eframe::NativeOptions {
         viewport: ViewportBuilder::default().with_icon(icon),
         persist_window: true,
@@ -47,7 +45,6 @@ fn main() -> Result<()> {
 
     let (api_sender, api_receiver) = mpsc::unbounded_channel::<ApiEvent>();
     let (client_sender, client_receiver) = channel::<Event>();
-
     let event_handler = EventHandler::new(api_sender.clone(), client_receiver);
     let api_event_handler = ApiEventHandler::new(client, client_sender.clone());
 
@@ -57,8 +54,7 @@ fn main() -> Result<()> {
         "Hacker News",
         native_options,
         Box::new(move |cc| {
-            let theme = cc.integration_info.system_theme;
-            dbg!(theme);
+            // let theme = cc.integration_info.system_theme;
             egui_extras::install_image_loaders(&cc.egui_ctx);
             add_fonts(&cc.egui_ctx);
 
@@ -103,19 +99,19 @@ fn start_background(
 fn add_fonts(context: &egui::Context) {
     let mut fonts = FontDefinitions::default();
 
-    fonts.font_data.insert(
-        "my_font".to_owned(),
-        FontData::from_static(include_bytes!("../assets/fonts/DejaVuSans.ttf")),
-    );
+    // fonts.font_data.insert(
+    //     "my_font".to_owned(),
+    //     FontData::from_static(include_bytes!("../assets/fonts/DejaVuSans.ttf")),
+    // );
     fonts.font_data.insert(
         "my_mono".to_owned(),
         FontData::from_static(include_bytes!("../assets/fonts/FiraCode-Retina.ttf")),
     );
-    fonts
-        .families
-        .get_mut(&FontFamily::Proportional)
-        .unwrap()
-        .insert(0, "my_font".to_owned());
+    // fonts
+    //     .families
+    //     .get_mut(&FontFamily::Proportional)
+    //     .unwrap()
+    //     .insert(0, "my_font".to_owned());
 
     fonts
         .families
