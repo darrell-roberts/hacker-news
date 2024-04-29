@@ -8,6 +8,7 @@ use crate::{
     event::Event,
 };
 use chrono::{DateTime, Utc};
+use eframe::Theme;
 use egui::{
     include_image, style::Spacing, widgets::Widget, Align, Button, Color32, CursorIcon, Grid, Id,
     Key, Layout, RichText, TextStyle, Vec2, Window,
@@ -226,6 +227,10 @@ fn render_article<'a: 'b, 'b>(
                 ..Default::default()
             };
 
+            ui.style_mut().visuals.hyperlink_color = match app_state.theme {
+                Theme::Dark => Color32::GRAY,
+                Theme::Light => Color32::BLACK,
+            };
             if ui.link(RichText::new(&article.by).italics()).clicked() {
                 app_state.emit(Event::FetchUser(article.by.clone()));
             };
