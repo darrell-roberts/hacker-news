@@ -4,7 +4,7 @@ use crate::{
     renderer, SHUT_DOWN,
 };
 use chrono::{DateTime, Local};
-use eframe::Storage;
+use eframe::{Storage, Theme};
 use egui::Id;
 use hacker_news_api::{ArticleType, Item, ResultExt, User};
 use std::{
@@ -13,6 +13,7 @@ use std::{
 };
 
 /// A list of child comment ids for a given comment.
+#[derive(Clone)]
 pub struct CommentItem {
     /// Sub comments.
     pub comments: Vec<Item>,
@@ -22,6 +23,8 @@ pub struct CommentItem {
     /// the article item if this is a top level
     /// comment otherwise the parent comment id.
     pub id: Id,
+    /// Comment viewing status.
+    pub open: bool,
 }
 
 /// Comment state data.
@@ -84,6 +87,8 @@ pub struct HackerNewsApp {
     pub last_update: Option<DateTime<Local>>,
     /// Search input is open.
     pub search_open: bool,
+    /// Theme.
+    pub theme: Theme,
 }
 
 /// State that requires mutation by a widget. This is the
@@ -125,6 +130,21 @@ impl HackerNewsApp {
             .and_then(|showing| showing.parse().ok())
             .unwrap_or(50);
 
+        let theme = cc
+            .storage
+            .and_then(|s| s.get_string("theme"))
+            .and_then(|theme| {
+                Some(match theme.as_str() {
+                    "light" => Theme::Light,
+                    "dark" => Theme::Dark,
+                    _ => return None,
+                })
+            })
+            .unwrap_or(Theme::Light);
+
+        // Initial theme colors.
+        cc.egui_ctx.set_visuals(theme.egui_visuals());
+
         Self {
             context: cc.egui_ctx.clone(),
             event_handler,
@@ -144,6 +164,7 @@ impl HackerNewsApp {
             filters: HashSet::new(),
             last_update: None,
             search_open: false,
+            theme,
         }
     }
 
@@ -167,6 +188,7 @@ impl HackerNewsApp {
                     comments: items,
                     parent,
                     id,
+                    open: true,
                 };
                 if comment_item.parent.is_some() {
                     self.comments_state.comment_trail.push(comment_item);
@@ -255,6 +277,17 @@ impl HackerNewsApp {
                 self.context
                     .set_zoom_factor(self.context.zoom_factor() - 0.1);
             }
+            Event::ToggleTheme => {
+                self.theme = match self.theme {
+                    Theme::Dark => Theme::Light,
+                    Theme::Light => Theme::Dark,
+                };
+                self.context.set_visuals(self.theme.egui_visuals());
+            }
+            Event::CloseComment(index) => {
+                self.viewing_comments[index] = false;
+                self.comments_state.comment_trail[index].open = false;
+            }
         }
     }
 
@@ -320,5 +353,12 @@ impl eframe::App for HackerNewsApp {
         });
         storage.set_string("showing", format!("{}", self.showing));
         storage.set_string("article_type", self.article_type.as_str().into());
+        storage.set_string(
+            "theme",
+            match self.theme {
+                Theme::Dark => "dark".into(),
+                Theme::Light => "light".into(),
+            },
+        )
     }
 }

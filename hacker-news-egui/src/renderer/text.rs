@@ -37,7 +37,7 @@ pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
                         } else {
                             link.children.as_str()
                         };
-                        ui.hyperlink_to(name, text);
+                        ui.hyperlink_to(name, text).on_hover_text(text);
                     }
                 }
                 Element::Escaped(c) => {

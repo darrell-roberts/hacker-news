@@ -81,9 +81,16 @@ impl ApiClient {
         let mut result = Vec::with_capacity(handles.len());
 
         for h in handles {
-            let item = h.await??;
-            if !(item.dead || item.deleted) {
-                result.push(item);
+            let item = h.await?;
+            match item {
+                Ok(item) => {
+                    if !(item.dead || item.deleted) {
+                        result.push(item);
+                    }
+                }
+                Err(err) => {
+                    error!("Failed to deserialize item {err}");
+                }
             }
         }
 

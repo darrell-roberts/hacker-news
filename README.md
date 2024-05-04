@@ -50,10 +50,13 @@ This copies the binary and other assets into your `~/.local`.
 ## Screenshots
 
 ### Articles
-<img width="909" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/c2d0eb69-76a8-434a-9ada-3e4a7988eac8">
+<img width="1159" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/045db0d1-fcb8-4b43-9954-2af0256676e1">
+
 
 ### Title search
-<img width="953" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/53ed8fdc-63f6-461c-9d9c-f7df3a2c930b">
+<img width="1159" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/819ac36f-7300-45f6-8b08-72dc2a459b84">
+
 
 ### View comments
-<img width="953" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/dad05444-2278-4ce3-99c2-3eb74fa5ff17">
+<img width="1159" alt="image" src="https://github.com/darrell-roberts/hacker-news/assets/33698065/04be44ed-8532-497c-b265-e33995445a61">
+

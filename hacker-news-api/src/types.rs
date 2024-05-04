@@ -76,7 +76,7 @@ where
     }
 }
 
-#[derive(Eq, PartialEq, Copy, Clone, Hash)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
 pub enum ArticleType {
     New,
     Best,

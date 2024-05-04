@@ -39,6 +39,8 @@ pub enum Event {
     ToggleOpenSearch,
     ZoomIn,
     ZoomOut,
+    ToggleTheme,
+    CloseComment(usize),
 }
 
 /// API Event.
