@@ -122,7 +122,25 @@ fn render_comments(
     app_state: &HackerNewsApp,
     ui: &mut egui::Ui,
 ) {
-    for comment in comment_item.comments.iter() {
+    let search_filter = |comment: &&Item| {
+        if !app_state.search.is_empty() {
+            comment
+                .text
+                .as_deref()
+                .map(|text| {
+                    text.split_whitespace().any(|word| {
+                        app_state.search.split_whitespace().any(|search_term| {
+                            word.to_lowercase().contains(&search_term.to_lowercase())
+                        })
+                    })
+                })
+                .unwrap_or(false)
+        } else {
+            true
+        }
+    };
+
+    for comment in comment_item.comments.iter().filter(search_filter) {
         comment_bubble_frame(&app_state.theme).show(ui, |ui| {
             render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
 

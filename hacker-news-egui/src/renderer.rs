@@ -86,7 +86,9 @@ fn render_articles(app_state: &HackerNewsApp, ui: &mut egui::Ui) {
                         .articles
                         .iter()
                         .filter(|article| {
-                            if !app_state.search.is_empty() {
+                            if !app_state.search.is_empty()
+                                && !app_state.viewing_comments.iter().any(|&viewing| viewing)
+                            {
                                 article
                                     .title
                                     .as_deref()
