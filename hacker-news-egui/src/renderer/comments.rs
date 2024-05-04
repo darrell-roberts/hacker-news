@@ -123,8 +123,8 @@ fn render_comments(
     ui: &mut egui::Ui,
 ) {
     let search_filter = |comment: &&Item| {
-        if !app_state.search.is_empty() {
-            comment
+        app_state.search.is_empty()
+            || comment
                 .text
                 .as_deref()
                 .map(|text| {
@@ -135,9 +135,6 @@ fn render_comments(
                     })
                 })
                 .unwrap_or(false)
-        } else {
-            true
-        }
     };
 
     for comment in comment_item.comments.iter().filter(search_filter) {
