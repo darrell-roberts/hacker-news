@@ -208,10 +208,14 @@ fn render_article<'a: 'b, 'b>(
                 (Some(url), Some(title)) => {
                     if ui
                         .hyperlink_to(
-                            RichText::new(title).strong().color(match app_state.theme {
-                                eframe::Theme::Dark => Color32::WHITE,
-                                eframe::Theme::Light => Color32::BLACK,
-                            }),
+                            RichText::new(title).strong().color(
+                                match (app_state.theme, app_state.visited.contains(&article.id)) {
+                                    (Theme::Dark, true) => Color32::GRAY,
+                                    (Theme::Dark, false) => Color32::WHITE,
+                                    (Theme::Light, true) => Color32::DARK_GRAY,
+                                    (Theme::Light, false) => Color32::BLACK,
+                                },
+                            ),
                             url,
                         )
                         .on_hover_text(url)
