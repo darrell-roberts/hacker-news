@@ -206,7 +206,7 @@ fn render_article<'a: 'b, 'b>(
                     }
                 }
                 (Some(url), Some(title)) => {
-                    if ui
+                    let hyper_link = ui
                         .hyperlink_to(
                             RichText::new(title).strong().color(
                                 match (app_state.theme, app_state.visited.contains(&article.id)) {
@@ -218,10 +218,12 @@ fn render_article<'a: 'b, 'b>(
                             ),
                             url,
                         )
-                        .on_hover_text(url)
-                        .clicked()
-                    {
+                        .on_hover_text(url);
+
+                    if hyper_link.clicked() {
                         app_state.emit(Event::Visited(article.id));
+                    } else if hyper_link.secondary_clicked() {
+                        app_state.emit(Event::CopyToClipboard(url.to_string()));
                     }
                 }
                 _ => (),

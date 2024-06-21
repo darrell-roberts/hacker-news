@@ -41,6 +41,8 @@ pub enum Event {
     ZoomOut,
     ToggleTheme,
     CloseComment(usize),
+
+    CopyToClipboard(String),
 }
 
 /// API Event.

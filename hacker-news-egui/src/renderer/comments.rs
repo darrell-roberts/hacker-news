@@ -63,10 +63,20 @@ pub fn render(app_state: &HackerNewsApp, mutable_state: &MutableWidgetState, ui:
                             Some(comment_bubble_text(&app_state.theme));
                         if let Some(title) = item.title.as_deref() {
                             match item.url.as_deref() {
-                                Some(url) => ui
-                                    .hyperlink_to(RichText::new(title).heading(), url)
-                                    .on_hover_text(url),
-                                None => ui.heading(title),
+                                Some(url) => {
+                                    let hyper_link = ui
+                                        .hyperlink_to(RichText::new(title).heading(), url)
+                                        .on_hover_text(url);
+
+                                    if hyper_link.clicked() {
+                                        app_state.emit(Event::Visited(item.id));
+                                    } else if hyper_link.secondary_clicked() {
+                                        app_state.emit(Event::CopyToClipboard(url.to_string()));
+                                    }
+                                }
+                                None => {
+                                    ui.heading(title);
+                                }
                             };
                         }
                         if let Some(text) = item.text.as_deref() {
