@@ -4,6 +4,14 @@ use html_sanitizer::Element;
 
 use crate::{app::HackerNewsApp, event::Event};
 
+/// Add a label to the Ui and clear the text.
+fn add_label(ui: &mut egui::Ui, text: &mut String) {
+    if !text.is_empty() {
+        ui.label(text.as_str());
+        text.clear();
+    }
+}
+
 /// Render html escaped text into the Ui.
 pub fn render_rich_text(app_state: &HackerNewsApp, escaped_text: &str, ui: &mut egui::Ui) {
     let elements = html_sanitizer::parse_elements(escaped_text);
@@ -13,13 +21,6 @@ pub fn render_rich_text(app_state: &HackerNewsApp, escaped_text: &str, ui: &mut 
         ui.spacing_mut().item_spacing = Vec2 { x: 0., y: 0. };
 
         let mut text_string = String::new();
-
-        let add_label = |ui: &mut egui::Ui, text: &mut String| {
-            if !text.is_empty() {
-                ui.label(text.as_str());
-                text.clear();
-            }
-        };
 
         for element in elements {
             match element {
