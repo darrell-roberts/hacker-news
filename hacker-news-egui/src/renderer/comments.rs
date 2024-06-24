@@ -80,7 +80,7 @@ pub fn render(app_state: &HackerNewsApp, mutable_state: &MutableWidgetState, ui:
                             };
                         }
                         if let Some(text) = item.text.as_deref() {
-                            render_rich_text(text, ui);
+                            render_rich_text(app_state, text, ui);
                         }
                         render_by(ui, app_state, item, true);
                     }
@@ -89,7 +89,11 @@ pub fn render(app_state: &HackerNewsApp, mutable_state: &MutableWidgetState, ui:
                         //     eframe::Theme::Dark => Color32::BLACK,
                         //     eframe::Theme::Light => Color32::DARK_GRAY,
                         // });
-                        render_rich_text(parent_comment.text.as_deref().unwrap_or_default(), ui);
+                        render_rich_text(
+                            app_state,
+                            parent_comment.text.as_deref().unwrap_or_default(),
+                            ui,
+                        );
                         render_by(ui, app_state, parent_comment, true);
                     }
                     ui.style_mut().visuals.override_text_color =
@@ -149,7 +153,7 @@ fn render_comments(
 
     for comment in comment_item.comments.iter().filter(search_filter) {
         comment_bubble_frame(&app_state.theme).show(ui, |ui| {
-            render_rich_text(comment.text.as_deref().unwrap_or_default(), ui);
+            render_rich_text(app_state, comment.text.as_deref().unwrap_or_default(), ui);
 
             ui.add_space(5.0);
             ui.horizontal(|ui| {

@@ -401,7 +401,7 @@ fn render_user<'a>(
             .show(context, |ui| {
                 if let Some(about) = user.about.as_deref() {
                     user_bubble_frame(&app_state.theme).show(ui, |ui| {
-                        text::render_rich_text(about, ui);
+                        text::render_rich_text(app_state, about, ui);
                     });
                 }
 
@@ -439,7 +439,11 @@ fn render_item_text<'a>(
                 .open(&mut mutable_state.viewing_item_text)
                 .show(context, |ui| {
                     article_text_bubble_frame(&app_state.theme).show(ui, |ui| {
-                        text::render_rich_text(item.text.as_deref().unwrap_or_default(), ui);
+                        text::render_rich_text(
+                            app_state,
+                            item.text.as_deref().unwrap_or_default(),
+                            ui,
+                        );
                     });
                     ui.horizontal(|ui| {
                         ui.style_mut().spacing = Spacing {

@@ -2,8 +2,10 @@ use chrono::{DateTime, Utc};
 use egui::{Color32, RichText, Vec2};
 use html_sanitizer::Element;
 
+use crate::{app::HackerNewsApp, event::Event};
+
 /// Render html escaped text into the Ui.
-pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
+pub fn render_rich_text(app_state: &HackerNewsApp, escaped_text: &str, ui: &mut egui::Ui) {
     let elements = html_sanitizer::parse_elements(escaped_text);
 
     ui.horizontal_wrapped(|ui| {
@@ -37,7 +39,10 @@ pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
                         } else {
                             link.children.as_str()
                         };
-                        ui.hyperlink_to(name, text).on_hover_text(text);
+                        let hyper_link = ui.hyperlink_to(name, text).on_hover_text(text);
+                        if hyper_link.secondary_clicked() {
+                            app_state.emit(Event::CopyToClipboard(name.to_string()));
+                        }
                     }
                 }
                 Element::Escaped(c) => {
