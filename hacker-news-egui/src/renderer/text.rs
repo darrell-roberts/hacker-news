@@ -75,7 +75,8 @@ pub fn render_rich_text(app_state: &HackerNewsApp, escaped_text: &str, ui: &mut 
 /// Extract the duration from a UNIX time and convert duration into a human
 /// friendly sentence.
 pub fn parse_date(time: u64) -> Option<String> {
-    let duration = DateTime::<Utc>::from_timestamp(time as i64, 0).map(|then| Utc::now() - then)?;
+    let duration =
+        DateTime::<Utc>::from_timestamp(time.try_into().ok()?, 0).map(|then| Utc::now() - then)?;
 
     let hours = duration.num_hours();
     let minutes = duration.num_minutes();
