@@ -14,7 +14,7 @@ pub fn render_rich_text(app_state: &HackerNewsApp, escaped_text: &str, ui: &mut 
 
         let mut text_string = String::new();
 
-        let render_text = |ui: &mut egui::Ui, text: &mut String| {
+        let add_label = |ui: &mut egui::Ui, text: &mut String| {
             if !text.is_empty() {
                 ui.label(text.as_str());
                 text.clear();
@@ -27,7 +27,7 @@ pub fn render_rich_text(app_state: &HackerNewsApp, escaped_text: &str, ui: &mut 
                     text_string.push_str(text);
                 }
                 Element::Link(link) => {
-                    render_text(ui, &mut text_string);
+                    add_label(ui, &mut text_string);
                     if let Some(text) = link
                         .attributes
                         .iter()
@@ -52,15 +52,15 @@ pub fn render_rich_text(app_state: &HackerNewsApp, escaped_text: &str, ui: &mut 
                     text_string.push_str("\n\n");
                 }
                 Element::Code(text) => {
-                    render_text(ui, &mut text_string);
+                    add_label(ui, &mut text_string);
                     ui.label(RichText::new(text).monospace());
                 }
                 Element::Italic(text) => {
-                    render_text(ui, &mut text_string);
+                    add_label(ui, &mut text_string);
                     ui.label(RichText::new(text).italics());
                 }
                 Element::Bold(text) => {
-                    render_text(ui, &mut text_string);
+                    add_label(ui, &mut text_string);
                     ui.label(RichText::new(text).heading());
                 }
             }
