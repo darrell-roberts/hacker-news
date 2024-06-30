@@ -2,8 +2,18 @@ use chrono::{DateTime, Utc};
 use egui::{Color32, RichText, Vec2};
 use html_sanitizer::Element;
 
+use crate::{app::HackerNewsApp, event::Event};
+
+/// Add a label to the Ui and clear the text.
+fn add_label(ui: &mut egui::Ui, text: &mut String) {
+    if !text.is_empty() {
+        ui.label(text.as_str());
+        text.clear();
+    }
+}
+
 /// Render html escaped text into the Ui.
-pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
+pub fn render_rich_text(app_state: &HackerNewsApp, escaped_text: &str, ui: &mut egui::Ui) {
     let elements = html_sanitizer::parse_elements(escaped_text);
 
     ui.horizontal_wrapped(|ui| {
@@ -12,20 +22,13 @@ pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
 
         let mut text_string = String::new();
 
-        let render_text = |ui: &mut egui::Ui, text: &mut String| {
-            if !text.is_empty() {
-                ui.label(text.as_str());
-                text.clear();
-            }
-        };
-
         for element in elements {
             match element {
                 Element::Text(text) => {
                     text_string.push_str(text);
                 }
                 Element::Link(link) => {
-                    render_text(ui, &mut text_string);
+                    add_label(ui, &mut text_string);
                     if let Some(text) = link
                         .attributes
                         .iter()
@@ -37,7 +40,10 @@ pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
                         } else {
                             link.children.as_str()
                         };
-                        ui.hyperlink_to(name, text).on_hover_text(text);
+                        let hyper_link = ui.hyperlink_to(name, text).on_hover_text(text);
+                        if hyper_link.secondary_clicked() {
+                            app_state.emit(Event::CopyToClipboard(name.to_string()));
+                        }
                     }
                 }
                 Element::Escaped(c) => {
@@ -47,15 +53,15 @@ pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
                     text_string.push_str("\n\n");
                 }
                 Element::Code(text) => {
-                    render_text(ui, &mut text_string);
+                    add_label(ui, &mut text_string);
                     ui.label(RichText::new(text).monospace());
                 }
                 Element::Italic(text) => {
-                    render_text(ui, &mut text_string);
+                    add_label(ui, &mut text_string);
                     ui.label(RichText::new(text).italics());
                 }
                 Element::Bold(text) => {
-                    render_text(ui, &mut text_string);
+                    add_label(ui, &mut text_string);
                     ui.label(RichText::new(text).heading());
                 }
             }
@@ -70,7 +76,8 @@ pub fn render_rich_text(escaped_text: &str, ui: &mut egui::Ui) {
 /// Extract the duration from a UNIX time and convert duration into a human
 /// friendly sentence.
 pub fn parse_date(time: u64) -> Option<String> {
-    let duration = DateTime::<Utc>::from_timestamp(time as i64, 0).map(|then| Utc::now() - then)?;
+    let duration =
+        DateTime::<Utc>::from_timestamp(time.try_into().ok()?, 0).map(|then| Utc::now() - then)?;
 
     let hours = duration.num_hours();
     let minutes = duration.num_minutes();

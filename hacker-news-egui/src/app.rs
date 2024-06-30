@@ -290,6 +290,7 @@ impl HackerNewsApp {
                 self.viewing_comments[index] = false;
                 self.comments_state.comment_trail[index].open = false;
             }
+            Event::CopyToClipboard(text) => self.context.copy_text(text),
         }
     }
 
