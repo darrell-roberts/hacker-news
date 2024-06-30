@@ -225,6 +225,8 @@ impl HackerNewsApp {
                 active_item,
             } => {
                 self.fetching = true;
+                self.search = String::new();
+                self.search_open = false;
                 if let Some(item) = active_item {
                     // Top level comment.
                     self.comments_state.comments = Vec::new();

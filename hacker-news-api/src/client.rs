@@ -25,7 +25,8 @@ impl ApiClient {
         Ok(Self {
             client: reqwest::Client::builder()
                 .connect_timeout(Duration::from_secs(5))
-                .build()?,
+                .build()
+                .context("Failed to create api client")?,
         })
     }
 
@@ -35,8 +36,11 @@ impl ApiClient {
             .client
             .get(format!("{}/{api}", Self::API_END_POINT))
             .send()
-            .and_then(|resp| resp.json::<Vec<u64>>())
-            .await?;
+            .await
+            .context("Failed to send request")?
+            .json::<Vec<u64>>()
+            .await
+            .context("Failed to deserialize response")?;
 
         ids.truncate(limit);
         self.items(&ids).await
@@ -58,9 +62,11 @@ impl ApiClient {
         self.client
             .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
             .send()
-            .and_then(|resp| resp.json::<Item>())
-            .map_err(anyhow::Error::new)
             .await
+            .context("Failed to send request")?
+            .json::<Item>()
+            .await
+            .context("Failed to deserialize item")
     }
 
     /// Get multiple ids by item id.
@@ -81,16 +87,12 @@ impl ApiClient {
         let mut result = Vec::with_capacity(handles.len());
 
         for h in handles {
-            let item = h.await?;
-            match item {
-                Ok(item) => {
-                    if !(item.dead || item.deleted) {
-                        result.push(item);
-                    }
-                }
-                Err(err) => {
-                    error!("Failed to deserialize item {err}");
-                }
+            let item = h
+                .await
+                .context("Failed to fetch item")?
+                .context("Failed to deserialize item")?;
+            if !(item.dead || item.deleted) {
+                result.push(item);
             }
         }
 
@@ -102,10 +104,11 @@ impl ApiClient {
         self.client
             .get(format!("{}/user/{handle}.json", Self::API_END_POINT))
             .send()
-            .await?
-            .json::<User>()
-            .map_err(anyhow::Error::new)
             .await
+            .context("Failed to send request")?
+            .json::<User>()
+            .await
+            .context("Failed to deserialize user")
     }
 
     /// Top stories event-source stream.
@@ -116,11 +119,12 @@ impl ApiClient {
             .get(format!("{}/topstories.json", Self::API_END_POINT))
             .header("Accept", "text/event-stream")
             .send()
-            .await?
+            .await
+            .context("Failed to send request")?
             .bytes_stream();
 
         while let Some(item) = stream.next().await {
-            let bytes = item?;
+            let bytes = item.context("Failed to fetch event from stream")?;
 
             if let Some(data) = parse_event(&bytes) {
                 sender.send(data).await?;
@@ -138,21 +142,22 @@ fn parse_event(bytes: &[u8]) -> Option<EventData> {
     // We are only concerned with put events for the top stories. This event
     // will provide a JSON number array payload of all the top stories in
     // ranking order.
+
     lines
-        .next()
-        .and_then(|event| event.starts_with(b"event: put").then(|| lines.next())?)
+        .next()?
+        .starts_with(b"event: put")
+        .then(|| lines.next())?
+        .filter(|data| data.starts_with(b"data: "))
         .and_then(|data| {
-            data.starts_with(b"data: ").then(|| {
-                serde_json::from_slice::<EventData>(&data[6..])
-                    .with_context(|| {
-                        format!(
-                            "Failed to deserialize event payload: {}",
-                            String::from_utf8_lossy(&data[6..])
-                        )
-                    })
-                    .log_error()
-                    .ok()
-            })?
+            serde_json::from_slice::<EventData>(&data[6..])
+                .with_context(|| {
+                    format!(
+                        "Failed to deserialize event payload: {}",
+                        String::from_utf8_lossy(&data[6..])
+                    )
+                })
+                .log_error()
+                .ok()
         })
 }
 
