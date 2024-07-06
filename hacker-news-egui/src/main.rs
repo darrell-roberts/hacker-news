@@ -68,7 +68,7 @@ fn main() -> Result<()> {
                 .context("Intitial request")
                 .log_error_consume();
 
-            Box::new(app)
+            Ok(Box::new(app))
         }),
     )
     .map_err(|e| anyhow::Error::msg(format!("failed to launch: {e}")))?;
