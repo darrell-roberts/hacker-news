@@ -191,7 +191,7 @@ impl Application for App {
         container(content).into()
     }
 
-    // fn theme(&self) -> Self::Theme {
-    //     Theme::GruvboxDark
-    // }
+    fn theme(&self) -> Self::Theme {
+        Theme::GruvboxDark
+    }
 }

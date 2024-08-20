@@ -119,18 +119,19 @@ impl container::StyleSheet for CommentBubbleStyle {
     fn appearance(&self, _style: &Self::Style) -> container::Appearance {
         container::Appearance {
             text_color: None,
-            background: Some(iced::Background::Color(Color {
-                r: 248. / 255.,
-                g: 222. / 255.,
-                b: 126. / 255.,
-                a: 1.,
-            })),
+            // background: Some(iced::Background::Color(Color {
+            //     r: 248. / 255.,
+            //     g: 222. / 255.,
+            //     b: 126. / 255.,
+            //     a: 1.,
+            // })),
             border: Border {
                 color: Color::WHITE,
                 width: 1.,
                 radius: 10.0.into(),
             },
             shadow: Shadow::default(),
+            ..Default::default()
         }
     }
 }
@@ -143,18 +144,19 @@ impl container::StyleSheet for ParentCommentBubbleStyle {
     fn appearance(&self, _style: &Self::Style) -> container::Appearance {
         container::Appearance {
             text_color: None,
-            background: Some(iced::Background::Color(Color {
-                r: 1.,
-                g: 1.,
-                b: 200. / 255.,
-                a: 1.,
-            })),
+            // background: Some(iced::Background::Color(Color {
+            //     r: 1.,
+            //     g: 1.,
+            //     b: 200. / 255.,
+            //     a: 1.,
+            // })),
             border: Border {
                 color: Color::WHITE,
                 width: 1.,
                 radius: 10.0.into(),
             },
             shadow: Shadow::default(),
+            ..Default::default()
         }
     }
 }
