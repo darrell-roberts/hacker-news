@@ -1,19 +1,25 @@
-use async_compat::{Compat, CompatExt};
+//! Simple hacker news view.
+use content::Content;
 use gpui::{
-    actions, div, prelude::*, px, rgb, size, App, AppContext, Menu, MenuItem, Model, SharedString,
+    actions, div, prelude::*, px, rgb, size, App, AppContext, Global, Menu, MenuItem, SharedString,
     View, WindowContext, WindowOptions,
 };
-use hacker_news_api::{ArticleType, Item};
+use hacker_news_api::ApiClient;
+use header::Header;
+use std::sync::Arc;
 
 mod article;
+mod content;
+mod header;
+
+#[derive(Clone)]
+pub struct ApiClientState(Arc<ApiClient>);
+
+impl Global for ApiClientState {}
 
 struct MainWindow {
     header: View<Header>,
     content: View<Content>,
-}
-struct Header;
-struct Content {
-    articles: Vec<Item>,
 }
 
 impl MainWindow {
@@ -25,62 +31,16 @@ impl MainWindow {
     }
 }
 
-impl Header {
-    fn new(cx: &mut WindowContext) -> View<Self> {
-        cx.new_view(|_| Self)
-    }
-}
-
-impl Content {
-    fn new(cx: &mut WindowContext) -> View<Self> {
-        let view = cx.new_view(|_| Self {
-            articles: Vec::new(),
-        });
-        cx.spawn(|mut cx| {
-            let view = view.clone();
-            Compat::new(async move {
-                let client = hacker_news_api::ApiClient::new().unwrap();
-                let new_articles = client.articles(10, ArticleType::Top).await.unwrap();
-                println!("fetched {} articles", new_articles.len());
-                cx.update_model(&view.model, |model, _| {
-                    model.articles.extend(new_articles);
-                })
-                .unwrap();
-            })
-        })
-        .detach();
-        view
-    }
-}
-
 impl Render for MainWindow {
     fn render(&mut self, _cx: &mut gpui::ViewContext<Self>) -> impl IntoElement {
         div()
             .flex()
-            .bg(rgb(0x2e7d32))
             .flex_col()
+            .w_full()
+            .h_full()
+            .bg(rgb(0xFFFFFF))
             .child(self.header.clone())
             .child(self.content.clone())
-    }
-}
-
-impl Render for Header {
-    fn render(&mut self, _cx: &mut gpui::ViewContext<Self>) -> impl IntoElement {
-        div().flex().bg(rgb(0xffffff)).child("Header")
-    }
-}
-
-impl Render for Content {
-    fn render(&mut self, cx: &mut gpui::ViewContext<Self>) -> impl IntoElement {
-        let articles = self.articles.iter().map(|article| {
-            let title = article.title.clone().unwrap_or_default();
-            div().child(title)
-        });
-        div()
-            .flex()
-            .bg(rgb(0xffffff))
-            .child("Articles")
-            .children(articles)
     }
 }
 
@@ -95,10 +55,18 @@ fn main() {
             items: vec![MenuItem::action("Quit", Quit)],
         }]);
 
-        let bounds = gpui::Bounds::centered(None, size(px(300.), px(300.)), cx);
+        let client = Arc::new(hacker_news_api::ApiClient::new().unwrap());
+        cx.set_global(ApiClientState(client));
+
+        let bounds = gpui::Bounds::centered(None, size(px(800.), px(600.)), cx);
         cx.open_window(
             WindowOptions {
                 window_bounds: Some(gpui::WindowBounds::Windowed(bounds)),
+                titlebar: Some(gpui::TitlebarOptions {
+                    title: Some("Hacker News".into()),
+                    ..Default::default()
+                }),
+                window_decorations: Some(Default::default()),
                 ..Default::default()
             },
             |cx| MainWindow::new(cx),
