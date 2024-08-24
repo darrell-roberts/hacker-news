@@ -1,3 +1,4 @@
+use async_compat::{Compat, CompatExt};
 use gpui::{
     actions, div, prelude::*, px, rgb, size, App, AppContext, Menu, MenuItem, Model, SharedString,
     View, WindowContext, WindowOptions,
@@ -12,7 +13,7 @@ struct MainWindow {
 }
 struct Header;
 struct Content {
-    articles: Model<Vec<Item>>,
+    articles: Vec<Item>,
 }
 
 impl MainWindow {
@@ -32,18 +33,23 @@ impl Header {
 
 impl Content {
     fn new(cx: &mut WindowContext) -> View<Self> {
-        let articles = cx.new_model(|_| Vec::new());
-
-        let articles_clone = articles.clone();
-        cx.spawn(|mut cx| async move {
-            let client = hacker_news_api::ApiClient::new().unwrap();
-            let new_articles = client.articles(10, ArticleType::Top).await.unwrap();
-            articles_clone.update(&mut cx, |a, m_ctx| {
-                a.extend(new_articles);
+        let view = cx.new_view(|_| Self {
+            articles: Vec::new(),
+        });
+        cx.spawn(|mut cx| {
+            let view = view.clone();
+            Compat::new(async move {
+                let client = hacker_news_api::ApiClient::new().unwrap();
+                let new_articles = client.articles(10, ArticleType::Top).await.unwrap();
+                println!("fetched {} articles", new_articles.len());
+                cx.update_model(&view.model, |model, _| {
+                    model.articles.extend(new_articles);
+                })
+                .unwrap();
             })
         })
         .detach();
-        cx.new_view(|_| Self { articles })
+        view
     }
 }
 
@@ -66,11 +72,15 @@ impl Render for Header {
 
 impl Render for Content {
     fn render(&mut self, cx: &mut gpui::ViewContext<Self>) -> impl IntoElement {
-        let articles = self.articles.read(cx).into_iter().map(|article| {
+        let articles = self.articles.iter().map(|article| {
             let title = article.title.clone().unwrap_or_default();
             div().child(title)
         });
-        div().flex().bg(rgb(0xffffff)).children(articles)
+        div()
+            .flex()
+            .bg(rgb(0xffffff))
+            .child("Articles")
+            .children(articles)
     }
 }
 

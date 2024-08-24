@@ -6,6 +6,7 @@ edition.workspace = true
 
 [dependencies]
 gpui = { git = "https://github.com/zed-industries/zed" }
+async-compat = "0.2"
 hacker-news-api.workspace = true
 html-sanitizer.workspace = true
 log.workspace = true

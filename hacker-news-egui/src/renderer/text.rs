@@ -42,7 +42,7 @@ pub fn render_rich_text(app_state: &HackerNewsApp, escaped_text: &str, ui: &mut 
                         };
                         let hyper_link = ui.hyperlink_to(name, text).on_hover_text(text);
                         if hyper_link.secondary_clicked() {
-                            app_state.emit(Event::CopyToClipboard(name.to_string()));
+                            app_state.emit(Event::CopyToClipboard(text.to_string()));
                         }
                     }
                 }
