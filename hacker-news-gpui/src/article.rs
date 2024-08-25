@@ -1,5 +1,5 @@
 //! Article view.
-use gpui::{div, prelude::*, px, rgb, MouseButton, View, WindowContext};
+use gpui::{div, prelude::*, px, rems, rgb, MouseButton, View, WindowContext};
 use hacker_news_api::Item;
 
 // An article view is rendered for each article item.
@@ -19,14 +19,14 @@ impl Render for ArticleView {
 
         let points_col = div()
             .flex()
-            .w(px(50.0))
+            .w(rems(4.))
             .justify_start()
             .child(format!("🔼{}", self.item.score));
 
         let comments_col = div()
             .flex()
-            .w(px(50.0))
-            .justify_center()
+            .w(rems(4.))
+            .justify_start()
             .child(format!("💬{}", self.item.kids.len()));
 
         let author = div()

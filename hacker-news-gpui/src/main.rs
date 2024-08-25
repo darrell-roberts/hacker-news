@@ -87,7 +87,7 @@ fn main() {
         cx.set_global(AppState {
             viewing_article_type: ArticleType::Top,
             viewing_article_total: 50,
-            status_line: String::new(),
+            status_line: String::from("Loading..."),
         });
 
         // let bounds = gpui::Bounds::centered(None, size(px(800.), px(600.)), cx);

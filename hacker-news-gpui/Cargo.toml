@@ -12,3 +12,4 @@ html-sanitizer.workspace = true
 log.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
+jiff = "0.1"

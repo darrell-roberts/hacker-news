@@ -1,6 +1,4 @@
 //! Header view.
-use std::process::Child;
-
 use crate::AppState;
 use gpui::{
     div, prelude::FluentBuilder, px, rgb, BorrowAppContext, InteractiveElement, IntoElement,
