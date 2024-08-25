@@ -19,15 +19,15 @@ impl Render for ArticleView {
 
         let points_col = div()
             .flex()
-            .w(px(25.0))
+            .w(px(50.0))
             .justify_start()
-            .child(format!("{}", self.item.score));
+            .child(format!("🔼{}", self.item.score));
 
         let comments_col = div()
             .flex()
             .w(px(50.0))
             .justify_center()
-            .child(format!("{}", self.item.kids.len()));
+            .child(format!("💬{}", self.item.kids.len()));
 
         let author = div()
             .italic()

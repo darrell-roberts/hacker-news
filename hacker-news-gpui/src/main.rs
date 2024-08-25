@@ -1,8 +1,9 @@
 //! Simple hacker news view.
 use content::Content;
+use footer::Footer;
 use gpui::{
-    actions, div, prelude::*, px, rgb, size, App, AppContext, Global, Menu, MenuItem, SharedString,
-    View, WindowContext, WindowOptions,
+    actions, div, point, prelude::*, px, rgb, size, App, AppContext, Global, Menu, MenuItem,
+    SharedString, View, WindowContext, WindowDecorations, WindowOptions,
 };
 use hacker_news_api::ApiClient;
 use header::Header;
@@ -10,6 +11,7 @@ use std::sync::Arc;
 
 mod article;
 mod content;
+mod footer;
 mod header;
 
 #[derive(Clone)]
@@ -20,14 +22,20 @@ impl Global for ApiClientState {}
 struct MainWindow {
     header: View<Header>,
     content: View<Content>,
+    footer: View<Footer>,
 }
 
 impl MainWindow {
     fn new(cx: &mut WindowContext) -> View<Self> {
         let header = Header::new(cx);
         let content = Content::new(cx);
+        let footer = Footer::new(cx);
 
-        cx.new_view(|_| Self { header, content })
+        cx.new_view(|_| Self {
+            header,
+            content,
+            footer,
+        })
     }
 }
 
@@ -43,6 +51,7 @@ impl Render for MainWindow {
             .border_color(rgb(0xEEEEEE))
             .child(self.header.clone())
             .child(self.content.clone())
+            .child(self.footer.clone())
     }
 }
 
@@ -60,15 +69,19 @@ fn main() {
         let client = Arc::new(hacker_news_api::ApiClient::new().unwrap());
         cx.set_global(ApiClientState(client));
 
-        let bounds = gpui::Bounds::centered(None, size(px(800.), px(600.)), cx);
+        // let bounds = gpui::Bounds::centered(None, size(px(800.), px(600.)), cx);
         cx.open_window(
             WindowOptions {
-                window_bounds: Some(gpui::WindowBounds::Windowed(bounds)),
+                // window_bounds: Some(gpui::WindowBounds::Windowed(bounds)),
                 titlebar: Some(gpui::TitlebarOptions {
                     title: Some("Hacker News".into()),
+                    traffic_light_position: Some(point(px(9.), px(9.))),
                     ..Default::default()
                 }),
-                window_decorations: Some(Default::default()),
+                window_decorations: Some(WindowDecorations::Server),
+                window_min_size: Some(size(px(800.), px(600.))),
+                is_movable: true,
+                window_bounds: None,
                 ..Default::default()
             },
             |cx| MainWindow::new(cx),

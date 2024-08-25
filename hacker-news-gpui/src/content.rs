@@ -39,11 +39,8 @@ impl Content {
             // Run in compat since client uses tokio
             Compat::new(async move {
                 let new_articles = client.0.articles(75, ArticleType::Top).await.unwrap();
-                // println!("fetched {} articles", new_articles.len());
                 cx.update_view(&view, |view, cx| {
-                    view.articles.extend(
-                        new_articles.into_iter(), // .map(|item| ArticleView::new(cx, item)),
-                    );
+                    view.articles = new_articles;
                     view.list_state.reset(view.articles.len());
                     cx.notify();
                 })
@@ -76,8 +73,7 @@ impl Render for Content {
         div()
             .flex()
             .flex_col()
-            .w_full()
-            .h_full()
+            .size_full()
             .child(if self.articles.is_empty() {
                 loading()
             } else {
