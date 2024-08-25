@@ -1,5 +1,5 @@
 //! Article view.
-use gpui::{div, prelude::*, px, rgb, Font, FontStyle, Style, View, WindowContext};
+use gpui::{div, prelude::*, px, rgb, MouseButton, View, WindowContext};
 use hacker_news_api::Item;
 
 // An article view is rendered for each article item.
@@ -14,8 +14,14 @@ impl ArticleView {
 }
 
 impl Render for ArticleView {
-    fn render(&mut self, _cx: &mut gpui::ViewContext<Self>) -> impl gpui::IntoElement {
+    fn render(&mut self, cx: &mut gpui::ViewContext<Self>) -> impl gpui::IntoElement {
         let title = self.item.title.clone().unwrap_or_default();
+
+        let points_col = div()
+            .flex()
+            .w(px(25.0))
+            .justify_start()
+            .child(format!("{}", self.item.score));
 
         let comments_col = div()
             .flex()
@@ -33,7 +39,14 @@ impl Render for ArticleView {
             .flex()
             .flex_row()
             .flex_grow()
-            .child(title)
+            .child(div().child(title).on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|view, _event, cx| {
+                    if let Some(url) = view.item.url.as_deref() {
+                        cx.open_url(url);
+                    }
+                }),
+            ))
             .child(author)
             .gap_x(px(5.0));
 
@@ -44,6 +57,7 @@ impl Render for ArticleView {
             .text_size(px(18.0))
             .w_full()
             .gap_x(px(5.0))
+            .child(points_col)
             .child(comments_col)
             .child(title_col)
             .px_1()

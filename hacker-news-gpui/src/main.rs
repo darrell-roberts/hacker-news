@@ -39,6 +39,8 @@ impl Render for MainWindow {
             .w_full()
             .h_full()
             .bg(rgb(0xFFFFFF))
+            .border_5()
+            .border_color(rgb(0xEEEEEE))
             .child(self.header.clone())
             .child(self.content.clone())
     }
