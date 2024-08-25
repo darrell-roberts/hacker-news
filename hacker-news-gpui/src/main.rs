@@ -5,9 +5,9 @@ use gpui::{
     actions, div, point, prelude::*, px, rgb, size, App, AppContext, Global, Menu, MenuItem,
     SharedString, View, WindowContext, WindowDecorations, WindowOptions,
 };
-use hacker_news_api::ApiClient;
+use hacker_news_api::{ApiClient, ArticleType};
 use header::Header;
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 
 mod article;
 mod content;
@@ -17,7 +17,23 @@ mod header;
 #[derive(Clone)]
 pub struct ApiClientState(Arc<ApiClient>);
 
+impl Deref for ApiClientState {
+    type Target = ApiClient;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref()
+    }
+}
+
 impl Global for ApiClientState {}
+
+pub struct AppState {
+    pub viewing_article_type: ArticleType,
+    pub viewing_article_total: usize,
+    pub status_line: String,
+}
+
+impl Global for AppState {}
 
 struct MainWindow {
     header: View<Header>,
@@ -68,6 +84,11 @@ fn main() {
 
         let client = Arc::new(hacker_news_api::ApiClient::new().unwrap());
         cx.set_global(ApiClientState(client));
+        cx.set_global(AppState {
+            viewing_article_type: ArticleType::Top,
+            viewing_article_total: 50,
+            status_line: String::new(),
+        });
 
         // let bounds = gpui::Bounds::centered(None, size(px(800.), px(600.)), cx);
         cx.open_window(

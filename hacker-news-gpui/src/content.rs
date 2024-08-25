@@ -1,21 +1,22 @@
 //! Main content view
-use crate::{article::ArticleView, ApiClientState};
+use crate::{article::ArticleView, ApiClientState, AppState};
 use async_compat::Compat;
-use gpui::{div, list, prelude::*, px, AnyElement, ListState, View, ViewContext, WindowContext};
-use hacker_news_api::{ArticleType, Item};
+use gpui::{
+    div, list, prelude::*, px, AnyElement, ListState, Subscription, View, ViewContext,
+    WindowContext,
+};
+use hacker_news_api::Item;
 
 // Main content view.
 pub struct Content {
-    // articles: Vec<View<ArticleView>>,
     articles: Vec<Item>,
     list_state: ListState,
+    _state_subscription: Subscription,
 }
 
 impl Content {
     /// Create a new content view.
     pub fn new(cx: &mut WindowContext) -> View<Self> {
-        let client = cx.global::<ApiClientState>().clone();
-
         let view = cx.new_view(|cx: &mut ViewContext<Self>| {
             let view = cx.view().downgrade();
 
@@ -28,17 +29,43 @@ impl Content {
                     }
                 });
 
+            Self::fetch_articles(cx);
+
             Self {
                 articles: Vec::new(),
                 list_state,
+                _state_subscription: cx.observe_global::<AppState>(|view, cx| {
+                    view.articles = Vec::new();
+                    Self::fetch_articles(cx)
+                }),
             }
         });
-        cx.spawn(|mut cx| {
-            let view = view.clone();
+
+        view
+    }
+
+    fn render_article(&self, ix: usize, cx: &mut ViewContext<Self>) -> AnyElement {
+        match self.articles.get(ix) {
+            Some(article) => ArticleView::new(cx, article.clone()).into_any(),
+            None => div().into_any(),
+        }
+    }
+
+    fn fetch_articles(cx: &mut ViewContext<Self>) {
+        let client = cx.global::<ApiClientState>().clone();
+
+        cx.spawn(|view, mut cx| {
+            let view = view.upgrade().unwrap();
 
             // Run in compat since client uses tokio
             Compat::new(async move {
-                let new_articles = client.0.articles(75, ArticleType::Top).await.unwrap();
+                let (a_type, total) = cx
+                    .read_global::<AppState, _>(|r, _cx| {
+                        (r.viewing_article_type, r.viewing_article_total)
+                    })
+                    .unwrap();
+
+                let new_articles = client.articles(total, a_type).await.unwrap();
                 cx.update_view(&view, |view, cx| {
                     view.articles = new_articles;
                     view.list_state.reset(view.articles.len());
@@ -48,14 +75,6 @@ impl Content {
             })
         })
         .detach();
-        view
-    }
-
-    fn render_article(&self, ix: usize, cx: &mut ViewContext<Self>) -> AnyElement {
-        match self.articles.get(ix) {
-            Some(article) => ArticleView::new(cx, article.clone()).into_any(),
-            None => div().into_any(),
-        }
     }
 }
 
