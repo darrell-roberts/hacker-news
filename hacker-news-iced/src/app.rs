@@ -4,8 +4,9 @@ use chrono::Local;
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use iced::{
     alignment::Vertical,
+    font::{Style, Weight},
     widget::{column, container, text},
-    Element, Task,
+    Element, Font, Task,
 };
 use log::error;
 use std::sync::Arc;
@@ -158,9 +159,13 @@ pub(crate) fn view(app: &App) -> iced::Element<AppMsg> {
             let col = column![
                 container(app.render_header()).padding([10, 0]),
                 app.render_articles(),
-                container(text(&app.status_line))
-                    .align_y(Vertical::Bottom)
-                    .padding([0, 10])
+                container(text(&app.status_line).font(Font {
+                    style: Style::Italic,
+                    weight: Weight::Light,
+                    ..Default::default()
+                }))
+                .align_y(Vertical::Bottom)
+                .padding([0, 10])
             ];
             Element::from(col.spacing(10.))
         }

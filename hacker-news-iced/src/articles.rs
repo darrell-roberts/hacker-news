@@ -9,7 +9,7 @@ use std::ops::Not;
 
 impl App {
     pub fn render_articles(&self) -> Element<'_, AppMsg> {
-        let article_row = |(article, index): (&Item, usize)| {
+        let article_row = |article: &Item| {
             let title_and_by = widget::rich_text([
                 widget::span(
                     article
@@ -41,7 +41,7 @@ impl App {
             }));
 
             row![
-                widget::text(format!("{index}")).width(30),
+                // widget::text(format!("{index}")).width(30),
                 widget::text(format!("🔼{}", article.score))
                     .width(50)
                     .shaping(text::Shaping::Advanced),
@@ -56,15 +56,9 @@ impl App {
         };
 
         scrollable(
-            Column::with_children(
-                self.articles
-                    .iter()
-                    .zip(1..)
-                    .map(article_row)
-                    .map(Element::from),
-            )
-            .width(Length::Fill)
-            .padding(10),
+            Column::with_children(self.articles.iter().map(article_row).map(Element::from))
+                .width(Length::Fill)
+                .padding(10),
         )
         .height(Length::Fill)
         .into()

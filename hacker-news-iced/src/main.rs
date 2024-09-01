@@ -20,14 +20,14 @@ fn main() -> iced::Result {
                     articles: Vec::new(),
                     client: client.clone(),
                     showing: Showing {
-                        limit: 50,
+                        limit: 75,
                         article_type: ArticleType::Top,
                     },
                     status_line: String::new(),
                     comments: None,
                 },
                 iced::Task::perform(
-                    async move { client.articles(20, ArticleType::Top).await },
+                    async move { client.articles(75, ArticleType::Top).await },
                     AppMsg::Receive,
                 ),
             )

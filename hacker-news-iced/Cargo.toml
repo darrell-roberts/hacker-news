@@ -8,11 +8,7 @@ edition.workspace = true
 
 [dependencies]
 # iced = { version = "0.12", features = ["lazy", "tokio", "advanced"] }
-iced = { git = "https://github.com/iced-rs/iced.git", features = [
-  "lazy",
-  "tokio",
-  "advanced",
-] }
+iced = { path = "../../iced", features = ["lazy", "tokio", "advanced"] }
 
 hacker-news-api.workspace = true
 html-sanitizer.workspace = true
