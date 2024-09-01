@@ -10,6 +10,7 @@ use header::Header;
 use std::{ops::Deref, sync::Arc};
 
 mod article;
+mod comment;
 mod content;
 mod footer;
 mod header;
@@ -39,6 +40,7 @@ struct MainWindow {
     header: View<Header>,
     content: View<Content>,
     footer: View<Footer>,
+    // _quit_subscription: Subscription,
 }
 
 impl MainWindow {
@@ -47,10 +49,13 @@ impl MainWindow {
         let content = Content::new(cx);
         let footer = Footer::new(cx);
 
+        // let subscription = cx.on_action(, listener)
+
         cx.new_view(|_| Self {
             header,
             content,
             footer,
+            // _quit_subscription: subscription,
         })
     }
 }
@@ -90,10 +95,8 @@ fn main() {
             status_line: String::from("Loading..."),
         });
 
-        // let bounds = gpui::Bounds::centered(None, size(px(800.), px(600.)), cx);
         cx.open_window(
             WindowOptions {
-                // window_bounds: Some(gpui::WindowBounds::Windowed(bounds)),
                 titlebar: Some(gpui::TitlebarOptions {
                     title: Some("Hacker News".into()),
                     traffic_light_position: Some(point(px(9.), px(9.))),
@@ -105,10 +108,10 @@ fn main() {
                 window_bounds: None,
                 ..Default::default()
             },
-            |cx| MainWindow::new(cx),
+            MainWindow::new,
         )
         .unwrap();
-    })
+    });
 }
 
 // Associate actions using the `actions!` macro (or `impl_actions!` macro)

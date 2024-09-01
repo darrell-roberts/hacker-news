@@ -54,7 +54,7 @@ impl Render for ArticleView {
             .flex()
             .flex_row()
             .font_family("Roboto, sans-serif")
-            .text_size(px(18.0))
+            .text_size(px(14.0))
             .w_full()
             .gap_x(px(5.0))
             .child(points_col)

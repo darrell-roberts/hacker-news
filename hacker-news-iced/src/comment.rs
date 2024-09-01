@@ -119,6 +119,12 @@ impl container::StyleSheet for CommentBubbleStyle {
     fn appearance(&self, _style: &Self::Style) -> container::Appearance {
         container::Appearance {
             text_color: None,
+            background: Some(iced::Background::Color(Color {
+                r: 102. / 255.,
+                g: 75. / 255.,
+                b: 0.,
+                a: 1.,
+            })),
             // background: Some(iced::Background::Color(Color {
             //     r: 248. / 255.,
             //     g: 222. / 255.,
@@ -131,7 +137,6 @@ impl container::StyleSheet for CommentBubbleStyle {
                 radius: 10.0.into(),
             },
             shadow: Shadow::default(),
-            ..Default::default()
         }
     }
 }

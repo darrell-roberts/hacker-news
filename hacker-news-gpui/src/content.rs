@@ -6,7 +6,6 @@ use gpui::{
     WindowContext,
 };
 use hacker_news_api::Item;
-use jiff::Zoned;
 
 // Main content view.
 pub struct Content {
