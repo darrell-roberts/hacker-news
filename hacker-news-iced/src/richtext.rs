@@ -16,9 +16,15 @@ pub fn render_rich_text(escaped_text: &str) -> Element<'_, AppMsg> {
                 .find(|attr| attr.name == "href")
                 .map(move |attr| {
                     if link.children.is_empty() {
-                        span(attr.value.clone()).link(AppMsg::OpenLink(attr.value))
+                        span(attr.value.clone()).link(AppMsg::OpenLink {
+                            url: attr.value,
+                            item_id: 0,
+                        })
                     } else {
-                        span(link.children).link(AppMsg::OpenLink(attr.value))
+                        span(link.children).link(AppMsg::OpenLink {
+                            url: attr.value,
+                            item_id: 0,
+                        })
                     }
                 }),
             html_sanitizer::Element::Escaped(text) => Some(span(text)),

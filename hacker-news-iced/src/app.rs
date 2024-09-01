@@ -9,19 +9,30 @@ use iced::{
     Element, Font, Task,
 };
 use log::error;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
+/// The current state of what we are showing.
 pub struct Showing {
+    /// Limit of articles
     pub limit: usize,
+    /// Type of article
     pub article_type: ArticleType,
 }
 
+/// Application state.
 pub struct App {
+    /// Viewing articles
     pub articles: Vec<Item>,
+    /// API Client.
     pub client: Arc<ApiClient>,
+    /// What are we showing
     pub showing: Showing,
+    /// Status line message
     pub status_line: String,
+    /// Comments being viewed.
     pub comments: Option<CommentState>,
+    /// Visisted item ids.
+    pub visited: HashSet<u64>,
 }
 
 #[derive(Debug)]
@@ -38,7 +49,10 @@ pub enum AppMsg {
     },
     ReceiveComments(Result<Vec<Item>>, Option<Item>),
     CloseComment,
-    OpenLink(String),
+    OpenLink {
+        url: String,
+        item_id: u64,
+    },
 }
 
 impl Clone for AppMsg {
@@ -63,7 +77,10 @@ impl Clone for AppMsg {
                 parent: parent.clone(),
             },
             AppMsg::CloseComment => AppMsg::CloseComment,
-            AppMsg::OpenLink(url) => AppMsg::OpenLink(url.clone()),
+            AppMsg::OpenLink { url, item_id } => AppMsg::OpenLink {
+                url: url.clone(),
+                item_id: *item_id,
+            },
         }
     }
 }
@@ -103,6 +120,7 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         } => {
             // Opening first set of comments from an article.
             if let Some(item) = article {
+                app.visited.insert(item.id);
                 app.comments = Some(CommentState {
                     article: item,
                     comments: Vec::new(),
@@ -141,8 +159,9 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             }
             Task::none()
         }
-        AppMsg::OpenLink(url) => {
-            open::that(url)
+        AppMsg::OpenLink { url, item_id } => {
+            app.visited.insert(item_id);
+            open::with(url, "firefox")
                 .inspect_err(|err| {
                     error!("Failed to open url {err}");
                 })

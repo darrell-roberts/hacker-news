@@ -11,13 +11,19 @@ use iced::{
     Border, Color, Element, Font, Length,
 };
 
+/// List of comments and common parent
 pub struct CommentItem {
+    /// Parent comment.
     pub parent: Option<Item>,
+    /// Comment items.
     pub items: Vec<Item>,
 }
 
+/// Comment state
 pub struct CommentState {
+    /// Article this comment belongs to
     pub article: Item,
+    /// Children
     pub comments: Vec<CommentItem>,
 }
 
@@ -65,48 +71,46 @@ impl App {
             .clip(false)
         };
 
-        let comment_rows = comment_state.comments.iter().last().map(|item| {
-            item.items
-                .iter()
-                .map(|item| {
-                    comment_row(item, false).style(|_theme| container::Style {
+        let comment_rows = match comment_state.comments.iter().last() {
+            Some(item) => either::Left(
+                item.items
+                    .iter()
+                    .map(|item| {
+                        comment_row(item, false).style(|_theme| container::Style {
+                            border: Border {
+                                color: Color::BLACK,
+                                width: 1.,
+                                radius: 8.into(),
+                            },
+                            background: Some(iced::Background::Color(Color {
+                                r: 102. / 255.,
+                                g: 75. / 255.,
+                                b: 0.,
+                                a: 1.,
+                            })),
+                            ..Default::default()
+                        })
+                    })
+                    .map(Element::from),
+            ),
+            None => either::Right(std::iter::empty::<Element<'_, AppMsg>>()),
+        };
+
+        let parent_comments = comment_state.comments.iter().flat_map(|item| {
+            item.parent
+                .as_ref()
+                .map(|parent| {
+                    comment_row(parent, true).style(|_theme| container::Style {
                         border: Border {
-                            color: Color::BLACK,
+                            color: Color::WHITE,
                             width: 1.,
                             radius: 8.into(),
                         },
-                        background: Some(iced::Background::Color(Color {
-                            r: 102. / 255.,
-                            g: 75. / 255.,
-                            b: 0.,
-                            a: 1.,
-                        })),
                         ..Default::default()
                     })
                 })
                 .map(Element::from)
-                .collect::<Vec<_>>()
         });
-
-        let parent_comments = comment_state
-            .comments
-            .iter()
-            .flat_map(|item| {
-                item.parent
-                    .as_ref()
-                    .map(|parent| {
-                        comment_row(parent, true).style(|_theme| container::Style {
-                            border: Border {
-                                color: Color::WHITE,
-                                width: 1.,
-                                radius: 8.into(),
-                            },
-                            ..Default::default()
-                        })
-                    })
-                    .map(Element::from)
-            })
-            .collect::<Vec<_>>();
 
         let content = column![
             row![
@@ -116,7 +120,7 @@ impl App {
                             weight: Weight::Bold,
                             ..Default::default()
                         }
-                    ) // .vertical_alignment(Vertical::Bottom)
+                    )
                 )
                 .align_y(Vertical::Bottom),
                 container(header)
@@ -127,7 +131,7 @@ impl App {
             scrollable(
                 column![
                     Column::with_children(parent_comments).spacing(10),
-                    Column::with_children(comment_rows.unwrap_or_default()).spacing(10)
+                    Column::with_children(comment_rows).spacing(10)
                 ]
                 .spacing(10)
                 .padding(10)

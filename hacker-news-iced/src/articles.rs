@@ -17,7 +17,15 @@ impl App {
                         .as_ref()
                         .map_or_else(String::new, |s| s.to_owned()),
                 )
-                .link_maybe(article.url.clone().map(AppMsg::OpenLink)),
+                .link_maybe(article.url.clone().map(|url| AppMsg::OpenLink {
+                    url,
+                    item_id: article.id,
+                }))
+                .color_maybe(
+                    self.visited
+                        .contains(&article.id)
+                        .then(|| [122. / 255., 122. / 255., 82. / 255.]),
+                ),
                 widget::span(format!(" by {}", article.by))
                     .font(Font {
                         style: Style::Italic,
@@ -28,25 +36,22 @@ impl App {
             ]);
 
             let content = format!("💬{}", article.kids.len());
-            let comments_button = button(
-                widget::text(content).shaping(text::Shaping::Advanced), // .size(10),
-            )
-            .width(50)
-            .style(button::text)
-            .padding(0)
-            .on_press_maybe(article.kids.is_empty().not().then(|| AppMsg::OpenComment {
-                article: Some(article.clone()),
-                comment_ids: article.kids.clone(),
-                parent: None,
-            }));
+            let comments_button = button(widget::text(content).shaping(text::Shaping::Advanced))
+                .width(55)
+                .style(button::text)
+                .padding(0)
+                .on_press_maybe(article.kids.is_empty().not().then(|| AppMsg::OpenComment {
+                    article: Some(article.clone()),
+                    comment_ids: article.kids.clone(),
+                    parent: None,
+                }));
 
             row![
-                // widget::text(format!("{index}")).width(30),
                 widget::text(format!("🔼{}", article.score))
-                    .width(50)
+                    .width(55)
                     .shaping(text::Shaping::Advanced),
                 if article.kids.is_empty() {
-                    Element::from(text("").width(50))
+                    Element::from(text("").width(55))
                 } else {
                     Element::from(comments_button)
                 },

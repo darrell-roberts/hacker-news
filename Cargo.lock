@@ -1432,6 +1432,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "either",
  "hacker-news-api",
  "html-sanitizer",
  "iced",
