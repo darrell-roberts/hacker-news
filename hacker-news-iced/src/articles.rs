@@ -1,49 +1,56 @@
-use crate::widget::link::text_link;
+use crate::app::{App, AppMsg};
 use hacker_news_api::Item;
 use iced::{
     font::Style,
-    widget::{button, row, scrollable, text, Column},
-    Element, Font, Length, Theme,
+    widget::{self, button, row, scrollable, text, Column},
+    Element, Font, Length,
 };
-
-use crate::app::{App, AppMsg};
+use std::ops::Not;
 
 impl App {
     pub fn render_articles(&self) -> Element<'_, AppMsg> {
         let article_row = |(article, index): (&Item, usize)| {
+            let title_and_by = widget::rich_text([
+                widget::span(
+                    article
+                        .title
+                        .as_ref()
+                        .map_or_else(String::new, |s| s.to_owned()),
+                )
+                .link_maybe(article.url.clone().map(AppMsg::OpenLink)),
+                widget::span(format!(" by {}", article.by))
+                    .font(Font {
+                        style: Style::Italic,
+                        ..Default::default()
+                    })
+                    .line_height(0.5)
+                    .color([1., 221. / 255., 128. / 255.]),
+            ]);
+
+            let content = format!("💬{}", article.kids.len());
+            let comments_button = button(
+                widget::text(content).shaping(text::Shaping::Advanced), // .size(10),
+            )
+            .width(50)
+            .style(button::text)
+            .padding(0)
+            .on_press_maybe(article.kids.is_empty().not().then(|| AppMsg::OpenComment {
+                article: Some(article.clone()),
+                comment_ids: article.kids.clone(),
+                parent: None,
+            }));
+
             row![
-                text(format!("{index}")).width(30),
-                text(format!("🔼{}", article.score))
+                widget::text(format!("{index}")).width(30),
+                widget::text(format!("🔼{}", article.score))
                     .width(50)
                     .shaping(text::Shaping::Advanced),
                 if article.kids.is_empty() {
-                    Element::from(text("").width(40))
+                    Element::from(text("").width(50))
                 } else {
-                    Element::from(
-                        text_link(format!("💬{}", article.kids.len()))
-                            .shaping(text::Shaping::Advanced)
-                            .width(40)
-                            .on_press(AppMsg::OpenComment {
-                                article: Some(article.clone()),
-                                comment_ids: article.kids.clone(),
-                                parent: None,
-                            }),
-                    )
+                    Element::from(comments_button)
                 },
-                text_link(article.title.as_deref().unwrap_or_default()).on_press(
-                    match article.url.as_deref() {
-                        Some(url) => AppMsg::OpenLink(url.to_string()),
-                        None => AppMsg::OpenComment {
-                            article: Some(article.clone()),
-                            comment_ids: article.kids.clone(),
-                            parent: None,
-                        },
-                    }
-                ),
-                text(format!("by {}", article.by)).font(Font {
-                    style: Style::Italic,
-                    ..Default::default()
-                })
+                title_and_by
             ]
             .spacing(5)
         };
@@ -61,24 +68,5 @@ impl App {
         )
         .height(Length::Fill)
         .into()
-    }
-}
-
-pub struct CommentsButtonStyle;
-
-impl button::StyleSheet for CommentsButtonStyle {
-    type Style = Theme;
-
-    fn active(&self, _style: &Self::Style) -> button::Appearance {
-        button::Appearance::default()
-    }
-
-    fn hovered(&self, style: &Self::Style) -> button::Appearance {
-        let active = self.active(style);
-
-        button::Appearance {
-            shadow_offset: active.shadow_offset + iced::Vector::new(0.0, 1.0),
-            ..active
-        }
     }
 }

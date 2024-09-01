@@ -1,11 +1,10 @@
+use crate::app::{App, AppMsg};
 use hacker_news_api::ArticleType;
 use iced::{
-    theme::Button,
-    widget::{button, container, row, text},
-    Border, Element, Length, Theme,
+    border::Radius,
+    widget::{self, button, container, row, text},
+    Border, Element, Length,
 };
-
-use crate::app::{App, AppMsg};
 
 impl App {
     pub fn render_header(&self) -> Element<'_, AppMsg> {
@@ -88,34 +87,28 @@ impl App {
             ]
             .spacing(10),
         )
-        .center_x()
+        .center_x(1)
         .width(Length::Fill)
         .into()
     }
 }
 
 fn header_button(label: &str, action: AppMsg) -> Element<'_, AppMsg> {
-    button(label)
+    widget::button(label)
         .on_press(action)
-        .style(Button::Custom(Box::new(HeaderButtonStyle)))
-        .into()
-}
+        .style(|theme, status| {
+            let mut style = button::primary(theme, status);
 
-pub struct HeaderButtonStyle;
-
-impl button::StyleSheet for HeaderButtonStyle {
-    type Style = Theme;
-
-    fn active(&self, style: &Self::Style) -> button::Appearance {
-        let button = Button::Primary;
-        let appearance = style.active(&button);
-
-        button::Appearance {
-            border: Border {
-                radius: 4.into(),
+            style.border = Border {
+                radius: Radius {
+                    top_left: 4.,
+                    top_right: 4.,
+                    bottom_right: 4.,
+                    bottom_left: 4.,
+                },
                 ..Default::default()
-            },
-            ..appearance
-        }
-    }
+            };
+            style
+        })
+        .into()
 }

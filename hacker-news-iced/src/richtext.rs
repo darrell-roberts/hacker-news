@@ -1,96 +1,39 @@
 use crate::app::AppMsg;
 use iced::font::{Style, Weight};
-use iced::widget::text;
+use iced::widget::{rich_text, span};
 use iced::{Element, Font};
 
-pub fn render_rich_text(escaped_text: &str) -> Vec<Element<AppMsg>> {
+pub fn render_rich_text(escaped_text: &str) -> Element<'_, AppMsg> {
     let elements = html_sanitizer::parse_elements(escaped_text);
 
-    let mut text_string = String::new();
-    let mut render_elements = Vec::new();
-
-    let add_text = |es: &mut Vec<_>, ts: &mut String| {
-        if !ts.is_empty() {
-            es.push(Element::from(text(&ts)));
-            *ts = String::new();
-        }
-    };
-
-    for element in elements {
-        match element {
-            html_sanitizer::Element::Text(text) => {
-                text_string.push_str(text);
-            }
-            html_sanitizer::Element::Link(link) => {
-                // add_text(&mut render_elements, &mut text_string);
-                if let Some(attr) = link.attributes.into_iter().find(|attr| attr.name == "href") {
+    let spans = elements
+        .into_iter()
+        .filter_map(|element| match element {
+            html_sanitizer::Element::Text(text) => Some(span(text)),
+            html_sanitizer::Element::Link(link) => link
+                .attributes
+                .into_iter()
+                .find(|attr| attr.name == "href")
+                .map(move |attr| {
                     if link.children.is_empty() {
-                        text_string.push_str(&attr.value);
+                        span(attr.value.clone()).link(AppMsg::OpenLink(attr.value))
                     } else {
-                        text_string.push_str(&link.children);
+                        span(link.children).link(AppMsg::OpenLink(attr.value))
                     }
-                }
-            }
-            html_sanitizer::Element::Escaped(c) => {
-                text_string.push(c);
-            }
-            html_sanitizer::Element::Paragraph => {
-                text_string.push_str("\n\n");
-            }
-            html_sanitizer::Element::Code(s) => {
-                add_text(&mut render_elements, &mut text_string);
-                render_elements.push(Element::from(text(s).font(Font::MONOSPACE)))
-            }
-            html_sanitizer::Element::Italic(s) => {
-                // let row = row![
-                //     text(&text_string),
-                //     text(s).font(Font {
-                //         style: Style::Italic,
-                //         ..Default::default()
-                //     })
-                // ];
-                // text_string = String::new();
-                // render_elements.push(Element::from(row));
+                }),
+            html_sanitizer::Element::Escaped(text) => Some(span(text)),
+            html_sanitizer::Element::Paragraph => Some(span("\n\n")),
+            html_sanitizer::Element::Code(text) => Some(span(text).font(Font::MONOSPACE)),
+            html_sanitizer::Element::Italic(text) => Some(span(text).font(Font {
+                style: Style::Italic,
+                ..Default::default()
+            })),
+            html_sanitizer::Element::Bold(text) => Some(span(text).font(Font {
+                weight: Weight::Bold,
+                ..Default::default()
+            })),
+        })
+        .collect::<Vec<_>>();
 
-                render_elements.push(Element::from(text(&text_string)));
-                render_elements.push(Element::from(text(s).font(Font {
-                    style: Style::Italic,
-                    ..Default::default()
-                })));
-                // add_text(&mut render_elements, &mut text_string);
-
-                // render_elements.push(Element::from(Row::new().push(text(s).font(Font {
-                //     style: Style::Italic,
-                //     ..Default::default()
-                // }))));
-            }
-            html_sanitizer::Element::Bold(s) => {
-                // let row = row![
-                //     text(&text_string),
-                //     text(s).font(Font {
-                //         weight: Weight::Bold,
-                //         ..Default::default()
-                //     })
-                // ];
-                // text_string = String::new();
-                // render_elements.push(Element::from(row));
-
-                render_elements.push(Element::from(text(&text_string)));
-                render_elements.push(Element::from(text(s).font(Font {
-                    weight: Weight::Bold,
-                    ..Default::default()
-                })));
-                // add_text(&mut render_elements, &mut text_string);
-                // render_elements.push(Element::from(Row::new().push(text(s).font(Font {
-                //     weight: Weight::Bold,
-                //     ..Default::default()
-                // }))));
-            }
-        }
-    }
-
-    add_text(&mut render_elements, &mut text_string);
-
-    render_elements
-    // text(text_string).into()
+    rich_text(spans).into()
 }
