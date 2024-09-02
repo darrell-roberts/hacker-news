@@ -2,7 +2,7 @@ use crate::app::{App, AppMsg};
 use hacker_news_api::ArticleType;
 use iced::{
     widget::{self, button, container, row, text, text_input::Id, Column},
-    Background, Border, Element, Length, Padding,
+    Background, Border, Element, Length,
 };
 
 impl App {
@@ -96,12 +96,7 @@ impl App {
         })
         .center_x(1)
         .width(Length::Fill)
-        .padding(Padding {
-            top: 5.,
-            right: 0.,
-            bottom: 5.,
-            left: 0.,
-        });
+        .padding([5, 0]);
 
         Column::new()
             .push(top_row)

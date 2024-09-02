@@ -16,7 +16,7 @@ mod richtext;
 fn main() -> iced::Result {
     iced::application("Hacker News", update, view)
         .theme(|app| app.theme.clone())
-        .subscription(|_app| on_key_press(listen_to_open_search))
+        .subscription(|_app| on_key_press(listen_to_key_events))
         .run_with(|| {
             let client = Arc::new(ApiClient::new().expect("Valid client"));
             (
@@ -42,7 +42,7 @@ fn main() -> iced::Result {
         })
 }
 
-fn listen_to_open_search(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
+fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
     match key {
         Key::Named(named) => matches!(named, Named::Escape).then_some(AppMsg::CloseSearch),
         Key::Character(c) => {

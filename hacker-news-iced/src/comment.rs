@@ -8,7 +8,7 @@ use iced::{
     alignment::{Horizontal, Vertical},
     font::{Style, Weight},
     widget::{self, button, column, container, row, scrollable, text::Shaping, Column},
-    Border, Color, Element, Font, Length, Theme,
+    Border, Color, Element, Font, Length, Padding, Theme,
 };
 
 /// List of comments and common parent
@@ -68,14 +68,19 @@ impl App {
                     ]
                     .spacing(5)
                 ]
-                .padding(10)
+                .padding([10, 10])
                 .spacing(5)
                 .width(Length::Fill),
             )
             .clip(false)
         };
 
-        let article_text = comment_state.article.text.as_deref().map(render_rich_text);
+        let article_text = comment_state
+            .article
+            .text
+            .as_deref()
+            .map(render_rich_text)
+            .map(|rt| container(rt).padding([10, 10]).into());
 
         let comment_rows = match comment_state.comments.iter().last() {
             Some(item) => either::Left(
@@ -122,7 +127,7 @@ impl App {
                     .align_x(Horizontal::Right)
                     .width(Length::Fill)
             ]
-            .padding([5, 10]),
+            .padding([0, 10]),
             scrollable(
                 column![
                     Column::with_children(article_text).spacing(10),
@@ -130,7 +135,7 @@ impl App {
                     Column::with_children(comment_rows).spacing(10)
                 ]
                 .spacing(10)
-                .padding(10)
+                .padding(Padding::from([0, 10]).right(20))
             )
             .height(Length::Fill)
         ];

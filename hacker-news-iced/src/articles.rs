@@ -100,7 +100,7 @@ impl App {
         scrollable(
             Column::with_children(self.articles.iter().map(article_row).map(Element::from))
                 .width(Length::Fill)
-                .padding(10),
+                .padding([0, 10]),
         )
         .height(Length::Fill)
         .into()

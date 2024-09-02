@@ -196,8 +196,10 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             widget::text_input::focus(widget::text_input::Id::new("search"))
         }
         AppMsg::CloseSearch => {
-            app.search = None;
-            app.articles = std::mem::take(&mut app.all_articles);
+            if app.search.is_some() {
+                app.search = None;
+                app.articles = std::mem::take(&mut app.all_articles);
+            }
             Task::none()
         }
         AppMsg::Search(input) => {
@@ -207,7 +209,7 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 .filter(|item| {
                     item.title
                         .as_ref()
-                        .map(|t| t.contains(&input))
+                        .map(|t| t.to_lowercase().contains(&input.to_lowercase()))
                         .unwrap_or(false)
                 })
                 .map(ToOwned::to_owned)
