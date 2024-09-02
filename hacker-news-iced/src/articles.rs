@@ -3,7 +3,7 @@ use hacker_news_api::Item;
 use iced::{
     font::Style,
     widget::{self, button, row, scrollable, text, tooltip::Position, Column, Tooltip},
-    Background, Border, Color, Element, Font, Length,
+    Background, Border, Color, Element, Font, Length, Theme,
 };
 use std::ops::Not;
 
@@ -44,8 +44,11 @@ impl App {
                         ..Default::default()
                     })
                     .line_height(0.5)
-                    .color(Color::from_rgb8(153, 77, 0)),
-                // .color([1., 221. / 255., 128. / 255.]),
+                    .color(if matches!(self.theme, Theme::GruvboxLight) {
+                        Color::from_rgb8(153, 77, 0)
+                    } else {
+                        Color::from_rgb8(255, 221, 128)
+                    }),
             ]);
 
             let content = format!("💬{}", article.kids.len());
@@ -67,7 +70,7 @@ impl App {
                         .style(|_theme| widget::container::Style {
                             background: Some(Background::Color(Color::BLACK)),
                             border: Border {
-                                radius: 8.into(),
+                                radius: 2.into(),
                                 ..Default::default()
                             },
                             ..Default::default()

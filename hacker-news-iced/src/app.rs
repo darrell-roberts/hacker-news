@@ -3,10 +3,8 @@ use anyhow::Result;
 use chrono::Local;
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use iced::{
-    alignment::Vertical,
-    font::{Style, Weight},
-    widget::{column, container, text},
-    Element, Font, Task,
+    widget::{column, container},
+    Element, Task, Theme,
 };
 use log::error;
 use std::{collections::HashSet, sync::Arc};
@@ -33,6 +31,8 @@ pub struct App {
     pub comments: Option<CommentState>,
     /// Visisted item ids.
     pub visited: HashSet<u64>,
+    /// Active theme.
+    pub theme: Theme,
 }
 
 #[derive(Debug)]
@@ -53,6 +53,7 @@ pub enum AppMsg {
         url: String,
         item_id: u64,
     },
+    ToggleTheme,
 }
 
 impl Clone for AppMsg {
@@ -81,6 +82,7 @@ impl Clone for AppMsg {
                 url: url.clone(),
                 item_id: *item_id,
             },
+            AppMsg::ToggleTheme => AppMsg::ToggleTheme,
         }
     }
 }
@@ -170,29 +172,27 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 .unwrap_or_default();
             Task::none()
         }
+        AppMsg::ToggleTheme => {
+            if matches!(app.theme, Theme::GruvboxLight) {
+                app.theme = Theme::GruvboxDark
+            } else {
+                app.theme = Theme::GruvboxLight
+            }
+            Task::none()
+        }
     }
 }
 
 pub(crate) fn view(app: &App) -> iced::Element<AppMsg> {
-    let status_line = container(text(&app.status_line).font(Font {
-        style: Style::Italic,
-        weight: Weight::Light,
-        ..Default::default()
-    }));
-
     let content = match app.comments.as_ref() {
-        Some(comments) => Element::from(column![app.render_comments(comments), status_line]),
+        Some(comments) => {
+            Element::from(column![app.render_comments(comments), app.render_footer()])
+        }
         None => {
             let col = column![
-                container(app.render_header()).padding([10, 0]),
+                app.render_header(),
                 app.render_articles(),
-                container(text(&app.status_line).font(Font {
-                    style: Style::Italic,
-                    weight: Weight::Light,
-                    ..Default::default()
-                }))
-                .align_y(Vertical::Bottom)
-                .padding([0, 10])
+                app.render_footer()
             ];
             Element::from(col.spacing(10.))
         }

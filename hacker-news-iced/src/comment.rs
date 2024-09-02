@@ -8,7 +8,7 @@ use iced::{
     alignment::{Horizontal, Vertical},
     font::{Style, Weight},
     widget::{self, button, column, container, row, scrollable, text::Shaping, Column},
-    Border, Color, Element, Font, Length,
+    Border, Color, Element, Font, Length, Theme,
 };
 
 /// List of comments and common parent
@@ -59,8 +59,11 @@ impl App {
                                 style: Style::Italic,
                                 ..Default::default()
                             })
-                            .color(Color::from_rgb8(153, 77, 0)),
-                        // .color(Color::from_rgb8(255, 221, 128)),
+                            .color(if matches!(self.theme, Theme::GruvboxLight) {
+                                Color::from_rgb8(153, 77, 0)
+                            } else {
+                                Color::from_rgb8(255, 221, 128)
+                            }),
                         by_button
                     ]
                     .spacing(5)
@@ -88,13 +91,17 @@ impl App {
             item.parent
                 .as_ref()
                 .map(|parent| {
-                    comment_row(parent, true).style(|_theme| container::Style {
-                        border: Border {
-                            color: Color::BLACK,
-                            width: 1.,
-                            radius: 8.into(),
-                        },
-                        ..Default::default()
+                    comment_row(parent, true).style(|theme| {
+                        let palette = theme.extended_palette();
+
+                        container::Style {
+                            border: Border {
+                                color: palette.secondary.weak.color,
+                                width: 1.,
+                                radius: 8.into(),
+                            },
+                            ..Default::default()
+                        }
                     })
                 })
                 .map(Element::from)

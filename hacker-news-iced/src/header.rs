@@ -2,7 +2,7 @@ use crate::app::{App, AppMsg};
 use hacker_news_api::ArticleType;
 use iced::{
     widget::{self, button, container, row, text},
-    Border, Element, Length,
+    Background, Border, Element, Length, Padding,
 };
 
 impl App {
@@ -86,8 +86,22 @@ impl App {
             ]
             .spacing(10),
         )
+        .style(|theme| {
+            let palette = theme.extended_palette();
+
+            container::Style {
+                background: Some(Background::Color(palette.background.strong.color)),
+                ..Default::default()
+            }
+        })
         .center_x(1)
         .width(Length::Fill)
+        .padding(Padding {
+            top: 5.,
+            right: 0.,
+            bottom: 5.,
+            left: 0.,
+        })
         .into()
     }
 }
