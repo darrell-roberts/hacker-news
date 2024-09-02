@@ -7,7 +7,7 @@
     <key>CFBundleDisplayName</key>
     <string>Hacker News</string>
     <key>CFBundleExecutable</key>
-    <string>hacker-news-egui</string>
+    <string>hacker-news-iced</string>
     <key>CFBundleIconFile</key>
     <string>icon.icns</string>
     <key>CFBundleIdentifier</key>

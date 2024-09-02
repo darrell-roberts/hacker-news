@@ -118,6 +118,7 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             comment_ids,
             parent,
         } => {
+            app.status_line = "Fetching...".into();
             // Opening first set of comments from an article.
             if let Some(item) = article {
                 app.visited.insert(item.id);
@@ -135,15 +136,16 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         }
         AppMsg::ReceiveComments(result, parent) => {
             match result {
-                Ok(comments) => match app.comments.as_mut() {
-                    Some(stack) => {
+                Ok(comments) => {
+                    app.status_line = format!("Updated: {}", Local::now().format("%d/%m/%Y %r"));
+
+                    if let Some(stack) = app.comments.as_mut() {
                         stack.comments.push(CommentItem {
                             items: comments,
                             parent,
                         });
                     }
-                    None => unreachable!(),
-                },
+                }
                 Err(err) => {
                     app.status_line = err.to_string();
                 }
@@ -172,8 +174,14 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
 }
 
 pub(crate) fn view(app: &App) -> iced::Element<AppMsg> {
+    let status_line = container(text(&app.status_line).font(Font {
+        style: Style::Italic,
+        weight: Weight::Light,
+        ..Default::default()
+    }));
+
     let content = match app.comments.as_ref() {
-        Some(comments) => app.render_comments(comments),
+        Some(comments) => Element::from(column![app.render_comments(comments), status_line]),
         None => {
             let col = column![
                 container(app.render_header()).padding([10, 0]),

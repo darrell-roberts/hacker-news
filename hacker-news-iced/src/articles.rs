@@ -2,14 +2,14 @@ use crate::app::{App, AppMsg};
 use hacker_news_api::Item;
 use iced::{
     font::Style,
-    widget::{self, button, row, scrollable, text, Column},
-    Element, Font, Length,
+    widget::{self, button, row, scrollable, text, tooltip::Position, Column, Tooltip},
+    Background, Border, Color, Element, Font, Length,
 };
 use std::ops::Not;
 
 impl App {
-    pub fn render_articles(&self) -> Element<'_, AppMsg> {
-        let article_row = |article: &Item| {
+    pub fn render_articles<'a>(&'a self) -> Element<'a, AppMsg> {
+        let article_row = |article: &'a Item| {
             let title_and_by = widget::rich_text([
                 widget::span(
                     article
@@ -17,14 +17,26 @@ impl App {
                         .as_ref()
                         .map_or_else(String::new, |s| s.to_owned()),
                 )
-                .link_maybe(article.url.clone().map(|url| AppMsg::OpenLink {
-                    url,
-                    item_id: article.id,
-                }))
+                .link_maybe(
+                    article
+                        .url
+                        .clone()
+                        .map(|url| AppMsg::OpenLink {
+                            url,
+                            item_id: article.id,
+                        })
+                        .or_else(|| {
+                            article.text.as_ref().map(|_| AppMsg::OpenComment {
+                                article: Some(article.clone()),
+                                comment_ids: article.kids.clone(),
+                                parent: None,
+                            })
+                        }),
+                )
                 .color_maybe(
                     self.visited
                         .contains(&article.id)
-                        .then(|| [122. / 255., 122. / 255., 82. / 255.]),
+                        .then(|| Color::from_rgb8(122, 122, 82)),
                 ),
                 widget::span(format!(" by {}", article.by))
                     .font(Font {
@@ -32,7 +44,8 @@ impl App {
                         ..Default::default()
                     })
                     .line_height(0.5)
-                    .color([1., 221. / 255., 128. / 255.]),
+                    .color(Color::from_rgb8(153, 77, 0)),
+                // .color([1., 221. / 255., 128. / 255.]),
             ]);
 
             let content = format!("💬{}", article.kids.len());
@@ -46,6 +59,25 @@ impl App {
                     parent: None,
                 }));
 
+            let tooltip = match article.url.as_deref() {
+                Some(url) => Tooltip::new(
+                    title_and_by,
+                    widget::container(widget::text(url).color(Color::WHITE).size(12))
+                        .padding(2)
+                        .style(|_theme| widget::container::Style {
+                            background: Some(Background::Color(Color::BLACK)),
+                            border: Border {
+                                radius: 8.into(),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        }),
+                    Position::Bottom,
+                )
+                .into(),
+                None => Element::from(title_and_by),
+            };
+
             row![
                 widget::text(format!("🔼{}", article.score))
                     .width(55)
@@ -55,7 +87,7 @@ impl App {
                 } else {
                     Element::from(comments_button)
                 },
-                title_and_by
+                tooltip
             ]
             .spacing(5)
         };

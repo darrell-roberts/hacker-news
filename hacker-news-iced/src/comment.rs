@@ -59,7 +59,8 @@ impl App {
                                 style: Style::Italic,
                                 ..Default::default()
                             })
-                            .color([1., 221. / 255., 128. / 255.]),
+                            .color(Color::from_rgb8(153, 77, 0)),
+                        // .color(Color::from_rgb8(255, 221, 128)),
                         by_button
                     ]
                     .spacing(5)
@@ -71,26 +72,13 @@ impl App {
             .clip(false)
         };
 
+        let article_text = comment_state.article.text.as_deref().map(render_rich_text);
+
         let comment_rows = match comment_state.comments.iter().last() {
             Some(item) => either::Left(
                 item.items
                     .iter()
-                    .map(|item| {
-                        comment_row(item, false).style(|_theme| container::Style {
-                            border: Border {
-                                color: Color::BLACK,
-                                width: 1.,
-                                radius: 8.into(),
-                            },
-                            background: Some(iced::Background::Color(Color {
-                                r: 102. / 255.,
-                                g: 75. / 255.,
-                                b: 0.,
-                                a: 1.,
-                            })),
-                            ..Default::default()
-                        })
-                    })
+                    .map(|item| comment_row(item, false).style(container::rounded_box))
                     .map(Element::from),
             ),
             None => either::Right(std::iter::empty::<Element<'_, AppMsg>>()),
@@ -102,7 +90,7 @@ impl App {
                 .map(|parent| {
                     comment_row(parent, true).style(|_theme| container::Style {
                         border: Border {
-                            color: Color::WHITE,
+                            color: Color::BLACK,
                             width: 1.,
                             radius: 8.into(),
                         },
@@ -130,6 +118,7 @@ impl App {
             .padding([5, 10]),
             scrollable(
                 column![
+                    Column::with_children(article_text).spacing(10),
                     Column::with_children(parent_comments).spacing(10),
                     Column::with_children(comment_rows).spacing(10)
                 ]

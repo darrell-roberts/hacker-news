@@ -11,7 +11,8 @@ mod richtext;
 
 fn main() -> iced::Result {
     iced::application("Hacker News", update, view)
-        .theme(|_| Theme::GruvboxDark)
+        // .theme(|_| Theme::GruvboxDark)
+        .theme(|_| Theme::GruvboxLight)
         .run_with(|| {
             let client = Arc::new(ApiClient::new().expect("Valid client"));
 

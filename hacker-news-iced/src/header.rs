@@ -1,7 +1,6 @@
 use crate::app::{App, AppMsg};
 use hacker_news_api::ArticleType;
 use iced::{
-    border::Radius,
     widget::{self, button, container, row, text},
     Border, Element, Length,
 };
@@ -100,12 +99,7 @@ fn header_button(label: &str, action: AppMsg) -> Element<'_, AppMsg> {
             let mut style = button::primary(theme, status);
 
             style.border = Border {
-                radius: Radius {
-                    top_left: 4.,
-                    top_right: 4.,
-                    bottom_right: 4.,
-                    bottom_left: 4.,
-                },
+                radius: 4.into(),
                 ..Default::default()
             };
             style
