@@ -1,6 +1,7 @@
 use crate::app::{App, AppMsg};
 use hacker_news_api::Item;
 use iced::{
+    alignment::Vertical,
     font::Style,
     widget::{self, button, row, scrollable, text, tooltip::Position, Column, Tooltip},
     Background, Border, Color, Element, Font, Length, Theme,
@@ -92,6 +93,7 @@ impl App {
                 },
                 tooltip
             ]
+            .align_y(Vertical::Center)
             .spacing(5)
         };
 
