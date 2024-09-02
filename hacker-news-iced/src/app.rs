@@ -3,7 +3,7 @@ use anyhow::Result;
 use chrono::Local;
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use iced::{
-    widget::{column, container},
+    widget::{self, column, container},
     Element, Task, Theme,
 };
 use log::error;
@@ -33,6 +33,10 @@ pub struct App {
     pub visited: HashSet<u64>,
     /// Active theme.
     pub theme: Theme,
+    /// Search
+    pub search: Option<String>,
+    /// All articles for search.
+    pub all_articles: Vec<Item>,
 }
 
 #[derive(Debug)]
@@ -54,6 +58,9 @@ pub enum AppMsg {
         item_id: u64,
     },
     ToggleTheme,
+    OpenSearch,
+    CloseSearch,
+    Search(String),
 }
 
 impl Clone for AppMsg {
@@ -83,6 +90,9 @@ impl Clone for AppMsg {
                 item_id: *item_id,
             },
             AppMsg::ToggleTheme => AppMsg::ToggleTheme,
+            AppMsg::OpenSearch => AppMsg::OpenSearch,
+            AppMsg::CloseSearch => AppMsg::CloseSearch,
+            AppMsg::Search(s) => AppMsg::Search(s.clone()),
         }
     }
 }
@@ -178,6 +188,31 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             } else {
                 app.theme = Theme::GruvboxLight
             }
+            Task::none()
+        }
+        AppMsg::OpenSearch => {
+            app.search = Some(String::new());
+            app.all_articles = app.articles.clone();
+            widget::text_input::focus(widget::text_input::Id::new("search"))
+        }
+        AppMsg::CloseSearch => {
+            app.search = None;
+            app.articles = std::mem::take(&mut app.all_articles);
+            Task::none()
+        }
+        AppMsg::Search(input) => {
+            app.articles = app
+                .all_articles
+                .iter()
+                .filter(|item| {
+                    item.title
+                        .as_ref()
+                        .map(|t| t.contains(&input))
+                        .unwrap_or(false)
+                })
+                .map(ToOwned::to_owned)
+                .collect();
+            app.search.replace(input);
             Task::none()
         }
     }

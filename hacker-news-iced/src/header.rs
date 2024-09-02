@@ -1,13 +1,13 @@
 use crate::app::{App, AppMsg};
 use hacker_news_api::ArticleType;
 use iced::{
-    widget::{self, button, container, row, text},
+    widget::{self, button, container, row, text, text_input::Id, Column},
     Background, Border, Element, Length, Padding,
 };
 
 impl App {
     pub fn render_header(&self) -> Element<'_, AppMsg> {
-        container(
+        let top_row = container(
             row![
                 header_button(
                     "Top",
@@ -31,7 +31,7 @@ impl App {
                     }
                 ),
                 text("|"),
-                // Rule::horizontal(0.1),
+                // Rule::vertical(1),
                 header_button(
                     "Ask",
                     AppMsg::Fetch {
@@ -54,7 +54,7 @@ impl App {
                     }
                 ),
                 text("|"),
-                // Rule::horizontal(0.1),
+                // Rule::vertical(1),
                 header_button(
                     "25",
                     AppMsg::Fetch {
@@ -101,8 +101,16 @@ impl App {
             right: 0.,
             bottom: 5.,
             left: 0.,
-        })
-        .into()
+        });
+
+        Column::new()
+            .push(top_row)
+            .push_maybe(self.search.as_ref().map(|search| {
+                widget::text_input("Search...", search)
+                    .id(Id::new("search"))
+                    .on_input(AppMsg::Search)
+            }))
+            .into()
     }
 }
 

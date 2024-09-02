@@ -1,6 +1,9 @@
 use app::{update, view, App, AppMsg, Showing};
 use hacker_news_api::{ApiClient, ArticleType};
-use iced::Theme;
+use iced::{
+    keyboard::{key::Named, on_key_press, Key, Modifiers},
+    Theme,
+};
 use std::{collections::HashSet, sync::Arc};
 
 mod app;
@@ -13,6 +16,7 @@ mod richtext;
 fn main() -> iced::Result {
     iced::application("Hacker News", update, view)
         .theme(|app| app.theme.clone())
+        .subscription(|_app| on_key_press(listen_to_open_search))
         .run_with(|| {
             let client = Arc::new(ApiClient::new().expect("Valid client"));
             (
@@ -27,6 +31,8 @@ fn main() -> iced::Result {
                     comments: None,
                     visited: HashSet::new(),
                     theme: Theme::GruvboxLight,
+                    search: None,
+                    all_articles: Vec::new(),
                 },
                 iced::Task::perform(
                     async move { client.articles(75, ArticleType::Top).await },
@@ -34,4 +40,14 @@ fn main() -> iced::Result {
                 ),
             )
         })
+}
+
+fn listen_to_open_search(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
+    match key {
+        Key::Named(named) => matches!(named, Named::Escape).then_some(AppMsg::CloseSearch),
+        Key::Character(c) => {
+            (modifiers.control() && c.chars().any(|c| c == 'f')).then_some(AppMsg::OpenSearch)
+        }
+        Key::Unidentified => None,
+    }
 }
