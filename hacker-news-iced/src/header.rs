@@ -9,75 +9,75 @@ impl App {
     pub fn render_header(&self) -> Element<'_, AppMsg> {
         let top_row = container(
             row![
-                header_button(
-                    "Top",
+                self.header_type_button(
+                    ArticleType::Top,
                     AppMsg::Fetch {
                         limit: self.showing.limit,
                         article_type: ArticleType::Top
                     }
                 ),
-                header_button(
-                    "Best",
+                self.header_type_button(
+                    ArticleType::Best,
                     AppMsg::Fetch {
                         limit: self.showing.limit,
                         article_type: ArticleType::Best
                     }
                 ),
-                header_button(
-                    "New",
+                self.header_type_button(
+                    ArticleType::New,
                     AppMsg::Fetch {
                         limit: self.showing.limit,
                         article_type: ArticleType::New
                     }
                 ),
-                text("|"),
+                // text("|"),
                 // Rule::vertical(1),
-                header_button(
-                    "Ask",
+                self.header_type_button(
+                    ArticleType::Ask,
                     AppMsg::Fetch {
                         limit: self.showing.limit,
                         article_type: ArticleType::Ask
                     }
                 ),
-                header_button(
-                    "Show",
+                self.header_type_button(
+                    ArticleType::Show,
                     AppMsg::Fetch {
                         limit: self.showing.limit,
                         article_type: ArticleType::Show
                     }
                 ),
-                header_button(
-                    "Job",
+                self.header_type_button(
+                    ArticleType::Job,
                     AppMsg::Fetch {
                         limit: self.showing.limit,
                         article_type: ArticleType::Job
                     }
                 ),
-                text("|"),
+                text(" "),
                 // Rule::vertical(1),
-                header_button(
-                    "25",
+                self.header_count_button(
+                    25,
                     AppMsg::Fetch {
                         limit: 25,
                         article_type: self.showing.article_type
                     }
                 ),
-                header_button(
-                    "50",
+                self.header_count_button(
+                    50,
                     AppMsg::Fetch {
                         limit: 50,
                         article_type: self.showing.article_type
                     }
                 ),
-                header_button(
-                    "75",
+                self.header_count_button(
+                    75,
                     AppMsg::Fetch {
                         limit: 75,
                         article_type: self.showing.article_type
                     }
                 ),
-                header_button(
-                    "100",
+                self.header_count_button(
+                    100,
                     AppMsg::Fetch {
                         limit: 100,
                         article_type: self.showing.article_type
@@ -107,19 +107,42 @@ impl App {
             }))
             .into()
     }
-}
 
-fn header_button(label: &str, action: AppMsg) -> Element<'_, AppMsg> {
-    widget::button(label)
-        .on_press(action)
-        .style(|theme, status| {
-            let mut style = button::primary(theme, status);
+    fn header_type_button(&self, article_type: ArticleType, action: AppMsg) -> Element<'_, AppMsg> {
+        widget::button(widget::text(article_type.to_string()))
+            .on_press(action)
+            .style(move |theme, status| {
+                let mut style = if self.showing.article_type == article_type {
+                    button::primary(theme, status)
+                } else {
+                    button::secondary(theme, status)
+                };
 
-            style.border = Border {
-                radius: 4.into(),
-                ..Default::default()
-            };
-            style
-        })
-        .into()
+                style.border = Border {
+                    radius: 4.into(),
+                    ..Default::default()
+                };
+                style
+            })
+            .into()
+    }
+
+    fn header_count_button(&self, count: usize, action: AppMsg) -> Element<'_, AppMsg> {
+        widget::button(widget::text(count))
+            .on_press(action)
+            .style(move |theme, status| {
+                let mut style = if self.showing.limit == count {
+                    button::primary(theme, status)
+                } else {
+                    button::secondary(theme, status)
+                };
+
+                style.border = Border {
+                    radius: 4.into(),
+                    ..Default::default()
+                };
+                style
+            })
+            .into()
+    }
 }
