@@ -1,8 +1,11 @@
-use crate::app::{App, AppMsg};
+use crate::{
+    app::{App, AppMsg},
+    parse_date,
+};
 use hacker_news_api::Item;
 use iced::{
     alignment::Vertical,
-    font::Style,
+    font::{Style, Weight},
     widget::{self, button, row, scrollable, text, tooltip::Position, Column, Tooltip},
     Background, Border, Color, Element, Font, Length,
 };
@@ -45,7 +48,18 @@ impl App {
                         style: Style::Italic,
                         ..Default::default()
                     })
-                    .line_height(0.5)
+                    // .line_height(0.5)
+                    .size(14)
+                    .color_maybe(widget::text::primary(&self.theme).color),
+                widget::span(" "),
+                widget::span(parse_date(article.time).unwrap_or_default())
+                    .font(Font {
+                        weight: Weight::Light,
+                        style: Style::Italic,
+                        ..Default::default()
+                    })
+                    // .line_height(0.5)
+                    .size(10)
                     .color_maybe(widget::text::primary(&self.theme).color),
             ]);
 

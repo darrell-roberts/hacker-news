@@ -1,13 +1,13 @@
 use crate::{
     app::{App, AppMsg},
-    richtext::render_rich_text,
-    // widget::link::text_link,
+    parse_date,
+    richtext::render_rich_text, // widget::link::text_link,
 };
 use hacker_news_api::Item;
 use iced::{
     alignment::{Horizontal, Vertical},
     font::{Style, Weight},
-    widget::{self, button, column, container, row, scrollable, text::Shaping, Column},
+    widget::{self, button, column, container, row, scrollable, text::Shaping, Column, Container},
     Border, Element, Font, Length, Padding,
 };
 
@@ -28,48 +28,8 @@ pub struct CommentState {
 }
 
 impl App {
-    pub fn render_comments<'a>(&self, comment_state: &'a CommentState) -> Element<'a, AppMsg> {
+    pub fn render_comments<'a>(&'a self, comment_state: &'a CommentState) -> Element<'a, AppMsg> {
         let header = row![button("X").on_press(AppMsg::CloseComment)];
-
-        let comment_row = |item: &'a Item, is_parent: bool| {
-            let by_button: Element<'a, AppMsg> = if item.kids.is_empty() {
-                widget::text("").into()
-            } else if is_parent {
-                widget::text(format!("💬{}", item.kids.len()))
-                    .shaping(Shaping::Advanced)
-                    .into()
-            } else {
-                button(widget::text(format!("💬{}", item.kids.len())).shaping(Shaping::Advanced))
-                    .padding(0)
-                    .on_press(AppMsg::OpenComment {
-                        article: None,
-                        comment_ids: item.kids.clone(),
-                        parent: Some(item.clone()),
-                    })
-                    .style(button::text)
-                    .into()
-            };
-
-            container(
-                column![
-                    render_rich_text(item.text.as_deref().unwrap_or_default()),
-                    row![
-                        widget::text(format!("by {}", item.by))
-                            .font(Font {
-                                style: Style::Italic,
-                                ..Default::default()
-                            })
-                            .color_maybe(widget::text::primary(&self.theme).color),
-                        by_button
-                    ]
-                    .spacing(5)
-                ]
-                .padding([10, 10])
-                .spacing(5)
-                .width(Length::Fill),
-            )
-            .clip(false)
-        };
 
         let article_text = comment_state
             .article
@@ -82,7 +42,10 @@ impl App {
             Some(item) => either::Left(
                 item.items
                     .iter()
-                    .map(|item| comment_row(item, false).style(container::rounded_box))
+                    .map(|item| {
+                        self.render_comment(item, false)
+                            .style(container::rounded_box)
+                    })
                     .map(Element::from),
             ),
             None => either::Right(std::iter::empty::<Element<'_, AppMsg>>()),
@@ -92,7 +55,7 @@ impl App {
             item.parent
                 .as_ref()
                 .map(|parent| {
-                    comment_row(parent, true).style(|theme| {
+                    self.render_comment(parent, true).style(|theme| {
                         let palette = theme.extended_palette();
 
                         container::Style {
@@ -137,5 +100,59 @@ impl App {
         ];
 
         container(content.width(Length::Fill)).into()
+    }
+
+    fn render_comment<'a>(&'a self, item: &'a Item, is_parent: bool) -> Container<'a, AppMsg> {
+        let by_button: Element<'_, AppMsg> = if item.kids.is_empty() {
+            widget::text("").into()
+        } else if is_parent {
+            widget::text(format!("💬{}", item.kids.len()))
+                .shaping(Shaping::Advanced)
+                .into()
+        } else {
+            button(widget::text(format!("💬{}", item.kids.len())).shaping(Shaping::Advanced))
+                .padding(0)
+                .on_press(AppMsg::OpenComment {
+                    article: None,
+                    comment_ids: item.kids.clone(),
+                    parent: Some(item.clone()),
+                })
+                .style(button::text)
+                .into()
+        };
+
+        container(
+            column![
+                render_rich_text(item.text.as_deref().unwrap_or_default()),
+                row![
+                    widget::rich_text([
+                        widget::span(format!(" by {}", item.by))
+                            .font(Font {
+                                style: Style::Italic,
+                                ..Default::default()
+                            })
+                            // .line_height(0.5)
+                            .size(14)
+                            .color_maybe(widget::text::primary(&self.theme).color),
+                        widget::span(" "),
+                        widget::span(parse_date(item.time).unwrap_or_default())
+                            .font(Font {
+                                weight: Weight::Light,
+                                style: Style::Italic,
+                                ..Default::default()
+                            })
+                            // .line_height(0.5)
+                            .size(10)
+                            .color_maybe(widget::text::primary(&self.theme).color),
+                    ]),
+                    by_button,
+                ]
+                .spacing(5)
+            ]
+            .padding([10, 10])
+            .spacing(5)
+            .width(Length::Fill),
+        )
+        .clip(false)
     }
 }
