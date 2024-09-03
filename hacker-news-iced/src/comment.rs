@@ -8,7 +8,7 @@ use iced::{
     alignment::{Horizontal, Vertical},
     font::{Style, Weight},
     widget::{self, button, column, container, row, scrollable, text::Shaping, Column},
-    Border, Color, Element, Font, Length, Padding, Theme,
+    Border, Element, Font, Length, Padding,
 };
 
 /// List of comments and common parent
@@ -59,11 +59,7 @@ impl App {
                                 style: Style::Italic,
                                 ..Default::default()
                             })
-                            .color(if matches!(self.theme, Theme::GruvboxLight) {
-                                Color::from_rgb8(153, 77, 0)
-                            } else {
-                                Color::from_rgb8(255, 221, 128)
-                            }),
+                            .color_maybe(widget::text::primary(&self.theme).color),
                         by_button
                     ]
                     .spacing(5)
@@ -127,7 +123,7 @@ impl App {
                     .align_x(Horizontal::Right)
                     .width(Length::Fill)
             ]
-            .padding([0, 10]),
+            .padding([5, 10]),
             scrollable(
                 column![
                     Column::with_children(article_text).spacing(10),

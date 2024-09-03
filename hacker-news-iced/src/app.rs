@@ -57,10 +57,11 @@ pub enum AppMsg {
         url: String,
         item_id: u64,
     },
-    ToggleTheme,
+    ChangeTheme(Theme),
     OpenSearch,
     CloseSearch,
     Search(String),
+    WindowClose,
 }
 
 impl Clone for AppMsg {
@@ -89,10 +90,11 @@ impl Clone for AppMsg {
                 url: url.clone(),
                 item_id: *item_id,
             },
-            AppMsg::ToggleTheme => AppMsg::ToggleTheme,
+            AppMsg::ChangeTheme(theme) => AppMsg::ChangeTheme(theme.clone()),
             AppMsg::OpenSearch => AppMsg::OpenSearch,
             AppMsg::CloseSearch => AppMsg::CloseSearch,
             AppMsg::Search(s) => AppMsg::Search(s.clone()),
+            AppMsg::WindowClose => AppMsg::WindowClose,
         }
     }
 }
@@ -182,12 +184,8 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 .unwrap_or_default();
             Task::none()
         }
-        AppMsg::ToggleTheme => {
-            if matches!(app.theme, Theme::GruvboxLight) {
-                app.theme = Theme::GruvboxDark
-            } else {
-                app.theme = Theme::GruvboxLight
-            }
+        AppMsg::ChangeTheme(theme) => {
+            app.theme = theme;
             Task::none()
         }
         AppMsg::OpenSearch => {
@@ -215,6 +213,10 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 .map(ToOwned::to_owned)
                 .collect();
             app.search.replace(input);
+            Task::none()
+        }
+        AppMsg::WindowClose => {
+            println!("Window close event");
             Task::none()
         }
     }

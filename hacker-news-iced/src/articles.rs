@@ -4,7 +4,7 @@ use iced::{
     alignment::Vertical,
     font::Style,
     widget::{self, button, row, scrollable, text, tooltip::Position, Column, Tooltip},
-    Background, Border, Color, Element, Font, Length, Theme,
+    Background, Border, Color, Element, Font, Length,
 };
 use std::ops::Not;
 
@@ -37,7 +37,8 @@ impl App {
                 .color_maybe(
                     self.visited
                         .contains(&article.id)
-                        .then(|| Color::from_rgb8(122, 122, 82)),
+                        .then(|| widget::text::secondary(&self.theme).color)
+                        .flatten(),
                 ),
                 widget::span(format!(" by {}", article.by))
                     .font(Font {
@@ -45,11 +46,7 @@ impl App {
                         ..Default::default()
                     })
                     .line_height(0.5)
-                    .color(if matches!(self.theme, Theme::GruvboxLight) {
-                        Color::from_rgb8(153, 77, 0)
-                    } else {
-                        Color::from_rgb8(255, 221, 128)
-                    }),
+                    .color_maybe(widget::text::primary(&self.theme).color),
             ]);
 
             let content = format!("💬{}", article.kids.len());

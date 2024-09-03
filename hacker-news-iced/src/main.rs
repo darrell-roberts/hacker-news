@@ -2,7 +2,8 @@ use app::{update, view, App, AppMsg, Showing};
 use hacker_news_api::{ApiClient, ArticleType};
 use iced::{
     keyboard::{key::Named, on_key_press, Key, Modifiers},
-    Theme,
+    window::close_requests,
+    Subscription, Theme,
 };
 use std::{collections::HashSet, sync::Arc};
 
@@ -16,7 +17,12 @@ mod richtext;
 fn main() -> iced::Result {
     iced::application("Hacker News", update, view)
         .theme(|app| app.theme.clone())
-        .subscription(|_app| on_key_press(listen_to_key_events))
+        .subscription(|_app| {
+            Subscription::batch([
+                on_key_press(listen_to_key_events),
+                close_requests().map(|_event| AppMsg::WindowClose),
+            ])
+        })
         .run_with(|| {
             let client = Arc::new(ApiClient::new().expect("Valid client"));
             (

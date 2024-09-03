@@ -2,17 +2,13 @@ use crate::app::{App, AppMsg};
 use iced::{
     alignment::Vertical,
     font::{Style, Weight},
-    widget::{button, container, text, Row},
+    widget::{container, pick_list, text, Row},
     Background, Element, Font, Length, Theme,
 };
 
 impl App {
     pub fn render_footer(&self) -> Element<'_, AppMsg> {
-        let theme_name = if matches!(self.theme, Theme::GruvboxDark) {
-            "dark"
-        } else {
-            "light"
-        };
+        let themes = Theme::ALL;
 
         let row = Row::new()
             .push(text(&self.status_line).font(Font {
@@ -21,8 +17,12 @@ impl App {
                 ..Default::default()
             }))
             .push(
-                container(button(theme_name).on_press(AppMsg::ToggleTheme))
-                    .align_right(Length::Fill),
+                container(
+                    Row::new().push(pick_list(themes, Some(&self.theme), |selected| {
+                        AppMsg::ChangeTheme(selected)
+                    })),
+                )
+                .align_right(Length::Fill),
             )
             .align_y(Vertical::Center);
 
