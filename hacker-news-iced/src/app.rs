@@ -114,19 +114,21 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 AppMsg::Receive,
             )
         }
-        AppMsg::Receive(items) => {
-            match items {
-                Ok(articles) => {
-                    app.articles = articles;
-                    let dt = Local::now();
-                    app.status_line = format!("Updated: {}", dt.format("%d/%m/%Y %r"));
-                }
-                Err(err) => {
-                    app.status_line = err.to_string();
-                }
+        AppMsg::Receive(items) => match items {
+            Ok(articles) => {
+                app.articles = articles;
+                let dt = Local::now();
+                app.status_line = format!("Updated: {}", dt.format("%d/%m/%Y %r"));
+                widget::scrollable::scroll_to(
+                    widget::scrollable::Id::new("articles"),
+                    Default::default(),
+                )
             }
-            Task::none()
-        }
+            Err(err) => {
+                app.status_line = err.to_string();
+                Task::none()
+            }
+        },
         AppMsg::OpenComment {
             article,
             comment_ids,

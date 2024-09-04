@@ -114,6 +114,7 @@ impl App {
                 .padding([0, 10]),
         )
         .height(Length::Fill)
+        .id(scrollable::Id::new("articles"))
         .into()
     }
 }

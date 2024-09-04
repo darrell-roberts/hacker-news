@@ -8,7 +8,7 @@ use iced::{
     alignment::{Horizontal, Vertical},
     font::{Style, Weight},
     widget::{self, button, column, container, row, scrollable, text::Shaping, Column, Container},
-    Border, Element, Font, Length, Padding,
+    Border, Color, Element, Font, Length, Padding, Shadow, Vector,
 };
 
 /// List of comments and common parent
@@ -43,8 +43,13 @@ impl App {
                 item.items
                     .iter()
                     .map(|item| {
-                        self.render_comment(item, false)
-                            .style(container::rounded_box)
+                        self.render_comment(item, false).style(|theme| {
+                            container::rounded_box(theme).shadow(Shadow {
+                                color: Color::BLACK,
+                                offset: Vector { x: 5., y: 5. },
+                                blur_radius: 10.,
+                            })
+                        })
                     })
                     .map(Element::from),
             ),
@@ -131,7 +136,6 @@ impl App {
                                 style: Style::Italic,
                                 ..Default::default()
                             })
-                            // .line_height(0.5)
                             .size(14)
                             .color_maybe(widget::text::primary(&self.theme).color),
                         widget::span(" "),
@@ -141,7 +145,6 @@ impl App {
                                 style: Style::Italic,
                                 ..Default::default()
                             })
-                            // .line_height(0.5)
                             .size(10)
                             .color_maybe(widget::text::primary(&self.theme).color),
                     ]),

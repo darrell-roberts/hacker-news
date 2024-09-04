@@ -30,8 +30,6 @@ impl App {
                         article_type: ArticleType::New
                     }
                 ),
-                // text("|"),
-                // Rule::vertical(1),
                 self.header_type_button(
                     ArticleType::Ask,
                     AppMsg::Fetch {
@@ -54,7 +52,6 @@ impl App {
                     }
                 ),
                 text(" "),
-                // Rule::vertical(1),
                 self.header_count_button(
                     25,
                     AppMsg::Fetch {
@@ -80,6 +77,13 @@ impl App {
                     100,
                     AppMsg::Fetch {
                         limit: 100,
+                        article_type: self.showing.article_type
+                    }
+                ),
+                self.header_count_button(
+                    500,
+                    AppMsg::Fetch {
+                        limit: 500,
                         article_type: self.showing.article_type
                     }
                 ),
