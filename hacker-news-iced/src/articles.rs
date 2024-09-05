@@ -110,7 +110,7 @@ impl App {
                         .width(Length::Fill)
                 ]
                 .align_y(Vertical::Center)
-                .spacing(5),
+                .spacing(5), // .wrap(),
             )
             .width(Length::Fill)
             .style(|theme| {
@@ -135,7 +135,7 @@ impl App {
             Column::with_children(self.articles.iter().map(article_row).map(Element::from))
                 .width(Length::Fill)
                 .spacing(5)
-                .padding(padding::all(0).left(15).right(25)),
+                .padding(padding::top(0).bottom(10).left(15).right(25)),
         )
         .height(Length::Fill)
         .id(scrollable::Id::new("articles"))

@@ -37,6 +37,8 @@ pub struct App {
     pub search: Option<String>,
     /// All articles for search.
     pub all_articles: Vec<Item>,
+    /// Scale.
+    pub scale: f64,
 }
 
 #[derive(Debug)]
@@ -62,6 +64,9 @@ pub enum AppMsg {
     CloseSearch,
     Search(String),
     WindowClose,
+    IncreaseScale,
+    DecreaseScale,
+    ResetScale,
 }
 
 impl Clone for AppMsg {
@@ -95,6 +100,9 @@ impl Clone for AppMsg {
             AppMsg::CloseSearch => AppMsg::CloseSearch,
             AppMsg::Search(s) => AppMsg::Search(s.clone()),
             AppMsg::WindowClose => AppMsg::WindowClose,
+            AppMsg::DecreaseScale => AppMsg::DecreaseScale,
+            AppMsg::IncreaseScale => AppMsg::IncreaseScale,
+            AppMsg::ResetScale => AppMsg::ResetScale,
         }
     }
 }
@@ -219,6 +227,23 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         }
         AppMsg::WindowClose => {
             println!("Window close event");
+            Task::none()
+        }
+        AppMsg::IncreaseScale => {
+            app.scale += 0.1;
+            Task::none()
+        }
+        AppMsg::DecreaseScale => {
+            let new_scale = app.scale - 0.1;
+            let int = new_scale * 100.0;
+
+            if int > 10.0 {
+                app.scale = new_scale;
+            }
+            Task::none()
+        }
+        AppMsg::ResetScale => {
+            app.scale = 1.0;
             Task::none()
         }
     }

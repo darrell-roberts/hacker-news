@@ -24,6 +24,7 @@ fn main() -> iced::Result {
                 close_requests().map(|_event| AppMsg::WindowClose),
             ])
         })
+        .scale_factor(|app| app.scale)
         .run_with(|| {
             let client = Arc::new(ApiClient::new().expect("Valid client"));
             (
@@ -40,6 +41,7 @@ fn main() -> iced::Result {
                     theme: Theme::GruvboxLight,
                     search: None,
                     all_articles: Vec::new(),
+                    scale: 1.,
                 },
                 iced::Task::perform(
                     async move { client.articles(75, ArticleType::Top).await },
@@ -53,7 +55,15 @@ fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
     match key {
         Key::Named(named) => matches!(named, Named::Escape).then_some(AppMsg::CloseSearch),
         Key::Character(c) => {
-            (modifiers.control() && c.chars().any(|c| c == 'f')).then_some(AppMsg::OpenSearch)
+            let char = c.chars().next()?;
+
+            match char {
+                'f' if modifiers.control() => Some(AppMsg::OpenSearch),
+                '+' if modifiers.control() => Some(AppMsg::IncreaseScale),
+                '-' if modifiers.control() => Some(AppMsg::DecreaseScale),
+                '=' if modifiers.control() => Some(AppMsg::ResetScale),
+                _ => None,
+            }
         }
         Key::Unidentified => None,
     }

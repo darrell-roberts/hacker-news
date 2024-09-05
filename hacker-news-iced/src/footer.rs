@@ -10,12 +10,15 @@ impl App {
     pub fn render_footer(&self) -> Element<'_, AppMsg> {
         let themes = Theme::ALL;
 
+        let light_font = || Font {
+            style: Style::Italic,
+            weight: Weight::Light,
+            ..Default::default()
+        };
+
         let row = Row::new()
-            .push(text(&self.status_line).font(Font {
-                style: Style::Italic,
-                weight: Weight::Light,
-                ..Default::default()
-            }))
+            .push(text(&self.status_line).font(light_font()))
+            .push(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
             .push(
                 container(
                     Row::new().push(pick_list(themes, Some(&self.theme), |selected| {
@@ -24,7 +27,8 @@ impl App {
                 )
                 .align_right(Length::Fill),
             )
-            .align_y(Vertical::Center);
+            .align_y(Vertical::Center)
+            .spacing(25);
 
         container(row)
             .align_y(Vertical::Bottom)
