@@ -4,7 +4,7 @@ use crate::{
 };
 use hacker_news_api::Item;
 use iced::{
-    alignment::Vertical,
+    alignment::{Horizontal, Vertical},
     border,
     font::{Style, Weight},
     padding,
@@ -16,41 +16,41 @@ use std::ops::Not;
 impl App {
     pub fn render_articles<'a>(&'a self) -> Element<'a, AppMsg> {
         let article_row = |article: &'a Item| {
-            let title_and_by = widget::rich_text([
-                widget::span(
-                    article
-                        .title
-                        .as_ref()
-                        .map_or_else(String::new, |s| s.to_owned()),
-                )
-                .link_maybe(
-                    article
-                        .url
-                        .clone()
-                        .map(|url| AppMsg::OpenLink {
-                            url,
-                            item_id: article.id,
+            let title = widget::rich_text([widget::span(
+                article
+                    .title
+                    .as_ref()
+                    .map_or_else(String::new, |s| s.to_owned()),
+            )
+            .link_maybe(
+                article
+                    .url
+                    .clone()
+                    .map(|url| AppMsg::OpenLink {
+                        url,
+                        item_id: article.id,
+                    })
+                    .or_else(|| {
+                        article.text.as_ref().map(|_| AppMsg::OpenComment {
+                            article: Some(article.clone()),
+                            comment_ids: article.kids.clone(),
+                            parent: None,
                         })
-                        .or_else(|| {
-                            article.text.as_ref().map(|_| AppMsg::OpenComment {
-                                article: Some(article.clone()),
-                                comment_ids: article.kids.clone(),
-                                parent: None,
-                            })
-                        }),
-                )
-                .color_maybe(
-                    self.visited
-                        .contains(&article.id)
-                        .then(|| widget::text::secondary(&self.theme).color)
-                        .flatten(),
-                ),
+                    }),
+            )
+            .color_maybe(
+                self.visited
+                    .contains(&article.id)
+                    .then(|| widget::text::secondary(&self.theme).color)
+                    .flatten(),
+            )]);
+
+            let by = widget::rich_text([
                 widget::span(format!(" by {}", article.by))
                     .font(Font {
                         style: Style::Italic,
                         ..Default::default()
                     })
-                    // .line_height(0.5)
                     .size(14)
                     .color_maybe(widget::text::primary(&self.theme).color),
                 widget::span(" "),
@@ -60,7 +60,6 @@ impl App {
                         style: Style::Italic,
                         ..Default::default()
                     })
-                    // .line_height(0.5)
                     .size(10)
                     .color_maybe(widget::text::primary(&self.theme).color),
             ]);
@@ -78,7 +77,7 @@ impl App {
 
             let tooltip = match article.url.as_deref() {
                 Some(url) => Tooltip::new(
-                    title_and_by,
+                    title,
                     widget::container(widget::text(url).color(Color::WHITE).size(12))
                         .padding(2)
                         .style(|_theme| widget::container::Style {
@@ -92,7 +91,7 @@ impl App {
                     Position::Bottom,
                 )
                 .into(),
-                None => Element::from(title_and_by),
+                None => Element::from(title),
             };
 
             widget::container(
@@ -105,12 +104,15 @@ impl App {
                     } else {
                         Element::from(comments_button)
                     },
-                    tooltip
+                    tooltip,
+                    widget::container(by)
+                        .align_x(Horizontal::Right)
+                        .width(Length::Fill)
                 ]
                 .align_y(Vertical::Center)
                 .spacing(5),
             )
-            // .width(Length::Fill)
+            .width(Length::Fill)
             .style(|theme| {
                 let palette = theme.extended_palette();
                 widget::container::Style {
@@ -133,7 +135,7 @@ impl App {
             Column::with_children(self.articles.iter().map(article_row).map(Element::from))
                 .width(Length::Fill)
                 .spacing(5)
-                .padding([0, 10]),
+                .padding(padding::all(0).left(15).right(25)),
         )
         .height(Length::Fill)
         .id(scrollable::Id::new("articles"))

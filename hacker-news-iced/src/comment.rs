@@ -117,11 +117,11 @@ impl App {
             .padding([5, 10]),
             scrollable(
                 column![
-                    Column::with_children(article_text).spacing(10),
-                    Column::with_children(parent_comments).spacing(10),
-                    Column::with_children(comment_rows).spacing(10)
+                    Column::with_children(article_text).spacing(15),
+                    Column::with_children(parent_comments).spacing(15),
+                    Column::with_children(comment_rows).spacing(15)
                 ]
-                .spacing(10)
+                .spacing(15)
                 .padding(padding::top(0).bottom(10).left(10).right(25))
             )
             .height(Length::Fill)
