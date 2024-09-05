@@ -1,14 +1,17 @@
 use crate::{
     app::{App, AppMsg},
     parse_date,
-    richtext::render_rich_text, // widget::link::text_link,
+    richtext::render_rich_text,
 };
 use hacker_news_api::Item;
 use iced::{
     alignment::{Horizontal, Vertical},
     font::{Style, Weight},
-    widget::{self, button, column, container, row, scrollable, text::Shaping, Column, Container},
-    Border, Color, Element, Font, Length, Padding, Shadow, Vector,
+    padding,
+    widget::{
+        self, button, column, container, row, scrollable, text::Shaping, Column, Container, Tooltip,
+    },
+    Border, Color, Element, Font, Length, Shadow, Vector,
 };
 
 /// List of comments and common parent
@@ -76,17 +79,37 @@ impl App {
                 .map(Element::from)
         });
 
-        let content = column![
-            row![
-                container(
+        let tooltip: Element<'_, AppMsg> = match comment_state.article.url.as_deref() {
+            Some(url) => Tooltip::new(
+                widget::button(
                     widget::text(comment_state.article.title.as_deref().unwrap_or_default()).font(
                         Font {
                             weight: Weight::Bold,
                             ..Default::default()
-                        }
-                    )
+                        },
+                    ),
                 )
-                .align_y(Vertical::Bottom),
+                .on_press(AppMsg::OpenLink {
+                    url: url.to_string(),
+                    item_id: comment_state.article.id,
+                })
+                .style(button::text)
+                .padding(0),
+                url,
+                widget::tooltip::Position::Bottom,
+            )
+            .into(),
+            None => widget::text(comment_state.article.title.as_deref().unwrap_or_default())
+                .font(Font {
+                    weight: Weight::Bold,
+                    ..Default::default()
+                })
+                .into(),
+        };
+
+        let content = column![
+            row![
+                container(tooltip).align_y(Vertical::Bottom),
                 container(header)
                     .align_x(Horizontal::Right)
                     .width(Length::Fill)
@@ -99,7 +122,7 @@ impl App {
                     Column::with_children(comment_rows).spacing(10)
                 ]
                 .spacing(10)
-                .padding(Padding::from([0, 10]).right(20))
+                .padding(padding::top(0).bottom(10).left(10).right(25))
             )
             .height(Length::Fill)
         ];

@@ -5,9 +5,11 @@ use crate::{
 use hacker_news_api::Item;
 use iced::{
     alignment::Vertical,
+    border,
     font::{Style, Weight},
+    padding,
     widget::{self, button, row, scrollable, text, tooltip::Position, Column, Tooltip},
-    Background, Border, Color, Element, Font, Length,
+    Background, Border, Color, Element, Font, Length, Shadow,
 };
 use std::ops::Not;
 
@@ -93,24 +95,44 @@ impl App {
                 None => Element::from(title_and_by),
             };
 
-            row![
-                widget::text(format!("🔼{}", article.score))
-                    .width(55)
-                    .shaping(text::Shaping::Advanced),
-                if article.kids.is_empty() {
-                    Element::from(text("").width(55))
-                } else {
-                    Element::from(comments_button)
-                },
-                tooltip
-            ]
-            .align_y(Vertical::Center)
-            .spacing(5)
+            widget::container(
+                row![
+                    widget::text(format!("🔼{}", article.score))
+                        .width(55)
+                        .shaping(text::Shaping::Advanced),
+                    if article.kids.is_empty() {
+                        Element::from(text("").width(55))
+                    } else {
+                        Element::from(comments_button)
+                    },
+                    tooltip
+                ]
+                .align_y(Vertical::Center)
+                .spacing(5),
+            )
+            // .width(Length::Fill)
+            .style(|theme| {
+                let palette = theme.extended_palette();
+                widget::container::Style {
+                    border: border::width(0.5)
+                        .color(palette.secondary.weak.color)
+                        .rounded(4.),
+                    shadow: Shadow {
+                        color: Color::BLACK,
+                        offset: iced::Vector { x: 2., y: 2. },
+                        blur_radius: 5.,
+                    },
+                    ..Default::default()
+                }
+            })
+            .padding([5, 15])
+            .clip(false)
         };
 
         scrollable(
             Column::with_children(self.articles.iter().map(article_row).map(Element::from))
                 .width(Length::Fill)
+                .spacing(5)
                 .padding([0, 10]),
         )
         .height(Length::Fill)
