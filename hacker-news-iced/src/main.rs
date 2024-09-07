@@ -1,3 +1,4 @@
+use anyhow::Context;
 use app::{update, view, App, AppMsg, Showing};
 use chrono::{DateTime, Utc};
 use hacker_news_api::{ApiClient, ArticleType};
@@ -15,7 +16,9 @@ mod footer;
 mod header;
 mod richtext;
 
-fn main() -> iced::Result {
+fn main() -> anyhow::Result<()> {
+    let client = Arc::new(ApiClient::new().context("Could not create api client")?);
+
     iced::application("Hacker News", update, view)
         .theme(|app| app.theme.clone())
         .subscription(|_app| {
@@ -26,7 +29,6 @@ fn main() -> iced::Result {
         })
         .scale_factor(|app| app.scale)
         .run_with(|| {
-            let client = Arc::new(ApiClient::new().expect("Valid client"));
             (
                 App {
                     articles: Vec::new(),
@@ -49,6 +51,7 @@ fn main() -> iced::Result {
                 ),
             )
         })
+        .context("Failed to run UI")
 }
 
 fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
