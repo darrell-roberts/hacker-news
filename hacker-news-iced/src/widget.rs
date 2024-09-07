@@ -124,14 +124,27 @@ where
     fn on_event(
         &mut self,
         tree: &mut widget::Tree,
-        _event: Event,
+        event: Event,
         layout: advanced::Layout<'_>,
         cursor: mouse::Cursor,
-        _renderer: &Renderer,
-        _clipboard: &mut dyn advanced::Clipboard,
+        renderer: &Renderer,
+        clipboard: &mut dyn advanced::Clipboard,
         shell: &mut advanced::Shell<'_, Message>,
-        _viewport: &Rectangle,
+        viewport: &Rectangle,
     ) -> event::Status {
+        if let event::Status::Captured = self.content.as_widget_mut().on_event(
+            &mut tree.children[0],
+            event,
+            layout,
+            cursor,
+            renderer,
+            clipboard,
+            shell,
+            viewport,
+        ) {
+            return event::Status::Captured;
+        }
+
         let state = tree.state.downcast_mut::<State>();
         let was_idle = *state == State::Idle;
 
