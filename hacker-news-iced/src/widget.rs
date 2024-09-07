@@ -2,49 +2,43 @@ use iced::{
     advanced::{self, mouse, renderer, widget, Widget},
     event,
     widget::container,
-    Element, Event, Length, Padding, Point, Rectangle,
+    Element, Event, Length, Point, Rectangle,
 };
 
 pub struct Hoverable<'a, Message, Theme = iced::Theme, Renderer = iced::Renderer> {
     content: Element<'a, Message, Theme, Renderer>,
-    on_hover: Message,
-    on_exit: Message,
-    padding: Padding,
+    on_hover: Option<Message>,
+    on_exit: Option<Message>,
 }
 
 pub fn hoverable<'a, Message, Theme, Renderer>(
     content: impl Into<Element<'a, Message, Theme, Renderer>>,
-    on_hover: Message,
-    on_exit: Message,
 ) -> Hoverable<'a, Message, Theme, Renderer>
 where
     Theme: container::Catalog,
 {
-    Hoverable::new(content.into(), on_hover, on_exit)
+    Hoverable::new(content.into())
 }
 
 impl<'a, Message, Theme, Renderer> Hoverable<'a, Message, Theme, Renderer>
 where
     Theme: container::Catalog,
 {
-    pub fn new(
-        content: Element<'a, Message, Theme, Renderer>,
-        on_hover: Message,
-        on_exit: Message,
-    ) -> Self {
+    pub fn new(content: Element<'a, Message, Theme, Renderer>) -> Self {
         Self {
             content,
-            on_hover,
-            on_exit,
-            padding: Padding::ZERO,
+            on_hover: None,
+            on_exit: None,
         }
     }
 
-    pub fn padding<P>(mut self, padding: P) -> Self
-    where
-        P: Into<Padding>,
-    {
-        self.padding = padding.into();
+    pub fn on_hover(mut self, msg: Message) -> Self {
+        self.on_hover = Some(msg);
+        self
+    }
+
+    pub fn on_exit(mut self, msg: Message) -> Self {
+        self.on_exit = Some(msg);
         self
     }
 }
@@ -154,16 +148,18 @@ where
             .unwrap_or_default();
 
         match (was_idle, matches!(state, State::Hovered { .. })) {
-            (false, false) => shell.publish(self.on_exit.clone()),
-            (false, true) => shell.publish(self.on_hover.clone()),
+            (false, false) => {
+                if let Some(msg) = &self.on_exit {
+                    shell.publish(msg.clone())
+                }
+            }
+            (false, true) => {
+                if let Some(msg) = &self.on_hover {
+                    shell.publish(msg.clone())
+                }
+            }
             _ => (),
         }
-
-        // let is_idle = *state == State::Idle;
-
-        // if was_idle != is_idle {
-        //     shell.invalidate_layout();
-        // }
 
         event::Status::Ignored
     }

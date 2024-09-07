@@ -76,8 +76,11 @@ impl App {
                     parent: None,
                 }));
 
-            let tooltip = match article.url.as_deref() {
-                Some(url) => hoverable(title, AppMsg::Url(url.to_string()), AppMsg::NoUrl).into(),
+            let title_wrapper = match article.url.as_deref() {
+                Some(url) => hoverable(title)
+                    .on_hover(AppMsg::Url(url.to_string()))
+                    .on_exit(AppMsg::NoUrl)
+                    .into(),
                 None => Element::from(title),
             };
             widget::container(
@@ -90,7 +93,7 @@ impl App {
                     } else {
                         Element::from(comments_button)
                     },
-                    tooltip,
+                    title_wrapper,
                     widget::container(by)
                         .align_x(Horizontal::Right)
                         .width(Length::Fill)
