@@ -149,6 +149,12 @@ impl App {
                 .into()
         };
 
+        // let by_color = if is_parent {
+        //     widget::text::primary(&self.theme).color
+        // } else {
+        //     widget::text::secondary(&self.theme).color
+        // };
+
         container(
             column![
                 render_rich_text(item.text.as_deref().unwrap_or_default()),
@@ -159,8 +165,8 @@ impl App {
                                 style: Style::Italic,
                                 ..Default::default()
                             })
-                            .size(14)
-                            .color_maybe(widget::text::primary(&self.theme).color),
+                            .size(14),
+                        // .color_maybe(by_color),
                         widget::span(" "),
                         widget::span(parse_date(item.time).unwrap_or_default())
                             .font(Font {
@@ -168,15 +174,15 @@ impl App {
                                 style: Style::Italic,
                                 ..Default::default()
                             })
-                            .size(10)
-                            .color_maybe(widget::text::primary(&self.theme).color),
+                            .size(10),
+                        // .color_maybe(by_color),
                     ]),
                     by_button,
                 ]
                 .spacing(5)
             ]
             .padding([10, 10])
-            .spacing(5)
+            .spacing(15)
             .width(Length::Fill),
         )
         .clip(false)
