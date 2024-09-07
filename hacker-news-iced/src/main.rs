@@ -3,6 +3,7 @@ use app::{update, view, App, AppMsg, Showing};
 use chrono::{DateTime, Utc};
 use hacker_news_api::{ApiClient, ArticleType};
 use iced::{
+    advanced::graphics::core::window,
     keyboard::{key::Named, on_key_press, Key, Modifiers},
     window::close_requests,
     Subscription, Theme,
@@ -28,6 +29,12 @@ fn main() -> anyhow::Result<()> {
                 close_requests().map(|_event| AppMsg::WindowClose),
             ])
         })
+        .window(window::Settings {
+            platform_specific: window::settings::PlatformSpecific {
+                application_id: "hacker-news".into(),
+            },
+            ..Default::default()
+        })
         .scale_factor(|app| app.scale)
         .run_with(|| {
             (
@@ -41,6 +48,9 @@ fn main() -> anyhow::Result<()> {
                     status_line: String::new(),
                     comments: None,
                     visited: HashSet::new(),
+                    #[cfg(target_os = "linux")]
+                    theme: Theme::GruvboxDark,
+                    #[cfg(not(target_os = "linux"))]
                     theme: Theme::GruvboxLight,
                     search: None,
                     all_articles: Vec::new(),
