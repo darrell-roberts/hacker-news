@@ -21,14 +21,11 @@ impl App {
             .push(
                 container(
                     Row::new()
-                        .push(
-                            container(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
-                                .align_y(Vertical::Bottom)
-                                .padding(0),
-                        )
+                        .push(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
                         .push(pick_list(themes, Some(&self.theme), |selected| {
                             AppMsg::ChangeTheme(selected)
                         }))
+                        .align_y(Vertical::Center)
                         .spacing(5),
                 )
                 .align_right(Length::Fill),
