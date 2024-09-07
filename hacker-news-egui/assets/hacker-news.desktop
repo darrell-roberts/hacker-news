@@ -1,7 +1,7 @@
 [Desktop Entry]
 Categories=News
 Comment=Hacker News Reader
-Exec=hacker-news-egui
+Exec=hacker-news-iced
 Icon=hacker-news
 Name=Hacker News
 Terminal=false

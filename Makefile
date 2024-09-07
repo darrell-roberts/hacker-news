@@ -26,7 +26,8 @@ install-local-linux: build
 	echo "Installing for linux"
 	mkdir -p ~/.local/share/applications
 	mkdir -p ~/.local/bin
-	cp target/release/hacker-news-egui ~/.local/bin
+	# cp target/release/hacker-news-egui ~/.local/bin
+	cp target/release/hacker-news-iced ~/.local/bin
 	cp hacker-news-egui/assets/hacker-news.desktop ~/.local/share/applications
 	tar zxvf hacker-news-egui/assets/icons.tar.gz -C ~/.local/share
 

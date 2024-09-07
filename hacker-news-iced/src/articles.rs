@@ -1,6 +1,7 @@
 use crate::{
     app::{App, AppMsg},
     parse_date,
+    widget::hoverable,
 };
 use hacker_news_api::Item;
 use iced::{
@@ -8,8 +9,8 @@ use iced::{
     border,
     font::{Style, Weight},
     padding,
-    widget::{self, button, row, scrollable, text, tooltip::Position, Column, Tooltip},
-    Background, Border, Color, Element, Font, Length, Shadow,
+    widget::{self, button, row, scrollable, text, Column},
+    Color, Element, Font, Length, Shadow,
 };
 use std::ops::Not;
 
@@ -76,24 +77,9 @@ impl App {
                 }));
 
             let tooltip = match article.url.as_deref() {
-                Some(url) => Tooltip::new(
-                    title,
-                    widget::container(widget::text(url).color(Color::WHITE).size(12))
-                        .padding(2)
-                        .style(|_theme| widget::container::Style {
-                            background: Some(Background::Color(Color::BLACK)),
-                            border: Border {
-                                radius: 2.into(),
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        }),
-                    Position::Bottom,
-                )
-                .into(),
+                Some(url) => hoverable(title, AppMsg::Url(url.to_string()), AppMsg::NoUrl).into(),
                 None => Element::from(title),
             };
-
             widget::container(
                 row![
                     widget::text(format!("🔼{}", article.score))

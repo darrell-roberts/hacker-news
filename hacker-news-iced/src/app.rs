@@ -1,6 +1,6 @@
 use crate::comment::{CommentItem, CommentState};
 use anyhow::Result;
-use chrono::Local;
+use chrono::{DateTime, Local};
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use iced::{
     widget::{self, column, container},
@@ -39,6 +39,8 @@ pub struct App {
     pub all_articles: Vec<Item>,
     /// Scale.
     pub scale: f64,
+    /// Last update
+    pub last_update: Option<DateTime<Local>>,
 }
 
 #[derive(Debug)]
@@ -67,6 +69,8 @@ pub enum AppMsg {
     IncreaseScale,
     DecreaseScale,
     ResetScale,
+    Url(String),
+    NoUrl,
 }
 
 impl Clone for AppMsg {
@@ -103,6 +107,8 @@ impl Clone for AppMsg {
             AppMsg::DecreaseScale => AppMsg::DecreaseScale,
             AppMsg::IncreaseScale => AppMsg::IncreaseScale,
             AppMsg::ResetScale => AppMsg::ResetScale,
+            AppMsg::Url(s) => AppMsg::Url(s.clone()),
+            AppMsg::NoUrl => AppMsg::NoUrl,
         }
     }
 }
@@ -127,6 +133,7 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 app.articles = articles;
                 let dt = Local::now();
                 app.status_line = format!("Updated: {}", dt.format("%d/%m/%Y %r"));
+                app.last_update = Some(dt);
                 widget::scrollable::scroll_to(
                     widget::scrollable::Id::new("articles"),
                     Default::default(),
@@ -161,7 +168,13 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::ReceiveComments(result, parent) => {
             match result {
                 Ok(comments) => {
-                    app.status_line = format!("Updated: {}", Local::now().format("%d/%m/%Y %r"));
+                    // app.status_line = format!("Updated: {}", Local::now().format("%d/%m/%Y %r"));
+                    match app.last_update.as_ref() {
+                        Some(dt) => {
+                            app.status_line = format!("Updated: {}", dt.format("%d/%m/%Y %r"))
+                        }
+                        None => app.status_line.clear(),
+                    }
 
                     if let Some(stack) = app.comments.as_mut() {
                         stack.comments.push(CommentItem {
@@ -244,6 +257,19 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         }
         AppMsg::ResetScale => {
             app.scale = 1.0;
+            Task::none()
+        }
+        AppMsg::Url(url) => {
+            if app.status_line != url {
+                app.status_line = url;
+            }
+            Task::none()
+        }
+        AppMsg::NoUrl => {
+            match app.last_update.as_ref() {
+                Some(dt) => app.status_line = format!("Updated: {}", dt.format("%d/%m/%Y %r")),
+                None => app.status_line.clear(),
+            }
             Task::none()
         }
     }

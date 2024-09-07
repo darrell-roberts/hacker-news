@@ -15,6 +15,7 @@ mod comment;
 mod footer;
 mod header;
 mod richtext;
+mod widget;
 
 fn main() -> anyhow::Result<()> {
     let client = Arc::new(ApiClient::new().context("Could not create api client")?);
@@ -44,6 +45,7 @@ fn main() -> anyhow::Result<()> {
                     search: None,
                     all_articles: Vec::new(),
                     scale: 1.,
+                    last_update: None,
                 },
                 iced::Task::perform(
                     async move { client.articles(75, ArticleType::Top).await },

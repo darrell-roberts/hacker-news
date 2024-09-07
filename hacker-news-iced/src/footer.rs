@@ -18,12 +18,18 @@ impl App {
 
         let row = Row::new()
             .push(text(&self.status_line).font(light_font()))
-            .push(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
             .push(
                 container(
-                    Row::new().push(pick_list(themes, Some(&self.theme), |selected| {
-                        AppMsg::ChangeTheme(selected)
-                    })),
+                    Row::new()
+                        .push(
+                            container(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
+                                .align_y(Vertical::Bottom)
+                                .padding(0),
+                        )
+                        .push(pick_list(themes, Some(&self.theme), |selected| {
+                            AppMsg::ChangeTheme(selected)
+                        }))
+                        .spacing(5),
                 )
                 .align_right(Length::Fill),
             )

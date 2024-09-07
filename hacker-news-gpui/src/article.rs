@@ -19,7 +19,7 @@ impl Render for ArticleView {
 
         let points_col = div()
             .flex()
-            .w(rems(4.))
+            .w(rems(4.5))
             .justify_start()
             .child(format!("🔼{}", self.item.score));
 
