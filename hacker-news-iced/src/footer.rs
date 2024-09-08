@@ -34,7 +34,11 @@ impl FooterState {
         };
 
         let row = Row::new()
-            .push(text(&self.status_line).font(light_font()))
+            .push(
+                text(&self.status_line)
+                    .font(light_font())
+                    .width(Length::Shrink.enclose(Length::Fill)),
+            )
             .push(
                 container(
                     Row::new()
@@ -48,7 +52,8 @@ impl FooterState {
                 .align_right(Length::Fill),
             )
             .align_y(Vertical::Center)
-            .spacing(25);
+            .spacing(25)
+            .clip(true);
 
         container(row)
             .align_y(Vertical::Bottom)

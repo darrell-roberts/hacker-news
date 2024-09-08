@@ -34,7 +34,7 @@ pub enum CommentMsg {
 }
 
 impl CommentState {
-    pub fn view<'a>(&'a self) -> Element<'a, AppMsg> {
+    pub fn view(&self) -> Element<'_, AppMsg> {
         let header = row![button("X").on_press(AppMsg::Comments(CommentMsg::CloseComment))];
 
         let article_text = self
