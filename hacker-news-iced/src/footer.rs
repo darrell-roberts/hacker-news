@@ -37,7 +37,7 @@ impl FooterState {
             .push(
                 text(&self.status_line)
                     .font(light_font())
-                    .width(Length::Shrink.enclose(Length::Fill)),
+                    .width(Length::FillPortion(2).enclose(Length::Fill)),
             )
             .push(
                 container(
@@ -52,7 +52,7 @@ impl FooterState {
                 .align_right(Length::Fill),
             )
             .align_y(Vertical::Center)
-            .spacing(25)
+            .spacing(5)
             .clip(true);
 
         container(row)
