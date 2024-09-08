@@ -61,7 +61,7 @@ impl FooterState {
                 let palette = theme.extended_palette();
 
                 container::Style {
-                    background: Some(Background::Color(palette.background.strong.color)),
+                    background: Some(Background::Color(palette.background.weak.color)),
                     ..Default::default()
                 }
             })
