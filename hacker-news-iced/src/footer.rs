@@ -1,13 +1,30 @@
-use crate::app::{App, AppMsg};
+use crate::app::AppMsg;
+use chrono::{DateTime, Local};
 use iced::{
     alignment::Vertical,
     font::{Style, Weight},
     widget::{container, pick_list, text, Row},
-    Background, Element, Font, Length, Theme,
+    Background, Element, Font, Length, Task, Theme,
 };
 
-impl App {
-    pub fn render_footer(&self) -> Element<'_, AppMsg> {
+pub struct FooterState {
+    pub status_line: String,
+    pub last_update: Option<DateTime<Local>>,
+    pub scale: f64,
+}
+
+#[derive(Debug, Clone)]
+pub enum FooterMsg {
+    Error(String),
+    LastUpdate(DateTime<Local>),
+    Url(String),
+    NoUrl,
+    Fetching,
+    Scale(f64),
+}
+
+impl FooterState {
+    pub fn view<'a>(&'a self, theme: &'a Theme) -> Element<'a, AppMsg> {
         let themes = Theme::ALL;
 
         let light_font = || Font {
@@ -22,7 +39,7 @@ impl App {
                 container(
                     Row::new()
                         .push(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
-                        .push(pick_list(themes, Some(&self.theme), |selected| {
+                        .push(pick_list(themes, Some(theme), |selected| {
                             AppMsg::ChangeTheme(selected)
                         }))
                         .align_y(Vertical::Center)
@@ -45,5 +62,33 @@ impl App {
             })
             .padding([0, 10])
             .into()
+    }
+
+    pub fn update(&mut self, message: FooterMsg) -> Task<AppMsg> {
+        match message {
+            FooterMsg::Error(s) => {
+                self.status_line = s;
+            }
+            FooterMsg::LastUpdate(dt) => {
+                self.status_line = format!("Updated: {}", dt.format("%d/%m/%Y %r"));
+                self.last_update = Some(dt);
+            }
+            FooterMsg::Url(url) => {
+                if self.status_line != url {
+                    self.status_line = url;
+                }
+            }
+            FooterMsg::NoUrl => match self.last_update.as_ref() {
+                Some(dt) => self.status_line = format!("Updated: {}", dt.format("%d/%m/%Y %r")),
+                None => self.status_line.clear(),
+            },
+            FooterMsg::Fetching => {
+                self.status_line = "Fetching...".into();
+            }
+            FooterMsg::Scale(scale) => {
+                self.scale = scale;
+            }
+        }
+        Task::none()
     }
 }

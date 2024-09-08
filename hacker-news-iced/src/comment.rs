@@ -1,8 +1,5 @@
-use crate::{
-    app::{App, AppMsg},
-    parse_date,
-    richtext::render_rich_text,
-};
+use crate::{app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text};
+use chrono::Local;
 use hacker_news_api::Item;
 use iced::{
     alignment::{Horizontal, Vertical},
@@ -11,7 +8,7 @@ use iced::{
     widget::{
         self, button, column, container, row, scrollable, text::Shaping, Column, Container, Tooltip,
     },
-    Border, Color, Element, Font, Length, Shadow, Vector,
+    Border, Color, Element, Font, Length, Shadow, Task, Vector,
 };
 
 /// List of comments and common parent
@@ -30,18 +27,24 @@ pub struct CommentState {
     pub comments: Vec<CommentItem>,
 }
 
-impl App {
-    pub fn render_comments<'a>(&'a self, comment_state: &'a CommentState) -> Element<'a, AppMsg> {
-        let header = row![button("X").on_press(AppMsg::CloseComment)];
+#[derive(Debug, Clone)]
+pub enum CommentMsg {
+    ReceiveComments(Vec<Item>, Option<Item>),
+    CloseComment,
+}
 
-        let article_text = comment_state
+impl CommentState {
+    pub fn view<'a>(&'a self) -> Element<'a, AppMsg> {
+        let header = row![button("X").on_press(AppMsg::Comments(CommentMsg::CloseComment))];
+
+        let article_text = self
             .article
             .text
             .as_deref()
             .map(render_rich_text)
             .map(|rt| container(rt).padding([10, 10]).into());
 
-        let comment_rows = match comment_state.comments.iter().last() {
+        let comment_rows = match self.comments.iter().last() {
             Some(item) => either::Left(
                 item.items
                     .iter()
@@ -59,7 +62,7 @@ impl App {
             None => either::Right(std::iter::empty::<Element<'_, AppMsg>>()),
         };
 
-        let parent_comments = comment_state.comments.iter().flat_map(|item| {
+        let parent_comments = self.comments.iter().flat_map(|item| {
             item.parent
                 .as_ref()
                 .map(|parent| {
@@ -79,19 +82,17 @@ impl App {
                 .map(Element::from)
         });
 
-        let tooltip: Element<'_, AppMsg> = match comment_state.article.url.as_deref() {
+        let tooltip: Element<'_, AppMsg> = match self.article.url.as_deref() {
             Some(url) => Tooltip::new(
                 widget::button(
-                    widget::text(comment_state.article.title.as_deref().unwrap_or_default()).font(
-                        Font {
-                            weight: Weight::Bold,
-                            ..Default::default()
-                        },
-                    ),
+                    widget::text(self.article.title.as_deref().unwrap_or_default()).font(Font {
+                        weight: Weight::Bold,
+                        ..Default::default()
+                    }),
                 )
                 .on_press(AppMsg::OpenLink {
                     url: url.to_string(),
-                    item_id: comment_state.article.id,
+                    item_id: self.article.id,
                 })
                 .style(button::text)
                 .padding(0),
@@ -99,7 +100,7 @@ impl App {
                 widget::tooltip::Position::Bottom,
             )
             .into(),
-            None => widget::text(comment_state.article.title.as_deref().unwrap_or_default())
+            None => widget::text(self.article.title.as_deref().unwrap_or_default())
                 .font(Font {
                     weight: Weight::Bold,
                     ..Default::default()
@@ -186,5 +187,26 @@ impl App {
             .width(Length::Fill),
         )
         .clip(false)
+    }
+
+    pub fn update(&mut self, message: CommentMsg) -> Task<AppMsg> {
+        match message {
+            CommentMsg::ReceiveComments(comments, parent) => {
+                self.comments.push(CommentItem {
+                    items: comments,
+                    parent,
+                });
+
+                Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer)
+            }
+            CommentMsg::CloseComment => {
+                self.comments.pop();
+                if self.comments.is_empty() {
+                    Task::done(AppMsg::RestoreArticles)
+                } else {
+                    Task::none()
+                }
+            }
+        }
     }
 }

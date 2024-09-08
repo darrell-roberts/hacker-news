@@ -1,90 +1,107 @@
-use crate::app::{App, AppMsg};
+use crate::{app::AppMsg, articles::ArticleMsg};
 use hacker_news_api::ArticleType;
 use iced::{
     widget::{self, button, container, row, text, text_input::Id, Column},
-    Background, Border, Element, Length,
+    Background, Border, Element, Length, Task,
 };
 
-impl App {
-    pub fn render_header(&self) -> Element<'_, AppMsg> {
+pub struct HeaderState {
+    pub article_count: usize,
+    pub article_type: ArticleType,
+    pub search: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum HeaderMsg {
+    OpenSearch,
+    CloseSearch,
+    Select {
+        article_count: usize,
+        article_type: ArticleType,
+    },
+    Search(String),
+}
+
+impl HeaderState {
+    pub fn view(&self) -> Element<'_, HeaderMsg> {
         let top_row = container(
             row![
                 self.header_type_button(
                     ArticleType::Top,
-                    AppMsg::Fetch {
-                        limit: self.showing.limit,
+                    HeaderMsg::Select {
+                        article_count: self.article_count,
                         article_type: ArticleType::Top
                     }
                 ),
                 self.header_type_button(
                     ArticleType::Best,
-                    AppMsg::Fetch {
-                        limit: self.showing.limit,
+                    HeaderMsg::Select {
+                        article_count: self.article_count,
                         article_type: ArticleType::Best
                     }
                 ),
                 self.header_type_button(
                     ArticleType::New,
-                    AppMsg::Fetch {
-                        limit: self.showing.limit,
+                    HeaderMsg::Select {
+                        article_count: self.article_count,
                         article_type: ArticleType::New
                     }
                 ),
                 self.header_type_button(
                     ArticleType::Ask,
-                    AppMsg::Fetch {
-                        limit: self.showing.limit,
+                    HeaderMsg::Select {
+                        article_count: self.article_count,
                         article_type: ArticleType::Ask
                     }
                 ),
                 self.header_type_button(
                     ArticleType::Show,
-                    AppMsg::Fetch {
-                        limit: self.showing.limit,
+                    HeaderMsg::Select {
+                        article_count: self.article_count,
                         article_type: ArticleType::Show
                     }
                 ),
                 self.header_type_button(
                     ArticleType::Job,
-                    AppMsg::Fetch {
-                        limit: self.showing.limit,
+                    HeaderMsg::Select {
+                        article_count: self.article_count,
                         article_type: ArticleType::Job
                     }
                 ),
                 text(" "),
                 self.header_count_button(
                     25,
-                    AppMsg::Fetch {
-                        limit: 25,
-                        article_type: self.showing.article_type
+                    HeaderMsg::Select {
+                        article_count: 25,
+                        article_type: self.article_type
                     }
                 ),
                 self.header_count_button(
                     50,
-                    AppMsg::Fetch {
-                        limit: 50,
-                        article_type: self.showing.article_type
+                    HeaderMsg::Select {
+                        article_count: 50,
+                        article_type: self.article_type
                     }
                 ),
                 self.header_count_button(
                     75,
-                    AppMsg::Fetch {
-                        limit: 75,
-                        article_type: self.showing.article_type
+                    HeaderMsg::Select {
+                        article_count: 75,
+                        article_type: self.article_type
                     }
                 ),
                 self.header_count_button(
                     100,
-                    AppMsg::Fetch {
-                        limit: 100,
-                        article_type: self.showing.article_type
+                    HeaderMsg::Select {
+                        article_count: 100,
+                        article_type: self.article_type
                     }
                 ),
                 self.header_count_button(
                     500,
-                    AppMsg::Fetch {
-                        limit: 500,
-                        article_type: self.showing.article_type
+                    HeaderMsg::Select {
+                        article_count: 500,
+                        article_type: self.article_type
                     }
                 ),
             ]
@@ -107,16 +124,20 @@ impl App {
             .push_maybe(self.search.as_ref().map(|search| {
                 widget::text_input("Search...", search)
                     .id(Id::new("search"))
-                    .on_input(AppMsg::Search)
+                    .on_input(HeaderMsg::Search)
             }))
             .into()
     }
 
-    fn header_type_button(&self, article_type: ArticleType, action: AppMsg) -> Element<'_, AppMsg> {
+    fn header_type_button(
+        &self,
+        article_type: ArticleType,
+        action: HeaderMsg,
+    ) -> Element<'_, HeaderMsg> {
         widget::button(widget::text(article_type.to_string()))
             .on_press(action)
             .style(move |theme, status| {
-                let mut style = if self.showing.article_type == article_type {
+                let mut style = if self.article_type == article_type {
                     button::primary(theme, status)
                 } else {
                     button::secondary(theme, status)
@@ -131,11 +152,11 @@ impl App {
             .into()
     }
 
-    fn header_count_button(&self, count: usize, action: AppMsg) -> Element<'_, AppMsg> {
+    fn header_count_button(&self, count: usize, action: HeaderMsg) -> Element<'_, HeaderMsg> {
         widget::button(widget::text(count))
             .on_press(action)
             .style(move |theme, status| {
-                let mut style = if self.showing.limit == count {
+                let mut style = if self.article_count == count {
                     button::primary(theme, status)
                 } else {
                     button::secondary(theme, status)
@@ -148,5 +169,34 @@ impl App {
                 style
             })
             .into()
+    }
+
+    pub fn update(&mut self, message: HeaderMsg) -> Task<AppMsg> {
+        match message {
+            HeaderMsg::OpenSearch => {
+                self.search = Some(String::new());
+                widget::text_input::focus(widget::text_input::Id::new("search"))
+            }
+            HeaderMsg::CloseSearch => {
+                self.search = None;
+                Task::done(ArticleMsg::Search(String::new())).map(AppMsg::Articles)
+            }
+            HeaderMsg::Select {
+                article_count,
+                article_type,
+            } => {
+                self.article_type = article_type;
+                self.article_count = article_count;
+                Task::done(ArticleMsg::Fetch {
+                    limit: article_count,
+                    article_type,
+                })
+                .map(AppMsg::Articles)
+            }
+            HeaderMsg::Search(search) => {
+                self.search = Some(search.clone());
+                Task::done(ArticleMsg::Search(search)).map(AppMsg::Articles)
+            }
+        }
     }
 }

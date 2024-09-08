@@ -1,7 +1,10 @@
 use anyhow::Context;
-use app::{update, view, App, AppMsg, Showing};
+use app::{update, view, App, AppMsg, ContentScreen};
+use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
+use footer::{FooterMsg, FooterState};
 use hacker_news_api::{ApiClient, ArticleType};
+use header::{HeaderMsg, HeaderState};
 use iced::{
     advanced::graphics::core::window,
     keyboard::{key::Named, on_key_press, Key, Modifiers},
@@ -39,27 +42,36 @@ fn main() -> anyhow::Result<()> {
         .run_with(|| {
             (
                 App {
-                    articles: Vec::new(),
                     client: client.clone(),
-                    showing: Showing {
-                        limit: 75,
-                        article_type: ArticleType::Top,
-                    },
-                    status_line: String::new(),
-                    comments: None,
-                    visited: HashSet::new(),
                     #[cfg(target_os = "linux")]
                     theme: Theme::GruvboxDark,
                     #[cfg(not(target_os = "linux"))]
                     theme: Theme::GruvboxLight,
-                    search: None,
-                    all_articles: Vec::new(),
                     scale: 1.,
-                    last_update: None,
+                    header: HeaderState {
+                        article_count: 75,
+                        article_type: ArticleType::Top,
+                        search: None,
+                    },
+                    content: ContentScreen::Articles(ArticleState {
+                        client: client.clone(),
+                        articles: Vec::new(),
+                        visited: HashSet::new(),
+                        search: None,
+                    }),
+                    footer: FooterState {
+                        status_line: String::new(),
+                        last_update: None,
+                        scale: 1.,
+                    },
+                    article_state: None,
                 },
                 iced::Task::perform(
                     async move { client.articles(75, ArticleType::Top).await },
-                    AppMsg::Receive,
+                    |result| match result {
+                        Ok(articles) => AppMsg::Articles(ArticleMsg::Receive(articles)),
+                        Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
+                    },
                 ),
             )
         })
@@ -68,12 +80,14 @@ fn main() -> anyhow::Result<()> {
 
 fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
     match key {
-        Key::Named(named) => matches!(named, Named::Escape).then_some(AppMsg::CloseSearch),
+        Key::Named(named) => {
+            matches!(named, Named::Escape).then_some(AppMsg::Header(HeaderMsg::CloseSearch))
+        }
         Key::Character(c) => {
             let char = c.chars().next()?;
 
             match char {
-                'f' if modifiers.control() => Some(AppMsg::OpenSearch),
+                'f' if modifiers.control() => Some(AppMsg::Header(HeaderMsg::OpenSearch)),
                 '+' if modifiers.control() => Some(AppMsg::IncreaseScale),
                 '-' if modifiers.control() => Some(AppMsg::DecreaseScale),
                 '=' if modifiers.control() => Some(AppMsg::ResetScale),
