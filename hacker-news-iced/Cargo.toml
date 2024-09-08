@@ -8,12 +8,22 @@ edition.workspace = true
 
 [dependencies]
 # iced = { version = "0.12", features = ["lazy", "tokio", "advanced"] }
-iced = { path = "../../iced", features = ["lazy", "tokio", "advanced"] }
+iced = { path = "../../iced", features = [
+    "lazy",
+    "tokio",
+    "advanced",
+    "auto-detect-theme",
+] }
 
 hacker-news-api.workspace = true
 html-sanitizer.workspace = true
 log.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
+serde.workspace = true
+tokio.workspace = true
+
 open = "5"
 either = "1"
+app_dirs2 = "2"
+rmp-serde = "1.3"

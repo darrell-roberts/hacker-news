@@ -3,11 +3,12 @@ use crate::{
     comment::{self, CommentMsg, CommentState},
     footer::{self, FooterMsg, FooterState},
     header::{self, HeaderState},
+    save_config, Config,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use iced::{
     widget::{column, container},
-    Element, Task, Theme,
+    Element, Size, Task, Theme,
 };
 use log::error;
 use std::sync::Arc;
@@ -28,6 +29,8 @@ pub struct App {
     pub client: Arc<ApiClient>,
     /// Article state when viewing comments.
     pub article_state: Option<ArticleState>,
+    /// Window size
+    pub size: Size,
 }
 
 pub enum ContentScreen {
@@ -56,6 +59,7 @@ pub enum AppMsg {
     DecreaseScale,
     ResetScale,
     RestoreArticles,
+    WindowResize(Size),
 }
 
 pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -116,7 +120,7 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         }
         AppMsg::ChangeTheme(theme) => {
             app.theme = theme;
-            Task::none()
+            save_task(app)
         }
         AppMsg::WindowClose => {
             println!("Window close event");
@@ -124,7 +128,10 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         }
         AppMsg::IncreaseScale => {
             app.scale += 0.1;
-            Task::done(FooterMsg::Scale(app.scale)).map(AppMsg::Footer)
+            Task::batch([
+                Task::done(FooterMsg::Scale(app.scale)).map(AppMsg::Footer),
+                save_task(app),
+            ])
         }
         AppMsg::DecreaseScale => {
             let new_scale = app.scale - 0.1;
@@ -133,11 +140,17 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             if int > 10.0 {
                 app.scale = new_scale;
             }
-            Task::done(FooterMsg::Scale(app.scale)).map(AppMsg::Footer)
+            Task::batch([
+                Task::done(FooterMsg::Scale(app.scale)).map(AppMsg::Footer),
+                save_task(app),
+            ])
         }
         AppMsg::ResetScale => {
             app.scale = 1.0;
-            Task::done(FooterMsg::Scale(app.scale)).map(AppMsg::Footer)
+            Task::batch([
+                Task::done(FooterMsg::Scale(app.scale)).map(AppMsg::Footer),
+                save_task(app),
+            ])
         }
         AppMsg::Articles(msg) => match &mut app.content {
             ContentScreen::Articles(state) => state.update(msg),
@@ -149,6 +162,10 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             ContentScreen::Comments(state) => state.update(msg),
         },
         AppMsg::Header(msg) => app.header.update(msg),
+        AppMsg::WindowResize(size) => {
+            app.size = size;
+            save_task(&*app)
+        }
     }
 }
 
@@ -166,4 +183,36 @@ pub(crate) fn view(app: &App) -> iced::Element<AppMsg> {
     };
 
     container(content).into()
+}
+
+impl From<&App> for Config {
+    fn from(state: &App) -> Self {
+        let visited = match &state.content {
+            ContentScreen::Articles(article_state) => article_state.visited.clone(),
+            ContentScreen::Comments(_) => state
+                .article_state
+                .as_ref()
+                .map(|state| state.visited.clone())
+                .unwrap_or_default(),
+        };
+
+        Config {
+            scale: state.scale,
+            article_count: state.header.article_count,
+            article_type: state.header.article_type,
+            visited: visited.clone(),
+            theme: state.theme.to_string(),
+            window_size: (state.size.width, state.size.height),
+        }
+    }
+}
+
+pub(crate) fn save_task(app: &App) -> Task<AppMsg> {
+    let config = Config::from(app);
+    Task::perform(save_config(config), |result| {
+        AppMsg::Footer(match result {
+            Ok(_) => FooterMsg::Error("Saved".into()),
+            Err(err) => FooterMsg::Error(err.to_string()),
+        })
+    })
 }

@@ -1,5 +1,6 @@
 use anyhow::Context;
 use app::{update, view, App, AppMsg, ContentScreen};
+use app_dirs2::{get_app_root, AppDataType, AppInfo};
 use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
 use footer::{FooterMsg, FooterState};
@@ -8,9 +9,10 @@ use header::{HeaderMsg, HeaderState};
 use iced::{
     advanced::graphics::core::window,
     keyboard::{key::Named, on_key_press, Key, Modifiers},
-    window::close_requests,
-    Subscription, Theme,
+    window::{close_requests, resize_events},
+    Size, Subscription, Theme,
 };
+use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, sync::Arc};
 
 mod app;
@@ -21,18 +23,109 @@ mod header;
 mod richtext;
 mod widget;
 
+const APP_INFO: AppInfo = AppInfo {
+    name: "Hacker News",
+    author: "Somebody",
+};
+
+#[derive(Serialize, Deserialize)]
+pub struct Config {
+    pub scale: f64,
+    pub article_count: usize,
+    pub article_type: ArticleType,
+    pub visited: HashSet<u64>,
+    pub theme: String,
+    pub window_size: (f32, f32),
+}
+
+async fn save_config(config: Config) -> anyhow::Result<()> {
+    let config_dir = get_app_root(AppDataType::UserConfig, &APP_INFO).context("No app root")?;
+    tokio::fs::create_dir_all(&config_dir).await?;
+
+    let contents = rmp_serde::to_vec(&config)?;
+    let config_path = config_dir.join("config.dat");
+
+    tokio::fs::write(&config_path, &contents).await?;
+
+    Ok(())
+}
+
+fn load_config() -> anyhow::Result<Config> {
+    let config_dir = get_app_root(AppDataType::UserConfig, &APP_INFO).context("No app root")?;
+    let content = std::fs::read(config_dir.join("config.dat"))?;
+    let config = rmp_serde::from_slice(&content)?;
+
+    Ok(config)
+}
+
 fn main() -> anyhow::Result<()> {
     let client = Arc::new(ApiClient::new().context("Could not create api client")?);
 
+    let app = load_config()
+        .map(|config| App {
+            client: client.clone(),
+            theme: theme(&config.theme).unwrap_or_default(),
+            scale: config.scale,
+            header: HeaderState {
+                article_count: config.article_count,
+                article_type: config.article_type,
+                search: None,
+            },
+            content: ContentScreen::Articles(ArticleState {
+                client: client.clone(),
+                articles: Vec::new(),
+                visited: config.visited,
+                search: None,
+            }),
+            footer: FooterState {
+                status_line: String::new(),
+                last_update: None,
+                scale: config.scale,
+            },
+            article_state: None,
+            size: Size::new(config.window_size.0, config.window_size.1),
+        })
+        .unwrap_or_else(|err| {
+            eprintln!("Could not load config: {err}");
+
+            App {
+                client: client.clone(),
+                #[cfg(target_os = "linux")]
+                theme: Theme::GruvboxDark,
+                #[cfg(not(target_os = "linux"))]
+                theme: Theme::GruvboxLight,
+                scale: 1.,
+                header: HeaderState {
+                    article_count: 75,
+                    article_type: ArticleType::Top,
+                    search: None,
+                },
+                content: ContentScreen::Articles(ArticleState {
+                    client: client.clone(),
+                    articles: Vec::new(),
+                    visited: HashSet::new(),
+                    search: None,
+                }),
+                footer: FooterState {
+                    status_line: String::new(),
+                    last_update: None,
+                    scale: 1.,
+                },
+                article_state: None,
+                size: Size::new(800., 600.),
+            }
+        });
     iced::application("Hacker News", update, view)
         .theme(|app| app.theme.clone())
         .subscription(|_app| {
             Subscription::batch([
                 on_key_press(listen_to_key_events),
                 close_requests().map(|_event| AppMsg::WindowClose),
+                resize_events().map(|(_id, size)| AppMsg::WindowResize(size)),
             ])
         })
         .window(window::Settings {
+            size: app.size,
             platform_specific: window::settings::PlatformSpecific {
                 application_id: "hacker-news".into(),
             },
@@ -41,31 +134,7 @@ fn main() -> anyhow::Result<()> {
         .scale_factor(|app| app.scale)
         .run_with(|| {
             (
-                App {
-                    client: client.clone(),
-                    #[cfg(target_os = "linux")]
-                    theme: Theme::GruvboxDark,
-                    #[cfg(not(target_os = "linux"))]
-                    theme: Theme::GruvboxLight,
-                    scale: 1.,
-                    header: HeaderState {
-                        article_count: 75,
-                        article_type: ArticleType::Top,
-                        search: None,
-                    },
-                    content: ContentScreen::Articles(ArticleState {
-                        client: client.clone(),
-                        articles: Vec::new(),
-                        visited: HashSet::new(),
-                        search: None,
-                    }),
-                    footer: FooterState {
-                        status_line: String::new(),
-                        last_update: None,
-                        scale: 1.,
-                    },
-                    article_state: None,
-                },
+                app,
                 iced::Task::perform(
                     async move { client.articles(75, ArticleType::Top).await },
                     |result| match result {
@@ -117,4 +186,11 @@ pub fn parse_date(time: u64) -> Option<String> {
         (d, _, _) => format!("{d} days ago"),
     }
     .into()
+}
+
+fn theme(theme_name: &str) -> Option<Theme> {
+    Theme::ALL
+        .iter()
+        .find(|&theme| theme.to_string() == theme_name)
+        .cloned()
 }
