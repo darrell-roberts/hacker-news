@@ -189,7 +189,6 @@ impl ArticleState {
                 );
                 Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer)
             }
-
             ArticleMsg::Search(input) => {
                 if input.is_empty() {
                     self.search = None;

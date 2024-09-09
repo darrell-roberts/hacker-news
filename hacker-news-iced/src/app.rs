@@ -1,9 +1,9 @@
 use crate::{
     articles::{self, ArticleMsg, ArticleState},
-    comment::{self, CommentMsg, CommentState},
+    comments::{self, CommentMsg, CommentState},
+    config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     header::{self, HeaderState},
-    save_config, Config,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use iced::{
@@ -43,7 +43,7 @@ pub enum AppMsg {
     Header(header::HeaderMsg),
     Articles(articles::ArticleMsg),
     Footer(footer::FooterMsg),
-    Comments(comment::CommentMsg),
+    Comments(comments::CommentMsg),
     OpenComment {
         article: Option<Item>,
         comment_ids: Vec<u64>,
@@ -62,7 +62,7 @@ pub enum AppMsg {
     WindowResize(Size),
 }
 
-pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
+pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
     match message {
         AppMsg::OpenComment {
             article,
@@ -169,7 +169,7 @@ pub(crate) fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
     }
 }
 
-pub(crate) fn view(app: &App) -> iced::Element<AppMsg> {
+pub fn view(app: &App) -> iced::Element<AppMsg> {
     let content = match &app.content {
         ContentScreen::Comments(c) => Element::from(column![c.view(), app.footer.view(&app.theme)]),
         ContentScreen::Articles(c) => {
@@ -207,7 +207,7 @@ impl From<&App> for Config {
     }
 }
 
-pub(crate) fn save_task(app: &App) -> Task<AppMsg> {
+pub fn save_task(app: &App) -> Task<AppMsg> {
     let config = Config::from(app);
     Task::perform(save_config(config), |result| {
         AppMsg::Footer(match result {

@@ -1,6 +1,5 @@
 use anyhow::Context;
 use app::{update, view, App, AppMsg, ContentScreen};
-use app_dirs2::{get_app_root, AppDataType, AppInfo};
 use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
 use footer::{FooterMsg, FooterState};
@@ -12,56 +11,21 @@ use iced::{
     window::{close_requests, resize_events},
     Size, Subscription, Theme,
 };
-use serde::{Deserialize, Serialize};
 use std::{collections::HashSet, sync::Arc};
 
 mod app;
 mod articles;
-mod comment;
+mod comments;
+mod config;
 mod footer;
 mod header;
 mod richtext;
 mod widget;
 
-const APP_INFO: AppInfo = AppInfo {
-    name: "Hacker News",
-    author: "Somebody",
-};
-
-#[derive(Serialize, Deserialize)]
-pub struct Config {
-    pub scale: f64,
-    pub article_count: usize,
-    pub article_type: ArticleType,
-    pub visited: HashSet<u64>,
-    pub theme: String,
-    pub window_size: (f32, f32),
-}
-
-async fn save_config(config: Config) -> anyhow::Result<()> {
-    let config_dir = get_app_root(AppDataType::UserConfig, &APP_INFO).context("No app root")?;
-    tokio::fs::create_dir_all(&config_dir).await?;
-
-    let contents = rmp_serde::to_vec(&config)?;
-    let config_path = config_dir.join("config.dat");
-
-    tokio::fs::write(&config_path, &contents).await?;
-
-    Ok(())
-}
-
-fn load_config() -> anyhow::Result<Config> {
-    let config_dir = get_app_root(AppDataType::UserConfig, &APP_INFO).context("No app root")?;
-    let content = std::fs::read(config_dir.join("config.dat"))?;
-    let config = rmp_serde::from_slice(&content)?;
-
-    Ok(config)
-}
-
 fn main() -> anyhow::Result<()> {
     let client = Arc::new(ApiClient::new().context("Could not create api client")?);
 
-    let app = load_config()
+    let app = config::load_config()
         .map(|config| App {
             client: client.clone(),
             theme: theme(&config.theme).unwrap_or_default(),
@@ -115,6 +79,7 @@ fn main() -> anyhow::Result<()> {
                 size: Size::new(800., 600.),
             }
         });
+
     iced::application("Hacker News", update, view)
         .theme(|app| app.theme.clone())
         .subscription(|_app| {
@@ -126,6 +91,7 @@ fn main() -> anyhow::Result<()> {
         })
         .window(window::Settings {
             size: app.size,
+            #[cfg(target_os = "linux")]
             platform_specific: window::settings::PlatformSpecific {
                 application_id: "hacker-news".into(),
             },
@@ -169,7 +135,7 @@ fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
 
 /// Extract the duration from a UNIX time and convert duration into a human
 /// friendly sentence.
-pub fn parse_date(time: u64) -> Option<String> {
+fn parse_date(time: u64) -> Option<String> {
     let duration =
         DateTime::<Utc>::from_timestamp(time.try_into().ok()?, 0).map(|then| Utc::now() - then)?;
 
