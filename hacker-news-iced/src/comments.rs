@@ -1,13 +1,13 @@
-use crate::{app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text};
+use crate::{
+    app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text, widget::hoverable,
+};
 use chrono::Local;
 use hacker_news_api::Item;
 use iced::{
     alignment::{Horizontal, Vertical},
     font::{Style, Weight},
     padding,
-    widget::{
-        self, button, column, container, row, scrollable, text::Shaping, Column, Container, Tooltip,
-    },
+    widget::{self, button, column, container, row, scrollable, text::Shaping, Column, Container},
     Border, Color, Element, Font, Length, Shadow, Task, Vector,
 };
 
@@ -82,35 +82,32 @@ impl CommentState {
                 .map(Element::from)
         });
 
-        let tooltip: Element<'_, AppMsg> = match self.article.url.as_deref() {
-            Some(url) => Tooltip::new(
-                widget::button(
-                    widget::text(self.article.title.as_deref().unwrap_or_default()).font(Font {
-                        weight: Weight::Bold,
-                        ..Default::default()
-                    }),
-                )
-                .on_press(AppMsg::OpenLink {
-                    url: url.to_string(),
-                    item_id: self.article.id,
-                })
-                .style(button::text)
-                .padding(0),
-                url,
-                widget::tooltip::Position::Bottom,
-            )
-            .into(),
-            None => widget::text(self.article.title.as_deref().unwrap_or_default())
-                .font(Font {
+        let title: Element<'_, AppMsg> = {
+            let title_text =
+                widget::text(self.article.title.as_deref().unwrap_or_default()).font(Font {
                     weight: Weight::Bold,
                     ..Default::default()
-                })
+                });
+            match self.article.url.as_deref() {
+                Some(url) => hoverable(
+                    widget::button(title_text)
+                        .on_press(AppMsg::OpenLink {
+                            url: url.to_string(),
+                            item_id: self.article.id,
+                        })
+                        .style(button::text)
+                        .padding(0),
+                )
+                .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
+                .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
                 .into(),
+                None => title_text.into(),
+            }
         };
 
         let content = column![
             row![
-                container(tooltip).align_y(Vertical::Bottom),
+                container(title).align_y(Vertical::Bottom),
                 container(header)
                     .align_x(Horizontal::Right)
                     .width(Length::Fill)
