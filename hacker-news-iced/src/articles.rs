@@ -147,7 +147,7 @@ impl ArticleState {
                         Some(search) => article
                             .title
                             .as_ref()
-                            .map(|t| t.contains(search))
+                            .map(|t| t.to_lowercase().contains(&search.to_lowercase()))
                             .unwrap_or(true),
                         None => true,
                     })
