@@ -183,11 +183,13 @@ impl ArticleState {
             }
             ArticleMsg::Receive(articles) => {
                 self.articles = articles;
-                widget::scrollable::scroll_to::<AppMsg>(
-                    widget::scrollable::Id::new("articles"),
-                    Default::default(),
-                );
-                Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer)
+                Task::batch([
+                    widget::scrollable::scroll_to::<AppMsg>(
+                        widget::scrollable::Id::new("articles"),
+                        Default::default(),
+                    ),
+                    Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer),
+                ])
             }
             ArticleMsg::Search(input) => {
                 if input.is_empty() {

@@ -94,6 +94,7 @@ fn main() -> anyhow::Result<()> {
             #[cfg(target_os = "linux")]
             platform_specific: window::settings::PlatformSpecific {
                 application_id: "hacker-news".into(),
+                ..Default::default()
             },
             ..Default::default()
         })
