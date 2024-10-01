@@ -8,7 +8,7 @@ edition.workspace = true
 
 [dependencies]
 # iced = { version = "0.12", features = ["lazy", "tokio", "advanced"] }
-iced = { path = "../../iced", features = [
+iced = { version = "0.13", features = [
     "lazy",
     "tokio",
     "advanced",

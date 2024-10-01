@@ -35,6 +35,25 @@ pub enum ArticleMsg {
 
 impl ArticleState {
     pub fn view<'a>(&'a self, theme: &Theme) -> Element<'a, AppMsg> {
+        let score_width = self
+            .articles
+            .iter()
+            .map(|article| article.score)
+            .max()
+            .map_or(0, |max| {
+                let digits = max.ilog10() / 10_u64.ilog10();
+
+                match digits {
+                    5 => 85,
+                    4 => 75,
+                    3 => 65,
+                    2 => 55,
+                    _ => 45,
+                }
+            });
+
+        let total_comments: usize = self.articles.iter().map(|article| article.kids.len()).sum();
+
         let article_row = |article: &'a Item| {
             let title = widget::rich_text([widget::span(
                 article
@@ -105,10 +124,10 @@ impl ArticleState {
             widget::container(
                 row![
                     widget::text(format!("🔼{}", article.score))
-                        .width(55)
+                        .width(score_width)
                         .shaping(text::Shaping::Advanced),
                     if article.kids.is_empty() {
-                        Element::from(text("").width(55))
+                        Element::from(text("").width(if total_comments == 0 { 0 } else { 55 }))
                     } else {
                         Element::from(comments_button)
                     },
@@ -183,11 +202,13 @@ impl ArticleState {
             }
             ArticleMsg::Receive(articles) => {
                 self.articles = articles;
-                widget::scrollable::scroll_to::<AppMsg>(
-                    widget::scrollable::Id::new("articles"),
-                    Default::default(),
-                );
-                Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer)
+                Task::batch([
+                    widget::scrollable::scroll_to::<AppMsg>(
+                        widget::scrollable::Id::new("articles"),
+                        Default::default(),
+                    ),
+                    Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer),
+                ])
             }
             ArticleMsg::Search(input) => {
                 if input.is_empty() {
