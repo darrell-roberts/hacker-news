@@ -35,7 +35,7 @@ pub struct App {
 
 pub enum ContentScreen {
     Articles(ArticleState),
-    Comments(CommentState),
+    Comments(Box<CommentState>),
 }
 
 #[derive(Debug, Clone)]
@@ -60,6 +60,8 @@ pub enum AppMsg {
     ResetScale,
     RestoreArticles,
     WindowResize(Size),
+    OpenSearch,
+    CloseSearch,
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -74,10 +76,11 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 let item_id = item.id;
                 let article_content = std::mem::replace(
                     &mut app.content,
-                    ContentScreen::Comments(CommentState {
+                    ContentScreen::Comments(Box::new(CommentState {
                         article: item,
                         comments: Vec::new(),
-                    }),
+                        search: None,
+                    })),
                 );
                 if let ContentScreen::Articles(mut state) = article_content {
                     state.visited.insert(item_id);
@@ -165,6 +168,20 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::WindowResize(size) => {
             app.size = size;
             save_task(&*app)
+        }
+        AppMsg::OpenSearch => {
+            if matches!(app.content, ContentScreen::Articles(_)) {
+                Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
+            } else {
+                Task::done(AppMsg::Comments(CommentMsg::OpenSearch))
+            }
+        }
+        AppMsg::CloseSearch => {
+            if matches!(app.content, ContentScreen::Articles(_)) {
+                Task::done(AppMsg::Header(header::HeaderMsg::CloseSearch))
+            } else {
+                Task::done(AppMsg::Comments(CommentMsg::CloseSearch))
+            }
         }
     }
 }

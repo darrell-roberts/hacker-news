@@ -4,7 +4,7 @@ use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
 use footer::{FooterMsg, FooterState};
 use hacker_news_api::{ApiClient, ArticleType};
-use header::{HeaderMsg, HeaderState};
+use header::HeaderState;
 use iced::{
     advanced::graphics::core::window,
     keyboard::{key::Named, on_key_press, Key, Modifiers},
@@ -115,14 +115,12 @@ fn main() -> anyhow::Result<()> {
 
 fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
     match key {
-        Key::Named(named) => {
-            matches!(named, Named::Escape).then_some(AppMsg::Header(HeaderMsg::CloseSearch))
-        }
+        Key::Named(named) => matches!(named, Named::Escape).then_some(AppMsg::CloseSearch),
         Key::Character(c) => {
             let char = c.chars().next()?;
 
             match char {
-                'f' if modifiers.control() => Some(AppMsg::Header(HeaderMsg::OpenSearch)),
+                'f' if modifiers.control() => Some(AppMsg::OpenSearch),
                 '+' if modifiers.control() => Some(AppMsg::IncreaseScale),
                 '-' if modifiers.control() => Some(AppMsg::DecreaseScale),
                 '=' if modifiers.control() => Some(AppMsg::ResetScale),

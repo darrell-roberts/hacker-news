@@ -25,12 +25,17 @@ pub struct CommentState {
     pub article: Item,
     /// Children
     pub comments: Vec<CommentItem>,
+    /// Search
+    pub search: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub enum CommentMsg {
     ReceiveComments(Vec<Item>, Option<Item>),
     CloseComment,
+    Search(String),
+    OpenSearch,
+    CloseSearch,
 }
 
 impl CommentState {
@@ -48,6 +53,14 @@ impl CommentState {
             Some(item) => either::Left(
                 item.items
                     .iter()
+                    .filter(
+                        |item| match (self.search.as_deref(), item.text.as_deref()) {
+                            (Some(search), Some(text)) => {
+                                text.to_lowercase().contains(&search.to_lowercase())
+                            }
+                            _ => true,
+                        },
+                    )
                     .map(|item| {
                         self.render_comment(item, false).style(|theme| {
                             container::rounded_box(theme).shadow(Shadow {
@@ -105,25 +118,53 @@ impl CommentState {
             }
         };
 
-        let content = column![
-            row![
-                container(title).align_y(Vertical::Bottom),
-                container(header)
-                    .align_x(Horizontal::Right)
-                    .width(Length::Fill)
-            ]
-            .padding([5, 10]),
-            scrollable(
-                column![
-                    Column::with_children(article_text).spacing(15),
-                    Column::with_children(parent_comments).spacing(15),
-                    Column::with_children(comment_rows).spacing(15)
+        let content = Column::new()
+            .push(
+                row![
+                    container(title).align_y(Vertical::Bottom),
+                    container(header)
+                        .align_x(Horizontal::Right)
+                        .width(Length::Fill)
                 ]
-                .spacing(15)
-                .padding(padding::top(0).bottom(10).left(10).right(25))
+                .padding([5, 10]),
             )
-            .height(Length::Fill)
-        ];
+            .push_maybe(self.search.as_ref().map(|search| {
+                widget::text_input("Search...", search)
+                    .id(widget::text_input::Id::new("comment_search"))
+                    .on_input(|input| AppMsg::Comments(CommentMsg::Search(input)))
+            }))
+            .push(
+                scrollable(
+                    column![
+                        Column::with_children(article_text).spacing(15),
+                        Column::with_children(parent_comments).spacing(15),
+                        Column::with_children(comment_rows).spacing(15)
+                    ]
+                    .spacing(15)
+                    .padding(padding::top(0).bottom(10).left(10).right(25)),
+                )
+                .height(Length::Fill),
+            );
+
+        // let content = column![
+        //     row![
+        //         container(title).align_y(Vertical::Bottom),
+        //         container(header)
+        //             .align_x(Horizontal::Right)
+        //             .width(Length::Fill)
+        //     ]
+        //     .padding([5, 10]),
+        //     scrollable(
+        //         column![
+        //             Column::with_children(article_text).spacing(15),
+        //             Column::with_children(parent_comments).spacing(15),
+        //             Column::with_children(comment_rows).spacing(15)
+        //         ]
+        //         .spacing(15)
+        //         .padding(padding::top(0).bottom(10).left(10).right(25))
+        //     )
+        //     .height(Length::Fill)
+        // ];
 
         container(content.width(Length::Fill)).into()
     }
@@ -203,6 +244,22 @@ impl CommentState {
                 } else {
                     Task::none()
                 }
+            }
+            CommentMsg::Search(search) => {
+                if search.is_empty() {
+                    self.search = None;
+                } else {
+                    self.search = Some(search);
+                }
+                Task::none()
+            }
+            CommentMsg::OpenSearch => {
+                self.search = Some(String::new());
+                widget::text_input::focus(widget::text_input::Id::new("comment_search"))
+            }
+            CommentMsg::CloseSearch => {
+                self.search = None;
+                Task::none()
             }
         }
     }
