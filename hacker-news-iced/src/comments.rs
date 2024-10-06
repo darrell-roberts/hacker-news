@@ -83,11 +83,12 @@ impl CommentState {
         });
 
         let title: Element<'_, AppMsg> = {
-            let title_text =
-                widget::text(self.article.title.as_deref().unwrap_or_default()).font(Font {
+            let title_text = widget::text(self.article.title.as_deref().unwrap_or_default())
+                .font(Font {
                     weight: Weight::Bold,
                     ..Default::default()
-                });
+                })
+                .shaping(Shaping::Advanced);
             match self.article.url.as_deref() {
                 Some(url) => hoverable(
                     widget::button(title_text)
