@@ -15,8 +15,8 @@ build: check
 bundle-mac: clean-dist build
 	mkdir -p "dist/Hacker News.app/Contents/MacOS"
 	mkdir -p "dist/Hacker News.app/Contents/Resources"
-	cp hacker-news-egui/assets/icon.icns "dist/Hacker News.app/Contents/Resources"
-	cp hacker-news-egui/assets/Info.plist "dist/Hacker News.app/Contents"
+	cp assets/icon.icns "dist/Hacker News.app/Contents/Resources"
+	cp assets/Info.plist "dist/Hacker News.app/Contents"
 	# cp target/release/hacker-news-egui "dist/Hacker News.app/Contents/MacOS"
 	cp target/release/hacker-news-iced "dist/Hacker News.app/Contents/MacOS"
 	hdiutil create -fs HFS+ -volname "Hacker News" -srcfolder "dist/Hacker News.app" "dist/Hacker News.dmg"
@@ -28,8 +28,8 @@ install-local-linux: build
 	mkdir -p ~/.local/bin
 	# cp target/release/hacker-news-egui ~/.local/bin
 	cp target/release/hacker-news-iced ~/.local/bin
-	cp hacker-news-egui/assets/hacker-news.desktop ~/.local/share/applications
-	tar zxvf hacker-news-egui/assets/icons.tar.gz -C ~/.local/share
+	cp assets/hacker-news.desktop ~/.local/share/applications
+	tar zxvf assets/icons.tar.gz -C ~/.local/share
 
 install:
 ifeq ($(PLATFORM), Darwin)
