@@ -33,7 +33,7 @@ fn main() -> Result<()> {
         .start()?;
 
     let client = hacker_news_api::ApiClient::new().context("Could not create api client")?;
-    let icon = from_png_bytes(include_bytes!("../assets/icon.png"))?;
+    let icon = from_png_bytes(include_bytes!("../../assets/icon.png"))?;
     let native_options = eframe::NativeOptions {
         viewport: ViewportBuilder::default()
             .with_icon(icon)
@@ -109,7 +109,7 @@ fn add_fonts(context: &egui::Context) {
     // );
     fonts.font_data.insert(
         "my_mono".to_owned(),
-        FontData::from_static(include_bytes!("../assets/fonts/FiraCode-Retina.ttf")),
+        FontData::from_static(include_bytes!("../../assets/fonts/FiraCode-Retina.ttf")),
     );
     // fonts
     //     .families

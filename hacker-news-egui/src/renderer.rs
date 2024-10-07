@@ -176,7 +176,7 @@ fn render_article<'a: 'b, 'b>(
                         .eq("rust".chars())
                 })
             {
-                ui.image(egui::include_image!("../assets/rust-logo-32x32.png"));
+                ui.image(egui::include_image!("../../assets/rust-logo-32x32.png"));
             }
 
             // Add job icon.
@@ -296,7 +296,7 @@ fn render_header<'a>(
 
             ui.label(format!("{}", app_state.visited.len()))
                 .on_hover_text("Visited");
-            let filter_button = Button::image(include_image!("../assets/filter.png"))
+            let filter_button = Button::image(include_image!("../../assets/filter.png"))
                 .selected(app_state.filters.contains(&Filter::Visisted));
             if filter_button
                 .ui(ui)
@@ -305,7 +305,7 @@ fn render_header<'a>(
             {
                 app_state.emit(Event::ToggleFilter(Filter::Visisted));
             }
-            let reset_button = Button::image(include_image!("../assets/reset.png"));
+            let reset_button = Button::image(include_image!("../../assets/reset.png"));
             if reset_button.ui(ui).on_hover_text("Reset visited").clicked() {
                 app_state.emit(Event::ResetVisited);
             };

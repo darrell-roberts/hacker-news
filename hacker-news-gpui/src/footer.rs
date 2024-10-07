@@ -23,7 +23,7 @@ impl Footer {
 }
 
 impl Render for Footer {
-    fn render(&mut self, cx: &mut gpui::ViewContext<Self>) -> impl gpui::IntoElement {
+    fn render(&mut self, _cx: &mut gpui::ViewContext<Self>) -> impl gpui::IntoElement {
         div().h(px(50.)).child(self.status_line.clone())
     }
 }

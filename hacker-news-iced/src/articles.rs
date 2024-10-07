@@ -2,11 +2,12 @@ use crate::{app::AppMsg, footer::FooterMsg, parse_date, widget::hoverable};
 use chrono::Local;
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use iced::{
+    advanced::image::{Bytes, Handle},
     alignment::{Horizontal, Vertical},
     border,
     font::{Style, Weight},
     padding,
-    widget::{self, button, row, scrollable, text, Column},
+    widget::{self, button, scrollable, text, Column, Row},
     Color, Element, Font, Length, Shadow, Task, Theme,
 };
 use std::{collections::HashSet, ops::Not, sync::Arc};
@@ -32,6 +33,8 @@ pub enum ArticleMsg {
     Search(String),
     Visited(u64),
 }
+
+static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
 
 impl ArticleState {
     pub fn view<'a>(&'a self, theme: &Theme) -> Element<'a, AppMsg> {
@@ -121,23 +124,38 @@ impl ArticleState {
                     .into(),
                 None => Element::from(title),
             };
+
             widget::container(
-                row![
-                    widget::text(format!("🔼{}", article.score))
-                        .width(score_width)
-                        .shaping(text::Shaping::Advanced),
-                    if article.kids.is_empty() {
+                Row::new()
+                    .push(
+                        widget::text(format!("🔼{}", article.score))
+                            .width(score_width)
+                            .shaping(text::Shaping::Advanced),
+                    )
+                    .push(if article.kids.is_empty() {
                         Element::from(text("").width(if total_comments == 0 { 0 } else { 55 }))
                     } else {
                         Element::from(comments_button)
-                    },
-                    title_wrapper,
-                    widget::container(by)
-                        .align_x(Horizontal::Right)
-                        .width(Length::Fill)
-                ]
-                .align_y(Vertical::Center)
-                .spacing(5), // .wrap(),
+                    })
+                    .push_maybe({
+                        let has_rust = article
+                            .title
+                            .as_ref()
+                            .map(|t| t.split(' ').any(|word| word == "Rust"))
+                            .unwrap_or(false);
+                        has_rust.then(|| {
+                            widget::image(Handle::from_bytes(RUST_LOGO.clone()))
+                                .content_fit(iced::ContentFit::ScaleDown)
+                        })
+                    })
+                    .push(title_wrapper)
+                    .push(
+                        widget::container(by)
+                            .align_x(Horizontal::Right)
+                            .width(Length::Fill),
+                    )
+                    .align_y(Vertical::Center)
+                    .spacing(5),
             )
             .width(Length::Fill)
             .style(|theme: &Theme| {
