@@ -1,5 +1,5 @@
 use anyhow::Context;
-use app::{update, view, App, AppMsg, ContentScreen};
+use app::{update, view, App, AppMsg, ContentScreen, ScrollBy};
 use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
 use footer::{FooterMsg, FooterState};
@@ -116,19 +116,26 @@ fn main() -> anyhow::Result<()> {
 
 fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
     match key {
-        Key::Named(named) => {
-            matches!(named, Named::Escape).then_some(AppMsg::Header(HeaderMsg::CloseSearch))
-        }
+        Key::Named(named) => Some(match named {
+            Named::Escape => AppMsg::Header(HeaderMsg::CloseSearch),
+            Named::PageUp => AppMsg::ScrollBy(ScrollBy::PageUp),
+            Named::PageDown => AppMsg::ScrollBy(ScrollBy::PageDown),
+            Named::ArrowUp => AppMsg::ScrollBy(ScrollBy::LineUp),
+            Named::ArrowDown => AppMsg::ScrollBy(ScrollBy::LineDown),
+            Named::Home => AppMsg::ScrollBy(ScrollBy::Top),
+            Named::End => AppMsg::ScrollBy(ScrollBy::Bottom),
+            _ => return None,
+        }),
         Key::Character(c) => {
             let char = c.chars().next()?;
 
-            match char {
-                'f' if modifiers.control() => Some(AppMsg::Header(HeaderMsg::OpenSearch)),
-                '+' if modifiers.control() => Some(AppMsg::IncreaseScale),
-                '-' if modifiers.control() => Some(AppMsg::DecreaseScale),
-                '=' if modifiers.control() => Some(AppMsg::ResetScale),
-                _ => None,
-            }
+            Some(match char {
+                'f' if modifiers.control() => AppMsg::Header(HeaderMsg::OpenSearch),
+                '+' if modifiers.control() => AppMsg::IncreaseScale,
+                '-' if modifiers.control() => AppMsg::DecreaseScale,
+                '=' if modifiers.control() => AppMsg::ResetScale,
+                _ => return None,
+            })
         }
         Key::Unidentified => None,
     }

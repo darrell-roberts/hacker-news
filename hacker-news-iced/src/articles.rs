@@ -163,7 +163,7 @@ impl ArticleState {
                 widget::container::Style {
                     border: border::width(0.5)
                         .color(palette.secondary.weak.color)
-                        .rounded(4.),
+                        .rounded(8.),
                     shadow: Shadow {
                         color: Color::BLACK,
                         offset: iced::Vector { x: 2., y: 2. },
@@ -176,7 +176,7 @@ impl ArticleState {
             .clip(false)
         };
 
-        scrollable(
+        widget::scrollable(
             Column::with_children(
                 self.articles
                     .iter()
