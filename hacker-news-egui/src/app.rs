@@ -4,8 +4,8 @@ use crate::{
     renderer, SHUT_DOWN,
 };
 use chrono::{DateTime, Local};
-use eframe::{Storage, Theme};
-use egui::Id;
+use eframe::Storage;
+use egui::{Id, Theme};
 use hacker_news_api::{ArticleType, Item, ResultExt, User};
 use std::{
     collections::HashSet,
@@ -143,7 +143,7 @@ impl HackerNewsApp {
             .unwrap_or(Theme::Light);
 
         // Initial theme colors.
-        cc.egui_ctx.set_visuals(theme.egui_visuals());
+        cc.egui_ctx.set_visuals(theme.default_visuals());
 
         Self {
             context: cc.egui_ctx.clone(),
@@ -284,7 +284,7 @@ impl HackerNewsApp {
                     Theme::Dark => Theme::Light,
                     Theme::Light => Theme::Dark,
                 };
-                self.context.set_visuals(self.theme.egui_visuals());
+                self.context.set_visuals(self.theme.default_visuals());
             }
             Event::CloseComment(index) => {
                 self.viewing_comments[index] = false;

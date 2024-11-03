@@ -1,6 +1,5 @@
 //! Common re-usable styles for frames.
-use eframe::Theme;
-use egui::{epaint::Shadow, Color32, Frame, Margin, Rounding, Stroke};
+use egui::{epaint::Shadow, Color32, Frame, Margin, Rounding, Stroke, Theme};
 
 pub fn central_panel_frame(theme: &Theme) -> Frame {
     Frame {
@@ -101,8 +100,8 @@ pub fn comment_bubble_frame(theme: &Theme) -> Frame {
 
 pub fn comment_bubble_text(theme: &Theme) -> Color32 {
     match theme {
-        eframe::Theme::Dark => Color32::WHITE,
-        eframe::Theme::Light => Color32::BLACK,
+        egui::Theme::Dark => Color32::WHITE,
+        egui::Theme::Light => Color32::BLACK,
     }
 }
 

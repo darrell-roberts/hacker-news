@@ -8,10 +8,9 @@ use crate::{
     event::Event,
 };
 use chrono::{DateTime, Utc};
-use eframe::Theme;
 use egui::{
     include_image, style::Spacing, widgets::Widget, Align, Button, Color32, CursorIcon, Grid, Id,
-    Key, Layout, RichText, TextStyle, Vec2, Window,
+    Key, Layout, RichText, TextStyle, Theme, Vec2, Window,
 };
 use hacker_news_api::{ArticleType, Item};
 
@@ -69,7 +68,7 @@ fn render_articles(app_state: &HackerNewsApp, ui: &mut egui::Ui) {
     let scroll_delta = scroll_delta(ui);
 
     egui::ScrollArea::vertical()
-        .id_source(Id::new(app_state.article_type))
+        .id_salt(Id::new(app_state.article_type))
         .show(ui, |ui| {
             ui.scroll_with_delta(scroll_delta);
 
@@ -143,8 +142,8 @@ fn render_article<'a: 'b, 'b>(
                         //     ui.style().visuals.window_fill()
                         // } else {
                         match app_state.theme {
-                            eframe::Theme::Dark => Color32::from_rgb(33, 37, 41),
-                            eframe::Theme::Light => Color32::from_rgb(245, 243, 240),
+                            egui::Theme::Dark => Color32::from_rgb(33, 37, 41),
+                            egui::Theme::Light => Color32::from_rgb(245, 243, 240),
                         }, // }
                     )
                     .ui(ui);
@@ -188,14 +187,14 @@ fn render_article<'a: 'b, 'b>(
                 Color32::DARK_GRAY
             } else {
                 match app_state.theme {
-                    eframe::Theme::Dark => Color32::WHITE,
-                    eframe::Theme::Light => Color32::BLACK,
+                    egui::Theme::Dark => Color32::WHITE,
+                    egui::Theme::Light => Color32::BLACK,
                 }
             };
             if app_state.visited.contains(&article.id) {
                 ui.style_mut().visuals.override_text_color = Some(match app_state.theme {
-                    eframe::Theme::Dark => Color32::GRAY,
-                    eframe::Theme::Light => Color32::DARK_GRAY,
+                    egui::Theme::Dark => Color32::GRAY,
+                    egui::Theme::Light => Color32::DARK_GRAY,
                 })
             }
 
@@ -311,8 +310,8 @@ fn render_header<'a>(
             };
 
             let theme_label = match app_state.theme {
-                eframe::Theme::Dark => "Light",
-                eframe::Theme::Light => "Dark",
+                egui::Theme::Dark => "Light",
+                egui::Theme::Light => "Dark",
             };
 
             if ui
