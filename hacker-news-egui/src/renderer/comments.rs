@@ -25,7 +25,7 @@ pub fn render(app_state: &HackerNewsApp, mutable_state: &MutableWidgetState, ui:
         let comment_item = &app_state.comments_state.comment_trail[index];
 
         egui::ScrollArea::vertical()
-            .id_source(Id::new(comment_item.id))
+            .id_salt(Id::new(comment_item.id))
             .show(ui, |ui| {
                 comment_window_frame(&app_state.theme).show(ui, |ui| {
                     let scroll_delta = scroll_delta(ui);

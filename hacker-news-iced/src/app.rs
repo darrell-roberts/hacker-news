@@ -7,7 +7,10 @@ use crate::{
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use iced::{
-    widget::{column, container},
+    widget::{
+        column, container,
+        scrollable::{self, AbsoluteOffset},
+    },
     Element, Size, Task, Theme,
 };
 use log::error;
@@ -38,6 +41,16 @@ pub enum ContentScreen {
     Comments(Box<CommentState>),
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum ScrollBy {
+    PageUp,
+    PageDown,
+    LineUp,
+    LineDown,
+    Top,
+    Bottom,
+}
+
 #[derive(Debug, Clone)]
 pub enum AppMsg {
     Header(header::HeaderMsg),
@@ -60,6 +73,7 @@ pub enum AppMsg {
     ResetScale,
     RestoreArticles,
     WindowResize(Size),
+    ScrollBy(ScrollBy),
     OpenSearch,
     CloseSearch,
 }
@@ -168,6 +182,32 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::WindowResize(size) => {
             app.size = size;
             save_task(&*app)
+        }
+        AppMsg::ScrollBy(scroll_by) => {
+            let scroll_id =
+                scrollable::Id::new(if matches!(app.content, ContentScreen::Articles(_)) {
+                    "articles"
+                } else {
+                    "comments"
+                });
+            match scroll_by {
+                ScrollBy::PageUp => {
+                    scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -100. })
+                }
+                ScrollBy::PageDown => {
+                    scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 100. })
+                }
+                ScrollBy::LineUp => {
+                    scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -10. })
+                }
+                ScrollBy::LineDown => {
+                    scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 10. })
+                }
+                ScrollBy::Top => scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: 0. }),
+                ScrollBy::Bottom => {
+                    scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: f32::MAX })
+                }
+            }
         }
         AppMsg::OpenSearch => {
             if matches!(app.content, ContentScreen::Articles(_)) {

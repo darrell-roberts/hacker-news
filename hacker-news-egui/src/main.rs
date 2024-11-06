@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use app::HackerNewsApp;
-use eframe::{icon_data::from_png_bytes, Theme};
+use eframe::icon_data::from_png_bytes;
 use egui::{FontData, FontDefinitions, FontFamily, ViewportBuilder};
 use event::{ApiEvent, ApiEventHandler, Event, EventHandler};
 use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
@@ -42,8 +42,6 @@ fn main() -> Result<()> {
 
         persist_window: true,
         // For now only light theme.
-        follow_system_theme: false,
-        default_theme: Theme::Light,
         ..Default::default()
     };
 
@@ -65,7 +63,7 @@ fn main() -> Result<()> {
             let app = HackerNewsApp::new(cc, event_handler, client_sender);
             api_sender
                 .send(app.last_request())
-                .context("Intitial request")
+                .context("Initial request")
                 .log_error_consume();
 
             Ok(Box::new(app))

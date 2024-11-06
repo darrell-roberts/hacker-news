@@ -5,10 +5,11 @@ use chrono::Local;
 use hacker_news_api::Item;
 use iced::{
     alignment::{Horizontal, Vertical},
+    border,
     font::{Style, Weight},
     padding,
     widget::{self, button, column, container, row, scrollable, text::Shaping, Column, Container},
-    Border, Color, Element, Font, Length, Shadow, Task, Vector,
+    Border, Element, Font, Length, Task,
 };
 
 /// List of comments and common parent
@@ -63,11 +64,13 @@ impl CommentState {
                     )
                     .map(|item| {
                         self.render_comment(item, false).style(|theme| {
-                            container::rounded_box(theme).shadow(Shadow {
-                                color: Color::BLACK,
-                                offset: Vector { x: 5., y: 5. },
-                                blur_radius: 10.,
-                            })
+                            let palette = theme.extended_palette();
+
+                            container::Style {
+                                background: Some(palette.background.weak.color.into()),
+                                border: border::rounded(8),
+                                ..Default::default()
+                            }
                         })
                     })
                     .map(Element::from),
@@ -144,6 +147,7 @@ impl CommentState {
                     .spacing(15)
                     .padding(padding::top(0).bottom(10).left(10).right(25)),
                 )
+				.id(widget::scrollable::Id::new("comments"))
                 .height(Length::Fill),
             );
 
