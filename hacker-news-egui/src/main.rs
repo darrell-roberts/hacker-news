@@ -130,11 +130,11 @@ fn add_fonts(context: &egui::Context) {
 
     fonts.font_data.insert(
         "my_font".to_owned(),
-        FontData::from_static(include_bytes!("../assets/fonts/Verdana.ttf")),
+        FontData::from_static(include_bytes!("../../assets/fonts/Verdana.ttf")),
     );
     fonts.font_data.insert(
         "my_mono".to_owned(),
-        FontData::from_static(include_bytes!("../assets/fonts/FiraCode-Retina.ttf")),
+        FontData::from_static(include_bytes!("../../assets/fonts/FiraCode-Retina.ttf")),
     );
 
     fonts
