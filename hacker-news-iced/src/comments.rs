@@ -147,7 +147,7 @@ impl CommentState {
                     .spacing(15)
                     .padding(padding::top(0).bottom(10).left(10).right(25)),
                 )
-				.id(widget::scrollable::Id::new("comments"))
+                .id(widget::scrollable::Id::new("comments"))
                 .height(Length::Fill),
             );
 
@@ -245,7 +245,7 @@ impl CommentState {
             CommentMsg::CloseComment => {
                 self.comments.pop();
                 if self.comments.is_empty() {
-                    Task::done(AppMsg::RestoreArticles)
+                    Task::done(AppMsg::CommentsClosed)
                 } else {
                     Task::none()
                 }

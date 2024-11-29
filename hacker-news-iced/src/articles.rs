@@ -126,36 +126,43 @@ impl ArticleState {
             };
 
             widget::container(
-                Row::new()
+                Column::new()
                     .push(
-                        widget::text(format!("🔼{}", article.score))
-                            .width(score_width)
-                            .shaping(text::Shaping::Advanced),
+                        Row::new()
+                            .push(
+                                widget::text(format!("🔼{}", article.score))
+                                    .width(score_width)
+                                    .shaping(text::Shaping::Advanced),
+                            )
+                            .push(if article.kids.is_empty() {
+                                Element::from(text("").width(if total_comments == 0 {
+                                    0
+                                } else {
+                                    55
+                                }))
+                            } else {
+                                Element::from(comments_button)
+                            })
+                            .push_maybe({
+                                let has_rust = article
+                                    .title
+                                    .as_ref()
+                                    .map(|t| t.split(' ').any(|word| word == "Rust"))
+                                    .unwrap_or(false);
+                                has_rust.then(|| {
+                                    widget::image(Handle::from_bytes(RUST_LOGO.clone()))
+                                        .content_fit(iced::ContentFit::ScaleDown)
+                                })
+                            })
+                            .push(title_wrapper)
+                            .align_y(Vertical::Center)
+                            .spacing(5),
                     )
-                    .push(if article.kids.is_empty() {
-                        Element::from(text("").width(if total_comments == 0 { 0 } else { 55 }))
-                    } else {
-                        Element::from(comments_button)
-                    })
-                    .push_maybe({
-                        let has_rust = article
-                            .title
-                            .as_ref()
-                            .map(|t| t.split(' ').any(|word| word == "Rust"))
-                            .unwrap_or(false);
-                        has_rust.then(|| {
-                            widget::image(Handle::from_bytes(RUST_LOGO.clone()))
-                                .content_fit(iced::ContentFit::ScaleDown)
-                        })
-                    })
-                    .push(title_wrapper)
                     .push(
                         widget::container(by)
                             .align_x(Horizontal::Right)
                             .width(Length::Fill),
-                    )
-                    .align_y(Vertical::Center)
-                    .spacing(5),
+                    ),
             )
             .width(Length::Fill)
             .style(|theme: &Theme| {

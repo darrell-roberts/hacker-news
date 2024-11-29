@@ -5,13 +5,10 @@ use crate::{
     footer::{self, FooterMsg, FooterState},
     header::{self, HeaderState},
 };
-use hacker_news_api::{ApiClient, ArticleType, Item};
+use hacker_news_api::{ApiClient, Item};
 use iced::{
-    widget::{
-        column, container,
-        scrollable::{self, AbsoluteOffset},
-    },
-    Element, Size, Task, Theme,
+    widget::{self, container, pane_grid, Column},
+    Size, Task, Theme,
 };
 use log::error;
 use std::sync::Arc;
@@ -24,21 +21,24 @@ pub struct App {
     pub scale: f64,
     /// Header
     pub header: HeaderState,
-    /// Main content
-    pub content: ContentScreen,
+    /// Article state.
+    pub article_state: ArticleState,
+    /// Comment state.
+    pub comment_state: Option<CommentState>,
     /// Footer
     pub footer: FooterState,
     /// API Client.
     pub client: Arc<ApiClient>,
-    /// Article state when viewing comments.
-    pub article_state: Option<ArticleState>,
     /// Window size
     pub size: Size,
+
+    pub panes: pane_grid::State<PaneState>,
 }
 
-pub enum ContentScreen {
-    Articles(ArticleState),
-    Comments(Box<CommentState>),
+#[derive(Debug, Copy, Clone)]
+pub enum PaneState {
+    Articles,
+    Comments,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -71,11 +71,12 @@ pub enum AppMsg {
     IncreaseScale,
     DecreaseScale,
     ResetScale,
-    RestoreArticles,
     WindowResize(Size),
     ScrollBy(ScrollBy),
     OpenSearch,
     CloseSearch,
+    PaneResized(pane_grid::ResizeEvent),
+    CommentsClosed,
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -88,18 +89,14 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             // Opening first set of comments from an article.
             if let Some(item) = article {
                 let item_id = item.id;
-                let article_content = std::mem::replace(
-                    &mut app.content,
-                    ContentScreen::Comments(Box::new(CommentState {
-                        article: item,
-                        comments: Vec::new(),
-                        search: None,
-                    })),
-                );
-                if let ContentScreen::Articles(mut state) = article_content {
-                    state.visited.insert(item_id);
-                    app.article_state = Some(state);
-                }
+
+                app.comment_state = Some(CommentState {
+                    article: item,
+                    comments: Vec::new(),
+                    search: None,
+                });
+
+                app.article_state.visited.insert(item_id);
             }
 
             let client = app.client.clone();
@@ -116,17 +113,10 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 ),
             ])
         }
-        AppMsg::RestoreArticles => match app.article_state.take() {
-            Some(state) => {
-                app.content = ContentScreen::Articles(state);
-                Task::none()
-            }
-            None => Task::done(ArticleMsg::Fetch {
-                limit: 75,
-                article_type: ArticleType::Top,
-            })
-            .map(AppMsg::Articles),
-        },
+        AppMsg::CommentsClosed => {
+            app.comment_state = None;
+            Task::none()
+        }
         AppMsg::OpenLink { url, item_id } => {
             open::with(url, "firefox")
                 .inspect_err(|err| {
@@ -169,89 +159,92 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 save_task(app),
             ])
         }
-        AppMsg::Articles(msg) => match &mut app.content {
-            ContentScreen::Articles(state) => state.update(msg),
-            ContentScreen::Comments(_) => Task::none(),
-        },
+        AppMsg::Articles(msg) => app.article_state.update(msg),
+        AppMsg::Comments(msg) => app
+            .comment_state
+            .as_mut()
+            .map(|s| s.update(msg))
+            .unwrap_or_else(Task::none),
         AppMsg::Footer(msg) => app.footer.update(msg),
-        AppMsg::Comments(msg) => match &mut app.content {
-            ContentScreen::Articles(_) => Task::none(),
-            ContentScreen::Comments(state) => state.update(msg),
-        },
         AppMsg::Header(msg) => app.header.update(msg),
         AppMsg::WindowResize(size) => {
             app.size = size;
             save_task(&*app)
         }
         AppMsg::ScrollBy(scroll_by) => {
-            let scroll_id =
-                scrollable::Id::new(if matches!(app.content, ContentScreen::Articles(_)) {
-                    "articles"
-                } else {
-                    "comments"
-                });
-            match scroll_by {
-                ScrollBy::PageUp => {
-                    scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -100. })
-                }
-                ScrollBy::PageDown => {
-                    scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 100. })
-                }
-                ScrollBy::LineUp => {
-                    scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -10. })
-                }
-                ScrollBy::LineDown => {
-                    scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 10. })
-                }
-                ScrollBy::Top => scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: 0. }),
-                ScrollBy::Bottom => {
-                    scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: f32::MAX })
-                }
-            }
+            // let scroll_id =
+            //     scrollable::Id::new(if matches!(app.content, ContentScreen::Articles(_)) {
+            //         "articles"
+            //     } else {
+            //         "comments"
+            //     });
+            // match scroll_by {
+            //     ScrollBy::PageUp => {
+            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -100. })
+            //     }
+            //     ScrollBy::PageDown => {
+            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 100. })
+            //     }
+            //     ScrollBy::LineUp => {
+            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -10. })
+            //     }
+            //     ScrollBy::LineDown => {
+            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 10. })
+            //     }
+            //     ScrollBy::Top => scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: 0. }),
+            //     ScrollBy::Bottom => {
+            //         scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: f32::MAX })
+            //     }
+            // }
+            Task::none()
         }
         AppMsg::OpenSearch => {
-            if matches!(app.content, ContentScreen::Articles(_)) {
-                Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
-            } else {
-                Task::done(AppMsg::Comments(CommentMsg::OpenSearch))
-            }
+            // if matches!(app.content, ContentScreen::Articles(_)) {
+            //     Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
+            // } else {
+            //     Task::done(AppMsg::Comments(CommentMsg::OpenSearch))
+            // }
+            Task::none()
         }
         AppMsg::CloseSearch => {
-            if matches!(app.content, ContentScreen::Articles(_)) {
-                Task::done(AppMsg::Header(header::HeaderMsg::CloseSearch))
-            } else {
-                Task::done(AppMsg::Comments(CommentMsg::CloseSearch))
-            }
+            // if matches!(app.content, ContentScreen::Articles(_)) {
+            //     Task::done(AppMsg::Header(header::HeaderMsg::CloseSearch))
+            // } else {
+            //     Task::done(AppMsg::Comments(CommentMsg::CloseSearch))
+            // }
+            Task::none()
+        }
+        AppMsg::PaneResized(p) => {
+            app.panes.resize(p.split, p.ratio);
+            Task::none()
         }
     }
 }
 
 pub fn view(app: &App) -> iced::Element<AppMsg> {
-    let content = match &app.content {
-        ContentScreen::Comments(c) => Element::from(column![c.view(), app.footer.view(&app.theme)]),
-        ContentScreen::Articles(c) => {
-            let col = column![
-                app.header.view().map(AppMsg::Header),
-                c.view(&app.theme),
-                app.footer.view(&app.theme)
-            ];
-            Element::from(col.spacing(10.))
-        }
-    };
+    let body = widget::pane_grid(&app.panes, |_pane, state, _is_maximized| {
+        pane_grid::Content::new(match state {
+            PaneState::Articles => app.article_state.view(&app.theme),
+            PaneState::Comments => app
+                .comment_state
+                .as_ref()
+                .map(|s| s.view())
+                .unwrap_or_else(|| widget::text("").into()),
+        })
+    })
+    .on_resize(10, AppMsg::PaneResized);
 
-    container(content).into()
+    let main_layout = Column::new()
+        .push(app.header.view().map(AppMsg::Header))
+        .push(body)
+        .push(app.footer.view(&app.theme));
+
+    container(main_layout).into()
 }
 
 impl From<&App> for Config {
     fn from(state: &App) -> Self {
-        let visited = match &state.content {
-            ContentScreen::Articles(article_state) => article_state.visited.clone(),
-            ContentScreen::Comments(_) => state
-                .article_state
-                .as_ref()
-                .map(|state| state.visited.clone())
-                .unwrap_or_default(),
-        };
+        let visited = state.article_state.visited.clone();
 
         Config {
             scale: state.scale,

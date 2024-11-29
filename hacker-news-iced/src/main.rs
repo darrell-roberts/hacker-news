@@ -1,5 +1,5 @@
 use anyhow::Context;
-use app::{update, view, App, AppMsg, ContentScreen, ScrollBy};
+use app::{update, view, App, AppMsg, PaneState, ScrollBy};
 use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
 use footer::{FooterMsg, FooterState};
@@ -8,6 +8,7 @@ use header::HeaderState;
 use iced::{
     advanced::graphics::core::window,
     keyboard::{key::Named, on_key_press, Key, Modifiers},
+    widget::pane_grid::{self, Configuration},
     window::{close_requests, resize_events},
     Size, Subscription, Theme,
 };
@@ -35,19 +36,25 @@ fn main() -> anyhow::Result<()> {
                 article_type: config.article_type,
                 search: None,
             },
-            content: ContentScreen::Articles(ArticleState {
-                client: client.clone(),
-                articles: Vec::new(),
-                visited: config.visited,
-                search: None,
-            }),
             footer: FooterState {
                 status_line: String::new(),
                 last_update: None,
                 scale: config.scale,
             },
-            article_state: None,
+            article_state: ArticleState {
+                client: client.clone(),
+                articles: Vec::new(),
+                visited: config.visited,
+                search: None,
+            },
+            comment_state: None,
             size: Size::new(config.window_size.0, config.window_size.1),
+            panes: pane_grid::State::with_configuration(pane_grid::Configuration::Split {
+                axis: pane_grid::Axis::Vertical,
+                ratio: 0.3,
+                a: Box::new(Configuration::Pane(PaneState::Articles)),
+                b: Box::new(Configuration::Pane(PaneState::Comments)),
+            }),
         })
         .unwrap_or_else(|err| {
             eprintln!("Could not load config: {err}");
@@ -64,19 +71,25 @@ fn main() -> anyhow::Result<()> {
                     article_type: ArticleType::Top,
                     search: None,
                 },
-                content: ContentScreen::Articles(ArticleState {
-                    client: client.clone(),
-                    articles: Vec::new(),
-                    visited: HashSet::new(),
-                    search: None,
-                }),
                 footer: FooterState {
                     status_line: String::new(),
                     last_update: None,
                     scale: 1.,
                 },
-                article_state: None,
+                article_state: ArticleState {
+                    client: client.clone(),
+                    articles: Vec::new(),
+                    visited: HashSet::new(),
+                    search: None,
+                },
+                comment_state: None,
                 size: Size::new(800., 600.),
+                panes: pane_grid::State::with_configuration(pane_grid::Configuration::Split {
+                    axis: pane_grid::Axis::Vertical,
+                    ratio: 1.,
+                    a: Box::new(Configuration::Pane(PaneState::Articles)),
+                    b: Box::new(Configuration::Pane(PaneState::Comments)),
+                }),
             }
         });
 
