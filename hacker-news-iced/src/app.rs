@@ -31,7 +31,7 @@ pub struct App {
     pub client: Arc<ApiClient>,
     /// Window size
     pub size: Size,
-
+    // Pane grid
     pub panes: pane_grid::State<PaneState>,
 }
 
@@ -199,20 +199,19 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             Task::none()
         }
         AppMsg::OpenSearch => {
+            Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
             // if matches!(app.content, ContentScreen::Articles(_)) {
             //     Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
             // } else {
             //     Task::done(AppMsg::Comments(CommentMsg::OpenSearch))
             // }
-            Task::none()
         }
         AppMsg::CloseSearch => {
             // if matches!(app.content, ContentScreen::Articles(_)) {
-            //     Task::done(AppMsg::Header(header::HeaderMsg::CloseSearch))
+            Task::done(AppMsg::Header(header::HeaderMsg::CloseSearch))
             // } else {
             //     Task::done(AppMsg::Comments(CommentMsg::CloseSearch))
             // }
-            Task::none()
         }
         AppMsg::PaneResized(p) => {
             app.panes.resize(p.split, p.ratio);
