@@ -10,7 +10,9 @@ use crate::{
 use hacker_news_api::{ApiClient, Item};
 use iced::{
     font::Weight,
-    widget::{self, button, container, pane_grid, text::Shaping, Column},
+    widget::{
+        self, button, container, pane_grid, scrollable::AbsoluteOffset, text::Shaping, Column,
+    },
     Font, Size, Task, Theme,
 };
 use log::error;
@@ -116,6 +118,10 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                         }
                         Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
                     },
+                ),
+                widget::scrollable::scroll_to(
+                    widget::scrollable::Id::new("comments"),
+                    AbsoluteOffset { x: 0., y: 0. },
                 ),
             ])
         }
