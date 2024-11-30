@@ -8,7 +8,7 @@ use iced::{
     font::{Style, Weight},
     padding,
     widget::{self, button, scrollable, text, Column, Row},
-    Color, Element, Font, Length, Shadow, Task, Theme,
+    Background, Color, Element, Font, Length, Shadow, Task, Theme,
 };
 use std::{collections::HashSet, ops::Not, sync::Arc};
 
@@ -21,6 +21,8 @@ pub struct ArticleState {
     pub visited: HashSet<u64>,
     /// Search
     pub search: Option<String>,
+    /// Item comments are being viewed.
+    pub viewing_item: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +40,31 @@ static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-l
 
 impl ArticleState {
     pub fn view<'a>(&'a self, theme: &Theme) -> Element<'a, AppMsg> {
+        widget::scrollable(
+            Column::with_children(
+                self.articles
+                    .iter()
+                    .filter(|article| match self.search.as_deref() {
+                        Some(search) => article
+                            .title
+                            .as_ref()
+                            .map(|t| t.to_lowercase().contains(&search.to_lowercase()))
+                            .unwrap_or(true),
+                        None => true,
+                    })
+                    .map(|article| self.render_article(theme, article))
+                    .map(Element::from),
+            )
+            .width(Length::Fill)
+            .spacing(5)
+            .padding(padding::top(0).bottom(10).left(15).right(25)),
+        )
+        .height(Length::Fill)
+        .id(scrollable::Id::new("articles"))
+        .into()
+    }
+
+    fn render_article(&self, theme: &Theme, article: &Item) -> widget::Container<'_, AppMsg> {
         let score_width = self
             .articles
             .iter()
@@ -57,8 +84,8 @@ impl ArticleState {
 
         let total_comments: usize = self.articles.iter().map(|article| article.kids.len()).sum();
 
-        let article_row = |article: &'a Item| {
-            let title = widget::rich_text([widget::span(
+        let title = widget::rich_text([
+            widget::span(
                 article
                     .title
                     .as_ref()
@@ -79,56 +106,60 @@ impl ArticleState {
                             parent: None,
                         })
                     }),
-            )
-            .color_maybe(
-                self.visited
-                    .contains(&article.id)
-                    .then(|| widget::text::secondary(theme).color)
-                    .flatten(),
-            )]);
+            ), // .color_maybe(
+               //     self.visited
+               //         .contains(&article.id)
+               //         .then(|| widget::text::secondary(theme).color)
+               //         .flatten(),
+               // )
+        ]);
 
-            let by = widget::rich_text([
-                widget::span(format!(" by {}", article.by))
-                    .font(Font {
-                        style: Style::Italic,
-                        ..Default::default()
-                    })
-                    .size(14)
-                    .color_maybe(widget::text::primary(theme).color),
-                widget::span(" "),
-                widget::span(parse_date(article.time).unwrap_or_default())
-                    .font(Font {
-                        weight: Weight::Light,
-                        style: Style::Italic,
-                        ..Default::default()
-                    })
-                    .size(10)
-                    .color_maybe(widget::text::primary(theme).color),
-            ]);
+        let by = widget::rich_text([
+            widget::span(format!(" by {}", article.by))
+                .font(Font {
+                    style: Style::Italic,
+                    ..Default::default()
+                })
+                .size(14)
+                .color_maybe(widget::text::primary(theme).color),
+            widget::span(" "),
+            widget::span(parse_date(article.time).unwrap_or_default())
+                .font(Font {
+                    weight: Weight::Light,
+                    style: Style::Italic,
+                    ..Default::default()
+                })
+                .size(10)
+                .color_maybe(widget::text::primary(theme).color),
+        ]);
 
-            let content = format!("💬{}", article.kids.len());
-            let comments_button = button(widget::text(content).shaping(text::Shaping::Advanced))
-                .width(55)
-                .style(button::text)
-                .padding(0)
-                .on_press_maybe(article.kids.is_empty().not().then(|| AppMsg::OpenComment {
-                    article: Some(article.clone()),
-                    comment_ids: article.kids.clone(),
-                    parent: None,
-                }));
+        let content = format!("💬{}", article.kids.len());
 
-            let title_wrapper = match article.url.as_deref() {
-                Some(url) => hoverable(title)
-                    .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
-                    .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
-                    .into(),
-                None => Element::from(title),
-            };
+        let comments_button = button(widget::text(content).shaping(text::Shaping::Advanced))
+            .width(55)
+            .style(button::text)
+            .padding(0)
+            .on_press_maybe(article.kids.is_empty().not().then(|| AppMsg::OpenComment {
+                article: Some(article.clone()),
+                comment_ids: article.kids.clone(),
+                parent: None,
+            }));
 
-            widget::container(
-                Column::new()
+        let title_wrapper = match article.url.as_deref() {
+            Some(url) => hoverable(title)
+                .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
+                .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
+                .into(),
+            None => Element::from(title),
+        };
+
+        let article_id = article.id;
+
+        widget::container(
+            Column::new().push(
+                Row::new()
                     .push(
-                        Row::new()
+                        Column::new()
                             .push(
                                 widget::text(format!("🔼{}", article.score))
                                     .width(score_width)
@@ -143,68 +174,78 @@ impl ArticleState {
                             } else {
                                 Element::from(comments_button)
                             })
-                            .push_maybe({
-                                let has_rust = article
-                                    .title
-                                    .as_ref()
-                                    .map(|t| t.split(' ').any(|word| word == "Rust"))
-                                    .unwrap_or(false);
-                                has_rust.then(|| {
-                                    widget::image(Handle::from_bytes(RUST_LOGO.clone()))
-                                        .content_fit(iced::ContentFit::ScaleDown)
-                                })
-                            })
-                            .push(title_wrapper)
-                            .align_y(Vertical::Center)
                             .spacing(5),
                     )
                     .push(
-                        widget::container(by)
-                            .align_x(Horizontal::Right)
-                            .width(Length::Fill),
-                    ),
-            )
-            .width(Length::Fill)
-            .style(|theme: &Theme| {
-                let palette = theme.extended_palette();
-                widget::container::Style {
-                    border: border::width(0.5)
-                        .color(palette.secondary.weak.color)
-                        .rounded(8.),
-                    shadow: Shadow {
-                        color: Color::BLACK,
-                        offset: iced::Vector { x: 2., y: 2. },
-                        blur_radius: 5.,
-                    },
-                    ..Default::default()
-                }
-            })
-            .padding([5, 15])
-            .clip(false)
-        };
-
-        widget::scrollable(
-            Column::with_children(
-                self.articles
-                    .iter()
-                    .filter(|article| match self.search.as_deref() {
-                        Some(search) => article
-                            .title
-                            .as_ref()
-                            .map(|t| t.to_lowercase().contains(&search.to_lowercase()))
-                            .unwrap_or(true),
-                        None => true,
-                    })
-                    .map(article_row)
-                    .map(Element::from),
-            )
-            .width(Length::Fill)
-            .spacing(5)
-            .padding(padding::top(0).bottom(10).left(15).right(25)),
+                        Column::new()
+                            .push(
+                                Row::new()
+                                    .push_maybe({
+                                        let has_rust = article
+                                            .title
+                                            .as_ref()
+                                            .map(|t| t.split(' ').any(|word| word == "Rust"))
+                                            .unwrap_or(false);
+                                        has_rust.then(|| {
+                                            widget::image(Handle::from_bytes(RUST_LOGO.clone()))
+                                                .content_fit(iced::ContentFit::ScaleDown)
+                                        })
+                                    })
+                                    .push(title_wrapper)
+                                    .push_maybe(self.visited.contains(&article.id).then(|| {
+                                        widget::container(
+                                            widget::text("✅").shaping(text::Shaping::Advanced),
+                                        )
+                                        .width(Length::Fill)
+                                        .align_x(Horizontal::Right)
+                                    }))
+                                    .spacing(5),
+                            )
+                            .push(
+                                widget::container(by)
+                                    .align_x(Horizontal::Right)
+                                    .align_y(Vertical::Bottom)
+                                    .width(Length::Fill),
+                            )
+                            .spacing(10),
+                    )
+                    .align_y(Vertical::Top)
+                    .spacing(5),
+            ),
         )
-        .height(Length::Fill)
-        .id(scrollable::Id::new("articles"))
-        .into()
+        .width(Length::Fill)
+        .style(move |theme: &Theme| {
+            let palette = theme.extended_palette();
+
+            let color = if self
+                .viewing_item
+                .map(|id| id == article_id)
+                .unwrap_or(false)
+            {
+                palette.secondary.weak.color
+            } else {
+                palette.primary.weak.color
+            };
+
+            let background = self
+                .viewing_item
+                .iter()
+                .filter_map(|id| (id == &article_id).then(|| Background::Color(color)))
+                .next();
+
+            widget::container::Style {
+                border: border::width(0.5).color(color).rounded(8.),
+                shadow: Shadow {
+                    color: Color::BLACK,
+                    offset: iced::Vector { x: 2., y: 2. },
+                    blur_radius: 5.,
+                },
+                background,
+                ..Default::default()
+            }
+        })
+        .padding([5, 15])
+        .clip(false)
     }
 
     pub fn update(&mut self, message: ArticleMsg) -> Task<AppMsg> {
@@ -213,6 +254,7 @@ impl ArticleState {
                 limit,
                 article_type,
             } => {
+                self.viewing_item = None;
                 let client = self.client.clone();
                 Task::batch([
                     Task::done(FooterMsg::Fetching).map(AppMsg::Footer),

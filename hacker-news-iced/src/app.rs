@@ -4,11 +4,14 @@ use crate::{
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     header::{self, HeaderState},
+    richtext::render_rich_text,
+    widget::hoverable,
 };
 use hacker_news_api::{ApiClient, Item};
 use iced::{
-    widget::{self, container, pane_grid, Column},
-    Size, Task, Theme,
+    font::Weight,
+    widget::{self, button, container, pane_grid, text::Shaping, Column},
+    Font, Size, Task, Theme,
 };
 use log::error;
 use std::sync::Arc;
@@ -77,6 +80,8 @@ pub enum AppMsg {
     CloseSearch,
     PaneResized(pane_grid::ResizeEvent),
     CommentsClosed,
+    ClearVisited,
+    CloseComment,
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -96,6 +101,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     search: None,
                 });
 
+                app.article_state.viewing_item = Some(item_id);
                 app.article_state.visited.insert(item_id);
             }
 
@@ -115,6 +121,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         }
         AppMsg::CommentsClosed => {
             app.comment_state = None;
+            app.article_state.viewing_item = None;
             Task::none()
         }
         AppMsg::OpenLink { url, item_id } => {
@@ -129,10 +136,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             app.theme = theme;
             save_task(app)
         }
-        AppMsg::WindowClose => {
-            println!("Window close event");
-            Task::none()
-        }
+        AppMsg::WindowClose => Task::none(),
         AppMsg::IncreaseScale => {
             app.scale += 0.1;
             Task::batch([
@@ -159,7 +163,12 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 save_task(app),
             ])
         }
-        AppMsg::Articles(msg) => app.article_state.update(msg),
+        AppMsg::Articles(msg) => {
+            if matches!(msg, ArticleMsg::Fetch { .. }) {
+                app.comment_state = None;
+            }
+            app.article_state.update(msg)
+        }
         AppMsg::Comments(msg) => app
             .comment_state
             .as_mut()
@@ -217,11 +226,49 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             app.panes.resize(p.split, p.ratio);
             Task::none()
         }
+        AppMsg::ClearVisited => {
+            app.article_state.visited.clear();
+            save_task(app)
+        }
+        AppMsg::CloseComment => app
+            .comment_state
+            .as_mut()
+            .map(|s| s.update(CommentMsg::CloseComment))
+            .unwrap_or_else(|| Task::none()),
     }
 }
 
 pub fn view(app: &App) -> iced::Element<AppMsg> {
     let body = widget::pane_grid(&app.panes, |_pane, state, _is_maximized| {
+        let title = || -> Option<iced::Element<AppMsg>> {
+            let comment_state = app.comment_state.as_ref()?;
+            let title_text =
+                widget::text(comment_state.article.title.as_deref().unwrap_or_default())
+                    .font(Font {
+                        weight: Weight::Bold,
+                        ..Default::default()
+                    })
+                    .shaping(Shaping::Advanced);
+
+            let content: iced::Element<AppMsg> = match comment_state.article.url.as_deref() {
+                Some(url) => hoverable(
+                    widget::button(title_text)
+                        .on_press(AppMsg::OpenLink {
+                            url: url.to_string(),
+                            item_id: comment_state.article.id,
+                        })
+                        .style(button::text)
+                        .padding(0),
+                )
+                .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
+                .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
+                .into(),
+                None => title_text.into(),
+            };
+
+            Some(widget::container(content).padding([5, 5]).into())
+        };
+
         pane_grid::Content::new(match state {
             PaneState::Articles => app.article_state.view(&app.theme),
             PaneState::Comments => app
@@ -229,6 +276,17 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                 .as_ref()
                 .map(|s| s.view())
                 .unwrap_or_else(|| widget::text("").into()),
+        })
+        .title_bar(match state {
+            PaneState::Articles => pane_grid::TitleBar::new(""),
+            PaneState::Comments => match app.comment_state.as_ref() {
+                Some(_) => pane_grid::TitleBar::new(title().unwrap_or("".into()))
+                    .controls(pane_grid::Controls::new(
+                        widget::button("X").on_press(AppMsg::CloseComment),
+                    ))
+                    .always_show_controls(),
+                None => pane_grid::TitleBar::new(""),
+            },
         })
     })
     .on_resize(10, AppMsg::PaneResized);

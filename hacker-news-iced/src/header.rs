@@ -20,11 +20,12 @@ pub enum HeaderMsg {
         article_type: ArticleType,
     },
     Search(String),
+    ClearVisisted,
 }
 
 impl HeaderState {
     pub fn view(&self) -> Element<'_, HeaderMsg> {
-        let top_row = container(
+        let center_row = container(
             row![
                 self.header_type_button(
                     ArticleType::Top,
@@ -107,6 +108,15 @@ impl HeaderState {
             ]
             .spacing(10),
         )
+        .center_x(1)
+        .width(Length::Fill)
+        .padding([5, 0]);
+
+        let top_row = widget::container(
+            widget::Row::new()
+                .push(center_row)
+                .push(widget::button("Clear Visisted").on_press(HeaderMsg::ClearVisisted)),
+        )
         .style(|theme| {
             let palette = theme.extended_palette();
 
@@ -114,10 +124,7 @@ impl HeaderState {
                 background: Some(Background::Color(palette.background.strong.color)),
                 ..Default::default()
             }
-        })
-        .center_x(1)
-        .width(Length::Fill)
-        .padding([5, 0]);
+        });
 
         Column::new()
             .push(top_row)
@@ -197,6 +204,7 @@ impl HeaderState {
                 self.search = Some(search.clone());
                 Task::done(ArticleMsg::Search(search)).map(AppMsg::Articles)
             }
+            HeaderMsg::ClearVisisted => Task::done(AppMsg::ClearVisited),
         }
     }
 }

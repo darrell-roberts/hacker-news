@@ -41,7 +41,7 @@ pub enum CommentMsg {
 
 impl CommentState {
     pub fn view(&self) -> Element<'_, AppMsg> {
-        let header = row![button("X").on_press(AppMsg::Comments(CommentMsg::CloseComment))];
+        // let header = row![button("X").on_press(AppMsg::Comments(CommentMsg::CloseComment))];
 
         let article_text = self
             .article
@@ -98,40 +98,7 @@ impl CommentState {
                 .map(Element::from)
         });
 
-        let title: Element<'_, AppMsg> = {
-            let title_text = widget::text(self.article.title.as_deref().unwrap_or_default())
-                .font(Font {
-                    weight: Weight::Bold,
-                    ..Default::default()
-                })
-                .shaping(Shaping::Advanced);
-            match self.article.url.as_deref() {
-                Some(url) => hoverable(
-                    widget::button(title_text)
-                        .on_press(AppMsg::OpenLink {
-                            url: url.to_string(),
-                            item_id: self.article.id,
-                        })
-                        .style(button::text)
-                        .padding(0),
-                )
-                .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
-                .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
-                .into(),
-                None => title_text.into(),
-            }
-        };
-
         let content = Column::new()
-            .push(
-                row![
-                    container(title).align_y(Vertical::Bottom),
-                    container(header)
-                        .align_x(Horizontal::Right)
-                        .width(Length::Fill)
-                ]
-                .padding([5, 10]),
-            )
             .push_maybe(self.search.as_ref().map(|search| {
                 widget::text_input("Search...", search)
                     .id(widget::text_input::Id::new("comment_search"))
@@ -150,26 +117,6 @@ impl CommentState {
                 .id(widget::scrollable::Id::new("comments"))
                 .height(Length::Fill),
             );
-
-        // let content = column![
-        //     row![
-        //         container(title).align_y(Vertical::Bottom),
-        //         container(header)
-        //             .align_x(Horizontal::Right)
-        //             .width(Length::Fill)
-        //     ]
-        //     .padding([5, 10]),
-        //     scrollable(
-        //         column![
-        //             Column::with_children(article_text).spacing(15),
-        //             Column::with_children(parent_comments).spacing(15),
-        //             Column::with_children(comment_rows).spacing(15)
-        //         ]
-        //         .spacing(15)
-        //         .padding(padding::top(0).bottom(10).left(10).right(25))
-        //     )
-        //     .height(Length::Fill)
-        // ];
 
         container(content.width(Length::Fill)).into()
     }
@@ -193,12 +140,6 @@ impl CommentState {
                 .into()
         };
 
-        // let by_color = if is_parent {
-        //     widget::text::primary(&self.theme).color
-        // } else {
-        //     widget::text::secondary(&self.theme).color
-        // };
-
         container(
             column![
                 render_rich_text(item.text.as_deref().unwrap_or_default()),
@@ -210,7 +151,6 @@ impl CommentState {
                                 ..Default::default()
                             })
                             .size(14),
-                        // .color_maybe(by_color),
                         widget::span(" "),
                         widget::span(parse_date(item.time).unwrap_or_default())
                             .font(Font {
@@ -219,7 +159,6 @@ impl CommentState {
                                 ..Default::default()
                             })
                             .size(10),
-                        // .color_maybe(by_color),
                     ]),
                     by_button,
                 ]
