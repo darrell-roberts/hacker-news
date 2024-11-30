@@ -25,6 +25,8 @@ impl ApiClient {
         Ok(Self {
             client: reqwest::Client::builder()
                 .connect_timeout(Duration::from_secs(5))
+                // .http2_prior_knowledge()
+                // .pool_max_idle_per_host(1)
                 .build()
                 .context("Failed to create api client")?,
         })

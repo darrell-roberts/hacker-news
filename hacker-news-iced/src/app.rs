@@ -4,7 +4,6 @@ use crate::{
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     header::{self, HeaderState},
-    richtext::render_rich_text,
     widget::hoverable,
 };
 use hacker_news_api::{ApiClient, Item};
@@ -131,7 +130,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             Task::none()
         }
         AppMsg::OpenLink { url, item_id } => {
-            open::with(url, "firefox")
+            open::with_detached(url, "firefox")
                 .inspect_err(|err| {
                     error!("Failed to open url {err}");
                 })

@@ -1,10 +1,7 @@
-use crate::{
-    app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text, widget::hoverable,
-};
+use crate::{app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text};
 use chrono::Local;
 use hacker_news_api::Item;
 use iced::{
-    alignment::{Horizontal, Vertical},
     border,
     font::{Style, Weight},
     padding,

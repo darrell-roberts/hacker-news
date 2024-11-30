@@ -113,9 +113,21 @@ impl HeaderState {
         .padding([5, 0]);
 
         let top_row = widget::container(
-            widget::Row::new()
-                .push(center_row)
-                .push(widget::button("Clear Visisted").on_press(HeaderMsg::ClearVisisted)),
+            widget::Row::new().push(center_row).push(
+                widget::container(widget::tooltip(
+                    widget::button(widget::text("↻").shaping(text::Shaping::Advanced))
+                        .on_press(HeaderMsg::ClearVisisted)
+                        .padding(5),
+                    widget::container(widget::text("Clear visited").color(iced::Color::WHITE))
+                        .style(|_| {
+                            widget::container::Style::default()
+                                .background(Background::Color(iced::Color::BLACK))
+                        })
+                        .padding([2, 2]),
+                    widget::tooltip::Position::Left,
+                ))
+                .padding([5, 5]),
+            ),
         )
         .style(|theme| {
             let palette = theme.extended_palette();
