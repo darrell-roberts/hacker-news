@@ -57,7 +57,7 @@ impl ArticleState {
             )
             .width(Length::Fill)
             .spacing(5)
-            .padding(padding::top(0).bottom(10).left(15).right(25)),
+            .padding(padding::top(10).bottom(10).left(15).right(25)),
         )
         .height(Length::Fill)
         .id(scrollable::Id::new("articles"))

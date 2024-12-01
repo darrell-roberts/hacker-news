@@ -283,7 +283,23 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                 .unwrap_or_else(|| widget::text("").into()),
         })
         .title_bar(match state {
-            PaneState::Articles => pane_grid::TitleBar::new(""),
+            PaneState::Articles => pane_grid::TitleBar::new(
+                widget::Row::new()
+                    .push(
+                        widget::text_input(
+                            "Search...",
+                            app.article_state.search.as_deref().unwrap_or(""),
+                        )
+                        .padding(5)
+                        .on_input(|search| AppMsg::Articles(ArticleMsg::Search(search))),
+                    )
+                    .push(widget::tooltip(
+                        widget::button(widget::text("⟲").shaping(Shaping::Advanced))
+                            .on_press(AppMsg::Articles(ArticleMsg::Search("".into()))),
+                        widget::container(widget::text("Clear search")).padding(5),
+                        widget::tooltip::Position::Left,
+                    )),
+            ),
             PaneState::Comments => match app.comment_state.as_ref() {
                 Some(_) => pane_grid::TitleBar::new(title().unwrap_or("".into()))
                     .controls(pane_grid::Controls::new(
