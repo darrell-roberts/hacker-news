@@ -77,7 +77,7 @@ pub enum AppMsg {
     ResetScale,
     WindowResize(Size),
     ScrollBy(ScrollBy),
-    OpenSearch,
+    // OpenSearch,
     CloseSearch,
     PaneResized(pane_grid::ResizeEvent),
     CommentsClosed,
@@ -212,17 +212,19 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             // }
             Task::none()
         }
-        AppMsg::OpenSearch => {
-            Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
-            // if matches!(app.content, ContentScreen::Articles(_)) {
-            //     Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
-            // } else {
-            //     Task::done(AppMsg::Comments(CommentMsg::OpenSearch))
-            // }
-        }
+        // AppMsg::OpenSearch => {
+        //     Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
+        //     // if matches!(app.content, ContentScreen::Articles(_)) {
+        //     //     Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
+        //     // } else {
+        //     //     Task::done(AppMsg::Comments(CommentMsg::OpenSearch))
+        //     // }
+        // }
         AppMsg::CloseSearch => {
+            app.article_state.search = None;
+            Task::none()
             // if matches!(app.content, ContentScreen::Articles(_)) {
-            Task::done(AppMsg::Header(header::HeaderMsg::CloseSearch))
+            // Task::done(AppMsg::Header(header::HeaderMsg::CloseSearch))
             // } else {
             //     Task::done(AppMsg::Comments(CommentMsg::CloseSearch))
             // }
@@ -295,7 +297,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     )
                     .push(widget::tooltip(
                         widget::button(widget::text("⟲").shaping(Shaping::Advanced))
-                            .on_press(AppMsg::Articles(ArticleMsg::Search("".into()))),
+                            .on_press(AppMsg::CloseSearch),
                         widget::container(widget::text("Clear search")).padding(5),
                         widget::tooltip::Position::Left,
                     )),

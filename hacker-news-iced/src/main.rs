@@ -145,7 +145,7 @@ fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
             let char = c.chars().next()?;
 
             Some(match char {
-                'f' if modifiers.control() => AppMsg::OpenSearch,
+                'f' if modifiers.control() => AppMsg::Comments(comments::CommentMsg::OpenSearch),
                 '+' if modifiers.control() => AppMsg::IncreaseScale,
                 '-' if modifiers.control() => AppMsg::DecreaseScale,
                 '=' if modifiers.control() => AppMsg::ResetScale,

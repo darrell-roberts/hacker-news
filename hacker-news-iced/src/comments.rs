@@ -97,9 +97,18 @@ impl CommentState {
 
         let content = Column::new()
             .push_maybe(self.search.as_ref().map(|search| {
-                widget::text_input("Search...", search)
-                    .id(widget::text_input::Id::new("comment_search"))
-                    .on_input(|input| AppMsg::Comments(CommentMsg::Search(input)))
+                widget::Row::new()
+                    .push(
+                        widget::text_input("Search...", search)
+                            .id(widget::text_input::Id::new("comment_search"))
+                            .on_input(|input| AppMsg::Comments(CommentMsg::Search(input))),
+                    )
+                    .push(widget::tooltip(
+                        widget::button(widget::text("⟲").shaping(Shaping::Advanced))
+                            .on_press(AppMsg::Comments(CommentMsg::CloseSearch)),
+                        widget::container(widget::text("Clear search")).padding(5),
+                        widget::tooltip::Position::Left,
+                    ))
             }))
             .push(
                 scrollable(

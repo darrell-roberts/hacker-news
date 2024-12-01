@@ -13,13 +13,13 @@ pub struct HeaderState {
 
 #[derive(Debug, Clone)]
 pub enum HeaderMsg {
-    OpenSearch,
-    CloseSearch,
+    // OpenSearch,
+    // CloseSearch,
     Select {
         article_count: usize,
         article_type: ArticleType,
     },
-    Search(String),
+    // Search(String),
     ClearVisisted,
 }
 
@@ -140,11 +140,11 @@ impl HeaderState {
 
         Column::new()
             .push(top_row)
-            .push_maybe(self.search.as_ref().map(|search| {
-                widget::text_input("Search...", search)
-                    .id(Id::new("search"))
-                    .on_input(HeaderMsg::Search)
-            }))
+            // .push_maybe(self.search.as_ref().map(|search| {
+            //     widget::text_input("Search...", search)
+            //         .id(Id::new("search"))
+            //         .on_input(HeaderMsg::Search)
+            // }))
             .into()
     }
 
@@ -192,14 +192,14 @@ impl HeaderState {
 
     pub fn update(&mut self, message: HeaderMsg) -> Task<AppMsg> {
         match message {
-            HeaderMsg::OpenSearch => {
-                self.search = Some(String::new());
-                widget::text_input::focus(widget::text_input::Id::new("search"))
-            }
-            HeaderMsg::CloseSearch => {
-                self.search = None;
-                Task::done(ArticleMsg::Search(String::new())).map(AppMsg::Articles)
-            }
+            // HeaderMsg::OpenSearch => {
+            //     self.search = Some(String::new());
+            //     widget::text_input::focus(widget::text_input::Id::new("search"))
+            // }
+            // HeaderMsg::CloseSearch => {
+            //     self.search = None;
+            //     Task::done(ArticleMsg::Search(String::new())).map(AppMsg::Articles)
+            // }
             HeaderMsg::Select {
                 article_count,
                 article_type,
@@ -212,10 +212,10 @@ impl HeaderState {
                 })
                 .map(AppMsg::Articles)
             }
-            HeaderMsg::Search(search) => {
-                self.search = Some(search.clone());
-                Task::done(ArticleMsg::Search(search)).map(AppMsg::Articles)
-            }
+            // HeaderMsg::Search(search) => {
+            //     self.search = Some(search.clone());
+            //     Task::done(ArticleMsg::Search(search)).map(AppMsg::Articles)
+            // }
             HeaderMsg::ClearVisisted => Task::done(AppMsg::ClearVisited),
         }
     }
