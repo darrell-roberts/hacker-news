@@ -138,7 +138,6 @@ impl ArticleState {
         let article_id = article.id;
 
         widget::container(
-            // Column::new().push(
             Row::new()
                 .push(
                     Column::new()
@@ -203,7 +202,6 @@ impl ArticleState {
                 )
                 .align_y(Vertical::Top)
                 .spacing(5),
-            // ),
         )
         .width(Length::Fill)
         .style(move |theme: &Theme| {
