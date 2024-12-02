@@ -1,6 +1,7 @@
 use crate::{app::AppMsg, articles::ArticleMsg};
 use hacker_news_api::ArticleType;
 use iced::{
+    border,
     widget::{self, button, container, row, text, text_input::Id, Column},
     Background, Border, Element, Length, Task,
 };
@@ -116,6 +117,11 @@ impl HeaderState {
             widget::Row::new().push(center_row).push(
                 widget::container(widget::tooltip(
                     widget::button(widget::text("↻").shaping(text::Shaping::Advanced))
+                        .style(|theme, status| {
+                            let mut style = button::primary(theme, status);
+                            style.border = border::rounded(8.);
+                            style
+                        })
                         .on_press(HeaderMsg::ClearVisisted)
                         .padding(5),
                     widget::container(widget::text("Clear visited").color(iced::Color::WHITE))

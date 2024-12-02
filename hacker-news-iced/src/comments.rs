@@ -44,7 +44,7 @@ impl CommentState {
             .article
             .text
             .as_deref()
-            .map(render_rich_text)
+            .map(|text| render_rich_text(text, self.search.as_deref()))
             .map(|rt| container(rt).padding([10, 10]).into());
 
         let comment_rows = match self.comments.iter().last() {
@@ -148,7 +148,10 @@ impl CommentState {
 
         container(
             column![
-                render_rich_text(item.text.as_deref().unwrap_or_default()),
+                render_rich_text(
+                    item.text.as_deref().unwrap_or_default(),
+                    self.search.as_deref()
+                ),
                 row![
                     widget::rich_text([
                         widget::span(format!(" by {}", item.by))
