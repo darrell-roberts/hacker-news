@@ -1,4 +1,6 @@
-use crate::{app::AppMsg, footer::FooterMsg, parse_date, widget::hoverable};
+use crate::{
+    app::AppMsg, footer::FooterMsg, parse_date, richtext::SearchSpanIter, widget::hoverable,
+};
 use chrono::Local;
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use iced::{
@@ -64,55 +66,35 @@ impl ArticleState {
         .into()
     }
 
-    fn render_article(&self, theme: &Theme, article: &Item) -> widget::Container<'_, AppMsg> {
-        let score_width = self
-            .articles
-            .iter()
-            .map(|article| article.score)
-            .max()
-            .map_or(0, |max| {
-                let digits = max.ilog10() / 10_u64.ilog10();
+    fn render_article<'a>(
+        &'a self,
+        theme: &Theme,
+        article: &'a Item,
+    ) -> widget::Container<'a, AppMsg> {
+        let article_title = article.title.as_deref().unwrap_or_default();
 
-                match digits {
-                    5 => 85,
-                    4 => 75,
-                    3 => 65,
-                    2 => 55,
-                    _ => 45,
-                }
-            });
-
-        let total_comments: usize = self.articles.iter().map(|article| article.kids.len()).sum();
-
-        let title = widget::rich_text([
-            widget::span(
-                article
-                    .title
-                    .as_ref()
-                    .map_or_else(String::new, |s| s.to_owned()),
-            )
-            .link_maybe(
-                article
-                    .url
-                    .clone()
-                    .map(|url| AppMsg::OpenLink {
-                        url,
-                        item_id: article.id,
-                    })
-                    .or_else(|| {
-                        article.text.as_ref().map(|_| AppMsg::OpenComment {
-                            article: Some(article.clone()),
-                            comment_ids: article.kids.clone(),
-                            parent: None,
-                        })
-                    }),
-            ), // .color_maybe(
-               //     self.visited
-               //         .contains(&article.id)
-               //         .then(|| widget::text::secondary(theme).color)
-               //         .flatten(),
-               // )
-        ]);
+        let title = widget::rich_text(
+            SearchSpanIter::new(article_title, self.search.as_deref())
+                .map(|span| {
+                    span.link_maybe(
+                        article
+                            .url
+                            .clone()
+                            .map(|url| AppMsg::OpenLink {
+                                url,
+                                item_id: article.id,
+                            })
+                            .or_else(|| {
+                                article.text.as_ref().map(|_| AppMsg::OpenComment {
+                                    article: Some(article.clone()),
+                                    comment_ids: article.kids.clone(),
+                                    parent: None,
+                                })
+                            }),
+                    )
+                })
+                .collect::<Vec<_>>(),
+        );
 
         let by = widget::rich_text([
             widget::span(format!(" by {}", article.by))
@@ -162,15 +144,17 @@ impl ArticleState {
                         Column::new()
                             .push(
                                 widget::text(format!("🔼{}", article.score))
-                                    .width(score_width)
+                                    // .width(score_width)
                                     .shaping(text::Shaping::Advanced),
                             )
                             .push(if article.kids.is_empty() {
-                                Element::from(text("").width(if total_comments == 0 {
-                                    0
-                                } else {
-                                    55
-                                }))
+                                Element::from(
+                                    text(""), //     .width(if total_comments == 0 {
+                                              //     0
+                                              // } else {
+                                              //     55
+                                              // })
+                                )
                             } else {
                                 Element::from(comments_button)
                             })

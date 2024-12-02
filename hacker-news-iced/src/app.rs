@@ -92,6 +92,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             comment_ids,
             parent,
         } => {
+            println!("Opening comment");
             // Opening first set of comments from an article.
             if let Some(item) = article {
                 let item_id = item.id;
@@ -100,6 +101,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     article: item,
                     comments: Vec::new(),
                     search: None,
+                    oneline: false,
                 });
 
                 app.article_state.viewing_item = Some(item_id);
@@ -122,6 +124,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     widget::scrollable::Id::new("comments"),
                     AbsoluteOffset { x: 0., y: 0. },
                 ),
+                save_task(app),
             ])
         }
         AppMsg::CommentsClosed => {
@@ -130,6 +133,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             Task::none()
         }
         AppMsg::OpenLink { url, item_id } => {
+            println!("Opening link {url}");
             open::with_detached(url, "firefox")
                 .inspect_err(|err| {
                     error!("Failed to open url {err}");
@@ -185,7 +189,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             app.size = size;
             save_task(&*app)
         }
-        AppMsg::ScrollBy(scroll_by) => {
+        AppMsg::ScrollBy(_scroll_by) => {
             // let scroll_id =
             //     scrollable::Id::new(if matches!(app.content, ContentScreen::Articles(_)) {
             //         "articles"
@@ -303,9 +307,16 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     )),
             ),
             PaneState::Comments => match app.comment_state.as_ref() {
-                Some(_) => pane_grid::TitleBar::new(title().unwrap_or("".into()))
+                Some(cs) => pane_grid::TitleBar::new(title().unwrap_or("".into()))
                     .controls(pane_grid::Controls::new(
-                        widget::button("X").on_press(AppMsg::CloseComment),
+                        widget::Row::new()
+                            .push(
+                                widget::toggler(cs.oneline)
+                                    .label("oneline")
+                                    .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
+                            )
+                            .push(widget::button("X").on_press(AppMsg::CloseComment))
+                            .spacing(5),
                     ))
                     .always_show_controls(),
                 None => pane_grid::TitleBar::new(""),

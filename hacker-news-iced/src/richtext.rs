@@ -1,12 +1,15 @@
-use std::ops::Not;
-
 use crate::app::AppMsg;
 use iced::font::{Style, Weight};
+use iced::widget::span;
 use iced::widget::text::Span;
-use iced::widget::{rich_text, span};
-use iced::{Color, Element, Font};
+use iced::{Color, Font};
+use std::ops::Not;
 
-pub fn render_rich_text<'a>(escaped_text: &'a str, search: Option<&'a str>) -> Element<'a, AppMsg> {
+pub fn render_rich_text<'a>(
+    escaped_text: &'a str,
+    search: Option<&'a str>,
+    oneline: bool,
+) -> Vec<Span<'a, AppMsg>> {
     let elements = html_sanitizer::parse_elements(escaped_text);
 
     let mut spans = Vec::new();
@@ -34,7 +37,12 @@ pub fn render_rich_text<'a>(escaped_text: &'a str, search: Option<&'a str>) -> E
                     .into_iter(),
             ),
             html_sanitizer::Element::Escaped(text) => spans.push(span(text)),
-            html_sanitizer::Element::Paragraph => spans.push(span("\n\n")),
+            html_sanitizer::Element::Paragraph => {
+                if oneline {
+                    break;
+                }
+                spans.push(span("\n\n"))
+            }
             html_sanitizer::Element::Code(text) => {
                 // spans.extend(split_search(text, search).map(|s| s.font(Font::MONOSPACE)))
                 spans.push(span(text).font(Font::MONOSPACE));
@@ -66,7 +74,8 @@ pub fn render_rich_text<'a>(escaped_text: &'a str, search: Option<&'a str>) -> E
         }
     }
 
-    rich_text(spans).into()
+    spans
+    // rich_text(spans).into()
 }
 
 // fn split_search<'a>(text: &'a str, search: Option<&str>) -> Vec<Span<'a, AppMsg>> {
@@ -94,7 +103,7 @@ pub fn render_rich_text<'a>(escaped_text: &'a str, search: Option<&'a str>) -> E
 //     }
 // }
 
-struct SearchSpanIter<'a> {
+pub struct SearchSpanIter<'a> {
     last_index: usize,
     search: Option<&'a str>,
     text: &'a str,
@@ -104,7 +113,7 @@ struct SearchSpanIter<'a> {
 }
 
 impl<'a> SearchSpanIter<'a> {
-    fn new(text: &'a str, search: Option<&'a str>) -> Self {
+    pub fn new(text: &'a str, search: Option<&'a str>) -> Self {
         Self {
             last_index: 0,
             search,

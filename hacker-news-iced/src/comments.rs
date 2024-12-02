@@ -25,6 +25,8 @@ pub struct CommentState {
     pub comments: Vec<CommentItem>,
     /// Search
     pub search: Option<String>,
+    /// Show one line only.
+    pub oneline: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +36,7 @@ pub enum CommentMsg {
     Search(String),
     OpenSearch,
     CloseSearch,
+    Oneline,
 }
 
 impl CommentState {
@@ -44,7 +47,7 @@ impl CommentState {
             .article
             .text
             .as_deref()
-            .map(|text| render_rich_text(text, self.search.as_deref()))
+            .map(|text| widget::rich_text(render_rich_text(text, self.search.as_deref(), false)))
             .map(|rt| container(rt).padding([10, 10]).into());
 
         let comment_rows = match self.comments.iter().last() {
@@ -148,10 +151,11 @@ impl CommentState {
 
         container(
             column![
-                render_rich_text(
+                widget::rich_text(render_rich_text(
                     item.text.as_deref().unwrap_or_default(),
-                    self.search.as_deref()
-                ),
+                    self.search.as_deref(),
+                    self.oneline
+                )),
                 row![
                     widget::rich_text([
                         widget::span(format!(" by {}", item.by))
@@ -212,6 +216,10 @@ impl CommentState {
             }
             CommentMsg::CloseSearch => {
                 self.search = None;
+                Task::none()
+            }
+            CommentMsg::Oneline => {
+                self.oneline = !self.oneline;
                 Task::none()
             }
         }

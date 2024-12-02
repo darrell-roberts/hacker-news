@@ -34,7 +34,6 @@ fn main() -> anyhow::Result<()> {
             header: HeaderState {
                 article_count: config.article_count,
                 article_type: config.article_type,
-                search: None,
             },
             footer: FooterState {
                 status_line: String::new(),
@@ -70,7 +69,6 @@ fn main() -> anyhow::Result<()> {
                 header: HeaderState {
                     article_count: 75,
                     article_type: ArticleType::Top,
-                    search: None,
                 },
                 footer: FooterState {
                     status_line: String::new(),

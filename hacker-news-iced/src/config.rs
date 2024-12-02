@@ -9,7 +9,7 @@ const APP_INFO: AppInfo = AppInfo {
     author: "Somebody",
 };
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     pub scale: f64,
     pub article_count: usize,
