@@ -118,7 +118,7 @@ impl ArticleState {
         let content = format!("💬{}", article.kids.len());
 
         let comments_button = button(widget::text(content).shaping(text::Shaping::Advanced))
-            .width(55)
+            // .width(55)
             .style(button::text)
             .padding(0)
             .on_press_maybe(article.kids.is_empty().not().then(|| AppMsg::OpenComment {
@@ -138,81 +138,72 @@ impl ArticleState {
         let article_id = article.id;
 
         widget::container(
-            Column::new().push(
-                Row::new()
-                    .push(
-                        Column::new()
-                            .push(
-                                widget::text(format!("🔼{}", article.score))
-                                    // .width(score_width)
-                                    .shaping(text::Shaping::Advanced),
-                            )
-                            .push(if article.kids.is_empty() {
-                                Element::from(
-                                    text(""), //     .width(if total_comments == 0 {
-                                              //     0
-                                              // } else {
-                                              //     55
-                                              // })
-                                )
-                            } else {
-                                Element::from(comments_button)
-                            })
-                            .spacing(5),
-                    )
-                    .push(
-                        Column::new()
-                            .push(
-                                Row::new()
-                                    .push(title_wrapper)
-                                    .push(
-                                        widget::container(
-                                            Row::new()
-                                                .push_maybe({
-                                                    let has_rust = article
-                                                        .title
-                                                        .as_ref()
-                                                        .map(|t| {
-                                                            t.split(' ').any(|word| word == "Rust")
-                                                        })
-                                                        .unwrap_or(false);
-                                                    has_rust.then(|| {
-                                                        widget::container(
-                                                            widget::image(Handle::from_bytes(
-                                                                RUST_LOGO.clone(),
-                                                            ))
-                                                            .content_fit(
-                                                                iced::ContentFit::ScaleDown,
-                                                            ),
-                                                        )
+            // Column::new().push(
+            Row::new()
+                .push(
+                    Column::new()
+                        .push(
+                            Row::new()
+                                .push(title_wrapper)
+                                .push(
+                                    widget::container(
+                                        Row::new()
+                                            .push_maybe({
+                                                let has_rust = article
+                                                    .title
+                                                    .as_ref()
+                                                    .map(|t| {
+                                                        t.split(' ').any(|word| word == "Rust")
                                                     })
+                                                    .unwrap_or(false);
+                                                has_rust.then(|| {
+                                                    widget::container(
+                                                        widget::image(Handle::from_bytes(
+                                                            RUST_LOGO.clone(),
+                                                        ))
+                                                        .content_fit(iced::ContentFit::ScaleDown),
+                                                    )
                                                 })
-                                                .push_maybe(
-                                                    self.visited.contains(&article.id).then(|| {
-                                                        widget::container(
-                                                            widget::text("✅")
-                                                                .shaping(text::Shaping::Advanced),
-                                                        )
-                                                    }),
-                                                )
-                                                .spacing(5),
-                                        )
-                                        .align_x(Horizontal::Right)
-                                        .width(Length::Fill),
+                                            })
+                                            .push_maybe(self.visited.contains(&article.id).then(
+                                                || {
+                                                    widget::container(
+                                                        widget::text("✅")
+                                                            .shaping(text::Shaping::Advanced),
+                                                    )
+                                                },
+                                            ))
+                                            .spacing(5),
                                     )
-                                    .spacing(5),
-                            )
-                            .push(
-                                widget::container(by)
                                     .align_x(Horizontal::Right)
-                                    .align_y(Vertical::Bottom)
                                     .width(Length::Fill),
-                            )
-                            .spacing(10),
-                    )
-                    .align_y(Vertical::Top)
-                    .spacing(5),
-            ),
+                                )
+                                .spacing(5),
+                        )
+                        .push(
+                            Row::new()
+                                .push(
+                                    widget::text(format!("🔼{}", article.score))
+                                        .shaping(text::Shaping::Advanced),
+                                )
+                                .push(if article.kids.is_empty() {
+                                    Element::from(text(""))
+                                } else {
+                                    Element::from(comments_button)
+                                })
+                                .push(
+                                    widget::container(by)
+                                        .align_x(Horizontal::Right)
+                                        .align_y(Vertical::Bottom)
+                                        .width(Length::Fill),
+                                )
+                                .spacing(5),
+                        )
+                        .spacing(10),
+                )
+                .align_y(Vertical::Top)
+                .spacing(5),
+            // ),
         )
         .width(Length::Fill)
         .style(move |theme: &Theme| {

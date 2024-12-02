@@ -92,7 +92,6 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             comment_ids,
             parent,
         } => {
-            println!("Opening comment");
             // Opening first set of comments from an article.
             if let Some(item) = article {
                 let item_id = item.id;
