@@ -241,7 +241,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             .comment_state
             .as_mut()
             .map(|s| s.update(CommentMsg::CloseComment))
-            .unwrap_or_else(|| Task::none()),
+            .unwrap_or_else(Task::none),
     }
 }
 

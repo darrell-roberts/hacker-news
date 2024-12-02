@@ -4,7 +4,7 @@ use hacker_news_api::{ApiClient, ArticleType, Item};
 use iced::{
     advanced::image::{Bytes, Handle},
     alignment::{Horizontal, Vertical},
-    border,
+    border::{self, width},
     font::{Style, Weight},
     padding,
     widget::{self, button, scrollable, text, Column, Row},
@@ -179,27 +179,39 @@ impl ArticleState {
                     .push(
                         Column::new()
                             .push(
-                                Row::new()
-                                    .push_maybe({
-                                        let has_rust = article
-                                            .title
-                                            .as_ref()
-                                            .map(|t| t.split(' ').any(|word| word == "Rust"))
-                                            .unwrap_or(false);
-                                        has_rust.then(|| {
-                                            widget::image(Handle::from_bytes(RUST_LOGO.clone()))
-                                                .content_fit(iced::ContentFit::ScaleDown)
-                                        })
-                                    })
-                                    .push(title_wrapper)
-                                    .push_maybe(self.visited.contains(&article.id).then(|| {
-                                        widget::container(
-                                            widget::text("✅").shaping(text::Shaping::Advanced),
-                                        )
-                                        .width(Length::Fill)
-                                        .align_x(Horizontal::Right)
-                                    }))
-                                    .spacing(5),
+                                Row::new().push(title_wrapper).push(
+                                    widget::container(
+                                        Row::new()
+                                            .push_maybe({
+                                                let has_rust = article
+                                                    .title
+                                                    .as_ref()
+                                                    .map(|t| {
+                                                        t.split(' ').any(|word| word == "Rust")
+                                                    })
+                                                    .unwrap_or(false);
+                                                has_rust.then(|| {
+                                                    widget::container(
+                                                        widget::image(Handle::from_bytes(
+                                                            RUST_LOGO.clone(),
+                                                        ))
+                                                        .content_fit(iced::ContentFit::ScaleDown),
+                                                    )
+                                                })
+                                            })
+                                            .push_maybe(self.visited.contains(&article.id).then(
+                                                || {
+                                                    widget::container(
+                                                        widget::text("✅")
+                                                            .shaping(text::Shaping::Advanced),
+                                                    )
+                                                },
+                                            ))
+                                            .spacing(5),
+                                    )
+                                    .align_x(Horizontal::Right)
+                                    .width(Length::Fill),
+                                ),
                             )
                             .push(
                                 widget::container(by)
