@@ -4,7 +4,7 @@ use hacker_news_api::{ApiClient, ArticleType, Item};
 use iced::{
     advanced::image::{Bytes, Handle},
     alignment::{Horizontal, Vertical},
-    border::{self, width},
+    border::{self},
     font::{Style, Weight},
     padding,
     widget::{self, button, scrollable, text, Column, Row},
@@ -179,39 +179,44 @@ impl ArticleState {
                     .push(
                         Column::new()
                             .push(
-                                Row::new().push(title_wrapper).push(
-                                    widget::container(
-                                        Row::new()
-                                            .push_maybe({
-                                                let has_rust = article
-                                                    .title
-                                                    .as_ref()
-                                                    .map(|t| {
-                                                        t.split(' ').any(|word| word == "Rust")
+                                Row::new()
+                                    .push(title_wrapper)
+                                    .push(
+                                        widget::container(
+                                            Row::new()
+                                                .push_maybe({
+                                                    let has_rust = article
+                                                        .title
+                                                        .as_ref()
+                                                        .map(|t| {
+                                                            t.split(' ').any(|word| word == "Rust")
+                                                        })
+                                                        .unwrap_or(false);
+                                                    has_rust.then(|| {
+                                                        widget::container(
+                                                            widget::image(Handle::from_bytes(
+                                                                RUST_LOGO.clone(),
+                                                            ))
+                                                            .content_fit(
+                                                                iced::ContentFit::ScaleDown,
+                                                            ),
+                                                        )
                                                     })
-                                                    .unwrap_or(false);
-                                                has_rust.then(|| {
-                                                    widget::container(
-                                                        widget::image(Handle::from_bytes(
-                                                            RUST_LOGO.clone(),
-                                                        ))
-                                                        .content_fit(iced::ContentFit::ScaleDown),
-                                                    )
                                                 })
-                                            })
-                                            .push_maybe(self.visited.contains(&article.id).then(
-                                                || {
-                                                    widget::container(
-                                                        widget::text("✅")
-                                                            .shaping(text::Shaping::Advanced),
-                                                    )
-                                                },
-                                            ))
-                                            .spacing(5),
+                                                .push_maybe(
+                                                    self.visited.contains(&article.id).then(|| {
+                                                        widget::container(
+                                                            widget::text("✅")
+                                                                .shaping(text::Shaping::Advanced),
+                                                        )
+                                                    }),
+                                                )
+                                                .spacing(5),
+                                        )
+                                        .align_x(Horizontal::Right)
+                                        .width(Length::Fill),
                                     )
-                                    .align_x(Horizontal::Right)
-                                    .width(Length::Fill),
-                                ),
+                                    .spacing(5),
                             )
                             .push(
                                 widget::container(by)
@@ -241,9 +246,7 @@ impl ArticleState {
 
             let background = self
                 .viewing_item
-                .iter()
-                .filter_map(|id| (id == &article_id).then(|| Background::Color(color)))
-                .next();
+                .and_then(|id| (id == article_id).then_some(Background::Color(color)));
 
             widget::container::Style {
                 border: border::width(0.5).color(color).rounded(8.),

@@ -2,7 +2,7 @@ use crate::{app::AppMsg, articles::ArticleMsg};
 use hacker_news_api::ArticleType;
 use iced::{
     border,
-    widget::{self, button, container, row, text, text_input::Id, Column},
+    widget::{self, button, container, row, text, Column},
     Background, Border, Element, Length, Task,
 };
 
