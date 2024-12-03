@@ -21,6 +21,7 @@ mod config;
 mod footer;
 mod header;
 mod richtext;
+// mod types;
 mod widget;
 
 fn main() -> anyhow::Result<()> {
