@@ -41,8 +41,6 @@ pub enum CommentMsg {
 
 impl CommentState {
     pub fn view(&self) -> Element<'_, AppMsg> {
-        // let header = row![button("X").on_press(AppMsg::Comments(CommentMsg::CloseComment))];
-
         let article_text = self
             .article
             .text
@@ -50,33 +48,30 @@ impl CommentState {
             .map(|text| widget::rich_text(render_rich_text(text, self.search.as_deref(), false)))
             .map(|rt| container(rt).padding([10, 10]).into());
 
-        let comment_rows = match self.comments.iter().last() {
-            Some(item) => either::Left(
-                item.items
-                    .iter()
-                    .filter(
-                        |item| match (self.search.as_deref(), item.text.as_deref()) {
-                            (Some(search), Some(text)) => {
-                                text.to_lowercase().contains(&search.to_lowercase())
-                            }
-                            _ => true,
-                        },
-                    )
-                    .map(|item| {
-                        self.render_comment(item, false).style(|theme| {
-                            let palette = theme.extended_palette();
+        let comment_rows = self.comments.iter().last().into_iter().flat_map(|item| {
+            item.items
+                .iter()
+                .filter(
+                    |item| match (self.search.as_deref(), item.text.as_deref()) {
+                        (Some(search), Some(text)) => {
+                            text.to_lowercase().contains(&search.to_lowercase())
+                        }
+                        _ => true,
+                    },
+                )
+                .map(|item| {
+                    self.render_comment(item, false).style(|theme| {
+                        let palette = theme.extended_palette();
 
-                            container::Style {
-                                background: Some(palette.background.weak.color.into()),
-                                border: border::rounded(8),
-                                ..Default::default()
-                            }
-                        })
+                        container::Style {
+                            background: Some(palette.background.weak.color.into()),
+                            border: border::rounded(8),
+                            ..Default::default()
+                        }
                     })
-                    .map(Element::from),
-            ),
-            None => either::Right(std::iter::empty::<Element<'_, AppMsg>>()),
-        };
+                })
+                .map(Element::from)
+        });
 
         let parent_comments = self.comments.iter().flat_map(|item| {
             item.parent
