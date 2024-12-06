@@ -42,11 +42,11 @@ impl Render for Header {
 
         let col1 = [ArticleType::Top, ArticleType::Best, ArticleType::New]
             .into_iter()
-            .map(|article_type| mk_article_type(article_type));
+            .map(mk_article_type);
 
         let col2 = [ArticleType::Ask, ArticleType::Show, ArticleType::Job]
             .into_iter()
-            .map(|article_type| mk_article_type(article_type));
+            .map(mk_article_type);
 
         let col3 = [25, 50, 75, 100, 500].into_iter().map(|article_count| {
             div()

@@ -1,0 +1,13 @@
+[package]
+name = "hacker-news-search"
+version = "0.1.0"
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+tantivy = "0.22"
+hacker-news-api.workspace = true
+html-sanitizer.workspace = true
+thiserror = "2"
+anyhow.workspace = true
+tokio.workspace = true

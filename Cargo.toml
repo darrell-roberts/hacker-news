@@ -5,7 +5,7 @@ members = [
     "html-sanitizer",
     "hacker-news-egui",
     "hacker-news-gpui",
-    "hacker-news-iced",
+    "hacker-news-iced", "hacker-news-search",
 ]
 
 [workspace.package]
