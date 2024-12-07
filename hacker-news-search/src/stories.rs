@@ -7,7 +7,9 @@ use tantivy::{collector::TopDocs, schema::OwnedValue, Document, Order, TantivyDo
 
 impl SearchContext {
     pub fn top_stories(&self, offset: usize) -> Result<Vec<Story>, SearchError> {
-        let query = self.query()?.parse_query("category:top AND type:story")?;
+        let query = self
+            .query_parser()?
+            .parse_query("category:top AND type:story")?;
         let searcher = self.searcher();
 
         let top_docs = TopDocs::with_limit(10)
@@ -32,7 +34,7 @@ impl SearchContext {
 
     pub fn comments(&self, parent_id: u64, offset: usize) -> Result<Vec<Comment>, SearchError> {
         let query = self
-            .query()?
+            .query_parser()?
             .parse_query(&format!("parent_id:{parent_id}"))?;
         let searcher = self.searcher();
 
