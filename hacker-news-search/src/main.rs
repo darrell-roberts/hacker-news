@@ -1,18 +1,14 @@
-use hacker_news_search::{index, SearchContext, ITEM_RANK};
+use hacker_news_search::{index, SearchContext};
 use std::{fs::exists, path::Path};
-use tantivy::{
-    collector::TopDocs,
-    schema::{OwnedValue, Value},
-    Document, Order, TantivyDocument,
-};
 use tokio::fs::{create_dir_all, remove_dir_all};
 
 const INDEX_PATH: &str = "/tmp/hacker-news";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    search()?;
     // create_index().await?;
+    // top_stories()?;
+    comments()?;
     Ok(())
 }
 
@@ -27,35 +23,15 @@ async fn create_index() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn search() -> anyhow::Result<()> {
+fn comments() -> anyhow::Result<()> {
     let ctx = SearchContext::new(Path::new(INDEX_PATH))?;
-    let searcher = ctx.searcher();
+    dbg!(ctx.comments(42344002, 0)?);
+    Ok(())
+}
 
-    let query = ctx.query()?.parse_query("category:top AND type:story")?;
-
-    let top_docs = TopDocs::with_limit(10)
-        // Pagination
-        .and_offset(0)
-        // Ordering
-        .order_by_u64_field(ITEM_RANK, Order::Asc);
-    let docs = searcher.search(&query, &top_docs)?;
-
-    for (_score, doc_address) in docs {
-        let retrieved_doc: TantivyDocument = searcher.doc(doc_address)?;
-        for (field, field_values) in retrieved_doc.get_sorted_field_values() {
-            let field_name = ctx.schema.get_field_name(field);
-
-            print!("{field_name}: ");
-            for value in field_values {
-                match value {
-                    OwnedValue::Str(s) => print!("{s} "),
-                    OwnedValue::U64(n) => print!("{n} "),
-                    _ => (),
-                }
-            }
-        }
-        println!();
-    }
+fn top_stories() -> anyhow::Result<()> {
+    let ctx = SearchContext::new(Path::new(INDEX_PATH))?;
+    dbg!(ctx.top_stories(0)?);
 
     Ok(())
 }

@@ -2,11 +2,13 @@ use hacker_news_api::{ApiClient, Item};
 use std::{future::Future, path::Path, pin::Pin};
 use tantivy::{
     directory::{error::OpenDirectoryError, MmapDirectory},
-    query::QueryParser,
+    query::{QueryParser, QueryParserError},
     schema::{Schema, FAST, INDEXED, STORED, STRING, TEXT},
     Index, IndexReader, IndexWriter, Searcher, TantivyDocument, TantivyError,
 };
 use thiserror::Error;
+
+mod stories;
 
 pub const ITEM_ID: &str = "id";
 pub const ITEM_PARENT_ID: &str = "parent_id";
@@ -18,6 +20,7 @@ pub const ITEM_TYPE: &str = "type";
 pub const ITEM_RANK: &str = "rank";
 pub const ITEM_DESCENDANT_COUNT: &str = "descendants";
 pub const ITEM_CATEGORY: &str = "category";
+pub const ITEM_TIME: &str = "time";
 
 #[derive(Debug, Error)]
 pub enum SearchError {
@@ -27,12 +30,14 @@ pub enum SearchError {
     OpenDirectory(#[from] OpenDirectoryError),
     #[error("API client error")]
     Client(#[from] anyhow::Error),
+    #[error("Bad query")]
+    Query(#[from] QueryParserError),
 }
 
 pub struct SearchContext {
     index: Index,
     reader: IndexReader,
-    pub schema: Schema,
+    schema: Schema,
 }
 
 impl SearchContext {
@@ -62,16 +67,17 @@ impl SearchContext {
 fn article_schema() -> Schema {
     let mut schema_builder = Schema::builder();
 
-    schema_builder.add_u64_field(ITEM_RANK, STORED | INDEXED | FAST);
+    schema_builder.add_u64_field(ITEM_RANK, FAST);
     schema_builder.add_u64_field(ITEM_ID, STORED | INDEXED | FAST);
     schema_builder.add_u64_field(ITEM_PARENT_ID, STORED | INDEXED | FAST);
     schema_builder.add_text_field(ITEM_TITLE, STORED | TEXT);
     schema_builder.add_text_field(ITEM_BODY, TEXT | STORED);
-    schema_builder.add_text_field(ITEM_URL, STRING);
-    schema_builder.add_text_field(ITEM_BY, STRING);
+    schema_builder.add_text_field(ITEM_URL, STRING | STORED);
+    schema_builder.add_text_field(ITEM_BY, STRING | STORED);
     schema_builder.add_text_field(ITEM_TYPE, TEXT | STORED);
     schema_builder.add_u64_field(ITEM_DESCENDANT_COUNT, STORED | INDEXED);
-    schema_builder.add_text_field(ITEM_CATEGORY, TEXT | STORED);
+    schema_builder.add_text_field(ITEM_CATEGORY, STRING);
+    schema_builder.add_u64_field(ITEM_TIME, STORED | INDEXED | FAST);
 
     schema_builder.build()
 }
@@ -94,6 +100,7 @@ pub fn index_articles<'a>(
         let rank = ctx.schema.get_field(ITEM_RANK)?;
         let descendant_count = ctx.schema.get_field(ITEM_DESCENDANT_COUNT)?;
         let category_field = ctx.schema.get_field(ITEM_CATEGORY)?;
+        let time = ctx.schema.get_field(ITEM_TIME)?;
 
         for (article, index) in articles.iter().zip(1..) {
             let mut doc = TantivyDocument::new();
@@ -126,6 +133,8 @@ pub fn index_articles<'a>(
             if article.ty == "story" {
                 doc.add_text(category_field, category);
             }
+
+            doc.add_u64(time, article.time);
 
             writer.add_document(doc)?;
         }
