@@ -1,10 +1,9 @@
-use std::collections::HashMap;
-use tantivy::{collector::TopDocs, schema::OwnedValue, Document, Order, TantivyDocument};
-
 use crate::{
     SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_DESCENDANT_COUNT, ITEM_ID, ITEM_RANK,
     ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
 };
+use std::collections::HashMap;
+use tantivy::{collector::TopDocs, schema::OwnedValue, Document, Order, TantivyDocument};
 
 impl SearchContext {
     pub fn top_stories(&self, offset: usize) -> Result<Vec<Story>, SearchError> {
@@ -80,15 +79,7 @@ pub struct Comment {
 
 impl SearchContext {
     fn to_story(&self, doc: TantivyDocument) -> Option<Story> {
-        let fields = doc
-            .get_sorted_field_values()
-            .into_iter()
-            .flat_map(|(field, mut field_values)| {
-                let field_name = self.schema.get_field_name(field);
-                let value = field_values.pop()?;
-                Some((field_name, value))
-            })
-            .collect::<HashMap<_, _>>();
+        let fields = self.extract_fields(&doc);
 
         Some(Story {
             id: fields.get(ITEM_ID).and_then(u64_value)?,
@@ -103,15 +94,7 @@ impl SearchContext {
     }
 
     fn to_comment(&self, doc: TantivyDocument) -> Option<Comment> {
-        let fields = doc
-            .get_sorted_field_values()
-            .into_iter()
-            .flat_map(|(field, mut field_values)| {
-                let field_name = self.schema.get_field_name(field);
-                let value = field_values.pop()?;
-                Some((field_name, value))
-            })
-            .collect::<HashMap<_, _>>();
+        let fields = self.extract_fields(&doc);
 
         Some(Comment {
             id: fields.get(ITEM_ID).and_then(u64_value)?,
@@ -119,6 +102,17 @@ impl SearchContext {
             by: fields.get(ITEM_BY).and_then(str_value)?,
             time: fields.get(ITEM_TIME).and_then(u64_value)?,
         })
+    }
+
+    fn extract_fields<'a>(&'a self, doc: &'a TantivyDocument) -> HashMap<&'a str, &'a OwnedValue> {
+        doc.get_sorted_field_values()
+            .into_iter()
+            .flat_map(|(field, mut field_values)| {
+                let field_name = self.schema.get_field_name(field);
+                let value = field_values.pop()?;
+                Some((field_name, value))
+            })
+            .collect()
     }
 }
 
