@@ -11,23 +11,36 @@ use std::{
 /// [`https://github.com/HackerNews/API`]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Item {
+    /// The item's unique id.
     pub id: u64,
     #[serde(default)]
     pub kids: Vec<u64>,
+    /// The comment, story or poll text. HTML.
     pub text: Option<String>,
+    /// The URL of the story.
     pub url: Option<String>,
+    /// The title of the story, poll or job. HTML.
     pub title: Option<String>,
     #[serde(default)]
     pub score: u64,
+    /// Creation date of the item, in Unix Time.
     pub time: u64,
     #[serde(default)]
+    /// The username of the item's author.
     pub by: String,
     #[serde(default)]
+    /// true if the item is dead.
     pub dead: bool,
     #[serde(default)]
+    /// true if the item is deleted.
     pub deleted: bool,
     #[serde(alias = "type")]
+    /// The type of item. One of "job", "story", "comment", "poll", or "pollopt".
     pub ty: String,
+    /// The comment's parent: either another comment or the relevant story.
+    pub parent: Option<u64>,
+    /// In the case of stories or polls, the total comment count.
+    pub descendants: Option<u64>,
 }
 
 /// Hacker news user.

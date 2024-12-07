@@ -160,7 +160,7 @@ impl ArticleState {
                                                         widget::image(Handle::from_bytes(
                                                             RUST_LOGO.clone(),
                                                         ))
-                                                        .content_fit(iced::ContentFit::ScaleDown),
+                                                        .content_fit(iced::ContentFit::None),
                                                     )
                                                 })
                                             })
