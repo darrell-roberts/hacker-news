@@ -1,11 +1,10 @@
-use hacker_news_api::{ApiClient, Item};
-use std::{future::Future, pin::Pin};
-use tantivy::{IndexWriter, TantivyDocument};
-
 use crate::{
     SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_CATEGORY, ITEM_DESCENDANT_COUNT, ITEM_ID,
     ITEM_PARENT_ID, ITEM_RANK, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
 };
+use hacker_news_api::{ApiClient, Item};
+use std::{future::Future, pin::Pin};
+use tantivy::{IndexWriter, TantivyDocument};
 
 pub fn index_articles<'a>(
     ctx: &'a SearchContext,

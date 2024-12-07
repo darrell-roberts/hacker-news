@@ -60,23 +60,37 @@ impl SearchContext {
 }
 
 #[derive(Debug)]
+/// Hacker news story
 pub struct Story {
-    id: u64,
-    title: String,
-    body: Option<String>,
-    url: Option<String>,
-    by: String,
-    ty: String,
-    descendants: u64,
-    time: u64,
+    /// Id
+    pub id: u64,
+    /// Title
+    pub title: String,
+    /// Body
+    pub body: Option<String>,
+    /// Url
+    pub url: Option<String>,
+    /// By
+    pub by: String,
+    /// Type
+    pub ty: String,
+    /// Descendant count
+    pub descendants: u64,
+    /// Time posted
+    pub time: u64,
 }
 
 #[derive(Debug)]
+/// Hacker news comment
 pub struct Comment {
-    id: u64,
-    body: String,
-    by: String,
-    time: u64,
+    /// Id
+    pub id: u64,
+    /// Body
+    pub body: String,
+    /// By
+    pub by: String,
+    /// Time posted
+    pub time: u64,
 }
 
 impl SearchContext {
