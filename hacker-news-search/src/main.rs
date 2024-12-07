@@ -35,7 +35,7 @@ fn search() -> anyhow::Result<()> {
 
     let top_docs = TopDocs::with_limit(10)
         // Pagination
-        .and_offset(10)
+        .and_offset(0)
         // Ordering
         .order_by_u64_field(ITEM_RANK, Order::Asc);
     let docs = searcher.search(&query, &top_docs)?;
@@ -45,11 +45,14 @@ fn search() -> anyhow::Result<()> {
         for (field, field_values) in retrieved_doc.get_sorted_field_values() {
             let field_name = ctx.schema.get_field_name(field);
 
-            let values: Vec<OwnedValue> = field_values
-                .into_iter()
-                .map(|val| val.as_value().into())
-                .collect();
-            print!("{field_name}: {values:?} ");
+            print!("{field_name}: ");
+            for value in field_values {
+                match value {
+                    OwnedValue::Str(s) => print!("{s} "),
+                    OwnedValue::U64(n) => print!("{n} "),
+                    _ => (),
+                }
+            }
         }
         println!();
     }
