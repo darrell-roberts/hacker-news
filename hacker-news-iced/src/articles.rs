@@ -73,24 +73,24 @@ impl ArticleState {
     ) -> widget::Container<'a, AppMsg> {
         let title = widget::rich_text(
             SearchSpanIter::new(&story.title, self.search.as_deref())
-                // .map(|span| {
-                //     span.link_maybe(
-                //         story
-                //             .url
-                //             .clone()
-                //             .map(|url| AppMsg::OpenLink {
-                //                 url,
-                //                 item_id: story.id,
-                //             })
-                //             .or_else(|| {
-                //                 story.body.as_ref().map(|_| AppMsg::OpenComment {
-                //                     article: Some(story.clone()),
-                //                     comment_ids: story.kids.clone(),
-                //                     parent: None,
-                //                 })
-                //             }),
-                //     )
-                // })
+                .map(|span| {
+                    span.link_maybe(
+                        story
+                            .url
+                            .clone()
+                            .map(|url| AppMsg::OpenLink {
+                                url,
+                                item_id: story.id,
+                            })
+                            .or_else(|| {
+                                story.body.as_ref().map(|_| AppMsg::OpenComment {
+                                    article: Some(story.clone()),
+                                    parent_id: story.id,
+                                    parent: None,
+                                })
+                            }),
+                    )
+                })
                 .collect::<Vec<_>>(),
         );
 
