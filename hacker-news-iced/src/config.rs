@@ -4,7 +4,7 @@ use hacker_news_api::ArticleType;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-const APP_INFO: AppInfo = AppInfo {
+pub const APP_INFO: AppInfo = AppInfo {
     name: "Hacker News",
     author: "Somebody",
 };

@@ -2,7 +2,7 @@ use crate::{
     app::AppMsg, footer::FooterMsg, parse_date, richtext::SearchSpanIter, widget::hoverable,
 };
 use chrono::Local;
-use hacker_news_api::{ApiClient, ArticleType, Item};
+use hacker_news_search::{stories::Story, SearchContext};
 use iced::{
     advanced::image::{Bytes, Handle},
     alignment::{Horizontal, Vertical},
@@ -12,13 +12,14 @@ use iced::{
     widget::{self, button, scrollable, text, Column, Row},
     Background, Color, Element, Font, Length, Shadow, Task, Theme,
 };
-use std::{collections::HashSet, ops::Not, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 
 pub struct ArticleState {
-    /// API Client.
-    pub client: Arc<ApiClient>,
+    // /// API Client.
+    // pub client: Arc<ApiClient>,
+    pub search_context: Arc<SearchContext>,
     /// Viewing articles
-    pub articles: Vec<Item>,
+    pub articles: Vec<Story>,
     /// Visisted item ids.
     pub visited: HashSet<u64>,
     /// Search
@@ -29,11 +30,11 @@ pub struct ArticleState {
 
 #[derive(Debug, Clone)]
 pub enum ArticleMsg {
-    Fetch {
-        limit: usize,
-        article_type: ArticleType,
-    },
-    Receive(Vec<Item>),
+    // Fetch {
+    //     limit: usize,
+    //     article_type: ArticleType,
+    // },
+    Receive(Vec<Story>),
     Search(String),
     Visited(u64),
 }
@@ -49,9 +50,8 @@ impl ArticleState {
                     .filter(|article| match self.search.as_deref() {
                         Some(search) => article
                             .title
-                            .as_ref()
-                            .map(|t| t.to_lowercase().contains(&search.to_lowercase()))
-                            .unwrap_or(true),
+                            .to_lowercase()
+                            .contains(&search.to_lowercase()),
                         None => true,
                     })
                     .map(|article| self.render_article(theme, article))
@@ -69,35 +69,33 @@ impl ArticleState {
     fn render_article<'a>(
         &'a self,
         theme: &Theme,
-        article: &'a Item,
+        story: &'a Story,
     ) -> widget::Container<'a, AppMsg> {
-        let article_title = article.title.as_deref().unwrap_or_default();
-
         let title = widget::rich_text(
-            SearchSpanIter::new(article_title, self.search.as_deref())
-                .map(|span| {
-                    span.link_maybe(
-                        article
-                            .url
-                            .clone()
-                            .map(|url| AppMsg::OpenLink {
-                                url,
-                                item_id: article.id,
-                            })
-                            .or_else(|| {
-                                article.text.as_ref().map(|_| AppMsg::OpenComment {
-                                    article: Some(article.clone()),
-                                    comment_ids: article.kids.clone(),
-                                    parent: None,
-                                })
-                            }),
-                    )
-                })
+            SearchSpanIter::new(&story.title, self.search.as_deref())
+                // .map(|span| {
+                //     span.link_maybe(
+                //         story
+                //             .url
+                //             .clone()
+                //             .map(|url| AppMsg::OpenLink {
+                //                 url,
+                //                 item_id: story.id,
+                //             })
+                //             .or_else(|| {
+                //                 story.body.as_ref().map(|_| AppMsg::OpenComment {
+                //                     article: Some(story.clone()),
+                //                     comment_ids: story.kids.clone(),
+                //                     parent: None,
+                //                 })
+                //             }),
+                //     )
+                // })
                 .collect::<Vec<_>>(),
         );
 
         let by = widget::rich_text([
-            widget::span(format!(" by {}", article.by))
+            widget::span(format!(" by {}", story.by))
                 .font(Font {
                     style: Style::Italic,
                     ..Default::default()
@@ -105,7 +103,7 @@ impl ArticleState {
                 .size(14)
                 .color_maybe(widget::text::primary(theme).color),
             widget::span(" "),
-            widget::span(parse_date(article.time).unwrap_or_default())
+            widget::span(parse_date(story.time).unwrap_or_default())
                 .font(Font {
                     weight: Weight::Light,
                     style: Style::Italic,
@@ -115,19 +113,19 @@ impl ArticleState {
                 .color_maybe(widget::text::primary(theme).color),
         ]);
 
-        let content = format!("💬{}", article.kids.len());
+        let content = format!("💬{}", story.descendants);
 
         let comments_button = button(widget::text(content).shaping(text::Shaping::Advanced))
             // .width(55)
             .style(button::text)
             .padding(0)
-            .on_press_maybe(article.kids.is_empty().not().then(|| AppMsg::OpenComment {
-                article: Some(article.clone()),
-                comment_ids: article.kids.clone(),
+            .on_press_maybe((story.descendants > 0).then(|| AppMsg::OpenComment {
+                article: Some(story.clone()),
+                parent_id: story.id,
                 parent: None,
             }));
 
-        let title_wrapper = match article.url.as_deref() {
+        let title_wrapper = match story.url.as_deref() {
             Some(url) => hoverable(title)
                 .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
                 .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
@@ -135,7 +133,7 @@ impl ArticleState {
             None => Element::from(title),
         };
 
-        let article_id = article.id;
+        let article_id = story.id;
 
         widget::container(
             Row::new()
@@ -148,13 +146,10 @@ impl ArticleState {
                                     widget::container(
                                         Row::new()
                                             .push_maybe({
-                                                let has_rust = article
+                                                let has_rust = story
                                                     .title
-                                                    .as_ref()
-                                                    .map(|t| {
-                                                        t.split(' ').any(|word| word == "Rust")
-                                                    })
-                                                    .unwrap_or(false);
+                                                    .split(' ')
+                                                    .any(|word| word == "Rust");
                                                 has_rust.then(|| {
                                                     widget::container(
                                                         widget::image(Handle::from_bytes(
@@ -164,7 +159,7 @@ impl ArticleState {
                                                     )
                                                 })
                                             })
-                                            .push_maybe(self.visited.contains(&article.id).then(
+                                            .push_maybe(self.visited.contains(&story.id).then(
                                                 || {
                                                     widget::container(
                                                         widget::text("✅")
@@ -181,11 +176,11 @@ impl ArticleState {
                         )
                         .push(
                             Row::new()
-                                .push(
-                                    widget::text(format!("🔼{}", article.score))
-                                        .shaping(text::Shaping::Advanced),
-                                )
-                                .push(if article.kids.is_empty() {
+                                // .push(
+                                //     widget::text(format!("🔼{}", story.score))
+                                //         .shaping(text::Shaping::Advanced),
+                                // )
+                                .push(if story.descendants == 0 {
                                     Element::from(text(""))
                                 } else {
                                     Element::from(comments_button)
@@ -238,23 +233,23 @@ impl ArticleState {
 
     pub fn update(&mut self, message: ArticleMsg) -> Task<AppMsg> {
         match message {
-            ArticleMsg::Fetch {
-                limit,
-                article_type,
-            } => {
-                self.viewing_item = None;
-                let client = self.client.clone();
-                Task::batch([
-                    Task::done(FooterMsg::Fetching).map(AppMsg::Footer),
-                    Task::perform(
-                        async move { client.articles(limit, article_type).await },
-                        |resp| match resp {
-                            Ok(articles) => AppMsg::Articles(ArticleMsg::Receive(articles)),
-                            Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
-                        },
-                    ),
-                ])
-            }
+            // ArticleMsg::Fetch {
+            //     limit,
+            //     article_type,
+            // } => {
+            //     self.viewing_item = None;
+            //     let client = self.client.clone();
+            //     Task::batch([
+            //         Task::done(FooterMsg::Fetching).map(AppMsg::Footer),
+            //         Task::perform(
+            //             async move { client.articles(limit, article_type).await },
+            //             |resp| match resp {
+            //                 Ok(articles) => AppMsg::Articles(ArticleMsg::Receive(articles)),
+            //                 Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
+            //             },
+            //         ),
+            //     ])
+            // }
             ArticleMsg::Receive(articles) => {
                 self.articles = articles;
                 Task::batch([
@@ -268,10 +263,26 @@ impl ArticleState {
             ArticleMsg::Search(input) => {
                 if input.is_empty() {
                     self.search = None;
+                    Task::done(AppMsg::IndexReady)
                 } else {
-                    self.search = Some(input);
+                    self.search = Some(input.clone());
+                    match self.search_context.search_stories(&input, 0) {
+                        Ok(stories) => {
+                            self.articles = stories;
+                            Task::none()
+                        }
+                        Err(err) => {
+                            Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer)
+                        }
+                    }
                 }
-                Task::none()
+
+                // if input.is_empty() {
+                //     self.search = None;
+                // } else {
+                //     self.search = Some(input);
+                // }
+                // Task::none()
             }
             ArticleMsg::Visited(index) => {
                 self.visited.insert(index);

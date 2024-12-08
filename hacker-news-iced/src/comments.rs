@@ -1,6 +1,11 @@
+use std::sync::Arc;
+
 use crate::{app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text};
 use chrono::Local;
-use hacker_news_api::Item;
+use hacker_news_search::{
+    stories::{Comment, Story},
+    SearchContext,
+};
 use iced::{
     border,
     font::{Style, Weight},
@@ -12,26 +17,29 @@ use iced::{
 /// List of comments and common parent
 pub struct CommentItem {
     /// Parent comment.
-    pub parent: Option<Item>,
+    pub parent: Option<Comment>,
     /// Comment items.
-    pub items: Vec<Item>,
+    pub items: Vec<Comment>,
 }
 
 /// Comment state
 pub struct CommentState {
+    pub search_context: Arc<SearchContext>,
     /// Article this comment belongs to
-    pub article: Item,
+    pub article: Story,
     /// Children
     pub comments: Vec<CommentItem>,
     /// Search
     pub search: Option<String>,
     /// Show one line only.
     pub oneline: bool,
+
+    pub search_results: Vec<Comment>,
 }
 
 #[derive(Debug, Clone)]
 pub enum CommentMsg {
-    ReceiveComments(Vec<Item>, Option<Item>),
+    ReceiveComments(Vec<Comment>, Option<Comment>),
     CloseComment,
     Search(String),
     OpenSearch,
@@ -43,24 +51,16 @@ impl CommentState {
     pub fn view(&self) -> Element<'_, AppMsg> {
         let article_text = self
             .article
-            .text
+            .body
             .as_deref()
             .map(|text| widget::rich_text(render_rich_text(text, self.search.as_deref(), false)))
             .map(|rt| container(rt).padding([10, 10]).into());
 
-        let comment_rows = self.comments.iter().last().into_iter().flat_map(|item| {
-            item.items
+        let comment_rows = if !self.search_results.is_empty() {
+            self.search_results
                 .iter()
-                .filter(
-                    |item| match (self.search.as_deref(), item.text.as_deref()) {
-                        (Some(search), Some(text)) => {
-                            text.to_lowercase().contains(&search.to_lowercase())
-                        }
-                        _ => true,
-                    },
-                )
-                .map(|item| {
-                    self.render_comment(item, false).style(|theme| {
+                .map(|comment| {
+                    self.render_comment(comment, false).style(|theme| {
                         let palette = theme.extended_palette();
 
                         container::Style {
@@ -71,7 +71,36 @@ impl CommentState {
                     })
                 })
                 .map(Element::from)
-        });
+                .collect::<Vec<_>>()
+        } else {
+            self.comments
+                .iter()
+                .last()
+                .into_iter()
+                .flat_map(|item| {
+                    item.items
+                        .iter()
+                        .filter(|item| match self.search.as_deref() {
+                            Some(search) => {
+                                item.body.to_lowercase().contains(&search.to_lowercase())
+                            }
+                            _ => true,
+                        })
+                        .map(|item| {
+                            self.render_comment(item, false).style(|theme| {
+                                let palette = theme.extended_palette();
+
+                                container::Style {
+                                    background: Some(palette.background.weak.color.into()),
+                                    border: border::rounded(8),
+                                    ..Default::default()
+                                }
+                            })
+                        })
+                        .map(Element::from)
+                })
+                .collect::<Vec<_>>()
+        };
 
         let parent_comments = self.comments.iter().flat_map(|item| {
             item.parent
@@ -125,7 +154,7 @@ impl CommentState {
         container(content.width(Length::Fill)).into()
     }
 
-    fn render_comment<'a>(&'a self, item: &'a Item, is_parent: bool) -> Container<'a, AppMsg> {
+    fn render_comment<'a>(&'a self, item: &'a Comment, is_parent: bool) -> Container<'a, AppMsg> {
         let by_button: Element<'_, AppMsg> = if item.kids.is_empty() {
             widget::text("").into()
         } else if is_parent {
@@ -137,7 +166,7 @@ impl CommentState {
                 .padding(0)
                 .on_press(AppMsg::OpenComment {
                     article: None,
-                    comment_ids: item.kids.clone(),
+                    parent_id: item.id,
                     parent: Some(item.clone()),
                 })
                 .style(button::text)
@@ -147,7 +176,7 @@ impl CommentState {
         container(
             column![
                 widget::rich_text(render_rich_text(
-                    item.text.as_deref().unwrap_or_default(),
+                    &item.body,
                     self.search.as_deref(),
                     self.oneline
                 )),
@@ -199,11 +228,23 @@ impl CommentState {
             }
             CommentMsg::Search(search) => {
                 if search.is_empty() {
-                    self.search = None;
+                    Task::done(AppMsg::Comments(CommentMsg::CloseSearch))
                 } else {
-                    self.search = Some(search);
+                    self.search = Some(search.clone());
+                    match self
+                        .search_context
+                        .search_comments(&search, self.article.id, 0)
+                    {
+                        Ok(comments) => {
+                            self.search_results = comments;
+                        }
+                        Err(err) => {
+                            eprintln!("Failed search: {err}");
+                            return Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string())));
+                        }
+                    }
+                    Task::none()
                 }
-                Task::none()
             }
             CommentMsg::OpenSearch => {
                 self.search = Some(String::new());
@@ -211,6 +252,7 @@ impl CommentState {
             }
             CommentMsg::CloseSearch => {
                 self.search = None;
+                self.search_results = Vec::new();
                 Task::none()
             }
             CommentMsg::Oneline => {

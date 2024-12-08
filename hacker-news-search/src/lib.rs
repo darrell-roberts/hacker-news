@@ -7,8 +7,8 @@ use tantivy::{
 };
 use thiserror::Error;
 
-mod create_index;
-mod stories;
+pub mod create_index;
+pub mod stories;
 
 pub use create_index::*;
 
@@ -23,16 +23,18 @@ pub const ITEM_RANK: &str = "rank";
 pub const ITEM_DESCENDANT_COUNT: &str = "descendants";
 pub const ITEM_CATEGORY: &str = "category";
 pub const ITEM_TIME: &str = "time";
+pub const ITEM_STORY_ID: &str = "story_id";
+pub const ITEM_KIDS: &str = "kids";
 
 #[derive(Debug, Error)]
 pub enum SearchError {
-    #[error("Failed to open or create index")]
-    OpenCreate(#[from] TantivyError),
-    #[error("Failed to open directory")]
+    #[error("Tantivy error: {0}")]
+    Tantivy(#[from] TantivyError),
+    #[error("Failed to open directory: {0}")]
     OpenDirectory(#[from] OpenDirectoryError),
-    #[error("API client error")]
+    #[error("API client error: {0}")]
     Client(#[from] anyhow::Error),
-    #[error("Bad query")]
+    #[error("Bad query: {0}")]
     Query(#[from] QueryParserError),
 }
 
@@ -79,7 +81,10 @@ fn article_schema() -> Schema {
     schema_builder.add_text_field(ITEM_TYPE, TEXT | STORED);
     schema_builder.add_u64_field(ITEM_DESCENDANT_COUNT, STORED | INDEXED);
     schema_builder.add_text_field(ITEM_CATEGORY, STRING);
+    // schema_builder.add_date_field(ITEM_TIME, STORED | INDEXED | FAST);
     schema_builder.add_u64_field(ITEM_TIME, STORED | INDEXED | FAST);
+    schema_builder.add_u64_field(ITEM_STORY_ID, FAST | INDEXED);
+    schema_builder.add_u64_field(ITEM_KIDS, FAST | INDEXED | STORED);
 
     schema_builder.build()
 }

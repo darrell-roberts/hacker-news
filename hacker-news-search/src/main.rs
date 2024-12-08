@@ -2,13 +2,13 @@ use hacker_news_search::{create_index, SearchContext};
 use std::{fs::exists, path::Path};
 use tokio::fs::{create_dir_all, remove_dir_all};
 
-const INDEX_PATH: &str = "/tmp/hacker-news";
+const INDEX_PATH: &str = "/home/droberts/.local/share/Hacker News/hacker-news-index/";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // create().await?;
-    // top_stories()?;
-    comments()?;
+    top_stories()?;
+    // comments()?;
     Ok(())
 }
 

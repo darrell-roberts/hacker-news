@@ -1,9 +1,11 @@
 use anyhow::Context;
 use app::{update, view, App, AppMsg, PaneState, ScrollBy};
-use articles::{ArticleMsg, ArticleState};
+use app_dirs2::get_app_dir;
+use articles::ArticleState;
 use chrono::{DateTime, Utc};
-use footer::{FooterMsg, FooterState};
-use hacker_news_api::{ApiClient, ArticleType};
+use footer::FooterState;
+use hacker_news_api::ArticleType;
+use hacker_news_search::SearchContext;
 use header::HeaderState;
 use iced::{
     advanced::graphics::core::window,
@@ -12,7 +14,11 @@ use iced::{
     window::{close_requests, resize_events},
     Size, Subscription, Theme,
 };
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::HashSet,
+    fs::{create_dir_all, remove_dir_all},
+    sync::Arc,
+};
 
 mod app;
 mod articles;
@@ -24,16 +30,31 @@ mod richtext;
 mod widget;
 
 fn main() -> anyhow::Result<()> {
-    let client = Arc::new(ApiClient::new().context("Could not create api client")?);
+    let dir = get_app_dir(
+        app_dirs2::AppDataType::UserData,
+        &config::APP_INFO,
+        "hacker-news-index",
+    )?;
+
+    let have_index = dir.exists();
+    // let have_index = false;
+
+    // if dir.exists() {
+    //     remove_dir_all(&dir)?;
+    // }
+    // create_dir_all(&dir)?;
+    let search_context = Arc::new(SearchContext::new(&dir)?);
 
     let app = config::load_config()
         .map(|config| App {
-            client: client.clone(),
+            search_context: search_context.clone(),
             theme: theme(&config.theme).unwrap_or_default(),
             scale: config.scale,
             header: HeaderState {
+                search_context: search_context.clone(),
                 article_count: config.article_count,
                 article_type: config.article_type,
+                building_index: false,
             },
             footer: FooterState {
                 status_line: String::new(),
@@ -41,7 +62,8 @@ fn main() -> anyhow::Result<()> {
                 scale: config.scale,
             },
             article_state: ArticleState {
-                client: client.clone(),
+                // client: client.clone(),
+                search_context: search_context.clone(),
                 articles: Vec::new(),
                 visited: config.visited,
                 search: None,
@@ -60,15 +82,17 @@ fn main() -> anyhow::Result<()> {
             eprintln!("Could not load config: {err}");
 
             App {
-                client: client.clone(),
+                search_context: search_context.clone(),
                 #[cfg(target_os = "linux")]
                 theme: Theme::GruvboxDark,
                 #[cfg(not(target_os = "linux"))]
                 theme: Theme::GruvboxLight,
                 scale: 1.,
                 header: HeaderState {
+                    search_context: search_context.clone(),
                     article_count: 75,
                     article_type: ArticleType::Top,
+                    building_index: false,
                 },
                 footer: FooterState {
                     status_line: String::new(),
@@ -76,7 +100,8 @@ fn main() -> anyhow::Result<()> {
                     scale: 1.,
                 },
                 article_state: ArticleState {
-                    client: client.clone(),
+                    // client: client.clone(),
+                    search_context: search_context.clone(),
                     articles: Vec::new(),
                     visited: HashSet::new(),
                     search: None,
@@ -112,16 +137,20 @@ fn main() -> anyhow::Result<()> {
             ..Default::default()
         })
         .scale_factor(|app| app.scale)
-        .run_with(|| {
+        .run_with(move || {
             (
                 app,
-                iced::Task::perform(
-                    async move { client.articles(75, ArticleType::Top).await },
-                    |result| match result {
-                        Ok(articles) => AppMsg::Articles(ArticleMsg::Receive(articles)),
-                        Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
-                    },
-                ),
+                if have_index {
+                    iced::Task::done(AppMsg::IndexReady)
+                } else {
+                    iced::Task::none()
+                }, // iced::Task::perform(
+                   //     async move { client.articles(75, ArticleType::Top).await },
+                   //     |result| match result {
+                   //         Ok(articles) => AppMsg::Articles(ArticleMsg::Receive(articles)),
+                   //         Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
+                   //     },
+                   // ),
             )
         })
         .context("Failed to run UI")

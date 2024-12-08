@@ -1,14 +1,18 @@
-use crate::{app::AppMsg, articles::ArticleMsg};
+use crate::{app::AppMsg, footer::FooterMsg};
 use hacker_news_api::ArticleType;
+use hacker_news_search::{create_index, SearchContext};
 use iced::{
     border,
     widget::{self, button, container, row, text, Column},
     Background, Border, Element, Length, Task,
 };
+use std::{ops::Not, sync::Arc};
 
 pub struct HeaderState {
+    pub search_context: Arc<SearchContext>,
     pub article_count: usize,
     pub article_type: ArticleType,
+    pub building_index: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -18,6 +22,8 @@ pub enum HeaderMsg {
         article_type: ArticleType,
     },
     ClearVisisted,
+    RebuildIndex,
+    IndexReady,
 }
 
 impl HeaderState {
@@ -110,26 +116,43 @@ impl HeaderState {
         .padding([5, 0]);
 
         let top_row = widget::container(
-            widget::Row::new().push(center_row).push(
-                widget::container(widget::tooltip(
-                    widget::button(widget::text("↻").shaping(text::Shaping::Advanced))
-                        .style(|theme, status| {
-                            let mut style = button::primary(theme, status);
-                            style.border = border::rounded(8.);
-                            style
-                        })
-                        .on_press(HeaderMsg::ClearVisisted)
-                        .padding(5),
-                    widget::container(widget::text("Clear visited").color(iced::Color::WHITE))
-                        .style(|_| {
-                            widget::container::Style::default()
-                                .background(Background::Color(iced::Color::BLACK))
-                        })
-                        .padding([2, 2]),
-                    widget::tooltip::Position::Left,
-                ))
-                .padding([5, 5]),
-            ),
+            widget::Row::new()
+                .push(center_row)
+                .push(
+                    widget::container(
+                        widget::button("Re-index")
+                            .on_press_maybe(
+                                self.building_index.not().then_some(HeaderMsg::RebuildIndex),
+                            )
+                            .style(|theme, status| {
+                                let mut style = button::primary(theme, status);
+                                style.border = border::rounded(8.);
+                                style
+                            })
+                            .padding(5),
+                    )
+                    .padding([5, 5]),
+                )
+                .push(
+                    widget::container(widget::tooltip(
+                        widget::button(widget::text("↻").shaping(text::Shaping::Advanced))
+                            .style(|theme, status| {
+                                let mut style = button::primary(theme, status);
+                                style.border = border::rounded(8.);
+                                style
+                            })
+                            .on_press(HeaderMsg::ClearVisisted)
+                            .padding(5),
+                        widget::container(widget::text("Clear visited").color(iced::Color::WHITE))
+                            .style(|_| {
+                                widget::container::Style::default()
+                                    .background(Background::Color(iced::Color::BLACK))
+                            })
+                            .padding([2, 2]),
+                        widget::tooltip::Position::Left,
+                    ))
+                    .padding([5, 5]),
+                ),
         )
         .style(|theme| {
             let palette = theme.extended_palette();
@@ -193,13 +216,35 @@ impl HeaderState {
             } => {
                 self.article_type = article_type;
                 self.article_count = article_count;
-                Task::done(ArticleMsg::Fetch {
-                    limit: article_count,
-                    article_type,
-                })
-                .map(AppMsg::Articles)
+                // Task::done(ArticleMsg::Fetch {
+                //     limit: article_count,
+                //     article_type,
+                // })
+                // .map(AppMsg::Articles)
+                Task::none()
             }
             HeaderMsg::ClearVisisted => Task::done(AppMsg::ClearVisited),
+            HeaderMsg::RebuildIndex => {
+                self.building_index = true;
+                let s = self.search_context.clone();
+                Task::batch([
+                    Task::perform(
+                        async move { create_index(&s).await },
+                        |result| match result {
+                            Ok(_) => AppMsg::IndexReady,
+                            Err(err) => {
+                                eprintln!("Failed to create index {err}");
+                                AppMsg::Footer(FooterMsg::Error(err.to_string()))
+                            }
+                        },
+                    ),
+                    Task::done(AppMsg::Footer(FooterMsg::Error("Building index...".into()))),
+                ])
+            }
+            HeaderMsg::IndexReady => {
+                self.building_index = false;
+                Task::none()
+            }
         }
     }
 }

@@ -2996,6 +2996,7 @@ dependencies = [
  "chrono",
  "either",
  "hacker-news-api",
+ "hacker-news-search",
  "html-sanitizer",
  "iced",
  "log",

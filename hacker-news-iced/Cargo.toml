@@ -18,11 +18,13 @@ iced = { version = "0.13", features = [
 
 hacker-news-api.workspace = true
 html-sanitizer.workspace = true
+hacker-news-search.workspace = true
 log.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 serde.workspace = true
 tokio.workspace = true
+
 
 open = "5"
 either = "1"

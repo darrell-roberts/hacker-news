@@ -1,6 +1,7 @@
 use crate::{
     SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_CATEGORY, ITEM_DESCENDANT_COUNT, ITEM_ID,
-    ITEM_PARENT_ID, ITEM_RANK, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
+    ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE,
+    ITEM_URL,
 };
 use hacker_news_api::{ApiClient, Item};
 use std::{future::Future, pin::Pin};
@@ -12,6 +13,7 @@ pub fn index_articles<'a>(
     writer: &'a mut IndexWriter,
     articles: &'a [Item],
     category: &'a str,
+    mut story_id: Option<u64>,
 ) -> Pin<Box<impl Future<Output = Result<(), SearchError>> + use<'a>>> {
     Box::pin(async move {
         let id = ctx.schema.get_field(ITEM_ID)?;
@@ -25,6 +27,8 @@ pub fn index_articles<'a>(
         let descendant_count = ctx.schema.get_field(ITEM_DESCENDANT_COUNT)?;
         let category_field = ctx.schema.get_field(ITEM_CATEGORY)?;
         let time = ctx.schema.get_field(ITEM_TIME)?;
+        let parent_story_id = ctx.schema.get_field(ITEM_STORY_ID)?;
+        let kids = ctx.schema.get_field(ITEM_KIDS)?;
 
         for (article, index) in articles.iter().zip(1..) {
             let mut doc = TantivyDocument::new();
@@ -45,20 +49,29 @@ pub fn index_articles<'a>(
             doc.add_text(by, &article.by);
             doc.add_text(ty, &article.ty);
 
-            if !article.kids.is_empty() {
-                let children = client.items(&article.kids).await?;
-                index_articles(ctx, client, writer, &children, category).await?;
-            }
-
             if let Some(n) = article.descendants {
                 doc.add_u64(descendant_count, n);
             }
 
+            if let Some(id) = story_id {
+                doc.add_u64(parent_story_id, id);
+            }
+
             if article.ty == "story" {
+                story_id = Some(article.id);
                 doc.add_text(category_field, category);
             }
 
             doc.add_u64(time, article.time);
+
+            for id in &article.kids {
+                doc.add_u64(kids, *id);
+            }
+
+            if !article.kids.is_empty() {
+                let children = client.items(&article.kids).await?;
+                index_articles(ctx, client, writer, &children, category, story_id).await?;
+            }
 
             writer.add_document(doc)?;
         }
@@ -74,8 +87,12 @@ pub async fn create_index(ctx: &SearchContext) -> Result<(), SearchError> {
         .await?;
 
     let mut writer: IndexWriter = ctx.index.writer(50_000_000)?;
-    index_articles(ctx, &client, &mut writer, &articles, "top").await?;
+    writer.delete_all_documents()?;
+
+    index_articles(ctx, &client, &mut writer, &articles, "top", None).await?;
     writer.commit()?;
+
+    ctx.reader.reload()?;
 
     Ok(())
 }

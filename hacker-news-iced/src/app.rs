@@ -3,10 +3,13 @@ use crate::{
     comments::{self, CommentMsg, CommentState},
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
-    header::{self, HeaderState},
+    header::{self, HeaderMsg, HeaderState},
     widget::hoverable,
 };
-use hacker_news_api::{ApiClient, Item};
+use hacker_news_search::{
+    stories::{Comment, Story},
+    SearchContext,
+};
 use iced::{
     font::Weight,
     widget::{
@@ -31,12 +34,12 @@ pub struct App {
     pub comment_state: Option<CommentState>,
     /// Footer
     pub footer: FooterState,
-    /// API Client.
-    pub client: Arc<ApiClient>,
     /// Window size
     pub size: Size,
     // Pane grid
     pub panes: pane_grid::State<PaneState>,
+    /// Search context.
+    pub search_context: Arc<SearchContext>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -62,9 +65,10 @@ pub enum AppMsg {
     Footer(footer::FooterMsg),
     Comments(comments::CommentMsg),
     OpenComment {
-        article: Option<Item>,
-        comment_ids: Vec<u64>,
-        parent: Option<Item>,
+        article: Option<Story>,
+        // comment_ids: Vec<u64>,
+        parent: Option<Comment>,
+        parent_id: u64,
     },
     OpenLink {
         url: String,
@@ -83,13 +87,15 @@ pub enum AppMsg {
     CommentsClosed,
     ClearVisited,
     CloseComment,
+    // RebuildIndex,
+    IndexReady,
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
     match message {
         AppMsg::OpenComment {
             article,
-            comment_ids,
+            parent_id,
             parent,
         } => {
             // Opening first set of comments from an article.
@@ -97,28 +103,38 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 let item_id = item.id;
 
                 app.comment_state = Some(CommentState {
+                    search_context: app.search_context.clone(),
                     article: item,
                     comments: Vec::new(),
                     search: None,
                     oneline: false,
+                    search_results: Vec::new(),
                 });
 
                 app.article_state.viewing_item = Some(item_id);
                 app.article_state.visited.insert(item_id);
             }
 
-            let client = app.client.clone();
+            let handle_results = match app.search_context.comments(parent_id, 0) {
+                Ok(comments) => Task::done(AppMsg::Comments(CommentMsg::ReceiveComments(
+                    comments, parent,
+                ))),
+                Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
+            };
+
+            // let client = app.client.clone();
             Task::batch([
                 Task::done(FooterMsg::Fetching).map(AppMsg::Footer),
-                Task::perform(
-                    async move { client.items(&comment_ids).await },
-                    move |result| match result {
-                        Ok(comments) => {
-                            AppMsg::Comments(CommentMsg::ReceiveComments(comments, parent.clone()))
-                        }
-                        Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
-                    },
-                ),
+                // Task::perform(
+                //     async move { client.items(&comment_ids).await },
+                //     move |result| match result {
+                //         Ok(comments) => {
+                //             AppMsg::Comments(CommentMsg::ReceiveComments(comments, parent.clone()))
+                //         }
+                //         Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
+                //     },
+                // ),
+                handle_results,
                 widget::scrollable::scroll_to(
                     widget::scrollable::Id::new("comments"),
                     AbsoluteOffset { x: 0., y: 0. },
@@ -172,9 +188,9 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             ])
         }
         AppMsg::Articles(msg) => {
-            if matches!(msg, ArticleMsg::Fetch { .. }) {
-                app.comment_state = None;
-            }
+            // if matches!(msg, articlemsg::fetch { .. }) {
+            //     app.comment_state = none;
+            // }
             app.article_state.update(msg)
         }
         AppMsg::Comments(msg) => app
@@ -225,7 +241,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         // }
         AppMsg::CloseSearch => {
             app.article_state.search = None;
-            Task::none()
+            Task::done(AppMsg::IndexReady)
             // if matches!(app.content, ContentScreen::Articles(_)) {
             // Task::done(AppMsg::Header(header::HeaderMsg::CloseSearch))
             // } else {
@@ -245,6 +261,29 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             .as_mut()
             .map(|s| s.update(CommentMsg::CloseComment))
             .unwrap_or_else(Task::none),
+        // AppMsg::RebuildIndex => {
+        //     let s = app.search_context.clone();
+        //     Task::batch([
+        //         Task::perform(
+        //             async move { create_index(&s).await },
+        //             |result| match result {
+        //                 Ok(_) => AppMsg::IndexReady,
+        //                 Err(err) => {
+        //                     eprintln!("Failed to create index {err}");
+        //                     AppMsg::Footer(FooterMsg::Error(err.to_string()))
+        //                 }
+        //             },
+        //         ),
+        //         Task::done(AppMsg::Footer(FooterMsg::Error("Building index...".into()))),
+        //     ])
+        // }
+        AppMsg::IndexReady => Task::batch([
+            match app.search_context.top_stories(0) {
+                Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
+                Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
+            },
+            Task::done(AppMsg::Header(HeaderMsg::IndexReady)),
+        ]),
     }
 }
 
@@ -252,13 +291,12 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
     let body = widget::pane_grid(&app.panes, |_pane, state, _is_maximized| {
         let title = || -> Option<iced::Element<AppMsg>> {
             let comment_state = app.comment_state.as_ref()?;
-            let title_text =
-                widget::text(comment_state.article.title.as_deref().unwrap_or_default())
-                    .font(Font {
-                        weight: Weight::Bold,
-                        ..Default::default()
-                    })
-                    .shaping(Shaping::Advanced);
+            let title_text = widget::text(&comment_state.article.title)
+                .font(Font {
+                    weight: Weight::Bold,
+                    ..Default::default()
+                })
+                .shaping(Shaping::Advanced);
 
             let content: iced::Element<AppMsg> = match comment_state.article.url.as_deref() {
                 Some(url) => hoverable(
