@@ -14,11 +14,7 @@ use iced::{
     window::{close_requests, resize_events},
     Size, Subscription, Theme,
 };
-use std::{
-    collections::HashSet,
-    fs::{create_dir_all, remove_dir_all},
-    sync::Arc,
-};
+use std::{collections::HashSet, sync::Arc};
 
 mod app;
 mod articles;
@@ -37,12 +33,6 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     let have_index = dir.exists();
-    // let have_index = false;
-
-    // if dir.exists() {
-    //     remove_dir_all(&dir)?;
-    // }
-    // create_dir_all(&dir)?;
     let search_context = Arc::new(SearchContext::new(&dir)?);
 
     let app = config::load_config()
@@ -62,7 +52,6 @@ fn main() -> anyhow::Result<()> {
                 scale: config.scale,
             },
             article_state: ArticleState {
-                // client: client.clone(),
                 search_context: search_context.clone(),
                 articles: Vec::new(),
                 visited: config.visited,
@@ -100,7 +89,6 @@ fn main() -> anyhow::Result<()> {
                     scale: 1.,
                 },
                 article_state: ArticleState {
-                    // client: client.clone(),
                     search_context: search_context.clone(),
                     articles: Vec::new(),
                     visited: HashSet::new(),
@@ -144,13 +132,7 @@ fn main() -> anyhow::Result<()> {
                     iced::Task::done(AppMsg::IndexReady)
                 } else {
                     iced::Task::none()
-                }, // iced::Task::perform(
-                   //     async move { client.articles(75, ArticleType::Top).await },
-                   //     |result| match result {
-                   //         Ok(articles) => AppMsg::Articles(ArticleMsg::Receive(articles)),
-                   //         Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
-                   //     },
-                   // ),
+                },
             )
         })
         .context("Failed to run UI")

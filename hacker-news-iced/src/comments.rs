@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
 use crate::{app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text};
 use chrono::Local;
 use hacker_news_search::{
-    stories::{Comment, Story},
+    api::{Comment, Story},
     SearchContext,
 };
 use iced::{
@@ -13,6 +11,7 @@ use iced::{
     widget::{self, button, column, container, row, scrollable, text::Shaping, Column, Container},
     Border, Element, Font, Length, Task,
 };
+use std::sync::Arc;
 
 /// List of comments and common parent
 pub struct CommentItem {

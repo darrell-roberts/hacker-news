@@ -2,7 +2,7 @@ use crate::{
     app::AppMsg, footer::FooterMsg, parse_date, richtext::SearchSpanIter, widget::hoverable,
 };
 use chrono::Local;
-use hacker_news_search::{stories::Story, SearchContext};
+use hacker_news_search::{api::Story, SearchContext};
 use iced::{
     advanced::image::{Bytes, Handle},
     alignment::{Horizontal, Vertical},
@@ -176,10 +176,10 @@ impl ArticleState {
                         )
                         .push(
                             Row::new()
-                                // .push(
-                                //     widget::text(format!("🔼{}", story.score))
-                                //         .shaping(text::Shaping::Advanced),
-                                // )
+                                .push(
+                                    widget::text(format!("🔼{}", story.score))
+                                        .shaping(text::Shaping::Advanced),
+                                )
                                 .push(if story.descendants == 0 {
                                     Element::from(text(""))
                                 } else {

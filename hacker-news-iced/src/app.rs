@@ -7,7 +7,7 @@ use crate::{
     widget::hoverable,
 };
 use hacker_news_search::{
-    stories::{Comment, Story},
+    api::{Comment, Story},
     SearchContext,
 };
 use iced::{
@@ -36,7 +36,7 @@ pub struct App {
     pub footer: FooterState,
     /// Window size
     pub size: Size,
-    // Pane grid
+    /// Pane grid
     pub panes: pane_grid::State<PaneState>,
     /// Search context.
     pub search_context: Arc<SearchContext>,
@@ -66,7 +66,6 @@ pub enum AppMsg {
     Comments(comments::CommentMsg),
     OpenComment {
         article: Option<Story>,
-        // comment_ids: Vec<u64>,
         parent: Option<Comment>,
         parent_id: u64,
     },
@@ -81,13 +80,11 @@ pub enum AppMsg {
     ResetScale,
     WindowResize(Size),
     ScrollBy(ScrollBy),
-    // OpenSearch,
     CloseSearch,
     PaneResized(pane_grid::ResizeEvent),
     CommentsClosed,
     ClearVisited,
     CloseComment,
-    // RebuildIndex,
     IndexReady,
 }
 
@@ -122,18 +119,8 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
             };
 
-            // let client = app.client.clone();
             Task::batch([
                 Task::done(FooterMsg::Fetching).map(AppMsg::Footer),
-                // Task::perform(
-                //     async move { client.items(&comment_ids).await },
-                //     move |result| match result {
-                //         Ok(comments) => {
-                //             AppMsg::Comments(CommentMsg::ReceiveComments(comments, parent.clone()))
-                //         }
-                //         Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
-                //     },
-                // ),
                 handle_results,
                 widget::scrollable::scroll_to(
                     widget::scrollable::Id::new("comments"),
@@ -148,7 +135,6 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             Task::none()
         }
         AppMsg::OpenLink { url, item_id } => {
-            println!("Opening link {url}");
             open::with_detached(url, "firefox")
                 .inspect_err(|err| {
                     error!("Failed to open url {err}");
@@ -187,12 +173,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 save_task(app),
             ])
         }
-        AppMsg::Articles(msg) => {
-            // if matches!(msg, articlemsg::fetch { .. }) {
-            //     app.comment_state = none;
-            // }
-            app.article_state.update(msg)
-        }
+        AppMsg::Articles(msg) => app.article_state.update(msg),
         AppMsg::Comments(msg) => app
             .comment_state
             .as_mut()
@@ -231,22 +212,9 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             // }
             Task::none()
         }
-        // AppMsg::OpenSearch => {
-        //     Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
-        //     // if matches!(app.content, ContentScreen::Articles(_)) {
-        //     //     Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
-        //     // } else {
-        //     //     Task::done(AppMsg::Comments(CommentMsg::OpenSearch))
-        //     // }
-        // }
         AppMsg::CloseSearch => {
             app.article_state.search = None;
             Task::done(AppMsg::IndexReady)
-            // if matches!(app.content, ContentScreen::Articles(_)) {
-            // Task::done(AppMsg::Header(header::HeaderMsg::CloseSearch))
-            // } else {
-            //     Task::done(AppMsg::Comments(CommentMsg::CloseSearch))
-            // }
         }
         AppMsg::PaneResized(p) => {
             app.panes.resize(p.split, p.ratio);
@@ -261,22 +229,6 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             .as_mut()
             .map(|s| s.update(CommentMsg::CloseComment))
             .unwrap_or_else(Task::none),
-        // AppMsg::RebuildIndex => {
-        //     let s = app.search_context.clone();
-        //     Task::batch([
-        //         Task::perform(
-        //             async move { create_index(&s).await },
-        //             |result| match result {
-        //                 Ok(_) => AppMsg::IndexReady,
-        //                 Err(err) => {
-        //                     eprintln!("Failed to create index {err}");
-        //                     AppMsg::Footer(FooterMsg::Error(err.to_string()))
-        //                 }
-        //             },
-        //         ),
-        //         Task::done(AppMsg::Footer(FooterMsg::Error("Building index...".into()))),
-        //     ])
-        // }
         AppMsg::IndexReady => Task::batch([
             match app.search_context.top_stories(0) {
                 Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),

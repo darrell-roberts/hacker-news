@@ -1,7 +1,7 @@
 use crate::{
     SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_CATEGORY, ITEM_DESCENDANT_COUNT, ITEM_ID,
-    ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE,
-    ITEM_URL,
+    ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE,
+    ITEM_TYPE, ITEM_URL,
 };
 use hacker_news_api::{ApiClient, Item};
 use std::{future::Future, pin::Pin};
@@ -29,6 +29,7 @@ pub fn index_articles<'a>(
         let time = ctx.schema.get_field(ITEM_TIME)?;
         let parent_story_id = ctx.schema.get_field(ITEM_STORY_ID)?;
         let kids = ctx.schema.get_field(ITEM_KIDS)?;
+        let score = ctx.schema.get_field(ITEM_SCORE)?;
 
         for (article, index) in articles.iter().zip(1..) {
             let mut doc = TantivyDocument::new();
@@ -60,6 +61,7 @@ pub fn index_articles<'a>(
             if article.ty == "story" {
                 story_id = Some(article.id);
                 doc.add_text(category_field, category);
+                doc.add_u64(score, article.score);
             }
 
             doc.add_u64(time, article.time);
@@ -79,7 +81,7 @@ pub fn index_articles<'a>(
     })
 }
 
-pub async fn create_index(ctx: &SearchContext) -> Result<(), SearchError> {
+pub async fn rebuild_index(ctx: &SearchContext) -> Result<(), SearchError> {
     let client = ApiClient::new()?;
 
     let articles = client

@@ -1,4 +1,4 @@
-use hacker_news_search::{create_index, SearchContext};
+use hacker_news_search::{rebuild_index, SearchContext};
 use std::{fs::exists, path::Path};
 use tokio::fs::{create_dir_all, remove_dir_all};
 
@@ -19,7 +19,7 @@ async fn create() -> anyhow::Result<()> {
     create_dir_all("/tmp/hacker-news").await?;
 
     let ctx = SearchContext::new(Path::new(INDEX_PATH))?;
-    create_index(&ctx).await?;
+    rebuild_index(&ctx).await?;
     Ok(())
 }
 

@@ -7,8 +7,8 @@ use tantivy::{
 };
 use thiserror::Error;
 
+pub mod api;
 pub mod create_index;
-pub mod stories;
 
 pub use create_index::*;
 
@@ -25,6 +25,7 @@ pub const ITEM_CATEGORY: &str = "category";
 pub const ITEM_TIME: &str = "time";
 pub const ITEM_STORY_ID: &str = "story_id";
 pub const ITEM_KIDS: &str = "kids";
+pub const ITEM_SCORE: &str = "score";
 
 #[derive(Debug, Error)]
 pub enum SearchError {
@@ -85,6 +86,7 @@ fn article_schema() -> Schema {
     schema_builder.add_u64_field(ITEM_TIME, STORED | INDEXED | FAST);
     schema_builder.add_u64_field(ITEM_STORY_ID, FAST | INDEXED);
     schema_builder.add_u64_field(ITEM_KIDS, FAST | INDEXED | STORED);
+    schema_builder.add_u64_field(ITEM_SCORE, INDEXED | STORED);
 
     schema_builder.build()
 }

@@ -1,11 +1,11 @@
 use crate::{
-    SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_DESCENDANT_COUNT, ITEM_ID, ITEM_KIDS,
-    ITEM_RANK, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
+    SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_CATEGORY, ITEM_DESCENDANT_COUNT, ITEM_ID,
+    ITEM_KIDS, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
 };
 use std::collections::HashMap;
 use tantivy::{
     collector::TopDocs,
-    query::{BooleanQuery, Occur, TermQuery},
+    query::{BooleanQuery, FuzzyTermQuery, Occur, TermQuery},
     schema::{IndexRecordOption, OwnedValue},
     Document, Order, TantivyDocument, Term,
 };
@@ -64,7 +64,39 @@ impl SearchContext {
     }
 
     pub fn search_stories(&self, search: &str, offset: usize) -> Result<Vec<Story>, SearchError> {
-        let query = self.query_parser()?.parse_query(search)?;
+        let type_story_query = Box::new(TermQuery::new(
+            Term::from_field_text(self.schema.get_field(ITEM_TYPE)?, "story"),
+            IndexRecordOption::Basic,
+        ));
+
+        let type_job_query = Box::new(TermQuery::new(
+            Term::from_field_text(self.schema.get_field(ITEM_TYPE)?, "job"),
+            IndexRecordOption::Basic,
+        ));
+
+        let category_query = Box::new(TermQuery::new(
+            Term::from_field_text(self.schema.get_field(ITEM_CATEGORY)?, "top"),
+            IndexRecordOption::Basic,
+        ));
+
+        let fuzzy_query = Box::new(FuzzyTermQuery::new(
+            Term::from_field_text(self.schema.get_field(ITEM_TITLE)?, search),
+            1,
+            true,
+        ));
+
+        let query = BooleanQuery::new(vec![
+            (
+                Occur::Must,
+                Box::new(BooleanQuery::new(vec![
+                    (Occur::Should, type_story_query),
+                    (Occur::Should, type_job_query),
+                ])),
+            ),
+            (Occur::Must, category_query),
+            (Occur::Must, fuzzy_query),
+        ]);
+
         let searcher = self.searcher();
         let top_docs = TopDocs::with_limit(50)
             // Pagination
@@ -92,9 +124,6 @@ impl SearchContext {
         story_id: u64,
         offset: usize,
     ) -> Result<Vec<Comment>, SearchError> {
-        // let query = self
-        //     .query_parser()?
-        //     .parse_query(&format!("story_id:{story_id} AND {search}"))?;
         let searcher = self.searcher();
 
         let parent_query = Box::new(TermQuery::new(
@@ -102,9 +131,10 @@ impl SearchContext {
             IndexRecordOption::Basic,
         ));
 
-        let fuzzy_search = Box::new(TermQuery::new(
+        let fuzzy_search = Box::new(FuzzyTermQuery::new(
             Term::from_field_text(self.schema.get_field(ITEM_BODY)?, search),
-            IndexRecordOption::Basic,
+            1,
+            true,
         ));
 
         let combined_query = BooleanQuery::new(vec![
@@ -152,6 +182,8 @@ pub struct Story {
     pub descendants: u64,
     /// Time posted
     pub time: u64,
+    /// Score
+    pub score: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -182,6 +214,7 @@ impl SearchContext {
             ty: fields.remove(ITEM_TYPE).and_then(str_value)?,
             descendants: fields.remove(ITEM_DESCENDANT_COUNT).and_then(u64_value)?,
             time: fields.remove(ITEM_TIME).and_then(u64_value)?,
+            score: fields.remove(ITEM_SCORE).and_then(u64_value)?,
         })
     }
 
@@ -205,7 +238,6 @@ impl SearchContext {
             .into_iter()
             .flat_map(|(field, field_values)| {
                 let field_name = self.schema.get_field_name(field);
-                // let value = field_values.pop()?;
                 Some((field_name, field_values))
             })
             .collect()

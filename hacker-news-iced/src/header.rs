@@ -1,6 +1,6 @@
 use crate::{app::AppMsg, footer::FooterMsg};
 use hacker_news_api::ArticleType;
-use hacker_news_search::{create_index, SearchContext};
+use hacker_news_search::{rebuild_index, SearchContext};
 use iced::{
     border,
     widget::{self, button, container, row, text, Column},
@@ -229,7 +229,7 @@ impl HeaderState {
                 let s = self.search_context.clone();
                 Task::batch([
                     Task::perform(
-                        async move { create_index(&s).await },
+                        async move { rebuild_index(&s).await },
                         |result| match result {
                             Ok(_) => AppMsg::IndexReady,
                             Err(err) => {
