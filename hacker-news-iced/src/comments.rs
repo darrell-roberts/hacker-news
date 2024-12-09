@@ -1,5 +1,4 @@
 use crate::{app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text};
-use chrono::Local;
 use hacker_news_search::{
     api::{Comment, Story},
     SearchContext,
@@ -153,20 +152,24 @@ impl CommentState {
         container(content.width(Length::Fill)).into()
     }
 
-    fn render_comment<'a>(&'a self, item: &'a Comment, is_parent: bool) -> Container<'a, AppMsg> {
-        let by_button: Element<'_, AppMsg> = if item.kids.is_empty() {
+    fn render_comment<'a>(
+        &'a self,
+        comment: &'a Comment,
+        is_parent: bool,
+    ) -> Container<'a, AppMsg> {
+        let by_button: Element<'_, AppMsg> = if comment.kids.is_empty() {
             widget::text("").into()
         } else if is_parent {
-            widget::text(format!("💬{}", item.kids.len()))
+            widget::text(format!("💬{}", comment.kids.len()))
                 .shaping(Shaping::Advanced)
                 .into()
         } else {
-            button(widget::text(format!("💬{}", item.kids.len())).shaping(Shaping::Advanced))
+            button(widget::text(format!("💬{}", comment.kids.len())).shaping(Shaping::Advanced))
                 .padding(0)
                 .on_press(AppMsg::OpenComment {
                     article: None,
-                    parent_id: item.id,
-                    parent: Some(item.clone()),
+                    parent_id: comment.id,
+                    parent: Some(comment.clone()),
                 })
                 .style(button::text)
                 .into()
@@ -175,20 +178,20 @@ impl CommentState {
         container(
             column![
                 widget::rich_text(render_rich_text(
-                    &item.body,
+                    &comment.body,
                     self.search.as_deref(),
                     self.oneline
                 )),
                 row![
                     widget::rich_text([
-                        widget::span(format!(" by {}", item.by))
+                        widget::span(format!(" by {}", comment.by))
                             .font(Font {
                                 style: Style::Italic,
                                 ..Default::default()
                             })
                             .size(14),
                         widget::span(" "),
-                        widget::span(parse_date(item.time).unwrap_or_default())
+                        widget::span(parse_date(comment.time).unwrap_or_default())
                             .font(Font {
                                 weight: Weight::Light,
                                 style: Style::Italic,
@@ -215,7 +218,7 @@ impl CommentState {
                     parent,
                 });
 
-                Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer)
+                Task::none()
             }
             CommentMsg::CloseComment => {
                 self.comments.pop();

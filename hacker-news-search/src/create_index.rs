@@ -11,7 +11,7 @@ pub fn index_articles<'a>(
     ctx: &'a SearchContext,
     client: &'a ApiClient,
     writer: &'a mut IndexWriter,
-    articles: &'a [Item],
+    items: &'a [Item],
     category: &'a str,
     mut story_id: Option<u64>,
 ) -> Pin<Box<impl Future<Output = Result<(), SearchError>> + use<'a>>> {
@@ -31,26 +31,26 @@ pub fn index_articles<'a>(
         let kids = ctx.schema.get_field(ITEM_KIDS)?;
         let score = ctx.schema.get_field(ITEM_SCORE)?;
 
-        for (article, index) in articles.iter().zip(1..) {
+        for (item, index) in items.iter().zip(1..) {
             let mut doc = TantivyDocument::new();
             doc.add_u64(rank, index);
-            doc.add_u64(id, article.id);
-            if let Some(id) = article.parent {
+            doc.add_u64(id, item.id);
+            if let Some(id) = item.parent {
                 doc.add_u64(parent, id);
             }
-            if let Some(t) = article.title.as_deref() {
+            if let Some(t) = item.title.as_deref() {
                 doc.add_text(title, t);
             }
-            if let Some(t) = article.text.as_deref() {
+            if let Some(t) = item.text.as_deref() {
                 doc.add_text(body, t);
             }
-            if let Some(u) = article.url.as_deref() {
+            if let Some(u) = item.url.as_deref() {
                 doc.add_text(url, u);
             }
-            doc.add_text(by, &article.by);
-            doc.add_text(ty, &article.ty);
+            doc.add_text(by, &item.by);
+            doc.add_text(ty, &item.ty);
 
-            if let Some(n) = article.descendants {
+            if let Some(n) = item.descendants {
                 doc.add_u64(descendant_count, n);
             }
 
@@ -58,22 +58,25 @@ pub fn index_articles<'a>(
                 doc.add_u64(parent_story_id, id);
             }
 
-            if article.ty == "story" {
-                story_id = Some(article.id);
+            if item.ty == "story" {
+                story_id = Some(item.id);
                 doc.add_text(category_field, category);
-                doc.add_u64(score, article.score);
+                doc.add_u64(score, item.score);
             }
 
-            doc.add_u64(time, article.time);
+            doc.add_u64(time, item.time);
 
-            for id in &article.kids {
+            for id in &item.kids {
                 doc.add_u64(kids, *id);
             }
 
-            if !article.kids.is_empty() {
-                let children = client.items(&article.kids).await?;
+            if !item.kids.is_empty() {
+                let children = client.items(&item.kids).await?;
                 index_articles(ctx, client, writer, &children, category, story_id).await?;
             }
+
+            // TODO: Add a depth field for comments. This will allow for
+            // easy indentatino for viewing the comment tree.
 
             writer.add_document(doc)?;
         }
@@ -85,7 +88,7 @@ pub async fn rebuild_index(ctx: &SearchContext) -> Result<(), SearchError> {
     let client = ApiClient::new()?;
 
     let articles = client
-        .articles(25, hacker_news_api::ArticleType::Top)
+        .articles(75, hacker_news_api::ArticleType::Top)
         .await?;
 
     let mut writer: IndexWriter = ctx.index.writer(50_000_000)?;

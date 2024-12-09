@@ -3,6 +3,7 @@ use crate::{
     comments::{self, CommentMsg, CommentState},
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
+    full_search::{FullSearchMsg, FullSearchState},
     header::{self, HeaderMsg, HeaderState},
     widget::hoverable,
 };
@@ -32,6 +33,9 @@ pub struct App {
     pub article_state: ArticleState,
     /// Comment state.
     pub comment_state: Option<CommentState>,
+
+    /// Full search state.
+    pub full_search_state: FullSearchState,
     /// Footer
     pub footer: FooterState,
     /// Window size
@@ -86,6 +90,7 @@ pub enum AppMsg {
     ClearVisited,
     CloseComment,
     IndexReady,
+    FullSearch(FullSearchMsg),
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -126,6 +131,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     widget::scrollable::Id::new("comments"),
                     AbsoluteOffset { x: 0., y: 0. },
                 ),
+                Task::done(AppMsg::FullSearch(FullSearchMsg::CloseSearch)),
                 save_task(app),
             ])
         }
@@ -236,6 +242,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             },
             Task::done(AppMsg::Header(HeaderMsg::IndexReady)),
         ]),
+        AppMsg::FullSearch(msg) => app.full_search_state.update(msg),
     }
 }
 
@@ -271,11 +278,16 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
 
         pane_grid::Content::new(match state {
             PaneState::Articles => app.article_state.view(&app.theme),
-            PaneState::Comments => app
-                .comment_state
-                .as_ref()
-                .map(|s| s.view())
-                .unwrap_or_else(|| widget::text("").into()),
+            PaneState::Comments => {
+                if app.full_search_state.search.is_some() {
+                    app.full_search_state.view()
+                } else {
+                    app.comment_state
+                        .as_ref()
+                        .map(|s| s.view())
+                        .unwrap_or_else(|| widget::text("").into())
+                }
+            }
         })
         .title_bar(match state {
             PaneState::Articles => pane_grid::TitleBar::new(
@@ -283,7 +295,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     .push(
                         widget::text_input(
                             "Search...",
-                            app.article_state.search.as_deref().unwrap_or(""),
+                            app.article_state.search.as_deref().unwrap_or_default(),
                         )
                         .padding(5)
                         .on_input(|search| AppMsg::Articles(ArticleMsg::Search(search))),
@@ -296,19 +308,21 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     )),
             ),
             PaneState::Comments => match app.comment_state.as_ref() {
-                Some(cs) => pane_grid::TitleBar::new(title().unwrap_or("".into()))
-                    .controls(pane_grid::Controls::new(
-                        widget::Row::new()
-                            .push(
-                                widget::toggler(cs.oneline)
-                                    .label("oneline")
-                                    .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
-                            )
-                            .push(widget::button("X").on_press(AppMsg::CloseComment))
-                            .spacing(5),
-                    ))
-                    .always_show_controls(),
-                None => pane_grid::TitleBar::new(""),
+                Some(cs) if app.full_search_state.search.is_none() => {
+                    pane_grid::TitleBar::new(title().unwrap_or("".into()))
+                        .controls(pane_grid::Controls::new(
+                            widget::Row::new()
+                                .push(
+                                    widget::toggler(cs.oneline)
+                                        .label("oneline")
+                                        .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
+                                )
+                                .push(widget::button("X").on_press(AppMsg::CloseComment))
+                                .spacing(5),
+                        ))
+                        .always_show_controls()
+                }
+                _ => pane_grid::TitleBar::new(""),
             },
         })
     })

@@ -2,7 +2,10 @@ use std::path::Path;
 use tantivy::{
     directory::{error::OpenDirectoryError, MmapDirectory},
     query::{QueryParser, QueryParserError},
-    schema::{Schema, FAST, INDEXED, STORED, STRING, TEXT},
+    schema::{
+        IndexRecordOption, Schema, TextFieldIndexing, TextOptions, FAST, INDEXED, STORED, STRING,
+        TEXT,
+    },
     Index, IndexReader, Searcher, TantivyError,
 };
 use thiserror::Error;
@@ -72,11 +75,18 @@ impl SearchContext {
 fn article_schema() -> Schema {
     let mut schema_builder = Schema::builder();
 
+    let text_field_indexing = TextFieldIndexing::default()
+        .set_tokenizer("en_stem")
+        .set_index_option(IndexRecordOption::WithFreqsAndPositions);
+    let text_field_options = TextOptions::default()
+        .set_indexing_options(text_field_indexing)
+        .set_stored();
+
     schema_builder.add_u64_field(ITEM_RANK, FAST);
     schema_builder.add_u64_field(ITEM_ID, STORED | INDEXED | FAST);
     schema_builder.add_u64_field(ITEM_PARENT_ID, STORED | INDEXED | FAST);
-    schema_builder.add_text_field(ITEM_TITLE, STORED | TEXT);
-    schema_builder.add_text_field(ITEM_BODY, TEXT | STORED);
+    schema_builder.add_text_field(ITEM_TITLE, text_field_options.clone());
+    schema_builder.add_text_field(ITEM_BODY, text_field_options);
     schema_builder.add_text_field(ITEM_URL, STRING | STORED);
     schema_builder.add_text_field(ITEM_BY, STRING | STORED);
     schema_builder.add_text_field(ITEM_TYPE, TEXT | STORED);

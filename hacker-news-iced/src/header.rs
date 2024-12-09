@@ -1,4 +1,4 @@
-use crate::{app::AppMsg, footer::FooterMsg};
+use crate::{app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg};
 use hacker_news_api::ArticleType;
 use hacker_news_search::{rebuild_index, SearchContext};
 use iced::{
@@ -13,6 +13,7 @@ pub struct HeaderState {
     pub article_count: usize,
     pub article_type: ArticleType,
     pub building_index: bool,
+    pub full_search: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -24,10 +25,13 @@ pub enum HeaderMsg {
     ClearVisisted,
     RebuildIndex,
     IndexReady,
+    Search(String),
 }
 
 impl HeaderState {
     pub fn view(&self) -> Element<'_, HeaderMsg> {
+        // TODO: Add a search input here that searches the entire index.
+
         let center_row = container(
             row![
                 self.header_type_button(
@@ -112,47 +116,59 @@ impl HeaderState {
             .spacing(10),
         )
         .center_x(1)
-        .width(Length::Fill)
+        .width(Length::FillPortion(2))
         .padding([5, 0]);
 
         let top_row = widget::container(
-            widget::Row::new()
-                .push(center_row)
-                .push(
-                    widget::container(
-                        widget::button("Re-index")
-                            .on_press_maybe(
-                                self.building_index.not().then_some(HeaderMsg::RebuildIndex),
+            widget::Row::new().push(center_row).push(
+                widget::container(
+                    widget::Row::new()
+                        .push(
+                            widget::text_input(
+                                "Search everything...",
+                                &self.full_search.as_deref().unwrap_or_default(),
                             )
-                            .style(|theme, status| {
-                                let mut style = button::primary(theme, status);
-                                style.border = border::rounded(8.);
-                                style
-                            })
+                            .on_input(|search| HeaderMsg::Search(search))
                             .padding(5),
-                    )
-                    .padding([5, 5]),
-                )
-                .push(
-                    widget::container(widget::tooltip(
-                        widget::button(widget::text("↻").shaping(text::Shaping::Advanced))
-                            .style(|theme, status| {
-                                let mut style = button::primary(theme, status);
-                                style.border = border::rounded(8.);
-                                style
-                            })
-                            .on_press(HeaderMsg::ClearVisisted)
-                            .padding(5),
-                        widget::container(widget::text("Clear visited").color(iced::Color::WHITE))
+                        )
+                        .push(widget::container(
+                            widget::button(widget::text("⟲").shaping(text::Shaping::Advanced))
+                                .on_press(HeaderMsg::Search("".into())),
+                        ))
+                        .push(
+                            widget::button("Re-index")
+                                .on_press_maybe(
+                                    self.building_index.not().then_some(HeaderMsg::RebuildIndex),
+                                )
+                                .style(|theme, status| {
+                                    let mut style = button::primary(theme, status);
+                                    style.border = border::rounded(8.);
+                                    style
+                                })
+                                .padding(5),
+                        )
+                        .push(widget::tooltip(
+                            widget::button(widget::text("↻").shaping(text::Shaping::Advanced))
+                                .style(|theme, status| {
+                                    let mut style = button::primary(theme, status);
+                                    style.border = border::rounded(8.);
+                                    style
+                                })
+                                .on_press(HeaderMsg::ClearVisisted)
+                                .padding(5),
+                            widget::container(
+                                widget::text("Clear visited").color(iced::Color::WHITE),
+                            )
                             .style(|_| {
                                 widget::container::Style::default()
                                     .background(Background::Color(iced::Color::BLACK))
                             })
                             .padding([2, 2]),
-                        widget::tooltip::Position::Left,
-                    ))
-                    .padding([5, 5]),
-                ),
+                            widget::tooltip::Position::Left,
+                        )),
+                )
+                .padding([5, 5]),
+            ),
         )
         .style(|theme| {
             let palette = theme.extended_palette();
@@ -244,6 +260,14 @@ impl HeaderState {
             HeaderMsg::IndexReady => {
                 self.building_index = false;
                 Task::none()
+            }
+            HeaderMsg::Search(search) => {
+                if search.is_empty() {
+                    self.full_search = None;
+                } else {
+                    self.full_search = Some(search.clone());
+                }
+                Task::done(AppMsg::FullSearch(FullSearchMsg::Search(search)))
             }
         }
     }

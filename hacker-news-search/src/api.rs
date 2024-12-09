@@ -47,7 +47,7 @@ impl SearchContext {
             // Pagination
             .and_offset(offset)
             // Ordering
-            .order_by_u64_field(ITEM_TIME, Order::Asc);
+            .order_by_u64_field(ITEM_RANK, Order::Asc);
 
         let docs = searcher
             .search(&query, &top_docs)?
@@ -150,6 +150,40 @@ impl SearchContext {
 
         let docs = searcher
             .search(&combined_query, &top_docs)?
+            .into_iter()
+            .map(|(_, doc)| searcher.doc::<TantivyDocument>(doc))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let comments = docs
+            .into_iter()
+            .flat_map(|doc| self.to_comment(doc))
+            .collect::<Vec<_>>();
+
+        Ok(comments)
+    }
+
+    pub fn search_all_comments(
+        &self,
+        search: &str,
+        offset: usize,
+    ) -> Result<Vec<Comment>, SearchError> {
+        let searcher = self.searcher();
+
+        // let query = TermQuery::new(
+        //     Term::from_field_text(self.schema.get_field(ITEM_BODY)?, search),
+        //     IndexRecordOption::WithFreqsAndPositions, // 1,
+        //                                               // true,
+        // );
+        let query = self.query_parser()?.parse_query(search)?;
+
+        let top_docs = TopDocs::with_limit(50)
+            // Pagination
+            .and_offset(offset)
+            // Ordering
+            .order_by_u64_field(ITEM_TIME, Order::Asc);
+
+        let docs = searcher
+            .search(&query, &top_docs)?
             .into_iter()
             .map(|(_, doc)| searcher.doc::<TantivyDocument>(doc))
             .collect::<Result<Vec<_>, _>>()?;

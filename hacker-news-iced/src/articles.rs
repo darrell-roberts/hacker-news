@@ -257,7 +257,7 @@ impl ArticleState {
                         widget::scrollable::Id::new("articles"),
                         Default::default(),
                     ),
-                    Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer),
+                    Task::done(AppMsg::Footer(FooterMsg::LastUpdate(Local::now()))),
                 ])
             }
             ArticleMsg::Search(input) => {

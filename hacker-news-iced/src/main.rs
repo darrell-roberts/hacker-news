@@ -4,6 +4,7 @@ use app_dirs2::get_app_dir;
 use articles::ArticleState;
 use chrono::{DateTime, Utc};
 use footer::FooterState;
+use full_search::FullSearchState;
 use hacker_news_api::ArticleType;
 use hacker_news_search::SearchContext;
 use header::HeaderState;
@@ -21,6 +22,7 @@ mod articles;
 mod comments;
 mod config;
 mod footer;
+mod full_search;
 mod header;
 mod richtext;
 mod widget;
@@ -45,6 +47,7 @@ fn main() -> anyhow::Result<()> {
                 article_count: config.article_count,
                 article_type: config.article_type,
                 building_index: false,
+                full_search: None,
             },
             footer: FooterState {
                 status_line: String::new(),
@@ -66,6 +69,11 @@ fn main() -> anyhow::Result<()> {
                 a: Box::new(Configuration::Pane(PaneState::Articles)),
                 b: Box::new(Configuration::Pane(PaneState::Comments)),
             }),
+            full_search_state: FullSearchState {
+                search_context: search_context.clone(),
+                search: None,
+                search_results: Vec::new(),
+            },
         })
         .unwrap_or_else(|err| {
             eprintln!("Could not load config: {err}");
@@ -82,6 +90,7 @@ fn main() -> anyhow::Result<()> {
                     article_count: 75,
                     article_type: ArticleType::Top,
                     building_index: false,
+                    full_search: None,
                 },
                 footer: FooterState {
                     status_line: String::new(),
@@ -103,6 +112,11 @@ fn main() -> anyhow::Result<()> {
                     a: Box::new(Configuration::Pane(PaneState::Articles)),
                     b: Box::new(Configuration::Pane(PaneState::Comments)),
                 }),
+                full_search_state: FullSearchState {
+                    search_context: search_context.clone(),
+                    search: None,
+                    search_results: Vec::new(),
+                },
             }
         });
 
