@@ -1,4 +1,5 @@
-use crate::{app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg};
+use crate::{app::AppMsg, articles::ArticleMsg, footer::FooterMsg, full_search::FullSearchMsg};
+use chrono::Local;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{rebuild_index, SearchContext};
 use iced::{
@@ -24,8 +25,9 @@ pub enum HeaderMsg {
     },
     ClearVisisted,
     RebuildIndex,
-    IndexReady,
+    IndexReady(u64, u64),
     Search(String),
+    IndexFailed(String),
 }
 
 impl HeaderState {
@@ -232,12 +234,7 @@ impl HeaderState {
             } => {
                 self.article_type = article_type;
                 self.article_count = article_count;
-                // Task::done(ArticleMsg::Fetch {
-                //     limit: article_count,
-                //     article_type,
-                // })
-                // .map(AppMsg::Articles)
-                Task::none()
+                Task::done(ArticleMsg::TopStories(article_count)).map(AppMsg::Articles)
             }
             HeaderMsg::ClearVisisted => Task::done(AppMsg::ClearVisited),
             HeaderMsg::RebuildIndex => {
@@ -246,20 +243,34 @@ impl HeaderState {
                 Task::batch([
                     Task::perform(
                         async move { rebuild_index(&s).await },
-                        |result| match result {
-                            Ok(_) => AppMsg::IndexReady,
+                        move |result| match result {
+                            Ok((total_documents, total_comments)) => AppMsg::Header(
+                                HeaderMsg::IndexReady(total_documents, total_comments),
+                            ),
                             Err(err) => {
                                 eprintln!("Failed to create index {err}");
-                                AppMsg::Footer(FooterMsg::Error(err.to_string()))
+                                AppMsg::Header(HeaderMsg::IndexFailed(err.to_string()))
                             }
                         },
                     ),
-                    Task::done(AppMsg::Footer(FooterMsg::Error("Building index...".into()))),
+                    Task::done(FooterMsg::Error("Building index...".into())).map(AppMsg::Footer),
                 ])
             }
-            HeaderMsg::IndexReady => {
+            HeaderMsg::IndexReady(total_documents, total_comments) => {
                 self.building_index = false;
-                Task::none()
+                Task::batch([
+                    Task::done(ArticleMsg::TopStories(self.article_count)).map(AppMsg::Articles),
+                    Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer),
+                    Task::done(FooterMsg::IndexStats {
+                        total_documents,
+                        total_comments,
+                    })
+                    .map(AppMsg::Footer),
+                ])
+            }
+            HeaderMsg::IndexFailed(err) => {
+                self.building_index = false;
+                Task::done(FooterMsg::Error(err)).map(AppMsg::Footer)
             }
             HeaderMsg::Search(search) => {
                 if search.is_empty() {
@@ -267,7 +278,7 @@ impl HeaderState {
                 } else {
                     self.full_search = Some(search.clone());
                 }
-                Task::done(AppMsg::FullSearch(FullSearchMsg::Search(search)))
+                Task::done(FullSearchMsg::Search(search)).map(AppMsg::FullSearch)
             }
         }
     }

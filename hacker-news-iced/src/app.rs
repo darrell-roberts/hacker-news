@@ -4,7 +4,7 @@ use crate::{
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState},
-    header::{self, HeaderMsg, HeaderState},
+    header::{self, HeaderState},
     widget::hoverable,
 };
 use hacker_news_search::{
@@ -89,7 +89,6 @@ pub enum AppMsg {
     CommentsClosed,
     ClearVisited,
     CloseComment,
-    IndexReady,
     FullSearch(FullSearchMsg),
 }
 
@@ -220,7 +219,9 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         }
         AppMsg::CloseSearch => {
             app.article_state.search = None;
-            Task::done(AppMsg::IndexReady)
+            Task::done(AppMsg::Articles(ArticleMsg::TopStories(
+                app.header.article_count,
+            )))
         }
         AppMsg::PaneResized(p) => {
             app.panes.resize(p.split, p.ratio);
@@ -235,13 +236,6 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             .as_mut()
             .map(|s| s.update(CommentMsg::CloseComment))
             .unwrap_or_else(Task::none),
-        AppMsg::IndexReady => Task::batch([
-            match app.search_context.top_stories(0) {
-                Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
-                Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
-            },
-            Task::done(AppMsg::Header(HeaderMsg::IndexReady)),
-        ]),
         AppMsg::FullSearch(msg) => app.full_search_state.update(msg),
     }
 }

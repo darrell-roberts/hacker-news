@@ -5,7 +5,7 @@ use crate::{
 };
 use hacker_news_api::{ApiClient, Item};
 use std::{future::Future, pin::Pin};
-use tantivy::{IndexWriter, TantivyDocument};
+use tantivy::{IndexWriter, TantivyDocument, Term};
 
 pub fn index_articles<'a>(
     ctx: &'a SearchContext,
@@ -84,7 +84,7 @@ pub fn index_articles<'a>(
     })
 }
 
-pub async fn rebuild_index(ctx: &SearchContext) -> Result<(), SearchError> {
+pub async fn rebuild_index(ctx: &SearchContext) -> Result<(u64, u64), SearchError> {
     let client = ApiClient::new()?;
 
     let articles = client
@@ -99,5 +99,16 @@ pub async fn rebuild_index(ctx: &SearchContext) -> Result<(), SearchError> {
 
     ctx.reader.reload()?;
 
-    Ok(())
+    document_stats(ctx)
+}
+
+pub fn document_stats(ctx: &SearchContext) -> Result<(u64, u64), SearchError> {
+    let searcher = ctx.searcher();
+    let total_comments = searcher.doc_freq(&Term::from_field_text(
+        ctx.schema.get_field(ITEM_TYPE)?,
+        "comment",
+    ))?;
+
+    let total_documents = searcher.num_docs();
+    Ok((total_documents, total_comments))
 }

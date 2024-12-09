@@ -11,6 +11,8 @@ pub struct FooterState {
     pub status_line: String,
     pub last_update: Option<DateTime<Local>>,
     pub scale: f64,
+    pub total_comments: u64,
+    pub total_documents: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -21,6 +23,10 @@ pub enum FooterMsg {
     NoUrl,
     Fetching,
     Scale(f64),
+    IndexStats {
+        total_documents: u64,
+        total_comments: u64,
+    },
 }
 
 impl FooterState {
@@ -42,6 +48,10 @@ impl FooterState {
             .push(
                 container(
                     Row::new()
+                        .push(text(format!(
+                            "docs: {}, comments: {}",
+                            self.total_documents, self.total_comments
+                        )))
                         .push(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
                         .push(pick_list(themes, Some(theme), |selected| {
                             AppMsg::ChangeTheme(selected)
@@ -92,6 +102,13 @@ impl FooterState {
             }
             FooterMsg::Scale(scale) => {
                 self.scale = scale;
+            }
+            FooterMsg::IndexStats {
+                total_documents,
+                total_comments,
+            } => {
+                self.total_documents = total_documents;
+                self.total_comments = total_comments;
             }
         }
         Task::none()

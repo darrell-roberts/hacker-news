@@ -31,7 +31,7 @@ fn comments() -> anyhow::Result<()> {
 
 fn top_stories() -> anyhow::Result<()> {
     let ctx = SearchContext::new(Path::new(INDEX_PATH))?;
-    dbg!(ctx.top_stories(0)?);
+    dbg!(ctx.top_stories(100, 0)?);
 
     Ok(())
 }

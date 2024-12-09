@@ -1,7 +1,6 @@
 use crate::{
     app::AppMsg, footer::FooterMsg, parse_date, richtext::SearchSpanIter, widget::hoverable,
 };
-use chrono::Local;
 use hacker_news_search::{api::Story, SearchContext};
 use iced::{
     advanced::image::{Bytes, Handle},
@@ -26,6 +25,7 @@ pub struct ArticleState {
     pub search: Option<String>,
     /// Item comments are being viewed.
     pub viewing_item: Option<u64>,
+    pub article_limit: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +34,7 @@ pub enum ArticleMsg {
     //     limit: usize,
     //     article_type: ArticleType,
     // },
+    TopStories(usize),
     Receive(Vec<Story>),
     Search(String),
     Visited(u64),
@@ -252,18 +253,16 @@ impl ArticleState {
             // }
             ArticleMsg::Receive(articles) => {
                 self.articles = articles;
-                Task::batch([
-                    widget::scrollable::scroll_to::<AppMsg>(
-                        widget::scrollable::Id::new("articles"),
-                        Default::default(),
-                    ),
-                    Task::done(AppMsg::Footer(FooterMsg::LastUpdate(Local::now()))),
-                ])
+                widget::scrollable::scroll_to::<AppMsg>(
+                    widget::scrollable::Id::new("articles"),
+                    Default::default(),
+                )
             }
             ArticleMsg::Search(input) => {
                 if input.is_empty() {
                     self.search = None;
-                    Task::done(AppMsg::IndexReady)
+                    // TODO better state management
+                    Task::done(AppMsg::Articles(ArticleMsg::TopStories(self.article_limit)))
                 } else {
                     self.search = Some(input.clone());
                     match self.search_context.search_stories(&input, 0) {
@@ -287,6 +286,13 @@ impl ArticleState {
             ArticleMsg::Visited(index) => {
                 self.visited.insert(index);
                 Task::none()
+            }
+            ArticleMsg::TopStories(limit) => {
+                self.article_limit = limit;
+                match self.search_context.top_stories(limit, 0) {
+                    Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
+                    Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
+                }
             }
         }
     }

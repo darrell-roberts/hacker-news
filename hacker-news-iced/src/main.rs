@@ -1,12 +1,12 @@
 use anyhow::Context;
 use app::{update, view, App, AppMsg, PaneState, ScrollBy};
 use app_dirs2::get_app_dir;
-use articles::ArticleState;
+use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
 use footer::FooterState;
 use full_search::FullSearchState;
 use hacker_news_api::ArticleType;
-use hacker_news_search::SearchContext;
+use hacker_news_search::{document_stats, SearchContext};
 use header::HeaderState;
 use iced::{
     advanced::graphics::core::window,
@@ -37,6 +37,8 @@ fn main() -> anyhow::Result<()> {
     let have_index = dir.exists();
     let search_context = Arc::new(SearchContext::new(&dir)?);
 
+    let (total_documents, total_comments) = document_stats(&search_context)?;
+
     let app = config::load_config()
         .map(|config| App {
             search_context: search_context.clone(),
@@ -53,6 +55,8 @@ fn main() -> anyhow::Result<()> {
                 status_line: String::new(),
                 last_update: None,
                 scale: config.scale,
+                total_comments,
+                total_documents,
             },
             article_state: ArticleState {
                 search_context: search_context.clone(),
@@ -60,6 +64,7 @@ fn main() -> anyhow::Result<()> {
                 visited: config.visited,
                 search: None,
                 viewing_item: None,
+                article_limit: config.article_count,
             },
             comment_state: None,
             size: Size::new(config.window_size.0, config.window_size.1),
@@ -96,6 +101,8 @@ fn main() -> anyhow::Result<()> {
                     status_line: String::new(),
                     last_update: None,
                     scale: 1.,
+                    total_comments,
+                    total_documents,
                 },
                 article_state: ArticleState {
                     search_context: search_context.clone(),
@@ -103,6 +110,7 @@ fn main() -> anyhow::Result<()> {
                     visited: HashSet::new(),
                     search: None,
                     viewing_item: None,
+                    article_limit: 75,
                 },
                 comment_state: None,
                 size: Size::new(800., 600.),
@@ -140,10 +148,11 @@ fn main() -> anyhow::Result<()> {
         })
         .scale_factor(|app| app.scale)
         .run_with(move || {
+            let limit = app.header.article_count;
             (
                 app,
                 if have_index {
-                    iced::Task::done(AppMsg::IndexReady)
+                    iced::Task::done(AppMsg::Articles(ArticleMsg::TopStories(limit)))
                 } else {
                     iced::Task::none()
                 },

@@ -11,13 +11,13 @@ use tantivy::{
 };
 
 impl SearchContext {
-    pub fn top_stories(&self, offset: usize) -> Result<Vec<Story>, SearchError> {
+    pub fn top_stories(&self, limit: usize, offset: usize) -> Result<Vec<Story>, SearchError> {
         let query = self
             .query_parser()?
             .parse_query("category:top AND type:story")?;
         let searcher = self.searcher();
 
-        let top_docs = TopDocs::with_limit(50)
+        let top_docs = TopDocs::with_limit(limit)
             // Pagination
             .and_offset(offset)
             // Ordering
@@ -43,7 +43,7 @@ impl SearchContext {
             .parse_query(&format!("parent_id:{parent_id}"))?;
         let searcher = self.searcher();
 
-        let top_docs = TopDocs::with_limit(50)
+        let top_docs = TopDocs::with_limit(100)
             // Pagination
             .and_offset(offset)
             // Ordering
@@ -98,7 +98,7 @@ impl SearchContext {
         ]);
 
         let searcher = self.searcher();
-        let top_docs = TopDocs::with_limit(50)
+        let top_docs = TopDocs::with_limit(75)
             // Pagination
             .and_offset(offset)
             // Ordering
@@ -142,7 +142,7 @@ impl SearchContext {
             (Occur::Must, fuzzy_search),
         ]);
 
-        let top_docs = TopDocs::with_limit(50)
+        let top_docs = TopDocs::with_limit(150)
             // Pagination
             .and_offset(offset)
             // Ordering
@@ -176,7 +176,7 @@ impl SearchContext {
         // );
         let query = self.query_parser()?.parse_query(search)?;
 
-        let top_docs = TopDocs::with_limit(50)
+        let top_docs = TopDocs::with_limit(150)
             // Pagination
             .and_offset(offset)
             // Ordering
