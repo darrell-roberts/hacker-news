@@ -119,9 +119,6 @@ impl FullSearchState {
                         .search_all_comments(&search, 10, self.offset)
                     {
                         Ok(comments) => {
-                            if self.page == 0 {
-                                self.page = 1;
-                            }
                             self.search_results = comments;
                         }
                         Err(err) => {
@@ -137,20 +134,21 @@ impl FullSearchState {
                 Task::none()
             }
             FullSearchMsg::Forward => {
+                self.offset += 10;
                 self.page += 1;
-                self.offset = self.page * 10;
                 Task::done(FullSearchMsg::Search(
                     self.search.as_deref().unwrap_or_default().to_owned(),
                 ))
                 .map(AppMsg::FullSearch)
             }
             FullSearchMsg::Back => {
+                self.offset -= 10;
                 self.page -= 1;
-                if self.page == 0 {
-                    self.offset = 0
-                } else {
-                    self.offset = 10 / self.page;
-                }
+                // if self.page == 0 {
+                //     self.offset = 0
+                // } else {
+                //     self.offset = 10 / self.page;
+                // }
 
                 Task::done(FullSearchMsg::Search(
                     self.search.as_deref().unwrap_or_default().to_owned(),

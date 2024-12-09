@@ -206,7 +206,7 @@ impl SearchContext {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        // println!("Found {} for {search}", comments.len());
+        // println!("Found {} for {search} offset {offset}", comments.len());
 
         Ok(comments)
     }

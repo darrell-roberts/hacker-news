@@ -14,8 +14,6 @@ use iced::{
 use std::{collections::HashSet, sync::Arc};
 
 pub struct ArticleState {
-    // /// API Client.
-    // pub client: Arc<ApiClient>,
     pub search_context: Arc<SearchContext>,
     /// Viewing articles
     pub articles: Vec<Story>,
@@ -25,15 +23,12 @@ pub struct ArticleState {
     pub search: Option<String>,
     /// Item comments are being viewed.
     pub viewing_item: Option<u64>,
+    /// How many articles to fetch.
     pub article_limit: usize,
 }
 
 #[derive(Debug, Clone)]
 pub enum ArticleMsg {
-    // Fetch {
-    //     limit: usize,
-    //     article_type: ArticleType,
-    // },
     TopStories(usize),
     Receive(Vec<Story>),
     Search(String),
@@ -235,23 +230,6 @@ impl ArticleState {
 
     pub fn update(&mut self, message: ArticleMsg) -> Task<AppMsg> {
         match message {
-            // ArticleMsg::Fetch {
-            //     limit,
-            //     article_type,
-            // } => {
-            //     self.viewing_item = None;
-            //     let client = self.client.clone();
-            //     Task::batch([
-            //         Task::done(FooterMsg::Fetching).map(AppMsg::Footer),
-            //         Task::perform(
-            //             async move { client.articles(limit, article_type).await },
-            //             |resp| match resp {
-            //                 Ok(articles) => AppMsg::Articles(ArticleMsg::Receive(articles)),
-            //                 Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
-            //             },
-            //         ),
-            //     ])
-            // }
             ArticleMsg::Receive(articles) => {
                 self.articles = articles;
                 widget::scrollable::scroll_to::<AppMsg>(
@@ -276,13 +254,6 @@ impl ArticleState {
                         }
                     }
                 }
-
-                // if input.is_empty() {
-                //     self.search = None;
-                // } else {
-                //     self.search = Some(input);
-                // }
-                // Task::none()
             }
             ArticleMsg::Visited(index) => {
                 self.visited.insert(index);

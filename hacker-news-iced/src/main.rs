@@ -79,7 +79,7 @@ fn main() -> anyhow::Result<()> {
                 search: None,
                 search_results: Vec::new(),
                 offset: 0,
-                page: 0,
+                page: 1,
             },
         })
         .unwrap_or_else(|err| {
@@ -127,7 +127,7 @@ fn main() -> anyhow::Result<()> {
                     search: None,
                     search_results: Vec::new(),
                     offset: 0,
-                    page: 0,
+                    page: 1,
                 },
             }
         });
