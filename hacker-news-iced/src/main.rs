@@ -78,6 +78,8 @@ fn main() -> anyhow::Result<()> {
                 search_context: search_context.clone(),
                 search: None,
                 search_results: Vec::new(),
+                offset: 0,
+                page: 0,
             },
         })
         .unwrap_or_else(|err| {
@@ -124,6 +126,8 @@ fn main() -> anyhow::Result<()> {
                     search_context: search_context.clone(),
                     search: None,
                     search_results: Vec::new(),
+                    offset: 0,
+                    page: 0,
                 },
             }
         });

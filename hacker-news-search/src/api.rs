@@ -157,6 +157,7 @@ impl SearchContext {
     pub fn search_all_comments(
         &self,
         search: &str,
+        limit: usize,
         offset: usize,
     ) -> Result<Vec<Comment>, SearchError> {
         let searcher = self.searcher();
@@ -189,7 +190,7 @@ impl SearchContext {
             ),
         ]);
 
-        let top_docs = TopDocs::with_limit(150).and_offset(offset);
+        let top_docs = TopDocs::with_limit(limit).and_offset(offset);
 
         let comments = searcher
             .search(&query, &top_docs)?
