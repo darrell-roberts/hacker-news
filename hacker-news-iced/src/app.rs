@@ -131,7 +131,6 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     AbsoluteOffset { x: 0., y: 0. },
                 ),
                 Task::done(AppMsg::FullSearch(FullSearchMsg::CloseSearch)),
-                save_task(app),
             ])
         }
         AppMsg::CommentsClosed => {

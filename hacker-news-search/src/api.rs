@@ -23,16 +23,14 @@ impl SearchContext {
             // Ordering
             .order_by_u64_field(ITEM_RANK, Order::Asc);
 
-        let docs = searcher
+        let stories = searcher
             .search(&query, &top_docs)?
             .into_iter()
-            .map(|(_, doc)| searcher.doc::<TantivyDocument>(doc))
+            .map(|(_, doc_address)| {
+                let doc = searcher.doc::<TantivyDocument>(doc_address)?;
+                self.to_story(doc)
+            })
             .collect::<Result<Vec<_>, _>>()?;
-
-        let stories = docs
-            .into_iter()
-            .flat_map(|doc| self.to_story(doc))
-            .collect::<Vec<_>>();
 
         Ok(stories)
     }
@@ -49,16 +47,14 @@ impl SearchContext {
             // Ordering
             .order_by_u64_field(ITEM_RANK, Order::Asc);
 
-        let docs = searcher
+        let comments = searcher
             .search(&query, &top_docs)?
             .into_iter()
-            .map(|(_, doc)| searcher.doc::<TantivyDocument>(doc))
+            .map(|(_, doc_address)| {
+                let doc = searcher.doc::<TantivyDocument>(doc_address)?;
+                self.to_comment(doc)
+            })
             .collect::<Result<Vec<_>, _>>()?;
-
-        let comments = docs
-            .into_iter()
-            .flat_map(|doc| self.to_comment(doc))
-            .collect::<Vec<_>>();
 
         Ok(comments)
     }
@@ -104,16 +100,14 @@ impl SearchContext {
             // Ordering
             .order_by_u64_field(ITEM_RANK, Order::Asc);
 
-        let docs = searcher
+        let stories = searcher
             .search(&query, &top_docs)?
             .into_iter()
-            .map(|(_, doc)| searcher.doc::<TantivyDocument>(doc))
+            .map(|(_, doc_address)| {
+                let doc = searcher.doc::<TantivyDocument>(doc_address)?;
+                self.to_story(doc)
+            })
             .collect::<Result<Vec<_>, _>>()?;
-
-        let stories = docs
-            .into_iter()
-            .flat_map(|doc| self.to_story(doc))
-            .collect::<Vec<_>>();
 
         Ok(stories)
     }
@@ -148,16 +142,14 @@ impl SearchContext {
             // Ordering
             .order_by_u64_field(ITEM_TIME, Order::Asc);
 
-        let docs = searcher
+        let comments = searcher
             .search(&combined_query, &top_docs)?
             .into_iter()
-            .map(|(_, doc)| searcher.doc::<TantivyDocument>(doc))
+            .map(|(_, doc_address)| {
+                let doc = searcher.doc::<TantivyDocument>(doc_address)?;
+                self.to_comment(doc)
+            })
             .collect::<Result<Vec<_>, _>>()?;
-
-        let comments = docs
-            .into_iter()
-            .flat_map(|doc| self.to_comment(doc))
-            .collect::<Vec<_>>();
 
         Ok(comments)
     }
@@ -169,29 +161,51 @@ impl SearchContext {
     ) -> Result<Vec<Comment>, SearchError> {
         let searcher = self.searcher();
 
-        // let query = TermQuery::new(
+        let parsed_query = self.query_parser()?.parse_query(search)?;
+
+        let type_query = TermQuery::new(
+            Term::from_field_text(self.schema.get_field(ITEM_TYPE)?, "comment"),
+            IndexRecordOption::Basic,
+        );
+
+        // let body_query = TermQuery::new(
         //     Term::from_field_text(self.schema.get_field(ITEM_BODY)?, search),
-        //     IndexRecordOption::WithFreqsAndPositions, // 1,
-        //                                               // true,
+        //     IndexRecordOption::Basic,
         // );
-        let query = self.query_parser()?.parse_query(search)?;
 
-        let top_docs = TopDocs::with_limit(150)
-            // Pagination
-            .and_offset(offset)
-            // Ordering
-            .order_by_u64_field(ITEM_TIME, Order::Asc);
+        // let by_query = TermQuery::new(
+        //     Term::from_field_text(self.schema.get_field(ITEM_BY)?, search),
+        //     IndexRecordOption::Basic,
+        // );
 
-        let docs = searcher
+        let query = BooleanQuery::new(vec![
+            (Occur::Must, Box::new(type_query)),
+            (
+                Occur::Must,
+                parsed_query, // Box::new(BooleanQuery::new(vec![
+                              //     (Occur::Should, Box::new(body_query)),
+                              //     (Occur::Should, Box::new(by_query)),
+                              // ])),
+            ),
+        ]);
+
+        let top_docs = TopDocs::with_limit(150).and_offset(offset);
+
+        let comments = searcher
             .search(&query, &top_docs)?
             .into_iter()
-            .map(|(_, doc)| searcher.doc::<TantivyDocument>(doc))
+            // .inspect(|(score, _)| {
+            //     let explanation = query.explain(&searcher, doc.to_owned()).unwrap();
+            //     println!("{}", explanation.to_pretty_json());
+            // println!("score: {score}");
+            // })
+            .map(|(_, doc_address)| {
+                let doc = searcher.doc::<TantivyDocument>(doc_address)?;
+                self.to_comment(doc)
+            })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let comments = docs
-            .into_iter()
-            .flat_map(|doc| self.to_comment(doc))
-            .collect::<Vec<_>>();
+        // println!("Found {} for {search}", comments.len());
 
         Ok(comments)
     }
@@ -233,34 +247,73 @@ pub struct Comment {
     pub time: u64,
     /// Kids
     pub kids: Vec<u64>,
+    /// Parent story
+    pub story_id: u64,
 }
 
 impl SearchContext {
-    fn to_story(&self, doc: TantivyDocument) -> Option<Story> {
+    fn to_story(&self, doc: TantivyDocument) -> Result<Story, SearchError> {
         let mut fields = self.extract_fields(&doc);
 
-        Some(Story {
-            id: fields.remove(ITEM_ID).and_then(u64_value)?,
-            title: fields.remove(ITEM_TITLE).and_then(str_value)?,
+        Ok(Story {
+            id: fields
+                .remove(ITEM_ID)
+                .and_then(u64_value)
+                .ok_or_else(|| missing_field(ITEM_ID))?,
+            title: fields
+                .remove(ITEM_TITLE)
+                .and_then(str_value)
+                .ok_or_else(|| missing_field(ITEM_TITLE))?,
             body: fields.remove(ITEM_BODY).and_then(str_value),
             url: fields.remove(ITEM_URL).and_then(str_value),
-            by: fields.remove(ITEM_BY).and_then(str_value)?,
-            ty: fields.remove(ITEM_TYPE).and_then(str_value)?,
-            descendants: fields.remove(ITEM_DESCENDANT_COUNT).and_then(u64_value)?,
-            time: fields.remove(ITEM_TIME).and_then(u64_value)?,
-            score: fields.remove(ITEM_SCORE).and_then(u64_value)?,
+            by: fields
+                .remove(ITEM_BY)
+                .and_then(str_value)
+                .ok_or_else(|| missing_field(ITEM_BY))?,
+            ty: fields
+                .remove(ITEM_TYPE)
+                .and_then(str_value)
+                .ok_or_else(|| missing_field(ITEM_TYPE))?,
+            descendants: fields
+                .remove(ITEM_DESCENDANT_COUNT)
+                .and_then(u64_value)
+                .ok_or_else(|| missing_field(ITEM_DESCENDANT_COUNT))?,
+            time: fields
+                .remove(ITEM_TIME)
+                .and_then(u64_value)
+                .ok_or_else(|| missing_field(ITEM_TIME))?,
+            score: fields
+                .remove(ITEM_SCORE)
+                .and_then(u64_value)
+                .ok_or_else(|| missing_field(ITEM_SCORE))?,
         })
     }
 
-    fn to_comment(&self, doc: TantivyDocument) -> Option<Comment> {
+    fn to_comment(&self, doc: TantivyDocument) -> Result<Comment, SearchError> {
         let mut fields = self.extract_fields(&doc);
 
-        Some(Comment {
-            id: fields.remove(ITEM_ID).and_then(u64_value)?,
-            body: fields.remove(ITEM_BODY).and_then(str_value)?,
-            by: fields.remove(ITEM_BY).and_then(str_value)?,
-            time: fields.remove(ITEM_TIME).and_then(u64_value)?,
-            kids: fields.remove(ITEM_KIDS).map(u64_values)?,
+        Ok(Comment {
+            id: fields
+                .remove(ITEM_ID)
+                .and_then(u64_value)
+                .ok_or_else(|| missing_field(ITEM_ID))?,
+            body: fields
+                .remove(ITEM_BODY)
+                .and_then(str_value)
+                .ok_or_else(|| missing_field(ITEM_BODY))?,
+            by: fields
+                .remove(ITEM_BY)
+                .and_then(str_value)
+                .ok_or_else(|| missing_field(ITEM_BY))?,
+            time: fields
+                .remove(ITEM_TIME)
+                .and_then(u64_value)
+                .ok_or_else(|| missing_field(ITEM_TIME))?,
+            kids: fields.remove(ITEM_KIDS).map(u64_values).unwrap_or_default(),
+            story_id: fields
+                .remove(ITEM_STORY_ID)
+                .and_then(u64_value)
+                .ok_or_else(|| missing_field(ITEM_STORY_ID))?,
         })
     }
 
@@ -302,4 +355,8 @@ fn u64_values(owned_value: Vec<&OwnedValue>) -> Vec<u64> {
             _ => None,
         })
         .collect()
+}
+
+fn missing_field(field: &str) -> SearchError {
+    SearchError::MissingField(field.into())
 }

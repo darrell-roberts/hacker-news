@@ -38,6 +38,7 @@ pub enum ArticleMsg {
     Receive(Vec<Story>),
     Search(String),
     Visited(u64),
+    SelectStory(u64),
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -293,6 +294,10 @@ impl ArticleState {
                     Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
                     Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
                 }
+            }
+            ArticleMsg::SelectStory(story_id) => {
+                self.viewing_item = Some(story_id);
+                Task::none()
             }
         }
     }

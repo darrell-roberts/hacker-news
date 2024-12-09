@@ -1,4 +1,7 @@
-use std::path::Path;
+use std::{
+    fs::{create_dir_all, exists},
+    path::Path,
+};
 use tantivy::{
     directory::{error::OpenDirectoryError, MmapDirectory},
     query::{QueryParser, QueryParserError},
@@ -40,6 +43,12 @@ pub enum SearchError {
     Client(#[from] anyhow::Error),
     #[error("Bad query: {0}")]
     Query(#[from] QueryParserError),
+    #[error("Failed to create index folder")]
+    IO(#[from] std::io::Error),
+    #[error("Failed to transform doc")]
+    BadDoc,
+    #[error("Doc missing expected field {0}")]
+    MissingField(String),
 }
 
 pub struct SearchContext {
@@ -50,7 +59,12 @@ pub struct SearchContext {
 
 impl SearchContext {
     pub fn new(index_path: &Path) -> Result<Self, SearchError> {
+        if !exists(index_path)? {
+            create_dir_all(index_path)?;
+        }
+
         let schema = article_schema();
+
         let index = Index::open_or_create(MmapDirectory::open(index_path)?, schema.clone())?;
         let reader = index.reader()?;
         Ok(SearchContext {
@@ -94,7 +108,7 @@ fn article_schema() -> Schema {
     schema_builder.add_text_field(ITEM_CATEGORY, STRING);
     // schema_builder.add_date_field(ITEM_TIME, STORED | INDEXED | FAST);
     schema_builder.add_u64_field(ITEM_TIME, STORED | INDEXED | FAST);
-    schema_builder.add_u64_field(ITEM_STORY_ID, FAST | INDEXED);
+    schema_builder.add_u64_field(ITEM_STORY_ID, FAST | INDEXED | STORED);
     schema_builder.add_u64_field(ITEM_KIDS, FAST | INDEXED | STORED);
     schema_builder.add_u64_field(ITEM_SCORE, INDEXED | STORED);
 

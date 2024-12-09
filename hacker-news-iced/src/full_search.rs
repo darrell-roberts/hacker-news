@@ -1,4 +1,6 @@
-use crate::{app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text};
+use crate::{
+    app::AppMsg, articles::ArticleMsg, footer::FooterMsg, parse_date, richtext::render_rich_text,
+};
 use hacker_news_search::{api::Comment, SearchContext};
 use iced::{
     border,
@@ -46,31 +48,35 @@ impl FullSearchState {
 
     fn render_comment<'a>(&'a self, comment: &'a Comment) -> widget::Container<'a, AppMsg> {
         widget::container(
-            widget::Column::new()
-                .push(widget::rich_text(render_rich_text(
-                    &comment.body,
-                    self.search.as_deref(),
-                    false,
-                )))
-                .push(widget::rich_text([
-                    widget::span(format!(" by {}", comment.by))
-                        .font(Font {
-                            style: Style::Italic,
-                            ..Default::default()
-                        })
-                        .size(14),
-                    widget::span(" "),
-                    widget::span(parse_date(comment.time).unwrap_or_default())
-                        .font(Font {
-                            weight: Weight::Light,
-                            style: Style::Italic,
-                            ..Default::default()
-                        })
-                        .size(10),
-                ]))
-                .padding([10, 10])
-                .spacing(15)
-                .width(Length::Fill),
+            widget::button(
+                widget::Column::new()
+                    .push(widget::rich_text(render_rich_text(
+                        &comment.body,
+                        self.search.as_deref(),
+                        false,
+                    )))
+                    .push(widget::rich_text([
+                        widget::span(format!(" by {}", comment.by))
+                            .font(Font {
+                                style: Style::Italic,
+                                ..Default::default()
+                            })
+                            .size(14),
+                        widget::span(" "),
+                        widget::span(parse_date(comment.time).unwrap_or_default())
+                            .font(Font {
+                                weight: Weight::Light,
+                                style: Style::Italic,
+                                ..Default::default()
+                            })
+                            .size(10),
+                    ]))
+                    .padding([10, 10])
+                    .spacing(15)
+                    .width(Length::Fill),
+            )
+            .style(widget::button::text)
+            .on_press(AppMsg::Articles(ArticleMsg::SelectStory(comment.story_id))),
         )
         .into()
     }
