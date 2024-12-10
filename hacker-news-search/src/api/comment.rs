@@ -3,7 +3,7 @@ use crate::{
     SearchContext, SearchError, ITEM_BODY, ITEM_RANK, ITEM_STORY_ID, ITEM_TIME, ITEM_TYPE,
 };
 use tantivy::{
-    collector::TopDocs,
+    collector::{Count, MultiCollector, TopDocs},
     query::{BooleanQuery, FuzzyTermQuery, Occur, TermQuery},
     schema::IndexRecordOption,
     Order, TantivyDocument, Term,
@@ -81,7 +81,7 @@ impl SearchContext {
         search: &str,
         limit: usize,
         offset: usize,
-    ) -> Result<Vec<Comment>, SearchError> {
+    ) -> Result<(Vec<Comment>, usize), SearchError> {
         let searcher = self.searcher();
 
         let parsed_query = self.query_parser()?.parse_query(search)?;
@@ -112,24 +112,25 @@ impl SearchContext {
             ),
         ]);
 
+        let mut multi_collector = MultiCollector::new();
+
         let top_docs = TopDocs::with_limit(limit).and_offset(offset);
 
-        let comments = searcher
-            .search(&query, &top_docs)?
+        let docs_handle = multi_collector.add_collector(top_docs);
+        let count_handle = multi_collector.add_collector(Count);
+
+        let mut multi_fruit = searcher.search(&query, &multi_collector)?;
+        let docs = docs_handle.extract(&mut multi_fruit);
+        let count = count_handle.extract(&mut multi_fruit);
+
+        let comments = docs
             .into_iter()
-            // .inspect(|(score, _)| {
-            //     let explanation = query.explain(&searcher, doc.to_owned()).unwrap();
-            //     println!("{}", explanation.to_pretty_json());
-            // println!("score: {score}");
-            // })
             .map(|(_, doc_address)| {
                 let doc = searcher.doc::<TantivyDocument>(doc_address)?;
                 self.to_comment(doc)
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        // println!("Found {} for {search} offset {offset}", comments.len());
-
-        Ok(comments)
+        Ok((comments, count))
     }
 }

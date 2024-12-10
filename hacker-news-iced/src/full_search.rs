@@ -3,9 +3,12 @@ use crate::{
 };
 use hacker_news_search::{api::Comment, SearchContext};
 use iced::{
+    alignment::Vertical,
     border,
     font::{Style, Weight},
-    padding, widget, Font, Length, Task,
+    padding,
+    widget::{self},
+    Font, Length, Task, Theme,
 };
 use std::sync::Arc;
 
@@ -15,6 +18,7 @@ pub struct FullSearchState {
     pub search_context: Arc<SearchContext>,
     pub offset: usize,
     pub page: usize,
+    pub full_count: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -24,6 +28,7 @@ pub enum FullSearchMsg {
     Forward,
     Back,
     Story(u64),
+    JumpPage(usize),
 }
 
 impl FullSearchState {
@@ -44,26 +49,46 @@ impl FullSearchState {
             })
             .map(iced::Element::from);
 
-        let content = widget::Column::new()
-            .push(
-                widget::container(
-                    widget::Row::new()
-                        .push(
-                            widget::button("<").on_press_maybe(
-                                self.page
-                                    .gt(&1)
-                                    .then_some(AppMsg::FullSearch(FullSearchMsg::Back)),
-                            ),
-                        )
-                        .push(widget::text(format!("page: {}", self.page)))
-                        .push(
-                            widget::button(">")
-                                .on_press(AppMsg::FullSearch(FullSearchMsg::Forward)),
-                        )
-                        .spacing(5),
+        let pagination = || {
+            let pages = (1..(self.full_count / 10) + 1).map(|page| {
+                widget::button(
+                    widget::container(widget::text(format!("{page}")))
+                        .style(move |theme: &Theme| {
+                            let palette = theme.extended_palette();
+                            if page == self.page {
+                                widget::container::rounded_box(theme)
+                                    .background(palette.secondary.strong.color)
+                            } else {
+                                widget::container::transparent(theme)
+                            }
+                        })
+                        .padding(5),
                 )
-                .center_x(Length::Fill),
+                .style(widget::button::text)
+                .padding(0)
+                .on_press(AppMsg::FullSearch(FullSearchMsg::JumpPage(page)))
+                .into()
+            });
+
+            widget::container(
+                widget::Row::new()
+                    .push(
+                        widget::button("<").on_press_maybe(
+                            self.page
+                                .gt(&1)
+                                .then_some(AppMsg::FullSearch(FullSearchMsg::Back)),
+                        ),
+                    )
+                    .extend(pages)
+                    .push(widget::button(">").on_press(AppMsg::FullSearch(FullSearchMsg::Forward)))
+                    .spacing(2)
+                    .align_y(Vertical::Center),
             )
+            .center_x(Length::Fill)
+        };
+
+        let content = widget::Column::new()
+            .push_maybe((self.full_count > 0).then(pagination))
             .push(widget::scrollable(
                 widget::container(widget::Column::with_children(comment_rows).spacing(15))
                     .padding(padding::top(0).bottom(10).left(10).right(25)),
@@ -111,15 +136,16 @@ impl FullSearchState {
         match message {
             FullSearchMsg::Search(search) => {
                 if search.is_empty() {
-                    self.search = None;
+                    return Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch);
                 } else {
                     self.search = Some(search.clone());
                     match self
                         .search_context
                         .search_all_comments(&search, 10, self.offset)
                     {
-                        Ok(comments) => {
+                        Ok((comments, count)) => {
                             self.search_results = comments;
+                            self.full_count = count;
                         }
                         Err(err) => {
                             eprintln!("Search failed: {err}");
@@ -131,6 +157,9 @@ impl FullSearchState {
             }
             FullSearchMsg::CloseSearch => {
                 self.search = None;
+                self.offset = 0;
+                self.page = 1;
+                self.full_count = 0;
                 Task::none()
             }
             FullSearchMsg::Forward => {
@@ -144,11 +173,6 @@ impl FullSearchState {
             FullSearchMsg::Back => {
                 self.offset -= 10;
                 self.page -= 1;
-                // if self.page == 0 {
-                //     self.offset = 0
-                // } else {
-                //     self.offset = 10 / self.page;
-                // }
 
                 Task::done(FullSearchMsg::Search(
                     self.search.as_deref().unwrap_or_default().to_owned(),
@@ -157,6 +181,15 @@ impl FullSearchState {
             }
             FullSearchMsg::Story(story_id) => {
                 Task::done(ArticleMsg::SelectStory(story_id)).map(AppMsg::Articles)
+            }
+            FullSearchMsg::JumpPage(page) => {
+                self.page = page;
+                self.offset = 10 * page;
+
+                Task::done(FullSearchMsg::Search(
+                    self.search.as_deref().unwrap_or_default().to_owned(),
+                ))
+                .map(AppMsg::FullSearch)
             }
         }
     }

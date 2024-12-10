@@ -126,17 +126,22 @@ impl HeaderState {
                 widget::container(
                     widget::Row::new()
                         .push(
-                            widget::text_input(
-                                "Search everything...",
-                                self.full_search.as_deref().unwrap_or_default(),
-                            )
-                            .on_input(HeaderMsg::Search)
-                            .padding(5),
+                            widget::Row::new()
+                                .push(
+                                    widget::text_input(
+                                        "Search everything...",
+                                        self.full_search.as_deref().unwrap_or_default(),
+                                    )
+                                    .on_input(HeaderMsg::Search)
+                                    .padding(5),
+                                )
+                                .push(widget::container(
+                                    widget::button(
+                                        widget::text("⟲").shaping(text::Shaping::Advanced),
+                                    )
+                                    .on_press(HeaderMsg::Search("".into())),
+                                )),
                         )
-                        .push(widget::container(
-                            widget::button(widget::text("⟲").shaping(text::Shaping::Advanced))
-                                .on_press(HeaderMsg::Search("".into())),
-                        ))
                         .push(
                             widget::button("Re-index")
                                 .on_press_maybe(
@@ -167,7 +172,8 @@ impl HeaderState {
                             })
                             .padding([2, 2]),
                             widget::tooltip::Position::Left,
-                        )),
+                        ))
+                        .spacing(5),
                 )
                 .padding([5, 5]),
             ),
