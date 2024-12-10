@@ -128,9 +128,9 @@ impl HeaderState {
                         .push(
                             widget::text_input(
                                 "Search everything...",
-                                &self.full_search.as_deref().unwrap_or_default(),
+                                self.full_search.as_deref().unwrap_or_default(),
                             )
-                            .on_input(|search| HeaderMsg::Search(search))
+                            .on_input(HeaderMsg::Search)
                             .padding(5),
                         )
                         .push(widget::container(
