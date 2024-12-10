@@ -10,28 +10,53 @@ use tantivy::{
 };
 
 impl SearchContext {
-    pub fn comments(&self, parent_id: u64, offset: usize) -> Result<Vec<Comment>, SearchError> {
+    pub fn comments(
+        &self,
+        parent_id: u64,
+        limit: usize,
+        offset: usize,
+    ) -> Result<(Vec<Comment>, usize), SearchError> {
         let query = self
             .query_parser()?
             .parse_query(&format!("parent_id:{parent_id}"))?;
         let searcher = self.searcher();
 
-        let top_docs = TopDocs::with_limit(100)
-            // Pagination
+        // let top_docs = TopDocs::with_limit(limit)
+        //     // Pagination
+        //     .and_offset(offset)
+        //     // Ordering
+        //     .order_by_u64_field(ITEM_RANK, Order::Asc);
+
+        // let comments = searcher
+        //     .search(&query, &top_docs)?
+        //     .into_iter()
+        //     .map(|(_, doc_address)| {
+        //         let doc = searcher.doc::<TantivyDocument>(doc_address)?;
+        //         self.to_comment(doc)
+        //     })
+        //     .collect::<Result<Vec<_>, _>>()?;
+
+        let mut multi_collector = MultiCollector::new();
+
+        let top_docs = TopDocs::with_limit(limit)
             .and_offset(offset)
-            // Ordering
             .order_by_u64_field(ITEM_RANK, Order::Asc);
 
-        let comments = searcher
-            .search(&query, &top_docs)?
+        let docs_handle = multi_collector.add_collector(top_docs);
+        let count_handle = multi_collector.add_collector(Count);
+
+        let mut multi_fruit = searcher.search(&query, &multi_collector)?;
+        let docs = docs_handle.extract(&mut multi_fruit);
+        let count = count_handle.extract(&mut multi_fruit);
+
+        let comments = docs
             .into_iter()
             .map(|(_, doc_address)| {
                 let doc = searcher.doc::<TantivyDocument>(doc_address)?;
                 self.to_comment(doc)
             })
             .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(comments)
+        Ok((comments, count))
     }
 
     pub fn search_comments(

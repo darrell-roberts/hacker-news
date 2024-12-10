@@ -25,7 +25,7 @@ async fn create() -> anyhow::Result<()> {
 
 fn comments() -> anyhow::Result<()> {
     let ctx = SearchContext::new(Path::new(INDEX_PATH))?;
-    dbg!(ctx.comments(42344002, 0)?);
+    dbg!(ctx.comments(42344002, 10, 0)?);
     Ok(())
 }
 

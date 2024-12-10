@@ -32,8 +32,7 @@ pub enum ArticleMsg {
     TopStories(usize),
     Receive(Vec<Story>),
     Search(String),
-    Visited(u64),
-    SelectStory(u64),
+    ViewingItem(u64),
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -81,9 +80,8 @@ impl ArticleState {
                             })
                             .or_else(|| {
                                 story.body.as_ref().map(|_| AppMsg::OpenComment {
-                                    article: Some(story.clone()),
+                                    article: story.clone(),
                                     parent_id: story.id,
-                                    parent: None,
                                 })
                             }),
                     )
@@ -113,13 +111,11 @@ impl ArticleState {
         let content = format!("💬{}", story.descendants);
 
         let comments_button = button(widget::text(content).shaping(text::Shaping::Advanced))
-            // .width(55)
             .style(button::text)
             .padding(0)
             .on_press_maybe((story.descendants > 0).then(|| AppMsg::OpenComment {
-                article: Some(story.clone()),
+                article: story.clone(),
                 parent_id: story.id,
-                parent: None,
             }));
 
         let title_wrapper = match story.url.as_deref() {
@@ -255,10 +251,6 @@ impl ArticleState {
                     }
                 }
             }
-            ArticleMsg::Visited(index) => {
-                self.visited.insert(index);
-                Task::none()
-            }
             ArticleMsg::TopStories(limit) => {
                 self.article_limit = limit;
                 match self.search_context.top_stories(limit, 0) {
@@ -266,7 +258,9 @@ impl ArticleState {
                     Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
                 }
             }
-            ArticleMsg::SelectStory(story_id) => {
+
+            ArticleMsg::ViewingItem(story_id) => {
+                self.visited.insert(story_id);
                 self.viewing_item = Some(story_id);
                 Task::none()
             }

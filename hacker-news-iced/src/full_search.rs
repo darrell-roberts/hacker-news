@@ -96,10 +96,13 @@ impl FullSearchState {
 
         let content = widget::Column::new()
             .push_maybe((self.full_count > 0).then(pagination))
-            .push(widget::scrollable(
-                widget::container(widget::Column::with_children(comment_rows).spacing(15))
-                    .padding(padding::top(0).bottom(10).left(10).right(25)),
-            ))
+            .push(
+                widget::scrollable(
+                    widget::container(widget::Column::with_children(comment_rows).spacing(15))
+                        .padding(padding::top(0).bottom(10).left(10).right(25)),
+                )
+                .id(widget::scrollable::Id::new("full_search")),
+            )
             .spacing(5);
 
         widget::container(content).into()
@@ -191,7 +194,7 @@ impl FullSearchState {
                 .map(AppMsg::FullSearch)
             }
             FullSearchMsg::Story(story_id) => {
-                Task::done(ArticleMsg::SelectStory(story_id)).map(AppMsg::Articles)
+                Task::done(ArticleMsg::ViewingItem(story_id)).map(AppMsg::Articles)
             }
             FullSearchMsg::JumpPage(page) => {
                 self.page = page;

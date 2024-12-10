@@ -1,6 +1,6 @@
 use crate::{
     articles::{self, ArticleMsg, ArticleState},
-    comments::{self, CommentMsg, CommentState},
+    comments::{self, CommentMsg, CommentState, NavStack},
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState},
@@ -19,7 +19,7 @@ use iced::{
     Font, Size, Task, Theme,
 };
 use log::error;
-use std::sync::Arc;
+use std::{collections::VecDeque, sync::Arc};
 
 /// Application state.
 pub struct App {
@@ -68,15 +68,8 @@ pub enum AppMsg {
     Articles(articles::ArticleMsg),
     Footer(footer::FooterMsg),
     Comments(comments::CommentMsg),
-    OpenComment {
-        article: Option<Story>,
-        parent: Option<Comment>,
-        parent_id: u64,
-    },
-    OpenLink {
-        url: String,
-        item_id: u64,
-    },
+    OpenComment { article: Story, parent_id: u64 },
+    OpenLink { url: String, item_id: u64 },
     ChangeTheme(Theme),
     WindowClose,
     IncreaseScale,
@@ -88,50 +81,39 @@ pub enum AppMsg {
     PaneResized(pane_grid::ResizeEvent),
     CommentsClosed,
     ClearVisited,
-    CloseComment,
     FullSearch(FullSearchMsg),
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
     match message {
-        AppMsg::OpenComment {
-            article,
-            parent_id,
-            parent,
-        } => {
+        AppMsg::OpenComment { article, parent_id } => {
             // Opening first set of comments from an article.
-            if let Some(item) = article {
-                let item_id = item.id;
+            let item_id = article.id;
 
-                app.comment_state = Some(CommentState {
-                    search_context: app.search_context.clone(),
-                    article: item,
-                    comments: Vec::new(),
-                    search: None,
-                    oneline: false,
-                    search_results: Vec::new(),
-                });
+            app.comment_state = Some(CommentState {
+                search_context: app.search_context.clone(),
+                article,
+                comments: Vec::new(),
+                nav_stack: vec![NavStack {
+                    comment: None,
+                    offset: 0,
+                    page: 1,
+                }],
+                search: None,
+                oneline: false,
+                search_results: Vec::new(),
+                page: 1,
+                offset: 0,
+                full_count: 0,
+                parent_id: 0,
+            });
 
-                app.article_state.viewing_item = Some(item_id);
-                app.article_state.visited.insert(item_id);
-            }
-
-            let handle_results = match app.search_context.comments(parent_id, 0) {
-                Ok(comments) => Task::done(AppMsg::Comments(CommentMsg::ReceiveComments(
-                    comments, parent,
-                ))),
-                Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
-            };
-
-            Task::batch([
-                Task::done(FooterMsg::Fetching).map(AppMsg::Footer),
-                handle_results,
-                widget::scrollable::scroll_to(
-                    widget::scrollable::Id::new("comments"),
-                    AbsoluteOffset { x: 0., y: 0. },
-                ),
-                Task::done(AppMsg::FullSearch(FullSearchMsg::CloseSearch)),
-            ])
+            Task::done(CommentMsg::FetchComments {
+                parent_id,
+                parent_comment: None,
+            })
+            .map(AppMsg::Comments)
+            .chain(Task::done(ArticleMsg::ViewingItem(item_id)).map(AppMsg::Articles))
         }
         AppMsg::CommentsClosed => {
             app.comment_state = None;
@@ -144,7 +126,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     error!("Failed to open url {err}");
                 })
                 .unwrap_or_default();
-            Task::done(ArticleMsg::Visited(item_id)).map(AppMsg::Articles)
+            Task::done(ArticleMsg::ViewingItem(item_id)).map(AppMsg::Articles)
         }
         AppMsg::ChangeTheme(theme) => {
             app.theme = theme;
@@ -189,32 +171,35 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             app.size = size;
             save_task(&*app)
         }
-        AppMsg::ScrollBy(_scroll_by) => {
-            // let scroll_id =
-            //     scrollable::Id::new(if matches!(app.content, ContentScreen::Articles(_)) {
-            //         "articles"
-            //     } else {
-            //         "comments"
-            //     });
-            // match scroll_by {
-            //     ScrollBy::PageUp => {
-            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -100. })
-            //     }
-            //     ScrollBy::PageDown => {
-            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 100. })
-            //     }
-            //     ScrollBy::LineUp => {
-            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -10. })
-            //     }
-            //     ScrollBy::LineDown => {
-            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 10. })
-            //     }
-            //     ScrollBy::Top => scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: 0. }),
-            //     ScrollBy::Bottom => {
-            //         scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: f32::MAX })
-            //     }
-            // }
-            Task::none()
+        AppMsg::ScrollBy(scroll_by) => {
+            let scroll_id =
+                widget::scrollable::Id::new(if app.full_search_state.search.is_some() {
+                    "full_search"
+                } else if app.comment_state.is_some() {
+                    "comments"
+                } else {
+                    "articles"
+                });
+            match scroll_by {
+                ScrollBy::PageUp => {
+                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -500. })
+                }
+                ScrollBy::PageDown => {
+                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 500. })
+                }
+                ScrollBy::LineUp => {
+                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -10. })
+                }
+                ScrollBy::LineDown => {
+                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 10. })
+                }
+                ScrollBy::Top => {
+                    widget::scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: 0. })
+                }
+                ScrollBy::Bottom => {
+                    widget::scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: f32::MAX })
+                }
+            }
         }
         AppMsg::CloseSearch => {
             app.article_state.search = None;
@@ -230,11 +215,6 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             app.article_state.visited.clear();
             save_task(app)
         }
-        AppMsg::CloseComment => app
-            .comment_state
-            .as_mut()
-            .map(|s| s.update(CommentMsg::CloseComment))
-            .unwrap_or_else(Task::none),
         AppMsg::FullSearch(msg) => app.full_search_state.update(msg),
     }
 }
@@ -310,7 +290,10 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                                         .label("oneline")
                                         .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
                                 )
-                                .push(widget::button("X").on_press(AppMsg::CloseComment))
+                                .push(
+                                    widget::button("X")
+                                        .on_press(AppMsg::Comments(CommentMsg::CloseComment)),
+                                )
                                 .spacing(5),
                         ))
                         .always_show_controls()

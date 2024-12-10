@@ -1,23 +1,25 @@
-use crate::{app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text};
+use crate::{
+    app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg, parse_date,
+    richtext::render_rich_text,
+};
 use hacker_news_search::{
     api::{Comment, Story},
     SearchContext,
 };
 use iced::{
+    alignment::Vertical,
     border,
     font::{Style, Weight},
     padding,
-    widget::{self, button, column, container, row, scrollable, text::Shaping, Column, Container},
-    Border, Element, Font, Length, Task,
+    widget::{self, button, container, text::Shaping, Column, Container},
+    Border, Element, Font, Length, Task, Theme,
 };
 use std::sync::Arc;
 
-/// List of comments and common parent
-pub struct CommentItem {
-    /// Parent comment.
-    pub parent: Option<Comment>,
-    /// Comment items.
-    pub items: Vec<Comment>,
+pub struct NavStack {
+    pub comment: Option<Comment>,
+    pub offset: usize,
+    pub page: usize,
 }
 
 /// Comment state
@@ -25,24 +27,40 @@ pub struct CommentState {
     pub search_context: Arc<SearchContext>,
     /// Article this comment belongs to
     pub article: Story,
+    /// parent comments.
+    pub nav_stack: Vec<NavStack>,
     /// Children
-    pub comments: Vec<CommentItem>,
+    pub comments: Vec<Comment>,
     /// Search
     pub search: Option<String>,
     /// Show one line only.
     pub oneline: bool,
-
+    /// Search offset.
+    pub offset: usize,
+    /// Search page number.
+    pub page: usize,
+    /// Total number of documents.
+    pub full_count: usize,
+    /// Search results
     pub search_results: Vec<Comment>,
+    /// Parent id being viewed.
+    pub parent_id: u64,
 }
 
 #[derive(Debug, Clone)]
 pub enum CommentMsg {
-    ReceiveComments(Vec<Comment>, Option<Comment>),
+    FetchComments {
+        parent_id: u64,
+        parent_comment: Option<Comment>,
+    },
     CloseComment,
     Search(String),
     OpenSearch,
     CloseSearch,
     Oneline,
+    Forward,
+    Back,
+    JumpPage(usize),
 }
 
 impl CommentState {
@@ -73,52 +91,40 @@ impl CommentState {
         } else {
             self.comments
                 .iter()
-                .last()
-                .into_iter()
-                .flat_map(|item| {
-                    item.items
-                        .iter()
-                        .filter(|item| match self.search.as_deref() {
-                            Some(search) => {
-                                item.body.to_lowercase().contains(&search.to_lowercase())
-                            }
-                            _ => true,
-                        })
-                        .map(|item| {
-                            self.render_comment(item, false).style(|theme| {
-                                let palette = theme.extended_palette();
-
-                                container::Style {
-                                    background: Some(palette.background.weak.color.into()),
-                                    border: border::rounded(8),
-                                    ..Default::default()
-                                }
-                            })
-                        })
-                        .map(Element::from)
-                })
-                .collect::<Vec<_>>()
-        };
-
-        let parent_comments = self.comments.iter().flat_map(|item| {
-            item.parent
-                .as_ref()
-                .map(|parent| {
-                    self.render_comment(parent, true).style(|theme| {
+                .map(|item| {
+                    self.render_comment(item, false).style(|theme| {
                         let palette = theme.extended_palette();
 
                         container::Style {
-                            border: Border {
-                                color: palette.secondary.weak.color,
-                                width: 1.,
-                                radius: 8.into(),
-                            },
+                            background: Some(palette.background.weak.color.into()),
+                            border: border::rounded(8),
                             ..Default::default()
                         }
                     })
                 })
                 .map(Element::from)
-        });
+                .collect::<Vec<_>>()
+        };
+
+        let parent_comments = self
+            .nav_stack
+            .iter()
+            .filter_map(|stack| stack.comment.as_ref())
+            .map(|parent| {
+                self.render_comment(parent, true).style(|theme| {
+                    let palette = theme.extended_palette();
+
+                    container::Style {
+                        border: Border {
+                            color: palette.secondary.weak.color,
+                            width: 1.,
+                            radius: 8.into(),
+                        },
+                        ..Default::default()
+                    }
+                })
+            })
+            .map(Element::from);
 
         let content = Column::new()
             .push_maybe(self.search.as_ref().map(|search| {
@@ -136,11 +142,12 @@ impl CommentState {
                     ))
             }))
             .push(
-                scrollable(
-                    column![
+                widget::scrollable(
+                    widget::column![
                         Column::with_children(article_text).spacing(15),
                         Column::with_children(parent_comments).spacing(15),
-                        Column::with_children(comment_rows).spacing(15)
+                        Column::with_children(comment_rows).spacing(15),
+                        self.paganation_footer()
                     ]
                     .spacing(15)
                     .padding(padding::top(0).bottom(10).left(10).right(25)),
@@ -150,6 +157,52 @@ impl CommentState {
             );
 
         container(content.width(Length::Fill)).into()
+    }
+
+    fn paganation_footer(&self) -> Element<AppMsg> {
+        let (div, rem) = (self.full_count / 10, self.full_count % 10);
+        let max = if rem > 0 { div + 1 } else { div };
+        let pages = (1..=max).map(|page| {
+            widget::button(
+                widget::container(widget::text(format!("{page}")))
+                    .style(move |theme: &Theme| {
+                        let palette = theme.extended_palette();
+                        if page == self.page {
+                            widget::container::rounded_box(theme)
+                                .background(palette.secondary.strong.color)
+                        } else {
+                            widget::container::transparent(theme)
+                        }
+                    })
+                    .padding(5),
+            )
+            .style(widget::button::text)
+            .padding(0)
+            .on_press(AppMsg::Comments(CommentMsg::JumpPage(page)))
+            .into()
+        });
+
+        widget::container(
+            widget::Row::new()
+                .push(
+                    widget::button("<").on_press_maybe(
+                        self.page
+                            .gt(&1)
+                            .then_some(AppMsg::Comments(CommentMsg::Back)),
+                    ),
+                )
+                .extend(pages)
+                .push(
+                    widget::button(">").on_press_maybe(
+                        (self.page < (self.full_count / 10) + 1)
+                            .then_some(AppMsg::Comments(CommentMsg::Forward)),
+                    ),
+                )
+                .spacing(2)
+                .align_y(Vertical::Center),
+        )
+        .center_x(Length::Fill)
+        .into()
     }
 
     fn render_comment<'a>(
@@ -166,23 +219,22 @@ impl CommentState {
         } else {
             button(widget::text(format!("💬{}", comment.kids.len())).shaping(Shaping::Advanced))
                 .padding(0)
-                .on_press(AppMsg::OpenComment {
-                    article: None,
+                .on_press(AppMsg::Comments(CommentMsg::FetchComments {
                     parent_id: comment.id,
-                    parent: Some(comment.clone()),
-                })
+                    parent_comment: Some(comment.clone()),
+                }))
                 .style(button::text)
                 .into()
         };
 
         container(
-            column![
+            widget::column![
                 widget::rich_text(render_rich_text(
                     &comment.body,
                     self.search.as_deref(),
                     self.oneline
                 )),
-                row![
+                widget::row![
                     widget::rich_text([
                         widget::span(format!(" by {}", comment.by))
                             .font(Font {
@@ -212,20 +264,57 @@ impl CommentState {
 
     pub fn update(&mut self, message: CommentMsg) -> Task<AppMsg> {
         match message {
-            CommentMsg::ReceiveComments(comments, parent) => {
-                self.comments.push(CommentItem {
-                    items: comments,
-                    parent,
-                });
+            CommentMsg::FetchComments {
+                parent_id,
+                parent_comment,
+            } => {
+                if let Some(parent) = parent_comment {
+                    // We are viewing a nested comment
+                    if self.parent_id != parent.id {
+                        self.nav_stack.push(NavStack {
+                            comment: Some(parent),
+                            offset: 0,
+                            page: 1,
+                        });
+                        self.offset = 0;
+                        self.page = 1;
+                    }
+                }
+                let fetch_task = match self.search_context.comments(parent_id, 10, self.offset) {
+                    Ok((comments, full_count)) => {
+                        self.full_count = full_count;
+                        self.comments = comments;
 
-                Task::none()
+                        Task::none()
+                    }
+                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                };
+                self.parent_id = parent_id;
+
+                Task::batch([
+                    fetch_task,
+                    Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch),
+                ])
             }
             CommentMsg::CloseComment => {
-                self.comments.pop();
-                if self.comments.is_empty() {
-                    Task::done(AppMsg::CommentsClosed)
-                } else {
-                    Task::none()
+                self.nav_stack.pop();
+
+                match self.nav_stack.last() {
+                    Some(current) => {
+                        self.offset = current.offset;
+                        self.page = current.page;
+
+                        Task::done(CommentMsg::FetchComments {
+                            parent_id: current
+                                .comment
+                                .as_ref()
+                                .map(|c| c.id)
+                                .unwrap_or_else(|| self.article.id),
+                            parent_comment: None,
+                        })
+                        .map(AppMsg::Comments)
+                    }
+                    None => Task::done(AppMsg::CommentsClosed),
                 }
             }
             CommentMsg::Search(search) => {
@@ -261,6 +350,50 @@ impl CommentState {
                 self.oneline = !self.oneline;
                 Task::none()
             }
+            CommentMsg::Forward => {
+                self.offset += 10;
+                self.page += 1;
+                self.update_nav_stack();
+
+                Task::done(CommentMsg::FetchComments {
+                    parent_id: self.parent_id,
+                    parent_comment: None,
+                })
+                .map(AppMsg::Comments)
+            }
+            CommentMsg::Back => {
+                self.offset -= 10;
+                self.page -= 1;
+                self.update_nav_stack();
+
+                Task::done(CommentMsg::FetchComments {
+                    parent_id: self.parent_id,
+                    parent_comment: None,
+                })
+                .map(AppMsg::Comments)
+            }
+            CommentMsg::JumpPage(page) => {
+                self.page = page;
+                if page > 1 {
+                    self.offset = 10 * (page - 1);
+                } else {
+                    self.offset = 0;
+                }
+                self.update_nav_stack();
+
+                Task::done(CommentMsg::FetchComments {
+                    parent_id: self.parent_id,
+                    parent_comment: None,
+                })
+                .map(AppMsg::Comments)
+            }
+        }
+    }
+
+    fn update_nav_stack(&mut self) {
+        if let Some(current) = self.nav_stack.last_mut() {
+            current.offset = self.offset;
+            current.page = self.page;
         }
     }
 }
