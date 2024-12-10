@@ -167,7 +167,7 @@ impl FullSearchState {
                         }
                     }
                 }
-                Task::none()
+                Task::done(AppMsg::CommentsClosed)
             }
             FullSearchMsg::CloseSearch => {
                 self.search = None;

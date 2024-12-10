@@ -30,7 +30,6 @@ pub struct App {
     pub article_state: ArticleState,
     /// Comment state.
     pub comment_state: Option<CommentState>,
-
     /// Full search state.
     pub full_search_state: FullSearchState,
     /// Footer

@@ -73,40 +73,22 @@ impl CommentState {
             .map(|text| widget::rich_text(render_rich_text(text, self.search.as_deref(), false)))
             .map(|rt| container(rt).padding([10, 10]).into());
 
-        let comment_rows =
-        //     if !self.search_results.is_empty() {
-        //     self.search_results
-        //         .iter()
-        //         .map(|comment| {
-        //             self.render_comment(comment, false).style(|theme| {
-        //                 let palette = theme.extended_palette();
+        let comment_rows = self
+            .comments
+            .iter()
+            .map(|item| {
+                self.render_comment(item, false).style(|theme| {
+                    let palette = theme.extended_palette();
 
-        //                 container::Style {
-        //                     background: Some(palette.background.weak.color.into()),
-        //                     border: border::rounded(8),
-        //                     ..Default::default()
-        //                 }
-        //             })
-        //         })
-        //         .map(Element::from)
-        //         .collect::<Vec<_>>()
-        // } else {
-            self.comments
-                .iter()
-                .map(|item| {
-                    self.render_comment(item, false).style(|theme| {
-                        let palette = theme.extended_palette();
-
-                        container::Style {
-                            background: Some(palette.background.weak.color.into()),
-                            border: border::rounded(8),
-                            ..Default::default()
-                        }
-                    })
+                    container::Style {
+                        background: Some(palette.background.weak.color.into()),
+                        border: border::rounded(8),
+                        ..Default::default()
+                    }
                 })
-                .map(Element::from)
-                .collect::<Vec<_>>();
-        // };
+            })
+            .map(Element::from)
+            .collect::<Vec<_>>();
 
         let parent_comments = self
             .nav_stack
@@ -146,13 +128,20 @@ impl CommentState {
             .push(self.pagination_element())
             .push(
                 widget::scrollable(
-                    widget::column![
-                        Column::with_children(article_text).spacing(15),
-                        Column::with_children(parent_comments).spacing(15),
-                        Column::with_children(comment_rows).spacing(15),
-                    ]
-                    .spacing(15)
-                    .padding(padding::top(0).bottom(10).left(10).right(25)),
+                    widget::Column::new()
+                        .push_maybe(
+                            self.search
+                                .is_none()
+                                .then(|| Column::with_children(article_text).spacing(15)),
+                        )
+                        .push_maybe(
+                            self.search
+                                .is_none()
+                                .then(|| Column::with_children(parent_comments).spacing(15)),
+                        )
+                        .push(Column::with_children(comment_rows).spacing(15))
+                        .spacing(15)
+                        .padding(padding::top(0).bottom(10).left(10).right(25)),
                 )
                 .id(widget::scrollable::Id::new("comments"))
                 .height(Length::Fill),
@@ -367,6 +356,7 @@ impl CommentState {
                 });
                 self.offset = 0;
                 self.page = 1;
+                self.comments = Vec::new();
                 widget::text_input::focus(widget::text_input::Id::new("comment_search"))
             }
             CommentMsg::CloseSearch => {
