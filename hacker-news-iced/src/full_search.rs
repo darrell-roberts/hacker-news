@@ -50,7 +50,9 @@ impl FullSearchState {
             .map(iced::Element::from);
 
         let pagination = || {
-            let pages = (1..(self.full_count / 10) + 1).map(|page| {
+            let (div, rem) = (self.full_count / 10, self.full_count % 10);
+            let max = if rem > 0 { div + 1 } else { div };
+            let pages = (1..=max).map(|page| {
                 widget::button(
                     widget::container(widget::text(format!("{page}")))
                         .style(move |theme: &Theme| {
@@ -80,7 +82,12 @@ impl FullSearchState {
                         ),
                     )
                     .extend(pages)
-                    .push(widget::button(">").on_press(AppMsg::FullSearch(FullSearchMsg::Forward)))
+                    .push(
+                        widget::button(">").on_press_maybe(
+                            (self.page < (self.full_count / 10) + 1)
+                                .then_some(AppMsg::FullSearch(FullSearchMsg::Forward)),
+                        ),
+                    )
                     .spacing(2)
                     .align_y(Vertical::Center),
             )
@@ -138,6 +145,10 @@ impl FullSearchState {
                 if search.is_empty() {
                     return Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch);
                 } else {
+                    if self.search.as_deref().unwrap_or_default() != search {
+                        self.page = 1;
+                        self.offset = 0;
+                    }
                     self.search = Some(search.clone());
                     match self
                         .search_context
@@ -184,7 +195,11 @@ impl FullSearchState {
             }
             FullSearchMsg::JumpPage(page) => {
                 self.page = page;
-                self.offset = 10 * page;
+                if page > 1 {
+                    self.offset = 10 * (page - 1);
+                } else {
+                    self.offset = 0;
+                }
 
                 Task::done(FullSearchMsg::Search(
                     self.search.as_deref().unwrap_or_default().to_owned(),
