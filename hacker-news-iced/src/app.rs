@@ -110,6 +110,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             })
             .map(AppMsg::Comments)
             .chain(Task::done(ArticleMsg::ViewingItem(item_id)).map(AppMsg::Articles))
+            .chain(Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch))
         }
         AppMsg::CommentsClosed => {
             app.comment_state = None;
@@ -199,9 +200,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         }
         AppMsg::CloseSearch => {
             app.article_state.search = None;
-            Task::done(AppMsg::Articles(ArticleMsg::TopStories(
-                app.header.article_count,
-            )))
+            Task::done(ArticleMsg::TopStories(app.header.article_count)).map(AppMsg::Articles)
         }
         AppMsg::PaneResized(p) => {
             app.panes.resize(p.split, p.ratio);

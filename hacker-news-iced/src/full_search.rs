@@ -7,7 +7,7 @@ use iced::{
     border,
     font::{Style, Weight},
     padding,
-    widget::{self},
+    widget::{self, text::Shaping},
     Font, Length, Task, Theme,
 };
 use std::sync::Arc;
@@ -75,18 +75,20 @@ impl FullSearchState {
             widget::container(
                 widget::Row::new()
                     .push(
-                        widget::button("<").on_press_maybe(
-                            self.page
-                                .gt(&1)
-                                .then_some(AppMsg::FullSearch(FullSearchMsg::Back)),
-                        ),
+                        widget::button(widget::text("🡸").shaping(Shaping::Advanced))
+                            .on_press_maybe(
+                                self.page
+                                    .gt(&1)
+                                    .then_some(AppMsg::FullSearch(FullSearchMsg::Back)),
+                            ),
                     )
                     .extend(pages)
                     .push(
-                        widget::button(">").on_press_maybe(
-                            (self.page < (self.full_count / 10) + 1)
-                                .then_some(AppMsg::FullSearch(FullSearchMsg::Forward)),
-                        ),
+                        widget::button(widget::text("🡺").shaping(Shaping::Advanced))
+                            .on_press_maybe(
+                                (self.page < (self.full_count / 10) + 1)
+                                    .then_some(AppMsg::FullSearch(FullSearchMsg::Forward)),
+                            ),
                     )
                     .spacing(2)
                     .align_y(Vertical::Center),
