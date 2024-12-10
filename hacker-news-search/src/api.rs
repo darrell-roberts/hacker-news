@@ -8,8 +8,6 @@ use tantivy::{schema::OwnedValue, Document, TantivyDocument};
 mod comment;
 mod story;
 
-impl SearchContext {}
-
 #[derive(Debug, Clone)]
 /// Hacker news story
 pub struct Story {
