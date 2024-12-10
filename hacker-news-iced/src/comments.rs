@@ -16,6 +16,7 @@ use iced::{
 };
 use std::sync::Arc;
 
+#[derive(Debug)]
 pub struct NavStack {
     pub comment: Option<Comment>,
     pub offset: usize,
@@ -72,23 +73,24 @@ impl CommentState {
             .map(|text| widget::rich_text(render_rich_text(text, self.search.as_deref(), false)))
             .map(|rt| container(rt).padding([10, 10]).into());
 
-        let comment_rows = if !self.search_results.is_empty() {
-            self.search_results
-                .iter()
-                .map(|comment| {
-                    self.render_comment(comment, false).style(|theme| {
-                        let palette = theme.extended_palette();
+        let comment_rows =
+        //     if !self.search_results.is_empty() {
+        //     self.search_results
+        //         .iter()
+        //         .map(|comment| {
+        //             self.render_comment(comment, false).style(|theme| {
+        //                 let palette = theme.extended_palette();
 
-                        container::Style {
-                            background: Some(palette.background.weak.color.into()),
-                            border: border::rounded(8),
-                            ..Default::default()
-                        }
-                    })
-                })
-                .map(Element::from)
-                .collect::<Vec<_>>()
-        } else {
+        //                 container::Style {
+        //                     background: Some(palette.background.weak.color.into()),
+        //                     border: border::rounded(8),
+        //                     ..Default::default()
+        //                 }
+        //             })
+        //         })
+        //         .map(Element::from)
+        //         .collect::<Vec<_>>()
+        // } else {
             self.comments
                 .iter()
                 .map(|item| {
@@ -103,8 +105,8 @@ impl CommentState {
                     })
                 })
                 .map(Element::from)
-                .collect::<Vec<_>>()
-        };
+                .collect::<Vec<_>>();
+        // };
 
         let parent_comments = self
             .nav_stack
@@ -141,13 +143,13 @@ impl CommentState {
                         widget::tooltip::Position::Left,
                     ))
             }))
+            .push(self.pagination_element())
             .push(
                 widget::scrollable(
                     widget::column![
                         Column::with_children(article_text).spacing(15),
                         Column::with_children(parent_comments).spacing(15),
                         Column::with_children(comment_rows).spacing(15),
-                        self.paganation_footer()
                     ]
                     .spacing(15)
                     .padding(padding::top(0).bottom(10).left(10).right(25)),
@@ -159,7 +161,7 @@ impl CommentState {
         container(content.width(Length::Fill)).into()
     }
 
-    fn paganation_footer(&self) -> Element<AppMsg> {
+    fn pagination_element(&self) -> Element<AppMsg> {
         let (div, rem) = (self.full_count / 10, self.full_count % 10);
         let max = if rem > 0 { div + 1 } else { div };
         let pages = (1..=max).map(|page| {
@@ -202,6 +204,7 @@ impl CommentState {
                 .align_y(Vertical::Center),
         )
         .center_x(Length::Fill)
+        .padding([5, 0])
         .into()
     }
 
@@ -321,30 +324,56 @@ impl CommentState {
                 if search.is_empty() {
                     Task::done(AppMsg::Comments(CommentMsg::CloseSearch))
                 } else {
+                    match self.search.as_deref() {
+                        // New search term.
+                        Some(s) if s != search => {
+                            if let Some(current) = self.nav_stack.last_mut() {
+                                current.offset = 0;
+                                current.page = 0;
+                            }
+
+                            self.offset = 0;
+                            self.page = 1;
+                        }
+                        _ => (),
+                    }
+
                     self.search = Some(search.clone());
-                    match self
-                        .search_context
-                        .search_comments(&search, self.article.id, 0)
-                    {
-                        Ok(comments) => {
-                            self.search_results = comments;
+
+                    match self.search_context.search_comments(
+                        &search,
+                        self.article.id,
+                        10,
+                        self.offset,
+                    ) {
+                        Ok((comments, count)) => {
+                            self.comments = comments;
+                            self.full_count = count;
+                            Task::none()
                         }
                         Err(err) => {
                             eprintln!("Failed search: {err}");
-                            return Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string())));
+                            Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string())))
                         }
                     }
-                    Task::none()
                 }
             }
             CommentMsg::OpenSearch => {
                 self.search = Some(String::new());
+                self.nav_stack.push(NavStack {
+                    comment: None,
+                    offset: 0,
+                    page: 1,
+                });
+                self.offset = 0;
+                self.page = 1;
                 widget::text_input::focus(widget::text_input::Id::new("comment_search"))
             }
             CommentMsg::CloseSearch => {
                 self.search = None;
                 self.search_results = Vec::new();
-                Task::none()
+
+                Task::done(CommentMsg::CloseComment).map(AppMsg::Comments)
             }
             CommentMsg::Oneline => {
                 self.oneline = !self.oneline;
@@ -354,23 +383,13 @@ impl CommentState {
                 self.offset += 10;
                 self.page += 1;
                 self.update_nav_stack();
-
-                Task::done(CommentMsg::FetchComments {
-                    parent_id: self.parent_id,
-                    parent_comment: None,
-                })
-                .map(AppMsg::Comments)
+                self.paginate_task()
             }
             CommentMsg::Back => {
                 self.offset -= 10;
                 self.page -= 1;
                 self.update_nav_stack();
-
-                Task::done(CommentMsg::FetchComments {
-                    parent_id: self.parent_id,
-                    parent_comment: None,
-                })
-                .map(AppMsg::Comments)
+                self.paginate_task()
             }
             CommentMsg::JumpPage(page) => {
                 self.page = page;
@@ -380,13 +399,19 @@ impl CommentState {
                     self.offset = 0;
                 }
                 self.update_nav_stack();
-
-                Task::done(CommentMsg::FetchComments {
-                    parent_id: self.parent_id,
-                    parent_comment: None,
-                })
-                .map(AppMsg::Comments)
+                self.paginate_task()
             }
+        }
+    }
+
+    fn paginate_task(&self) -> Task<AppMsg> {
+        match self.search.as_ref() {
+            Some(s) => Task::done(CommentMsg::Search(s.to_owned())).map(AppMsg::Comments),
+            None => Task::done(CommentMsg::FetchComments {
+                parent_id: self.parent_id,
+                parent_comment: None,
+            })
+            .map(AppMsg::Comments),
         }
     }
 

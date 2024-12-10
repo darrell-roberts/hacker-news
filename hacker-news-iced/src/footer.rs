@@ -21,7 +21,6 @@ pub enum FooterMsg {
     LastUpdate(DateTime<Local>),
     Url(String),
     NoUrl,
-    Fetching,
     Scale(f64),
     IndexStats {
         total_documents: u64,
@@ -97,9 +96,6 @@ impl FooterState {
                 Some(dt) => self.status_line = format!("Updated: {}", dt.format("%d/%m/%Y %r")),
                 None => self.status_line.clear(),
             },
-            FooterMsg::Fetching => {
-                self.status_line = "Fetching...".into();
-            }
             FooterMsg::Scale(scale) => {
                 self.scale = scale;
             }

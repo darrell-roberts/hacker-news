@@ -7,10 +7,7 @@ use crate::{
     header::{self, HeaderState},
     widget::hoverable,
 };
-use hacker_news_search::{
-    api::{Comment, Story},
-    SearchContext,
-};
+use hacker_news_search::{api::Story, SearchContext};
 use iced::{
     font::Weight,
     widget::{
@@ -19,7 +16,7 @@ use iced::{
     Font, Size, Task, Theme,
 };
 use log::error;
-use std::{collections::VecDeque, sync::Arc};
+use std::sync::Arc;
 
 /// Application state.
 pub struct App {

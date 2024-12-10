@@ -1,7 +1,5 @@
 use super::Comment;
-use crate::{
-    SearchContext, SearchError, ITEM_BODY, ITEM_RANK, ITEM_STORY_ID, ITEM_TIME, ITEM_TYPE,
-};
+use crate::{SearchContext, SearchError, ITEM_BODY, ITEM_RANK, ITEM_STORY_ID, ITEM_TYPE};
 use tantivy::{
     collector::{Count, MultiCollector, TopDocs},
     query::{BooleanQuery, FuzzyTermQuery, Occur, TermQuery},
@@ -63,8 +61,9 @@ impl SearchContext {
         &self,
         search: &str,
         story_id: u64,
+        limit: usize,
         offset: usize,
-    ) -> Result<Vec<Comment>, SearchError> {
+    ) -> Result<(Vec<Comment>, usize), SearchError> {
         let searcher = self.searcher();
 
         let parent_query = Box::new(TermQuery::new(
@@ -83,14 +82,18 @@ impl SearchContext {
             (Occur::Must, fuzzy_search),
         ]);
 
-        let top_docs = TopDocs::with_limit(150)
-            // Pagination
-            .and_offset(offset)
-            // Ordering
-            .order_by_u64_field(ITEM_TIME, Order::Asc);
+        let mut multi_collector = MultiCollector::new();
 
-        let comments = searcher
-            .search(&combined_query, &top_docs)?
+        let top_docs = TopDocs::with_limit(limit).and_offset(offset);
+
+        let docs_handle = multi_collector.add_collector(top_docs);
+        let count_handle = multi_collector.add_collector(Count);
+
+        let mut multi_fruit = searcher.search(&combined_query, &multi_collector)?;
+        let docs = docs_handle.extract(&mut multi_fruit);
+        let count = count_handle.extract(&mut multi_fruit);
+
+        let comments = docs
             .into_iter()
             .map(|(_, doc_address)| {
                 let doc = searcher.doc::<TantivyDocument>(doc_address)?;
@@ -98,7 +101,7 @@ impl SearchContext {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(comments)
+        Ok((comments, count))
     }
 
     pub fn search_all_comments(
