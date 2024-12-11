@@ -6,6 +6,7 @@ pub struct CommentView {
 }
 
 impl CommentView {
+    #[expect(dead_code)]
     pub fn new(cx: &mut WindowContext, item: Item) -> View<Self> {
         cx.new_view(|_| Self { item })
     }

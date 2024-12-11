@@ -176,7 +176,7 @@ impl CommentState {
         widget::container(
             widget::Row::new()
                 .push(
-                    widget::button(widget::text("🡸").shaping(Shaping::Advanced)).on_press_maybe(
+                    widget::button(widget::text("←").shaping(Shaping::Advanced)).on_press_maybe(
                         self.page
                             .gt(&1)
                             .then_some(AppMsg::Comments(CommentMsg::Back)),
@@ -184,7 +184,7 @@ impl CommentState {
                 )
                 .extend(pages)
                 .push(
-                    widget::button(widget::text("🡺").shaping(Shaping::Advanced)).on_press_maybe(
+                    widget::button(widget::text("→").shaping(Shaping::Advanced)).on_press_maybe(
                         (self.page < (self.full_count / 10) + 1)
                             .then_some(AppMsg::Comments(CommentMsg::Forward)),
                     ),

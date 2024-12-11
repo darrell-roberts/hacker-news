@@ -75,7 +75,7 @@ impl FullSearchState {
             widget::container(
                 widget::Row::new()
                     .push(
-                        widget::button(widget::text("🡸").shaping(Shaping::Advanced))
+                        widget::button(widget::text("←").shaping(Shaping::Advanced))
                             .on_press_maybe(
                                 self.page
                                     .gt(&1)
@@ -84,7 +84,7 @@ impl FullSearchState {
                     )
                     .extend(pages)
                     .push(
-                        widget::button(widget::text("🡺").shaping(Shaping::Advanced))
+                        widget::button(widget::text("→").shaping(Shaping::Advanced))
                             .on_press_maybe(
                                 (self.page < (self.full_count / 10) + 1)
                                     .then_some(AppMsg::FullSearch(FullSearchMsg::Forward)),
