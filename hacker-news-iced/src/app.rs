@@ -280,6 +280,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     pane_grid::TitleBar::new(title().unwrap_or("".into()))
                         .controls(pane_grid::Controls::new(
                             widget::Row::new()
+                                .push(widget::text(format!("{}", cs.full_count)))
                                 .push(
                                     widget::toggler(cs.oneline)
                                         .label("oneline")
@@ -287,7 +288,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                                 )
                                 .push(
                                     widget::button("X")
-                                        .on_press(AppMsg::Comments(CommentMsg::CloseComment)),
+                                        .on_press(AppMsg::Comments(CommentMsg::PopNavStack)),
                                 )
                                 .spacing(5),
                         ))

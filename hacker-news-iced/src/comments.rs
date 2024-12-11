@@ -54,7 +54,7 @@ pub enum CommentMsg {
         parent_id: u64,
         parent_comment: Option<Comment>,
     },
-    CloseComment,
+    PopNavStack,
     Search(String),
     OpenSearch,
     CloseSearch,
@@ -125,7 +125,7 @@ impl CommentState {
                         widget::tooltip::Position::Left,
                     ))
             }))
-            .push(self.pagination_element())
+            .push_maybe((self.full_count > 10).then(|| self.pagination_element()))
             .push(
                 widget::scrollable(
                     widget::Column::new()
@@ -288,7 +288,7 @@ impl CommentState {
                     Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch),
                 ])
             }
-            CommentMsg::CloseComment => {
+            CommentMsg::PopNavStack => {
                 self.nav_stack.pop();
 
                 match self.nav_stack.last() {
@@ -363,7 +363,7 @@ impl CommentState {
                 self.search = None;
                 self.search_results = Vec::new();
 
-                Task::done(CommentMsg::CloseComment).map(AppMsg::Comments)
+                Task::done(CommentMsg::PopNavStack).map(AppMsg::Comments)
             }
             CommentMsg::Oneline => {
                 self.oneline = !self.oneline;
