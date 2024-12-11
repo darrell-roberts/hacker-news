@@ -7,9 +7,9 @@ use async_stream::stream;
 use futures_core::Stream;
 use futures_util::{pin_mut, StreamExt};
 use hacker_news_api::{ApiClient, Item};
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::sync::Arc;
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::{self, UnboundedSender};
 
 struct CommentRef {
     story_id: u64,
@@ -76,7 +76,7 @@ impl<'a> WriteContext<'a> {
 
     fn write_story(&self, item: StoryRef) -> Result<(), SearchError> {
         let StoryRef { story: item, rank } = item;
-        self.write_common(&item, rank, None)?;
+        self.write_doc(&item, rank, None)?;
         Ok(())
     }
 
@@ -86,16 +86,11 @@ impl<'a> WriteContext<'a> {
             comment,
             rank,
         } = comment;
-        self.write_common(&comment, rank, Some(story_id))?;
+        self.write_doc(&comment, rank, Some(story_id))?;
         Ok(())
     }
 
-    fn write_common(
-        &self,
-        item: &Item,
-        rank: u64,
-        story_id: Option<u64>,
-    ) -> Result<(), SearchError> {
+    fn write_doc(&self, item: &Item, rank: u64, story_id: Option<u64>) -> Result<(), SearchError> {
         let mut doc = TantivyDocument::new();
         doc.add_u64(self.rank, rank);
         doc.add_u64(self.id, item.id);
@@ -192,15 +187,14 @@ async fn collect_story(
 }
 
 async fn collect(client: ApiClient, tx: UnboundedSender<ItemRef>) -> Result<(), SearchError> {
-    let articles = client
+    let stories = client
         .articles(75, hacker_news_api::ArticleType::Top)
         .await?;
 
     let client = Arc::new(client);
 
     let mut handles = Vec::new();
-
-    for (story, rank) in articles.into_iter().zip(1..) {
+    for (story, rank) in stories.into_iter().zip(1..) {
         let client = client.clone();
         let tx = tx.clone();
         handles.push(tokio::spawn(async move {
@@ -222,7 +216,7 @@ pub async fn rebuild_index(ctx: &SearchContext) -> Result<(u64, u64), SearchErro
 
     let writer_context = WriteContext::new(ctx, &mut writer, "top")?;
 
-    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<ItemRef>();
+    let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
 
     let result = tokio::spawn(async move { collect(client, tx).await });
 
@@ -239,82 +233,82 @@ pub async fn rebuild_index(ctx: &SearchContext) -> Result<(u64, u64), SearchErro
     document_stats(ctx)
 }
 
-pub fn index_articles<'a>(
-    ctx: &'a SearchContext,
-    client: &'a ApiClient,
-    writer: &'a mut IndexWriter,
-    items: &'a [Item],
-    category: &'a str,
-    mut story_id: Option<u64>,
-) -> Pin<Box<impl Future<Output = Result<(), SearchError>> + use<'a>>> {
-    Box::pin(async move {
-        let id = ctx.schema.get_field(ITEM_ID)?;
-        let parent = ctx.schema.get_field(ITEM_PARENT_ID)?;
-        let title = ctx.schema.get_field(ITEM_TITLE)?;
-        let body = ctx.schema.get_field(ITEM_BODY)?;
-        let url = ctx.schema.get_field(ITEM_URL)?;
-        let by = ctx.schema.get_field(ITEM_BY)?;
-        let ty = ctx.schema.get_field(ITEM_TYPE)?;
-        let rank = ctx.schema.get_field(ITEM_RANK)?;
-        let descendant_count = ctx.schema.get_field(ITEM_DESCENDANT_COUNT)?;
-        let category_field = ctx.schema.get_field(ITEM_CATEGORY)?;
-        let time = ctx.schema.get_field(ITEM_TIME)?;
-        let parent_story_id = ctx.schema.get_field(ITEM_STORY_ID)?;
-        let kids = ctx.schema.get_field(ITEM_KIDS)?;
-        let score = ctx.schema.get_field(ITEM_SCORE)?;
+// pub fn index_articles<'a>(
+//     ctx: &'a SearchContext,
+//     client: &'a ApiClient,
+//     writer: &'a mut IndexWriter,
+//     items: &'a [Item],
+//     category: &'a str,
+//     mut story_id: Option<u64>,
+// ) -> Pin<Box<impl Future<Output = Result<(), SearchError>> + use<'a>>> {
+//     Box::pin(async move {
+//         let id = ctx.schema.get_field(ITEM_ID)?;
+//         let parent = ctx.schema.get_field(ITEM_PARENT_ID)?;
+//         let title = ctx.schema.get_field(ITEM_TITLE)?;
+//         let body = ctx.schema.get_field(ITEM_BODY)?;
+//         let url = ctx.schema.get_field(ITEM_URL)?;
+//         let by = ctx.schema.get_field(ITEM_BY)?;
+//         let ty = ctx.schema.get_field(ITEM_TYPE)?;
+//         let rank = ctx.schema.get_field(ITEM_RANK)?;
+//         let descendant_count = ctx.schema.get_field(ITEM_DESCENDANT_COUNT)?;
+//         let category_field = ctx.schema.get_field(ITEM_CATEGORY)?;
+//         let time = ctx.schema.get_field(ITEM_TIME)?;
+//         let parent_story_id = ctx.schema.get_field(ITEM_STORY_ID)?;
+//         let kids = ctx.schema.get_field(ITEM_KIDS)?;
+//         let score = ctx.schema.get_field(ITEM_SCORE)?;
 
-        for (item, index) in items.iter().zip(1..) {
-            let mut doc = TantivyDocument::new();
-            doc.add_u64(rank, index);
-            doc.add_u64(id, item.id);
-            if let Some(id) = item.parent {
-                doc.add_u64(parent, id);
-            }
-            if let Some(t) = item.title.as_deref() {
-                doc.add_text(title, t);
-            }
-            if let Some(t) = item.text.as_deref() {
-                doc.add_text(body, t);
-            }
-            if let Some(u) = item.url.as_deref() {
-                doc.add_text(url, u);
-            }
-            doc.add_text(by, &item.by);
-            doc.add_text(ty, &item.ty);
+//         for (item, index) in items.iter().zip(1..) {
+//             let mut doc = TantivyDocument::new();
+//             doc.add_u64(rank, index);
+//             doc.add_u64(id, item.id);
+//             if let Some(id) = item.parent {
+//                 doc.add_u64(parent, id);
+//             }
+//             if let Some(t) = item.title.as_deref() {
+//                 doc.add_text(title, t);
+//             }
+//             if let Some(t) = item.text.as_deref() {
+//                 doc.add_text(body, t);
+//             }
+//             if let Some(u) = item.url.as_deref() {
+//                 doc.add_text(url, u);
+//             }
+//             doc.add_text(by, &item.by);
+//             doc.add_text(ty, &item.ty);
 
-            if let Some(n) = item.descendants {
-                doc.add_u64(descendant_count, n);
-            }
+//             if let Some(n) = item.descendants {
+//                 doc.add_u64(descendant_count, n);
+//             }
 
-            if let Some(id) = story_id {
-                doc.add_u64(parent_story_id, id);
-            }
+//             if let Some(id) = story_id {
+//                 doc.add_u64(parent_story_id, id);
+//             }
 
-            if item.ty == "story" {
-                story_id = Some(item.id);
-                doc.add_text(category_field, category);
-                doc.add_u64(score, item.score);
-            }
+//             if item.ty == "story" {
+//                 story_id = Some(item.id);
+//                 doc.add_text(category_field, category);
+//                 doc.add_u64(score, item.score);
+//             }
 
-            doc.add_u64(time, item.time);
+//             doc.add_u64(time, item.time);
 
-            for id in &item.kids {
-                doc.add_u64(kids, *id);
-            }
+//             for id in &item.kids {
+//                 doc.add_u64(kids, *id);
+//             }
 
-            if !item.kids.is_empty() {
-                let children = client.items(&item.kids).await?;
-                index_articles(ctx, client, writer, &children, category, story_id).await?;
-            }
+//             if !item.kids.is_empty() {
+//                 let children = client.items(&item.kids).await?;
+//                 index_articles(ctx, client, writer, &children, category, story_id).await?;
+//             }
 
-            // TODO: Add a depth field for comments. This will allow for
-            // easy indentation for viewing the comment tree.
+//             // TODO: Add a depth field for comments. This will allow for
+//             // easy indentation for viewing the comment tree.
 
-            writer.add_document(doc)?;
-        }
-        Ok(())
-    })
-}
+//             writer.add_document(doc)?;
+//         }
+//         Ok(())
+//     })
+// }
 
 // pub async fn rebuild_index(ctx: &SearchContext) -> Result<(u64, u64), SearchError> {
 //     let client = ApiClient::new()?;
