@@ -63,7 +63,7 @@ impl SearchContext {
             create_dir_all(index_path)?;
         }
 
-        let schema = article_schema();
+        let schema = document_schema();
 
         let index = Index::open_or_create(MmapDirectory::open(index_path)?, schema.clone())?;
         let reader = index.reader()?;
@@ -86,7 +86,7 @@ impl SearchContext {
     }
 }
 
-fn article_schema() -> Schema {
+fn document_schema() -> Schema {
     let mut schema_builder = Schema::builder();
 
     let text_field_indexing = TextFieldIndexing::default()

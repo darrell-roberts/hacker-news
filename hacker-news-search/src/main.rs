@@ -1,3 +1,4 @@
+#![expect(dead_code)]
 use hacker_news_search::{rebuild_index, SearchContext};
 use std::{fs::exists, path::Path};
 use tokio::fs::{create_dir_all, remove_dir_all};

@@ -1,3 +1,4 @@
+//! Search API for top stories.
 use super::Story;
 use crate::{SearchContext, SearchError, ITEM_CATEGORY, ITEM_RANK, ITEM_TITLE, ITEM_TYPE};
 use tantivy::{
@@ -8,6 +9,7 @@ use tantivy::{
 };
 
 impl SearchContext {
+    /// Lookup top stories applying limit and  offset pagination.
     pub fn top_stories(&self, limit: usize, offset: usize) -> Result<Vec<Story>, SearchError> {
         let query = self
             .query_parser()?
@@ -32,6 +34,7 @@ impl SearchContext {
         Ok(stories)
     }
 
+    /// Search all stories with term and offset pagination.
     pub fn search_stories(&self, search: &str, offset: usize) -> Result<Vec<Story>, SearchError> {
         let type_story_query = Box::new(TermQuery::new(
             Term::from_field_text(self.schema.get_field(ITEM_TYPE)?, "story"),
