@@ -262,7 +262,7 @@ impl ArticleState {
             ArticleMsg::ViewingItem(story_id) => {
                 self.visited.insert(story_id);
                 self.viewing_item = Some(story_id);
-                Task::none()
+                Task::done(AppMsg::SaveConfig)
             }
         }
     }

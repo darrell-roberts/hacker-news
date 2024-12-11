@@ -14,3 +14,4 @@ html-sanitizer.workspace = true
 thiserror = "2"
 anyhow.workspace = true
 tokio.workspace = true
+serde.workspace = true

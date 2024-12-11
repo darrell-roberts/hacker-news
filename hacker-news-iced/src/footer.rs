@@ -1,5 +1,6 @@
 use crate::app::AppMsg;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, FixedOffset, Local, Utc};
+use chrono_tz::America::New_York;
 use hacker_news_search::IndexStats;
 use iced::{
     alignment::Vertical,
@@ -7,15 +8,12 @@ use iced::{
     widget::{container, pick_list, text, Row},
     Background, Element, Font, Length, Task, Theme,
 };
-use std::time::Duration;
 
 pub struct FooterState {
     pub status_line: String,
     pub last_update: Option<DateTime<Local>>,
     pub scale: f64,
-    pub total_comments: u64,
-    pub total_documents: u64,
-    pub build_time: Option<Duration>,
+    pub index_stats: Option<IndexStats>,
 }
 
 #[derive(Debug, Clone)]
@@ -47,17 +45,28 @@ impl FooterState {
             .push(
                 container(
                     Row::new()
-                        .push_maybe(self.build_time.as_ref().map(|d| {
+                        .push_maybe(
+                            self.index_stats
+                                .as_ref()
+                                .and_then(|stats| {
+                                    DateTime::<Utc>::from_timestamp(stats.built_on as i64, 0)
+                                })
+                                .and_then(|dt| Some(dt.with_timezone(&New_York)))
+                                .map(|dt| text(dt.format("%d/%m/%y %H:%M,").to_string())),
+                        )
+                        .push_maybe(self.index_stats.as_ref().and_then(|stats| {
+                            (stats.build_time.as_secs() / 60 != 0)
+                                .then(|| text(format!("{} min", stats.build_time.as_secs() / 60)))
+                        }))
+                        .push_maybe(self.index_stats.as_ref().map(|stats| {
+                            text(format!("{} secs,", stats.build_time.as_secs() % 60))
+                        }))
+                        .push_maybe(self.index_stats.as_ref().map(|stats| {
                             text(format!(
-                                "Inexed: {}min {}secs",
-                                d.as_secs() / 60,
-                                d.as_secs() % 60
+                                "docs: {}, comments: {}",
+                                stats.total_documents, stats.total_comments
                             ))
                         }))
-                        .push(text(format!(
-                            "docs: {}, comments: {}",
-                            self.total_documents, self.total_comments
-                        )))
                         .push(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
                         .push(pick_list(themes, Some(theme), |selected| {
                             AppMsg::ChangeTheme(selected)
@@ -107,9 +116,8 @@ impl FooterState {
                 self.scale = scale;
             }
             FooterMsg::IndexStats(stats) => {
-                self.total_documents = stats.total_documents;
-                self.total_comments = stats.total_comments;
-                self.build_time = Some(stats.build_time)
+                self.index_stats = Some(stats);
+                return Task::done(AppMsg::SaveConfig);
             }
         }
         Task::none()

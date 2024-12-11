@@ -78,6 +78,7 @@ pub enum AppMsg {
     CommentsClosed,
     ClearVisited,
     FullSearch(FullSearchMsg),
+    SaveConfig,
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -211,6 +212,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             save_task(app)
         }
         AppMsg::FullSearch(msg) => app.full_search_state.update(msg),
+        AppMsg::SaveConfig => save_task(app),
     }
 }
 
@@ -319,6 +321,7 @@ impl From<&App> for Config {
             visited: visited.clone(),
             theme: state.theme.to_string(),
             window_size: (state.size.width, state.size.height),
+            index_stats: state.footer.index_stats,
         }
     }
 }

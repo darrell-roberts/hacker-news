@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 use footer::FooterState;
 use full_search::FullSearchState;
 use hacker_news_api::ArticleType;
-use hacker_news_search::{document_stats, IndexStats, SearchContext};
+use hacker_news_search::SearchContext;
 use header::HeaderState;
 use iced::{
     advanced::graphics::core::window,
@@ -15,7 +15,7 @@ use iced::{
     window::{close_requests, resize_events},
     Size, Subscription, Theme,
 };
-use std::{collections::HashSet, sync::Arc, time::Duration};
+use std::{collections::HashSet, sync::Arc};
 
 mod app;
 mod articles;
@@ -37,12 +37,6 @@ fn main() -> anyhow::Result<()> {
     let have_index = dir.exists();
     let search_context = Arc::new(SearchContext::new(&dir)?);
 
-    let IndexStats {
-        total_documents,
-        total_comments,
-        ..
-    } = document_stats(&search_context, Duration::from_secs(1))?;
-
     let app = config::load_config()
         .map(|config| App {
             search_context: search_context.clone(),
@@ -59,9 +53,7 @@ fn main() -> anyhow::Result<()> {
                 status_line: String::new(),
                 last_update: None,
                 scale: config.scale,
-                total_comments,
-                total_documents,
-                build_time: None,
+                index_stats: config.index_stats,
             },
             article_state: ArticleState {
                 search_context: search_context.clone(),
@@ -109,9 +101,7 @@ fn main() -> anyhow::Result<()> {
                     status_line: String::new(),
                     last_update: None,
                     scale: 1.,
-                    total_comments,
-                    total_documents,
-                    build_time: None,
+                    index_stats: None,
                 },
                 article_state: ArticleState {
                     search_context: search_context.clone(),
@@ -125,7 +115,7 @@ fn main() -> anyhow::Result<()> {
                 size: Size::new(800., 600.),
                 panes: pane_grid::State::with_configuration(pane_grid::Configuration::Split {
                     axis: pane_grid::Axis::Vertical,
-                    ratio: 1.,
+                    ratio: 0.3,
                     a: Box::new(Configuration::Pane(PaneState::Articles)),
                     b: Box::new(Configuration::Pane(PaneState::Comments)),
                 }),

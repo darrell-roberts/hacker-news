@@ -7,18 +7,20 @@ use async_stream::stream;
 use futures_core::Stream;
 use futures_util::{pin_mut, StreamExt};
 use hacker_news_api::{ApiClient, Item};
+use serde::{Deserialize, Serialize};
 use std::{
     sync::Arc,
-    time::{Duration, Instant},
+    time::{Duration, Instant, SystemTime},
 };
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct IndexStats {
     pub total_documents: u64,
     pub total_comments: u64,
     pub build_time: Duration,
+    pub built_on: u64,
 }
 
 struct CommentRef {
@@ -356,5 +358,9 @@ pub fn document_stats(
         total_documents,
         total_comments,
         build_time,
+        built_on: SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
     })
 }
