@@ -1,11 +1,13 @@
 use crate::app::AppMsg;
 use chrono::{DateTime, Local};
+use hacker_news_search::IndexStats;
 use iced::{
     alignment::Vertical,
     font::{Style, Weight},
     widget::{container, pick_list, text, Row},
     Background, Element, Font, Length, Task, Theme,
 };
+use std::time::Duration;
 
 pub struct FooterState {
     pub status_line: String,
@@ -13,6 +15,7 @@ pub struct FooterState {
     pub scale: f64,
     pub total_comments: u64,
     pub total_documents: u64,
+    pub build_time: Option<Duration>,
 }
 
 #[derive(Debug, Clone)]
@@ -22,10 +25,7 @@ pub enum FooterMsg {
     Url(String),
     NoUrl,
     Scale(f64),
-    IndexStats {
-        total_documents: u64,
-        total_comments: u64,
-    },
+    IndexStats(IndexStats),
 }
 
 impl FooterState {
@@ -42,11 +42,18 @@ impl FooterState {
             .push(
                 text(&self.status_line)
                     .font(light_font())
-                    .width(Length::FillPortion(2).enclose(Length::Fill)),
+                    .width(Length::Fill.enclose(Length::Fill)),
             )
             .push(
                 container(
                     Row::new()
+                        .push_maybe(self.build_time.as_ref().map(|d| {
+                            text(format!(
+                                "Inexed: {}min {}secs",
+                                d.as_secs() / 60,
+                                d.as_secs() % 60
+                            ))
+                        }))
                         .push(text(format!(
                             "docs: {}, comments: {}",
                             self.total_documents, self.total_comments
@@ -99,12 +106,10 @@ impl FooterState {
             FooterMsg::Scale(scale) => {
                 self.scale = scale;
             }
-            FooterMsg::IndexStats {
-                total_documents,
-                total_comments,
-            } => {
-                self.total_documents = total_documents;
-                self.total_comments = total_comments;
+            FooterMsg::IndexStats(stats) => {
+                self.total_documents = stats.total_documents;
+                self.total_comments = stats.total_comments;
+                self.build_time = Some(stats.build_time)
             }
         }
         Task::none()

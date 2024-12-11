@@ -1,7 +1,7 @@
 use crate::{app::AppMsg, articles::ArticleMsg, footer::FooterMsg, full_search::FullSearchMsg};
 use chrono::Local;
 use hacker_news_api::ArticleType;
-use hacker_news_search::{rebuild_index, SearchContext};
+use hacker_news_search::{rebuild_index, IndexStats, SearchContext};
 use iced::{
     border,
     widget::{self, button, container, row, text, Column},
@@ -25,7 +25,7 @@ pub enum HeaderMsg {
     },
     ClearVisisted,
     RebuildIndex,
-    IndexReady(u64, u64),
+    IndexReady(IndexStats),
     Search(String),
     IndexFailed(String),
 }
@@ -250,9 +250,7 @@ impl HeaderState {
                     Task::perform(
                         async move { rebuild_index(&s).await },
                         move |result| match result {
-                            Ok((total_documents, total_comments)) => AppMsg::Header(
-                                HeaderMsg::IndexReady(total_documents, total_comments),
-                            ),
+                            Ok(stats) => AppMsg::Header(HeaderMsg::IndexReady(stats)),
                             Err(err) => {
                                 eprintln!("Failed to create index {err}");
                                 AppMsg::Header(HeaderMsg::IndexFailed(err.to_string()))
@@ -262,16 +260,12 @@ impl HeaderState {
                     Task::done(FooterMsg::Error("Building index...".into())).map(AppMsg::Footer),
                 ])
             }
-            HeaderMsg::IndexReady(total_documents, total_comments) => {
+            HeaderMsg::IndexReady(stats) => {
                 self.building_index = false;
                 Task::batch([
                     Task::done(ArticleMsg::TopStories(self.article_count)).map(AppMsg::Articles),
                     Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer),
-                    Task::done(FooterMsg::IndexStats {
-                        total_documents,
-                        total_comments,
-                    })
-                    .map(AppMsg::Footer),
+                    Task::done(FooterMsg::IndexStats(stats)).map(AppMsg::Footer),
                 ])
             }
             HeaderMsg::IndexFailed(err) => {

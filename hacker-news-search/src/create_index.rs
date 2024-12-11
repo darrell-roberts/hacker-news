@@ -7,9 +7,19 @@ use async_stream::stream;
 use futures_core::Stream;
 use futures_util::{pin_mut, StreamExt};
 use hacker_news_api::{ApiClient, Item};
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
 use tokio::sync::mpsc::{self, UnboundedSender};
+
+#[derive(Debug, Clone, Copy)]
+pub struct IndexStats {
+    pub total_documents: u64,
+    pub total_comments: u64,
+    pub build_time: Duration,
+}
 
 struct CommentRef {
     story_id: u64,
@@ -171,10 +181,12 @@ fn comments<'a>(
 async fn collect_story(
     client: Arc<ApiClient>,
     tx: UnboundedSender<ItemRef>,
-    story: Item,
+    mut story: Item,
     rank: u64,
 ) -> Result<(), SearchError> {
-    let comment_stream = comments(&client, story.id, story.kids.clone());
+    // Story won't index kids. The parent child relationship will be maintained using a parent_id on the
+    // indexed document.
+    let comment_stream = comments(&client, story.id, std::mem::take(&mut story.kids));
     pin_mut!(comment_stream);
 
     while let Some(comment) = comment_stream.next().await {
@@ -209,7 +221,8 @@ async fn collect(client: ApiClient, tx: UnboundedSender<ItemRef>) -> Result<(), 
     Ok(())
 }
 
-pub async fn rebuild_index(ctx: &SearchContext) -> Result<(u64, u64), SearchError> {
+pub async fn rebuild_index(ctx: &SearchContext) -> Result<IndexStats, SearchError> {
+    let start_time = Instant::now();
     let client = ApiClient::new()?;
     let mut writer: IndexWriter = ctx.index.writer(50_000_000)?;
     writer.delete_all_documents()?;
@@ -230,7 +243,7 @@ pub async fn rebuild_index(ctx: &SearchContext) -> Result<(u64, u64), SearchErro
     result.await.unwrap()?;
     writer.commit()?;
 
-    document_stats(ctx)
+    document_stats(ctx, start_time.elapsed())
 }
 
 // pub fn index_articles<'a>(
@@ -328,7 +341,10 @@ pub async fn rebuild_index(ctx: &SearchContext) -> Result<(u64, u64), SearchErro
 //     document_stats(ctx)
 // }
 
-pub fn document_stats(ctx: &SearchContext) -> Result<(u64, u64), SearchError> {
+pub fn document_stats(
+    ctx: &SearchContext,
+    build_time: Duration,
+) -> Result<IndexStats, SearchError> {
     let searcher = ctx.searcher();
     let total_comments = searcher.doc_freq(&Term::from_field_text(
         ctx.schema.get_field(ITEM_TYPE)?,
@@ -336,5 +352,9 @@ pub fn document_stats(ctx: &SearchContext) -> Result<(u64, u64), SearchError> {
     ))?;
 
     let total_documents = searcher.num_docs();
-    Ok((total_documents, total_comments))
+    Ok(IndexStats {
+        total_documents,
+        total_comments,
+        build_time,
+    })
 }

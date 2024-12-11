@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 use footer::FooterState;
 use full_search::FullSearchState;
 use hacker_news_api::ArticleType;
-use hacker_news_search::{document_stats, SearchContext};
+use hacker_news_search::{document_stats, IndexStats, SearchContext};
 use header::HeaderState;
 use iced::{
     advanced::graphics::core::window,
@@ -15,7 +15,7 @@ use iced::{
     window::{close_requests, resize_events},
     Size, Subscription, Theme,
 };
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, sync::Arc, time::Duration};
 
 mod app;
 mod articles;
@@ -37,7 +37,11 @@ fn main() -> anyhow::Result<()> {
     let have_index = dir.exists();
     let search_context = Arc::new(SearchContext::new(&dir)?);
 
-    let (total_documents, total_comments) = document_stats(&search_context)?;
+    let IndexStats {
+        total_documents,
+        total_comments,
+        ..
+    } = document_stats(&search_context, Duration::from_secs(1))?;
 
     let app = config::load_config()
         .map(|config| App {
@@ -57,6 +61,7 @@ fn main() -> anyhow::Result<()> {
                 scale: config.scale,
                 total_comments,
                 total_documents,
+                build_time: None,
             },
             article_state: ArticleState {
                 search_context: search_context.clone(),
@@ -106,6 +111,7 @@ fn main() -> anyhow::Result<()> {
                     scale: 1.,
                     total_comments,
                     total_documents,
+                    build_time: None,
                 },
                 article_state: ArticleState {
                     search_context: search_context.clone(),
