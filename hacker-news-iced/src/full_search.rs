@@ -91,7 +91,8 @@ impl FullSearchState {
                             ),
                     )
                     .spacing(2)
-                    .align_y(Vertical::Center),
+                    .align_y(Vertical::Center)
+                    .wrap(),
             )
             .center_x(Length::Fill)
         };
