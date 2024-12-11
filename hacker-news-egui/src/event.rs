@@ -8,6 +8,7 @@ use log::error;
 use tokio::sync::mpsc::UnboundedSender;
 
 /// Client Event.
+#[expect(clippy::large_enum_variant)]
 pub enum Event {
     Articles {
         ty: ArticleType,
@@ -46,6 +47,7 @@ pub enum Event {
 }
 
 /// API Event.
+#[expect(clippy::large_enum_variant)]
 pub enum ApiEvent {
     Articles {
         ty: ArticleType,

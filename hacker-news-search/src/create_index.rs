@@ -145,11 +145,11 @@ impl<'a> WriteContext<'a> {
     }
 }
 
-fn comments<'a>(
-    client: &'a ApiClient,
+fn comments(
+    client: &ApiClient,
     story_id: u64,
     comment_ids: Vec<u64>,
-) -> impl Stream<Item = Result<CommentRef, SearchError>> + use<'a> {
+) -> impl Stream<Item = Result<CommentRef, SearchError>> + use<'_> {
     stream! {
         let mut comment_items = client
             .items(&comment_ids)

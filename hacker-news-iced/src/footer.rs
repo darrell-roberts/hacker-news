@@ -1,5 +1,5 @@
 use crate::app::AppMsg;
-use chrono::{DateTime, FixedOffset, Local, Utc};
+use chrono::{DateTime, Local, Utc};
 use chrono_tz::America::New_York;
 use hacker_news_search::IndexStats;
 use iced::{
@@ -51,7 +51,7 @@ impl FooterState {
                                 .and_then(|stats| {
                                     DateTime::<Utc>::from_timestamp(stats.built_on as i64, 0)
                                 })
-                                .and_then(|dt| Some(dt.with_timezone(&New_York)))
+                                .map(|dt| dt.with_timezone(&New_York))
                                 .map(|dt| text(dt.format("%d/%m/%y %H:%M,").to_string())),
                         )
                         .push_maybe(self.index_stats.as_ref().and_then(|stats| {
