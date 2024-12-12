@@ -168,15 +168,15 @@ async fn send_comments(
     comment_ids: Vec<u64>,
     tx: UnboundedSender<ItemRef>,
 ) -> Result<(), SearchError> {
-    let mut comment_items = comments_iter(client, story_id, &comment_ids)
+    let mut comment_stack = comments_iter(client, story_id, &comment_ids)
         .try_collect::<Vec<_>>()
         .await?;
 
-    while let Some(comment) = comment_items.pop() {
+    while let Some(comment) = comment_stack.pop() {
         let stream = comments_iter(client, story_id, &comment.comment.kids);
         pin_mut!(stream);
         while let Some(child) = stream.try_next().await? {
-            comment_items.push(child);
+            comment_stack.push(child);
         }
         tx.send(ItemRef::Comment(comment)).unwrap();
     }
@@ -196,9 +196,7 @@ async fn collect_story(
         send_comments(&client, story.id, mem::take(&mut story.kids), tx.clone()),
     )
     .await
-    .map_err(|elapsed| {
-        SearchError::TimedOut(format!("story_id {story_id}, comments: {elapsed}"))
-    })??;
+    .map_err(|_| SearchError::TimedOut(format!("story_id {story_id}, sending comments")))??;
 
     tx.send(ItemRef::Story(StoryRef { story, rank })).unwrap();
     Ok(())
@@ -217,6 +215,7 @@ async fn collect(tx: UnboundedSender<ItemRef>) -> Result<(), SearchError> {
     for (story, rank) in stories.into_iter().zip(1..) {
         let client = client.clone();
         let tx = tx.clone();
+        let story_id = story.id;
 
         handles.push(tokio::spawn(async move {
             timeout(
@@ -224,7 +223,7 @@ async fn collect(tx: UnboundedSender<ItemRef>) -> Result<(), SearchError> {
                 collect_story(client, tx, story, rank),
             )
             .await
-            .map_err(|elapsed| SearchError::TimedOut(format!("story: {elapsed}")))?
+            .map_err(|_| SearchError::TimedOut(format!("collecting story: {story_id}")))?
         }));
     }
 
@@ -240,12 +239,10 @@ pub async fn rebuild_index(ctx: &SearchContext) -> Result<IndexStats, SearchErro
     let mut writer: IndexWriter = ctx.index.writer(50_000_000)?;
     writer.delete_all_documents()?;
 
-    let writer_context = WriteContext::new(ctx, &mut writer, "top")?;
-
     let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
-
     let result = tokio::spawn(async move { collect(tx).await });
 
+    let writer_context = WriteContext::new(ctx, &mut writer, "top")?;
     while let Some(item) = rx.recv().await {
         match item {
             ItemRef::Story(s) => writer_context.write_story(s)?,
