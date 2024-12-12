@@ -145,36 +145,34 @@ impl<'a> WriteContext<'a> {
     }
 }
 
+async fn comments_iter(
+    client: &ApiClient,
+    story_id: u64,
+    comment_ids: &[u64],
+) -> Result<impl Iterator<Item = CommentRef>, SearchError> {
+    Ok(client
+        .items(comment_ids)
+        .await?
+        .into_iter()
+        .zip(1..)
+        .map(move |(comment, rank)| CommentRef {
+            comment,
+            story_id,
+            rank,
+        }))
+}
+
 fn comments(
     client: &ApiClient,
     story_id: u64,
     comment_ids: Vec<u64>,
 ) -> impl Stream<Item = Result<CommentRef, SearchError>> + use<'_> {
     try_stream! {
-        let mut comment_items = client
-            .items(&comment_ids)
-            .await?
-            .into_iter()
-            .zip(1..)
-            .map(|(comment, rank)| CommentRef {
-                comment,
-                story_id,
-                rank,
-            })
+        let mut comment_items =comments_iter(client, story_id, &comment_ids).await?
             .collect::<Vec<_>>();
 
         while let Some(comment) = comment_items.pop() {
-            let children = client
-                .items(&comment.comment.kids)
-                .await?
-                .into_iter()
-                .zip(1..)
-                .map(|(comment, rank)| CommentRef {
-                    comment,
-                    story_id,
-                    rank,
-                });
-            comment_items.extend(children);
+            comment_items.extend(comments_iter(client, story_id, &comment.comment.kids).await?);
             yield comment;
         }
     }
