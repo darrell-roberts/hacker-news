@@ -4,7 +4,7 @@ use crate::{
     ArticleType,
 };
 use anyhow::{Context, Result};
-use futures::TryFutureExt;
+use futures::{TryFutureExt, TryStreamExt};
 use log::{error, info};
 use std::time::Duration;
 use tokio::{
@@ -115,7 +115,6 @@ impl ApiClient {
 
     /// Top stories event-source stream.
     pub async fn top_stories_stream(&self, sender: Sender<EventData>) -> Result<()> {
-        use futures::stream::StreamExt;
         let mut stream = self
             .client
             .get(format!("{}/topstories.json", Self::API_END_POINT))
@@ -125,9 +124,7 @@ impl ApiClient {
             .context("Failed to send request")?
             .bytes_stream();
 
-        while let Some(item) = stream.next().await {
-            let bytes = item.context("Failed to fetch event from stream")?;
-
+        while let Some(bytes) = stream.try_next().await? {
             if let Some(data) = parse_event(&bytes) {
                 sender.send(data).await?;
             }
