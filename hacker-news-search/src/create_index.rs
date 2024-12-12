@@ -96,8 +96,7 @@ impl<'a> WriteContext<'a> {
 
     fn write_story(&self, item: StoryRef) -> Result<(), SearchError> {
         let StoryRef { story: item, rank } = item;
-        self.write_doc(&item, rank, None)?;
-        Ok(())
+        self.write_doc(&item, rank, None)
     }
 
     fn write_comment(&self, comment: CommentRef) -> Result<(), SearchError> {
@@ -106,12 +105,12 @@ impl<'a> WriteContext<'a> {
             comment,
             rank,
         } = comment;
-        self.write_doc(&comment, rank, Some(story_id))?;
-        Ok(())
+        self.write_doc(&comment, rank, Some(story_id))
     }
 
     fn write_doc(&self, item: &Item, rank: u64, story_id: Option<u64>) -> Result<(), SearchError> {
         let mut doc = TantivyDocument::new();
+
         doc.add_u64(self.rank, rank);
         doc.add_u64(self.id, item.id);
         if let Some(id) = item.parent {
@@ -204,6 +203,7 @@ async fn collect_story(
     .map_err(|_| SearchError::TimedOut(format!("story_id {story_id}, sending comments")))??;
 
     tx.send(ItemRef::Story(StoryRef { story, rank })).unwrap();
+    info!("collected for story_id {story_id}");
     Ok(())
 }
 
@@ -212,10 +212,9 @@ async fn collect(
     category_type: ArticleType,
 ) -> Result<(), SearchError> {
     let client = Arc::new(ApiClient::new()?);
-
     let stories = client.articles(75, category_type).await?;
 
-    info!("{} {category_type}", stories.len());
+    info!("Building {} top docs for {category_type}", stories.len());
 
     let mut handles = Vec::new();
     // Spawn a task for every story. Each task will recursively index
