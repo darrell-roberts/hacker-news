@@ -55,7 +55,7 @@ impl ArticleState {
                     .map(Element::from),
             )
             .width(Length::Fill)
-            .spacing(5)
+            .spacing(10)
             .padding(padding::top(10).bottom(10).left(15).right(25)),
         )
         .height(Length::Fill)
