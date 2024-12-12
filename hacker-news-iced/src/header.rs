@@ -7,6 +7,7 @@ use iced::{
     widget::{self, button, container, row, text, Column},
     Background, Border, Element, Length, Task,
 };
+use log::error;
 use std::{ops::Not, sync::Arc};
 
 pub struct HeaderState {
@@ -253,7 +254,7 @@ impl HeaderState {
                         move |result| match result {
                             Ok(stats) => AppMsg::Header(HeaderMsg::IndexReady(stats)),
                             Err(err) => {
-                                eprintln!("Failed to create index {err}");
+                                error!("Failed to create index {err}");
                                 AppMsg::Header(HeaderMsg::IndexFailed(err.to_string()))
                             }
                         },

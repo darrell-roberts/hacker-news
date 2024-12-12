@@ -10,6 +10,7 @@ use iced::{
     widget::{self, text::Shaping},
     Font, Length, Task, Theme,
 };
+use log::error;
 use std::sync::Arc;
 
 pub struct FullSearchState {
@@ -187,7 +188,7 @@ impl FullSearchState {
                             self.full_count = count;
                         }
                         Err(err) => {
-                            eprintln!("Search failed: {err}");
+                            error!("Search failed: {err}");
                             return Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string())));
                         }
                     }

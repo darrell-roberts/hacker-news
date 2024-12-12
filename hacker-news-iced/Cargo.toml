@@ -25,6 +25,7 @@ chrono.workspace = true
 chrono-tz.workspace = true
 serde.workspace = true
 tokio.workspace = true
+flexi_logger.workspace = true
 
 
 open = "5"

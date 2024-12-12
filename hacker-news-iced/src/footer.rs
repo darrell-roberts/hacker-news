@@ -46,32 +46,26 @@ impl FooterState {
             .push(
                 container(
                     Row::new()
-                        .push_maybe(
-                            self.index_stats
-                                .as_ref()
-                                .map(|stats| text(format!("{}", stats.category))),
-                        )
-                        .push_maybe(
-                            self.index_stats
-                                .as_ref()
-                                .and_then(|stats| {
+                        .push_maybe(self.index_stats.as_ref().map(|stats| {
+                            Row::new()
+                                .push(text(format!("{}", stats.category)))
+                                .push_maybe(
                                     DateTime::<Utc>::from_timestamp(stats.built_on as i64, 0)
-                                })
-                                .map(|dt| dt.with_timezone(&New_York))
-                                .map(|dt| text(dt.format("%d/%m/%y %H:%M,").to_string())),
-                        )
-                        .push_maybe(self.index_stats.as_ref().and_then(|stats| {
-                            (stats.build_time.as_secs() / 60 != 0)
-                                .then(|| text(format!("{} min", stats.build_time.as_secs() / 60)))
-                        }))
-                        .push_maybe(self.index_stats.as_ref().map(|stats| {
-                            text(format!("{} secs,", stats.build_time.as_secs() % 60))
-                        }))
-                        .push_maybe(self.index_stats.as_ref().map(|stats| {
-                            text(format!(
-                                "docs: {}, comments: {}",
-                                stats.total_documents, stats.total_comments
-                            ))
+                                        .map(|dt| dt.with_timezone(&New_York))
+                                        .map(|dt| text(dt.format("%d/%m/%y %H:%M,").to_string())),
+                                )
+                                .push_maybe((stats.build_time.as_secs() / 60 != 0).then(|| {
+                                    text(format!("{} min", stats.build_time.as_secs() / 60))
+                                }))
+                                .push(text(format!("{} secs,", stats.build_time.as_secs() % 60)))
+                                .push(text(format!(
+                                    "docs: {}, comments: {}, stories: {}, jobs: {}, polls: {}",
+                                    stats.total_documents,
+                                    stats.total_comments,
+                                    stats.total_stories,
+                                    stats.total_jobs,
+                                    stats.total_polls
+                                )))
                         }))
                         .push(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
                         .push(pick_list(themes, Some(theme), |selected| {

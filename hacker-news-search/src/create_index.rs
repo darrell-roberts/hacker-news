@@ -6,6 +6,7 @@ use crate::{
 use futures_core::Stream;
 use futures_util::{pin_mut, TryStreamExt};
 use hacker_news_api::{ApiClient, ArticleType, Item};
+use log::info;
 use serde::{Deserialize, Serialize};
 use std::{
     mem,
@@ -22,6 +23,9 @@ use tokio::{
 pub struct IndexStats {
     pub total_documents: u64,
     pub total_comments: u64,
+    pub total_stories: u64,
+    pub total_jobs: u64,
+    pub total_polls: u64,
     pub build_time: Duration,
     pub built_on: u64,
     pub category: ArticleType,
@@ -211,7 +215,7 @@ async fn collect(
 
     let stories = client.articles(75, category_type).await?;
 
-    println!("{} {category_type}", stories.len());
+    info!("{} {category_type}", stories.len());
 
     let mut handles = Vec::new();
     // Spawn a task for every story. Each task will recursively index
@@ -246,12 +250,12 @@ pub async fn rebuild_index(
     let mut writer: IndexWriter = ctx.index.writer(50_000_000)?;
     writer.delete_all_documents()?;
 
-    println!("Creating index for {category_type}");
+    info!("Creating index for {category_type}");
 
     let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
     let result = tokio::spawn(async move { collect(tx, category_type).await });
 
-    let writer_context = WriteContext::new(ctx, &mut writer, "top")?;
+    let writer_context = WriteContext::new(ctx, &mut writer, category_type.as_str())?;
     while let Some(item) = rx.recv().await {
         match item {
             ItemRef::Story(s) => writer_context.write_story(s)?,
@@ -262,6 +266,7 @@ pub async fn rebuild_index(
     result.await.unwrap()?;
     writer.commit()?;
 
+    ctx.reader.reload()?;
     document_stats(ctx, start_time.elapsed(), category_type)
 }
 
@@ -366,15 +371,20 @@ pub fn document_stats(
     category: ArticleType,
 ) -> Result<IndexStats, SearchError> {
     let searcher = ctx.searcher();
-    let total_comments = searcher.doc_freq(&Term::from_field_text(
-        ctx.schema.get_field(ITEM_TYPE)?,
-        "comment",
-    ))?;
+    let type_field = ctx.schema.get_field(ITEM_TYPE)?;
+
+    let total_comments = searcher.doc_freq(&Term::from_field_text(type_field, "comment"))?;
+    let total_jobs = searcher.doc_freq(&Term::from_field_text(type_field, "job"))?;
+    let total_stories = searcher.doc_freq(&Term::from_field_text(type_field, "story"))?;
+    let total_polls = searcher.doc_freq(&Term::from_field_text(type_field, "poll"))?;
 
     let total_documents = searcher.num_docs();
     Ok(IndexStats {
         total_documents,
         total_comments,
+        total_jobs,
+        total_stories,
+        total_polls,
         build_time,
         built_on: SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)

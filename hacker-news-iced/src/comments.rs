@@ -14,6 +14,7 @@ use iced::{
     widget::{self, button, container, text::Shaping, Column, Container},
     Border, Element, Font, Length, Task, Theme,
 };
+use log::error;
 use std::sync::Arc;
 
 #[derive(Debug)]
@@ -356,7 +357,7 @@ impl CommentState {
                             Task::none()
                         }
                         Err(err) => {
-                            eprintln!("Failed search: {err}");
+                            error!("Failed search: {err}");
                             Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string())))
                         }
                     }

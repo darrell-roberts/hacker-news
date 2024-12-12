@@ -3,6 +3,7 @@ use app::{update, view, App, AppMsg, PaneState, ScrollBy};
 use app_dirs2::get_app_dir;
 use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
+use flexi_logger::FileSpec;
 use footer::FooterState;
 use full_search::FullSearchState;
 use hacker_news_api::ArticleType;
@@ -15,6 +16,7 @@ use iced::{
     window::{close_requests, resize_events},
     Size, Subscription, Theme,
 };
+use log::error;
 use std::{collections::HashSet, sync::Arc};
 
 mod app;
@@ -28,14 +30,24 @@ mod richtext;
 mod widget;
 
 fn main() -> anyhow::Result<()> {
-    let dir = get_app_dir(
+    let log_dir = get_app_dir(app_dirs2::AppDataType::UserData, &config::APP_INFO, "logs")?;
+
+    let _logger = flexi_logger::Logger::try_with_env_or_str("info")?
+        .log_to_file(
+            FileSpec::default()
+                .directory(log_dir)
+                .basename("hacker-news"),
+        )
+        .print_message()
+        .start()?;
+
+    let index_dir = get_app_dir(
         app_dirs2::AppDataType::UserData,
         &config::APP_INFO,
         "hacker-news-index",
     )?;
-
-    let have_index = dir.exists();
-    let search_context = Arc::new(SearchContext::new(&dir)?);
+    let have_index = index_dir.exists();
+    let search_context = Arc::new(SearchContext::new(&index_dir)?);
 
     let app = config::load_config()
         .map(|config| App {
@@ -81,7 +93,7 @@ fn main() -> anyhow::Result<()> {
             },
         })
         .unwrap_or_else(|err| {
-            eprintln!("Could not load config: {err}");
+            error!("Could not load config: {err}");
 
             App {
                 search_context: search_context.clone(),
