@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use async_stream::try_stream;
-use futures::{TryFutureExt, TryStream, TryStreamExt};
+use futures::{Stream, TryFutureExt, TryStreamExt};
 use log::{error, info};
 use std::time::Duration;
 use tokio::{
@@ -76,16 +76,18 @@ impl ApiClient {
     pub async fn items(&self, ids: &[u64]) -> Result<Vec<Item>> {
         // The firebase api only provides the option to get each item one by
         // one.
-        let mut handles = Vec::with_capacity(ids.len());
-        for id in ids {
-            let client = &self.client;
-            handles.push(tokio::spawn(
-                client
-                    .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
-                    .send()
-                    .and_then(|resp| resp.json::<Item>()),
-            ));
-        }
+        let handles = ids
+            .iter()
+            .map(|id| {
+                let client = &self.client;
+                tokio::spawn(
+                    client
+                        .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
+                        .send()
+                        .and_then(|resp| resp.json::<Item>()),
+                )
+            })
+            .collect::<Vec<_>>();
 
         let mut result = Vec::with_capacity(handles.len());
 
@@ -102,21 +104,24 @@ impl ApiClient {
         Ok(result)
     }
 
-    pub async fn items_stream(&self, ids: &[u64]) -> impl TryStream<Item = Result<Item>> {
+    pub fn items_stream(&self, ids: &[u64]) -> impl Stream<Item = Result<(u64, Item)>> {
         // The firebase api only provides the option to get each item one by
         // one.
-        let mut handles = Vec::with_capacity(ids.len());
-        for id in ids {
-            let client = &self.client;
-            handles.push(tokio::spawn(
-                client
-                    .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
-                    .send()
-                    .and_then(|resp| resp.json::<Item>()),
-            ));
-        }
-
-        // let mut result = Vec::with_capacity(handles.len());
+        let handles = ids
+            .iter()
+            .copied()
+            .zip(1..)
+            .map(|(id, rank)| {
+                let client = &self.client;
+                tokio::spawn(
+                    client
+                        .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
+                        .send()
+                        .and_then(|resp| resp.json::<Item>())
+                        .map_ok(move |item| (rank, item)),
+                )
+            })
+            .collect::<Vec<_>>();
 
         try_stream! {
             for h in handles {
@@ -124,7 +129,7 @@ impl ApiClient {
                     .await
                     .context("Failed to fetch item")?
                     .context("Failed to deserialize item")?;
-                if !(item.dead || item.deleted) {
+                if !(item.1.dead || item.1.deleted) {
                     yield item
                 }
             }

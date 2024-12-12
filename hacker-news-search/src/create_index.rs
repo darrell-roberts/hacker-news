@@ -4,7 +4,7 @@ use crate::{
     ITEM_TYPE, ITEM_URL,
 };
 use futures_core::Stream;
-use futures_util::{stream, StreamExt, TryStreamExt};
+use futures_util::{pin_mut, TryStreamExt};
 use hacker_news_api::{ApiClient, Item};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -13,7 +13,10 @@ use std::{
     time::{Duration, Instant, SystemTime},
 };
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
-use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio::{
+    sync::mpsc::{self, UnboundedSender},
+    time::timeout,
+};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct IndexStats {
@@ -145,23 +148,16 @@ impl<'a> WriteContext<'a> {
     }
 }
 
-async fn comments_iter(
+fn comments_iter(
     client: &ApiClient,
     story_id: u64,
     comment_ids: &[u64],
-    // ) -> Result<impl Iterator<Item = CommentRef>, SearchError> {
 ) -> impl Stream<Item = Result<CommentRef, anyhow::Error>> {
     client
         .items_stream(comment_ids)
-        .await
-        .zip(stream::iter(1..))
-        .map(|(r, rank)| match r {
-            Ok(item) => Ok((item, rank)),
-            Err(err) => Err(err),
-        })
-        .map_ok(move |(r, rank)| CommentRef {
+        .map_ok(move |(rank, item)| CommentRef {
             story_id,
-            comment: r,
+            comment: item,
             rank,
         })
 }
@@ -173,16 +169,15 @@ async fn send_comments(
     tx: UnboundedSender<ItemRef>,
 ) -> Result<(), SearchError> {
     let mut comment_items = comments_iter(client, story_id, &comment_ids)
-        .await
         .try_collect::<Vec<_>>()
         .await?;
 
     while let Some(comment) = comment_items.pop() {
-        let child_comments = comments_iter(client, story_id, &comment.comment.kids)
-            .await
-            .try_collect::<Vec<_>>()
-            .await?;
-        comment_items.extend(child_comments);
+        let stream = comments_iter(client, story_id, &comment.comment.kids);
+        pin_mut!(stream);
+        while let Some(child) = stream.try_next().await? {
+            comment_items.push(child);
+        }
         tx.send(ItemRef::Comment(comment)).unwrap();
     }
 
@@ -195,9 +190,15 @@ async fn collect_story(
     mut story: Item,
     rank: u64,
 ) -> Result<(), SearchError> {
-    // Story won't index kids. The parent child relationship will be maintained using a parent_id on the
-    // indexed document.
-    send_comments(&client, story.id, mem::take(&mut story.kids), tx.clone()).await?;
+    let story_id = story.id;
+    timeout(
+        Duration::from_secs(20),
+        send_comments(&client, story.id, mem::take(&mut story.kids), tx.clone()),
+    )
+    .await
+    .map_err(|elapsed| {
+        SearchError::TimedOut(format!("story_id {story_id}, comments: {elapsed}"))
+    })??;
 
     tx.send(ItemRef::Story(StoryRef { story, rank })).unwrap();
     Ok(())
@@ -218,7 +219,12 @@ async fn collect(tx: UnboundedSender<ItemRef>) -> Result<(), SearchError> {
         let tx = tx.clone();
 
         handles.push(tokio::spawn(async move {
-            collect_story(client, tx, story, rank).await
+            timeout(
+                Duration::from_secs(60 * 2),
+                collect_story(client, tx, story, rank),
+            )
+            .await
+            .map_err(|elapsed| SearchError::TimedOut(format!("story: {elapsed}")))?
         }));
     }
 

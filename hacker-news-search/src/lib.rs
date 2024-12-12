@@ -49,6 +49,8 @@ pub enum SearchError {
     BadDoc,
     #[error("Doc missing expected field {0}")]
     MissingField(String),
+    #[error("Api timed out {0}")]
+    TimedOut(String),
 }
 
 pub struct SearchContext {
