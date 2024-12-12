@@ -4,7 +4,8 @@ use crate::{
     ArticleType,
 };
 use anyhow::{Context, Result};
-use futures::{TryFutureExt, TryStreamExt};
+use async_stream::try_stream;
+use futures::{TryFutureExt, TryStream, TryStreamExt};
 use log::{error, info};
 use std::time::Duration;
 use tokio::{
@@ -99,6 +100,35 @@ impl ApiClient {
         }
 
         Ok(result)
+    }
+
+    pub async fn items_stream(&self, ids: &[u64]) -> impl TryStream<Item = Result<Item>> {
+        // The firebase api only provides the option to get each item one by
+        // one.
+        let mut handles = Vec::with_capacity(ids.len());
+        for id in ids {
+            let client = &self.client;
+            handles.push(tokio::spawn(
+                client
+                    .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
+                    .send()
+                    .and_then(|resp| resp.json::<Item>()),
+            ));
+        }
+
+        // let mut result = Vec::with_capacity(handles.len());
+
+        try_stream! {
+            for h in handles {
+                let item = h
+                    .await
+                    .context("Failed to fetch item")?
+                    .context("Failed to deserialize item")?;
+                if !(item.dead || item.deleted) {
+                    yield item
+                }
+            }
+        }
     }
 
     /// Get user by user handle.

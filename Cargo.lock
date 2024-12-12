@@ -2992,11 +2992,15 @@ name = "hacker-news-api"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-stream",
  "futures",
+ "futures-core",
+ "futures-util",
  "log",
  "reqwest",
  "serde",
  "serde_json",
+ "thiserror 2.0.4",
  "tokio",
 ]
 

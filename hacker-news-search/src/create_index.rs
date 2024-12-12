@@ -3,9 +3,12 @@ use crate::{
     ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE,
     ITEM_TYPE, ITEM_URL,
 };
+use futures_core::Stream;
+use futures_util::{stream, StreamExt, TryStreamExt};
 use hacker_news_api::{ApiClient, Item};
 use serde::{Deserialize, Serialize};
 use std::{
+    mem,
     sync::Arc,
     time::{Duration, Instant, SystemTime},
 };
@@ -146,17 +149,21 @@ async fn comments_iter(
     client: &ApiClient,
     story_id: u64,
     comment_ids: &[u64],
-) -> Result<impl Iterator<Item = CommentRef>, SearchError> {
-    Ok(client
-        .items(comment_ids)
-        .await?
-        .into_iter()
-        .zip(1..)
-        .map(move |(comment, rank)| CommentRef {
-            comment,
+    // ) -> Result<impl Iterator<Item = CommentRef>, SearchError> {
+) -> impl Stream<Item = Result<CommentRef, anyhow::Error>> {
+    client
+        .items_stream(comment_ids)
+        .await
+        .zip(stream::iter(1..))
+        .map(|(r, rank)| match r {
+            Ok(item) => Ok((item, rank)),
+            Err(err) => Err(err),
+        })
+        .map_ok(move |(r, rank)| CommentRef {
             story_id,
+            comment: r,
             rank,
-        }))
+        })
 }
 
 async fn send_comments(
@@ -166,11 +173,16 @@ async fn send_comments(
     tx: UnboundedSender<ItemRef>,
 ) -> Result<(), SearchError> {
     let mut comment_items = comments_iter(client, story_id, &comment_ids)
-        .await?
-        .collect::<Vec<_>>();
+        .await
+        .try_collect::<Vec<_>>()
+        .await?;
 
     while let Some(comment) = comment_items.pop() {
-        comment_items.extend(comments_iter(client, story_id, &comment.comment.kids).await?);
+        let child_comments = comments_iter(client, story_id, &comment.comment.kids)
+            .await
+            .try_collect::<Vec<_>>()
+            .await?;
+        comment_items.extend(child_comments);
         tx.send(ItemRef::Comment(comment)).unwrap();
     }
 
@@ -185,31 +197,28 @@ async fn collect_story(
 ) -> Result<(), SearchError> {
     // Story won't index kids. The parent child relationship will be maintained using a parent_id on the
     // indexed document.
-    send_comments(
-        &client,
-        story.id,
-        std::mem::take(&mut story.kids),
-        tx.clone(),
-    )
-    .await?;
+    send_comments(&client, story.id, mem::take(&mut story.kids), tx.clone()).await?;
 
     tx.send(ItemRef::Story(StoryRef { story, rank })).unwrap();
     Ok(())
 }
 
-async fn collect(client: ApiClient, tx: UnboundedSender<ItemRef>) -> Result<(), SearchError> {
+async fn collect(tx: UnboundedSender<ItemRef>) -> Result<(), SearchError> {
+    let client = Arc::new(ApiClient::new()?);
+
     let stories = client
         .articles(75, hacker_news_api::ArticleType::Top)
         .await?;
 
-    let client = Arc::new(client);
-
     let mut handles = Vec::new();
+    // Spawn a task for every story. Each task will recursively index
+    // all the comments.
     for (story, rank) in stories.into_iter().zip(1..) {
         let client = client.clone();
         let tx = tx.clone();
+
         handles.push(tokio::spawn(async move {
-            collect_story(client.clone(), tx, story, rank).await
+            collect_story(client, tx, story, rank).await
         }));
     }
 
@@ -222,7 +231,6 @@ async fn collect(client: ApiClient, tx: UnboundedSender<ItemRef>) -> Result<(), 
 
 pub async fn rebuild_index(ctx: &SearchContext) -> Result<IndexStats, SearchError> {
     let start_time = Instant::now();
-    let client = ApiClient::new()?;
     let mut writer: IndexWriter = ctx.index.writer(50_000_000)?;
     writer.delete_all_documents()?;
 
@@ -230,7 +238,7 @@ pub async fn rebuild_index(ctx: &SearchContext) -> Result<IndexStats, SearchErro
 
     let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
 
-    let result = tokio::spawn(async move { collect(client, tx).await });
+    let result = tokio::spawn(async move { collect(tx).await });
 
     while let Some(item) = rx.recv().await {
         match item {
