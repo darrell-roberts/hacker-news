@@ -3,7 +3,7 @@ use crate::{
     ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE,
     ITEM_TYPE, ITEM_URL,
 };
-use async_stream::stream;
+use async_stream::try_stream;
 use futures_core::Stream;
 use futures_util::{pin_mut, StreamExt};
 use hacker_news_api::{ApiClient, Item};
@@ -150,7 +150,7 @@ fn comments(
     story_id: u64,
     comment_ids: Vec<u64>,
 ) -> impl Stream<Item = Result<CommentRef, SearchError>> + use<'_> {
-    stream! {
+    try_stream! {
         let mut comment_items = client
             .items(&comment_ids)
             .await?
@@ -175,7 +175,7 @@ fn comments(
                     rank,
                 });
             comment_items.extend(children);
-            yield Ok(comment);
+            yield comment;
         }
     }
 }
