@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use async_stream::try_stream;
-use futures::{Stream, TryFutureExt, TryStreamExt};
+use futures::{stream::FuturesOrdered, Stream, TryFutureExt, TryStreamExt};
 use log::{error, info};
 use std::time::Duration;
 use tokio::{
@@ -107,10 +107,10 @@ impl ApiClient {
     pub fn items_stream(&self, ids: &[u64]) -> impl Stream<Item = Result<(u64, Item)>> {
         // The firebase api only provides the option to get each item one by
         // one.
-        let handles = ids
+        let mut handles = ids
             .iter()
             .copied()
-            .zip(1..)
+            .zip(1_u64..)
             .map(|(id, rank)| {
                 let client = &self.client;
                 tokio::spawn(
@@ -121,14 +121,12 @@ impl ApiClient {
                         .map_ok(move |item| (rank, item)),
                 )
             })
-            .collect::<Vec<_>>();
+            .collect::<FuturesOrdered<_>>();
 
         try_stream! {
-            for h in handles {
-                let item = h
-                    .await
-                    .context("Failed to fetch item")?
-                    .context("Failed to deserialize item")?;
+            while let Some(result) = handles.try_next().await? {
+                let item = result?;
+
                 if !(item.1.dead || item.1.deleted) {
                     yield item
                 }
