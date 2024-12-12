@@ -5,7 +5,7 @@ use crate::{
 };
 use async_stream::try_stream;
 use futures_core::Stream;
-use futures_util::{pin_mut, StreamExt};
+use futures_util::{pin_mut, TryStreamExt};
 use hacker_news_api::{ApiClient, Item};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -189,8 +189,7 @@ async fn collect_story(
     let comment_stream = comments(&client, story.id, std::mem::take(&mut story.kids));
     pin_mut!(comment_stream);
 
-    while let Some(comment) = comment_stream.next().await {
-        let comment = comment?;
+    while let Some(comment) = comment_stream.try_next().await? {
         tx.send(ItemRef::Comment(comment)).unwrap();
     }
 
