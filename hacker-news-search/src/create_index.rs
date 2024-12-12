@@ -168,7 +168,7 @@ fn comments(
     comment_ids: Vec<u64>,
 ) -> impl Stream<Item = Result<CommentRef, SearchError>> + use<'_> {
     try_stream! {
-        let mut comment_items =comments_iter(client, story_id, &comment_ids).await?
+        let mut comment_items = comments_iter(client, story_id, &comment_ids).await?
             .collect::<Vec<_>>();
 
         while let Some(comment) = comment_items.pop() {
