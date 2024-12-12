@@ -3,9 +3,6 @@ use crate::{
     ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE,
     ITEM_TYPE, ITEM_URL,
 };
-use async_stream::try_stream;
-use futures_core::Stream;
-use futures_util::{pin_mut, TryStreamExt};
 use hacker_news_api::{ApiClient, Item};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -162,20 +159,22 @@ async fn comments_iter(
         }))
 }
 
-fn comments(
+async fn send_comments(
     client: &ApiClient,
     story_id: u64,
     comment_ids: Vec<u64>,
-) -> impl Stream<Item = Result<CommentRef, SearchError>> + use<'_> {
-    try_stream! {
-        let mut comment_items = comments_iter(client, story_id, &comment_ids).await?
-            .collect::<Vec<_>>();
+    tx: UnboundedSender<ItemRef>,
+) -> Result<(), SearchError> {
+    let mut comment_items = comments_iter(client, story_id, &comment_ids)
+        .await?
+        .collect::<Vec<_>>();
 
-        while let Some(comment) = comment_items.pop() {
-            comment_items.extend(comments_iter(client, story_id, &comment.comment.kids).await?);
-            yield comment;
-        }
+    while let Some(comment) = comment_items.pop() {
+        comment_items.extend(comments_iter(client, story_id, &comment.comment.kids).await?);
+        tx.send(ItemRef::Comment(comment)).unwrap();
     }
+
+    Ok(())
 }
 
 async fn collect_story(
@@ -186,12 +185,13 @@ async fn collect_story(
 ) -> Result<(), SearchError> {
     // Story won't index kids. The parent child relationship will be maintained using a parent_id on the
     // indexed document.
-    let comment_stream = comments(&client, story.id, std::mem::take(&mut story.kids));
-    pin_mut!(comment_stream);
-
-    while let Some(comment) = comment_stream.try_next().await? {
-        tx.send(ItemRef::Comment(comment)).unwrap();
-    }
+    send_comments(
+        &client,
+        story.id,
+        std::mem::take(&mut story.kids),
+        tx.clone(),
+    )
+    .await?;
 
     tx.send(ItemRef::Story(StoryRef { story, rank })).unwrap();
     Ok(())
