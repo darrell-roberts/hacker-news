@@ -9,6 +9,7 @@ use crate::{
 };
 use hacker_news_search::{api::Story, SearchContext};
 use iced::{
+    clipboard,
     font::Weight,
     widget::{
         self, button, container, pane_grid, scrollable::AbsoluteOffset, text::Shaping, Column,
@@ -79,6 +80,7 @@ pub enum AppMsg {
     ClearVisited,
     FullSearch(FullSearchMsg),
     SaveConfig,
+    Clipboard(String),
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -213,6 +215,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         }
         AppMsg::FullSearch(msg) => app.full_search_state.update(msg),
         AppMsg::SaveConfig => save_task(app),
+        AppMsg::Clipboard(s) => clipboard::write(s),
     }
 }
 

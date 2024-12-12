@@ -1,4 +1,5 @@
 #![expect(dead_code)]
+use hacker_news_api::ArticleType;
 use hacker_news_search::{rebuild_index, SearchContext};
 use std::{fs::exists, path::Path};
 use tokio::fs::{create_dir_all, remove_dir_all};
@@ -21,7 +22,7 @@ async fn create() -> anyhow::Result<()> {
     create_dir_all(INDEX_PATH).await?;
 
     let ctx = SearchContext::new(Path::new(INDEX_PATH))?;
-    rebuild_index(&ctx).await?;
+    rebuild_index(&ctx, ArticleType::Top).await?;
     Ok(())
 }
 

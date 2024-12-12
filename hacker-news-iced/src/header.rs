@@ -246,9 +246,10 @@ impl HeaderState {
             HeaderMsg::RebuildIndex => {
                 self.building_index = true;
                 let s = self.search_context.clone();
+                let category_type = self.article_type;
                 Task::batch([
                     Task::perform(
-                        async move { rebuild_index(&s).await },
+                        async move { rebuild_index(&s, category_type).await },
                         move |result| match result {
                             Ok(stats) => AppMsg::Header(HeaderMsg::IndexReady(stats)),
                             Err(err) => {

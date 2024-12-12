@@ -13,7 +13,7 @@ impl SearchContext {
     pub fn top_stories(&self, limit: usize, offset: usize) -> Result<Vec<Story>, SearchError> {
         let query = self
             .query_parser()?
-            .parse_query("category:top AND type:story")?;
+            .parse_query("type: IN [story, job, poll]")?;
         let searcher = self.searcher();
 
         let top_docs = TopDocs::with_limit(limit)

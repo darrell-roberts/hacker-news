@@ -1,5 +1,6 @@
 use crate::{
-    app::AppMsg, footer::FooterMsg, parse_date, richtext::SearchSpanIter, widget::hoverable,
+    app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg, parse_date,
+    richtext::SearchSpanIter, widget::hoverable,
 };
 use hacker_news_search::{api::Story, SearchContext};
 use iced::{
@@ -91,6 +92,10 @@ impl ArticleState {
 
         let by = widget::rich_text([
             widget::span(format!(" by {}", story.by))
+                .link(AppMsg::FullSearch(FullSearchMsg::Search(format!(
+                    "by:{}",
+                    story.by
+                ))))
                 .font(Font {
                     style: Style::Italic,
                     ..Default::default()
@@ -178,6 +183,19 @@ impl ArticleState {
                                 } else {
                                     Element::from(comments_button)
                                 })
+                                .push(
+                                    widget::button(
+                                        widget::text(format!("{}", story.id))
+                                            .font(Font {
+                                                weight: Weight::Light,
+                                                ..Default::default()
+                                            })
+                                            .size(12),
+                                    )
+                                    .on_press(AppMsg::Clipboard(format!("{}", story.id)))
+                                    .style(widget::button::text)
+                                    .padding(0),
+                                )
                                 .push(
                                     widget::container(by)
                                         .align_x(Horizontal::Right)

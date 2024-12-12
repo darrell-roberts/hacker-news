@@ -120,22 +120,44 @@ impl FullSearchState {
                         self.search.as_deref(),
                         false,
                     )))
-                    .push(widget::rich_text([
-                        widget::span(format!(" by {}", comment.by))
-                            .font(Font {
-                                style: Style::Italic,
-                                ..Default::default()
-                            })
-                            .size(14),
-                        widget::span(" "),
-                        widget::span(parse_date(comment.time).unwrap_or_default())
-                            .font(Font {
-                                weight: Weight::Light,
-                                style: Style::Italic,
-                                ..Default::default()
-                            })
-                            .size(10),
-                    ]))
+                    .push(
+                        widget::Row::new()
+                            .push(widget::rich_text([
+                                widget::span(format!(" by {}", comment.by))
+                                    .link(AppMsg::FullSearch(FullSearchMsg::Search(format!(
+                                        "by:{}",
+                                        comment.by
+                                    ))))
+                                    .font(Font {
+                                        style: Style::Italic,
+                                        ..Default::default()
+                                    })
+                                    .size(14),
+                                widget::span(" "),
+                                widget::span(parse_date(comment.time).unwrap_or_default())
+                                    .font(Font {
+                                        weight: Weight::Light,
+                                        style: Style::Italic,
+                                        ..Default::default()
+                                    })
+                                    .size(10),
+                            ]))
+                            .push(
+                                widget::container(
+                                    widget::button(widget::text(format!("{}", comment.id)))
+                                        .on_press(AppMsg::OpenLink {
+                                            url: format!(
+                                                "https://news.ycombinator.com/item?id={}",
+                                                comment.id
+                                            ),
+                                            item_id: comment.story_id,
+                                        })
+                                        .style(widget::button::text)
+                                        .padding(0),
+                                )
+                                .align_right(Length::Fill),
+                            ),
+                    )
                     .padding([10, 10])
                     .spacing(15)
                     .width(Length::Fill),

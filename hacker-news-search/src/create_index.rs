@@ -5,7 +5,7 @@ use crate::{
 };
 use futures_core::Stream;
 use futures_util::{pin_mut, TryStreamExt};
-use hacker_news_api::{ApiClient, Item};
+use hacker_news_api::{ApiClient, ArticleType, Item};
 use serde::{Deserialize, Serialize};
 use std::{
     mem,
@@ -202,12 +202,15 @@ async fn collect_story(
     Ok(())
 }
 
-async fn collect(tx: UnboundedSender<ItemRef>) -> Result<(), SearchError> {
+async fn collect(
+    tx: UnboundedSender<ItemRef>,
+    category_type: ArticleType,
+) -> Result<(), SearchError> {
     let client = Arc::new(ApiClient::new()?);
 
-    let stories = client
-        .articles(75, hacker_news_api::ArticleType::Top)
-        .await?;
+    let stories = client.articles(75, category_type).await?;
+
+    println!("{} {category_type}", stories.len());
 
     let mut handles = Vec::new();
     // Spawn a task for every story. Each task will recursively index
@@ -234,13 +237,18 @@ async fn collect(tx: UnboundedSender<ItemRef>) -> Result<(), SearchError> {
     Ok(())
 }
 
-pub async fn rebuild_index(ctx: &SearchContext) -> Result<IndexStats, SearchError> {
+pub async fn rebuild_index(
+    ctx: &SearchContext,
+    category_type: ArticleType,
+) -> Result<IndexStats, SearchError> {
     let start_time = Instant::now();
     let mut writer: IndexWriter = ctx.index.writer(50_000_000)?;
     writer.delete_all_documents()?;
 
+    println!("Creating index for {category_type}");
+
     let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
-    let result = tokio::spawn(async move { collect(tx).await });
+    let result = tokio::spawn(async move { collect(tx, category_type).await });
 
     let writer_context = WriteContext::new(ctx, &mut writer, "top")?;
     while let Some(item) = rx.recv().await {

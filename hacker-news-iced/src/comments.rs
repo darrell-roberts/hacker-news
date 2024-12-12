@@ -230,6 +230,10 @@ impl CommentState {
                 widget::row![
                     widget::rich_text([
                         widget::span(format!(" by {}", comment.by))
+                            .link(AppMsg::FullSearch(FullSearchMsg::Search(format!(
+                                "by:{}",
+                                comment.by
+                            ))))
                             .font(Font {
                                 style: Style::Italic,
                                 ..Default::default()
@@ -245,6 +249,16 @@ impl CommentState {
                             .size(10),
                     ]),
                     by_button,
+                    widget::container(
+                        widget::button(widget::text(format!("{}", comment.id)))
+                            .on_press(AppMsg::OpenLink {
+                                url: format!("https://news.ycombinator.com/item?id={}", comment.id),
+                                item_id: comment.story_id
+                            })
+                            .style(widget::button::text)
+                            .padding(0)
+                    )
+                    .align_right(Length::Fill)
                 ]
                 .spacing(5)
             ]

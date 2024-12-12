@@ -74,15 +74,12 @@ impl SearchContext {
             descendants: fields
                 .remove(ITEM_DESCENDANT_COUNT)
                 .and_then(u64_value)
-                .ok_or_else(|| missing_field(ITEM_DESCENDANT_COUNT))?,
+                .unwrap_or_default(),
             time: fields
                 .remove(ITEM_TIME)
                 .and_then(u64_value)
                 .ok_or_else(|| missing_field(ITEM_TIME))?,
-            score: fields
-                .remove(ITEM_SCORE)
-                .and_then(u64_value)
-                .ok_or_else(|| missing_field(ITEM_SCORE))?,
+            score: fields.remove(ITEM_SCORE).and_then(u64_value).unwrap_or(1),
         })
     }
 
