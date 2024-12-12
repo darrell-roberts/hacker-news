@@ -5,7 +5,10 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use async_stream::try_stream;
-use futures::{stream::FuturesOrdered, Stream, TryFutureExt, TryStreamExt};
+use futures::{
+    stream::{FuturesOrdered, FuturesUnordered},
+    Stream, TryFutureExt, TryStreamExt,
+};
 use log::{error, info};
 use std::time::Duration;
 use tokio::{
@@ -76,7 +79,7 @@ impl ApiClient {
     pub async fn items(&self, ids: &[u64]) -> Result<Vec<Item>> {
         // The firebase api only provides the option to get each item one by
         // one.
-        let handles = ids
+        let mut handles = ids
             .iter()
             .map(|id| {
                 let client = &self.client;
@@ -87,15 +90,12 @@ impl ApiClient {
                         .and_then(|resp| resp.json::<Item>()),
                 )
             })
-            .collect::<Vec<_>>();
+            .collect::<FuturesOrdered<_>>();
 
         let mut result = Vec::with_capacity(handles.len());
 
-        for h in handles {
-            let item = h
-                .await
-                .context("Failed to fetch item")?
-                .context("Failed to deserialize item")?;
+        while let Some(handle) = handles.try_next().await? {
+            let item = handle.context("Failed to fetch item")?;
             if !(item.dead || item.deleted) {
                 result.push(item);
             }
@@ -121,7 +121,7 @@ impl ApiClient {
                         .map_ok(move |item| (rank, item)),
                 )
             })
-            .collect::<FuturesOrdered<_>>();
+            .collect::<FuturesUnordered<_>>();
 
         try_stream! {
             while let Some(result) = handles.try_next().await? {

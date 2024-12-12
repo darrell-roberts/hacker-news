@@ -6,7 +6,7 @@ use crate::{
 use futures_core::Stream;
 use futures_util::{pin_mut, TryStreamExt};
 use hacker_news_api::{ApiClient, ArticleType, Item};
-use log::info;
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::{
     mem,
@@ -106,6 +106,9 @@ impl<'a> WriteContext<'a> {
             rank,
         } = comment;
         self.write_doc(&comment, rank, Some(story_id))
+            .inspect_err(|err| {
+                error!("Failed to write doc: {err}");
+            })
     }
 
     fn write_doc(&self, item: &Item, rank: u64, story_id: Option<u64>) -> Result<(), SearchError> {
@@ -163,6 +166,9 @@ fn comments_iter(
             story_id,
             comment: item,
             rank,
+        })
+        .inspect_err(move |err| {
+            error!("Failed to fetch comments for story_id {story_id}: {err}");
         })
 }
 
