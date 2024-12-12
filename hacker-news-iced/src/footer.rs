@@ -49,6 +49,11 @@ impl FooterState {
                         .push_maybe(
                             self.index_stats
                                 .as_ref()
+                                .map(|stats| text(format!("{}", stats.category))),
+                        )
+                        .push_maybe(
+                            self.index_stats
+                                .as_ref()
                                 .and_then(|stats| {
                                     DateTime::<Utc>::from_timestamp(stats.built_on as i64, 0)
                                 })

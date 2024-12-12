@@ -24,6 +24,7 @@ pub struct IndexStats {
     pub total_comments: u64,
     pub build_time: Duration,
     pub built_on: u64,
+    pub category: ArticleType,
 }
 
 struct CommentRef {
@@ -261,7 +262,7 @@ pub async fn rebuild_index(
     result.await.unwrap()?;
     writer.commit()?;
 
-    document_stats(ctx, start_time.elapsed())
+    document_stats(ctx, start_time.elapsed(), category_type)
 }
 
 // pub fn index_articles<'a>(
@@ -362,6 +363,7 @@ pub async fn rebuild_index(
 pub fn document_stats(
     ctx: &SearchContext,
     build_time: Duration,
+    category: ArticleType,
 ) -> Result<IndexStats, SearchError> {
     let searcher = ctx.searcher();
     let total_comments = searcher.doc_freq(&Term::from_field_text(
@@ -378,5 +380,6 @@ pub fn document_stats(
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap()
             .as_secs(),
+        category,
     })
 }
