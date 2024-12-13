@@ -220,7 +220,6 @@ async fn collect_story(
     .map_err(|_| SearchError::TimedOut(format!("story_id {story_id}, sending comments")))??;
 
     tx.send(ItemRef::Story(StoryRef { story, rank })).unwrap();
-    info!("collected for story_id {story_id}");
     Ok(())
 }
 

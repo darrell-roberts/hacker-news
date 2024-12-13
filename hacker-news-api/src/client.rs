@@ -139,9 +139,7 @@ impl ApiClient {
         self.client
             .get(format!("{}/user/{handle}.json", Self::API_END_POINT))
             .send()
-            .await
-            .context("Failed to send request")?
-            .json::<User>()
+            .and_then(|resp| resp.json::<User>())
             .await
             .context("Failed to deserialize user")
     }
