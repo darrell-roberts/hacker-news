@@ -4,7 +4,7 @@ use crate::{
     ITEM_TYPE, ITEM_URL,
 };
 use futures_core::Stream;
-use futures_util::{pin_mut, TryStreamExt};
+use futures_util::{pin_mut, stream::FuturesUnordered, TryFutureExt, TryStreamExt};
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
@@ -233,26 +233,23 @@ async fn collect(
 
     info!("Building {} top docs for {category_type}", stories.len());
 
-    let mut handles = Vec::new();
-    // Spawn a task for every story. Each task will recursively index
-    // all the comments.
-    for (story, rank) in stories.into_iter().zip(1..) {
-        let client = client.clone();
-        let tx = tx.clone();
-        let story_id = story.id;
-
-        handles.push(tokio::spawn(async move {
+    let mut handles = stories
+        .into_iter()
+        .zip(1..)
+        .map(|(story, rank)| {
+            let client = client.clone();
+            let tx = tx.clone();
+            let story_id = story.id;
             timeout(
                 Duration::from_secs(60 * 3),
                 collect_story(client, tx, story, rank),
             )
-            .await
-            .map_err(|_| SearchError::TimedOut(format!("collecting story: {story_id}")))?
-        }));
-    }
+            .map_err(move |_| SearchError::TimedOut(format!("collecting story: {story_id}")))
+        })
+        .collect::<FuturesUnordered<_>>();
 
-    for handle in handles {
-        handle.await.unwrap()?;
+    while let Some(handle) = handles.try_next().await? {
+        handle?;
     }
 
     Ok(())
