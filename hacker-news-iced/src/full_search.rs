@@ -11,12 +11,12 @@ use iced::{
     Font, Length, Task, Theme,
 };
 use log::error;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, RwLock};
 
 pub struct FullSearchState {
     pub search: Option<String>,
     pub search_results: Vec<Comment>,
-    pub search_context: Arc<SearchContext>,
+    pub search_context: Arc<RwLock<SearchContext>>,
     pub offset: usize,
     pub page: usize,
     pub full_count: usize,
@@ -179,10 +179,8 @@ impl FullSearchState {
                         self.offset = 0;
                     }
                     self.search = Some(search.clone());
-                    match self
-                        .search_context
-                        .search_all_comments(&search, 10, self.offset)
-                    {
+                    let g = self.search_context.read().unwrap();
+                    match g.search_all_comments(&search, 10, self.offset) {
                         Ok((comments, count)) => {
                             self.search_results = comments;
                             self.full_count = count;

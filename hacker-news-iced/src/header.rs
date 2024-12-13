@@ -8,10 +8,13 @@ use iced::{
     Background, Border, Element, Length, Task,
 };
 use log::error;
-use std::{ops::Not, sync::Arc};
+use std::{
+    ops::Not,
+    sync::{Arc, Mutex, RwLock},
+};
 
 pub struct HeaderState {
-    pub search_context: Arc<SearchContext>,
+    pub search_context: Arc<RwLock<SearchContext>>,
     pub article_count: usize,
     pub article_type: ArticleType,
     pub building_index: bool,
@@ -250,7 +253,10 @@ impl HeaderState {
                 let category_type = self.article_type;
                 Task::batch([
                     Task::perform(
-                        async move { rebuild_index(&s, category_type).await },
+                        async move {
+                            let s = s.clone();
+                            rebuild_index(s, category_type).await
+                        },
                         move |result| match result {
                             Ok(stats) => AppMsg::Header(HeaderMsg::IndexReady(stats)),
                             Err(err) => {

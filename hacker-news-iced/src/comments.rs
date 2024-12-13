@@ -15,7 +15,7 @@ use iced::{
     Border, Element, Font, Length, Task, Theme,
 };
 use log::error;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, RwLock};
 
 #[derive(Debug)]
 pub struct NavStack {
@@ -26,7 +26,7 @@ pub struct NavStack {
 
 /// Comment state
 pub struct CommentState {
-    pub search_context: Arc<SearchContext>,
+    pub search_context: Arc<RwLock<SearchContext>>,
     /// Article this comment belongs to
     pub article: Story,
     /// parent comments.
@@ -288,7 +288,8 @@ impl CommentState {
                         self.page = 1;
                     }
                 }
-                let fetch_task = match self.search_context.comments(parent_id, 10, self.offset) {
+                let g = self.search_context.read().unwrap();
+                let fetch_task = match g.comments(parent_id, 10, self.offset) {
                     Ok((comments, full_count)) => {
                         self.full_count = full_count;
                         self.comments = comments;
@@ -344,13 +345,8 @@ impl CommentState {
                     }
 
                     self.search = Some(search.clone());
-
-                    match self.search_context.search_comments(
-                        &search,
-                        self.article.id,
-                        10,
-                        self.offset,
-                    ) {
+                    let g = self.search_context.read().unwrap();
+                    match g.search_comments(&search, self.article.id, 10, self.offset) {
                         Ok((comments, count)) => {
                             self.comments = comments;
                             self.full_count = count;

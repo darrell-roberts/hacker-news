@@ -17,7 +17,10 @@ use iced::{
     Size, Subscription, Theme,
 };
 use log::error;
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex, RwLock},
+};
 
 mod app;
 mod articles;
@@ -47,7 +50,11 @@ fn main() -> anyhow::Result<()> {
         "hacker-news-index",
     )?;
     let have_index = index_dir.exists();
-    let search_context = Arc::new(SearchContext::new(&index_dir, ArticleType::Top)?);
+
+    let search_context = Arc::new(RwLock::new(SearchContext::new(
+        &index_dir,
+        ArticleType::Top,
+    )?));
 
     let app = config::load_config()
         .map(|config| App {

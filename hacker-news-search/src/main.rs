@@ -1,7 +1,11 @@
 #![expect(dead_code)]
 use hacker_news_api::ArticleType;
 use hacker_news_search::{rebuild_index, SearchContext};
-use std::{fs::exists, path::Path};
+use std::{
+    fs::exists,
+    path::Path,
+    sync::{Arc, RwLock},
+};
 use tokio::fs::{create_dir_all, remove_dir_all};
 
 // const INDEX_PATH: &str = "/home/droberts/.local/share/Hacker News/hacker-news-index/";
@@ -21,8 +25,11 @@ async fn create() -> anyhow::Result<()> {
     }
     create_dir_all(INDEX_PATH).await?;
 
-    let ctx = SearchContext::new(Path::new(INDEX_PATH), ArticleType::Top)?;
-    rebuild_index(&ctx, ArticleType::Top).await?;
+    let ctx = Arc::new(RwLock::new(SearchContext::new(
+        Path::new(INDEX_PATH),
+        ArticleType::Top,
+    )?));
+    rebuild_index(ctx.clone(), ArticleType::Top).await?;
     Ok(())
 }
 

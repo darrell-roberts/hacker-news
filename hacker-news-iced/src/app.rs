@@ -7,6 +7,7 @@ use crate::{
     header::{self, HeaderState},
     widget::hoverable,
 };
+use hacker_news_api::ArticleType;
 use hacker_news_search::{api::Story, SearchContext};
 use iced::{
     clipboard,
@@ -17,7 +18,7 @@ use iced::{
     Font, Size, Task, Theme,
 };
 use log::error;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, RwLock};
 
 /// Application state.
 pub struct App {
@@ -40,7 +41,7 @@ pub struct App {
     /// Pane grid
     pub panes: pane_grid::State<PaneState>,
     /// Search context.
-    pub search_context: Arc<SearchContext>,
+    pub search_context: Arc<RwLock<SearchContext>>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -81,6 +82,7 @@ pub enum AppMsg {
     FullSearch(FullSearchMsg),
     SaveConfig,
     Clipboard(String),
+    SwitchIndex(ArticleType),
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -216,6 +218,11 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::FullSearch(msg) => app.full_search_state.update(msg),
         AppMsg::SaveConfig => save_task(app),
         AppMsg::Clipboard(s) => clipboard::write(s),
+        AppMsg::SwitchIndex(index_key) => {
+            let mut g = app.search_context.write().unwrap();
+            g.activate_index(index_key);
+            Task::none()
+        }
     }
 }
 

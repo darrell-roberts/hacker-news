@@ -12,10 +12,13 @@ use iced::{
     widget::{self, button, scrollable, text, Column, Row},
     Background, Color, Element, Font, Length, Shadow, Task, Theme,
 };
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::HashSet,
+    sync::{Arc, Mutex, RwLock},
+};
 
 pub struct ArticleState {
-    pub search_context: Arc<SearchContext>,
+    pub search_context: Arc<RwLock<SearchContext>>,
     /// Viewing articles
     pub articles: Vec<Story>,
     /// Visisted item ids.
@@ -258,7 +261,8 @@ impl ArticleState {
                     Task::done(AppMsg::Articles(ArticleMsg::TopStories(self.article_limit)))
                 } else {
                     self.search = Some(input.clone());
-                    match self.search_context.search_stories(&input, 0) {
+                    let g = self.search_context.read().unwrap();
+                    match g.search_stories(&input, 0) {
                         Ok(stories) => {
                             self.articles = stories;
                             Task::none()
@@ -271,7 +275,8 @@ impl ArticleState {
             }
             ArticleMsg::TopStories(limit) => {
                 self.article_limit = limit;
-                match self.search_context.top_stories(limit, 0) {
+                let g = self.search_context.read().unwrap();
+                match g.top_stories(limit, 0) {
                     Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
                     Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
                 }

@@ -10,7 +10,7 @@ use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::{
     mem,
-    sync::Arc,
+    sync::{Arc, RwLock},
     time::{Duration, Instant, SystemTime},
 };
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
@@ -248,11 +248,12 @@ async fn collect(
 }
 
 pub async fn rebuild_index(
-    ctx: &SearchContext,
+    ctx: Arc<RwLock<SearchContext>>,
     category_type: ArticleType,
 ) -> Result<IndexStats, SearchError> {
+    let g = ctx.read().unwrap();
     let start_time = Instant::now();
-    let index = ctx.indices.get(category_type.as_str()).unwrap();
+    let index = g.indices.get(category_type.as_str()).unwrap();
     let mut writer: IndexWriter = index.writer(50_000_000)?;
     writer.delete_all_documents()?;
 
@@ -261,7 +262,7 @@ pub async fn rebuild_index(
     let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
     let result = tokio::spawn(async move { collect(tx, category_type).await });
 
-    let writer_context = WriteContext::new(ctx, &mut writer, category_type.as_str())?;
+    let writer_context = WriteContext::new(&g, &mut writer, category_type.as_str())?;
     while let Some(item) = rx.recv().await {
         match item {
             ItemRef::Story(s) => writer_context.write_story(s)?,
@@ -272,8 +273,8 @@ pub async fn rebuild_index(
     result.await.unwrap()?;
     writer.commit()?;
 
-    ctx.reader.reload()?;
-    document_stats(ctx, start_time.elapsed(), category_type)
+    g.reader.reload()?;
+    document_stats(&g, start_time.elapsed(), category_type)
 }
 
 // pub fn index_articles<'a>(
