@@ -15,7 +15,7 @@ use iced::{
     Border, Element, Font, Length, Task, Theme,
 };
 use log::error;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
 pub struct NavStack {

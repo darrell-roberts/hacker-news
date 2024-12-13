@@ -19,7 +19,7 @@ use iced::{
 use log::error;
 use std::{
     collections::HashSet,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, RwLock},
 };
 
 mod app;

@@ -4,7 +4,7 @@ use crate::{
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState},
-    header::{self, HeaderState},
+    header::{self, HeaderMsg, HeaderState},
     widget::hoverable,
 };
 use hacker_news_api::ArticleType;
@@ -18,7 +18,7 @@ use iced::{
     Font, Size, Task, Theme,
 };
 use log::error;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 /// Application state.
 pub struct App {
@@ -220,8 +220,15 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::Clipboard(s) => clipboard::write(s),
         AppMsg::SwitchIndex(index_key) => {
             let mut g = app.search_context.write().unwrap();
-            g.activate_index(index_key);
-            Task::none()
+            match g.activate_index(index_key) {
+                Ok(stats) => Task::done(HeaderMsg::IndexReady(stats)).map(AppMsg::Header),
+                Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+            }
+            .chain(Task::batch([
+                Task::done(AppMsg::CloseSearch),
+                Task::done(AppMsg::CommentsClosed),
+                Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch),
+            ]))
         }
     }
 }

@@ -11,7 +11,7 @@ use iced::{
     Font, Length, Task, Theme,
 };
 use log::error;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 pub struct FullSearchState {
     pub search: Option<String>,

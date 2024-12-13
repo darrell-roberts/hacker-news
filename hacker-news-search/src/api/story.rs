@@ -1,6 +1,6 @@
 //! Search API for top stories.
 use super::Story;
-use crate::{SearchContext, SearchError, ITEM_CATEGORY, ITEM_RANK, ITEM_TITLE, ITEM_TYPE};
+use crate::{SearchContext, SearchError, ITEM_RANK, ITEM_TITLE, ITEM_TYPE};
 use tantivy::{
     collector::TopDocs,
     query::{BooleanQuery, FuzzyTermQuery, Occur, TermQuery},
@@ -46,11 +46,6 @@ impl SearchContext {
             IndexRecordOption::Basic,
         ));
 
-        let category_query = Box::new(TermQuery::new(
-            Term::from_field_text(self.schema.get_field(ITEM_CATEGORY)?, "top"),
-            IndexRecordOption::Basic,
-        ));
-
         let fuzzy_query = Box::new(FuzzyTermQuery::new(
             Term::from_field_text(self.schema.get_field(ITEM_TITLE)?, search),
             1,
@@ -65,16 +60,11 @@ impl SearchContext {
                     (Occur::Should, type_job_query),
                 ])),
             ),
-            (Occur::Must, category_query),
             (Occur::Must, fuzzy_query),
         ]);
 
         let searcher = self.searcher();
-        let top_docs = TopDocs::with_limit(75)
-            // Pagination
-            .and_offset(offset)
-            // Ordering
-            .order_by_u64_field(ITEM_RANK, Order::Asc);
+        let top_docs = TopDocs::with_limit(75).and_offset(offset);
 
         let stories = searcher
             .search(&query, &top_docs)?

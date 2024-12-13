@@ -10,7 +10,7 @@ use iced::{
 use log::error;
 use std::{
     ops::Not,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, RwLock},
 };
 
 pub struct HeaderState {
@@ -244,27 +244,22 @@ impl HeaderState {
             } => {
                 self.article_type = article_type;
                 self.article_count = article_count;
-                Task::done(ArticleMsg::TopStories(article_count)).map(AppMsg::Articles)
+                Task::done(AppMsg::SwitchIndex(self.article_type))
             }
             HeaderMsg::ClearVisisted => Task::done(AppMsg::ClearVisited),
             HeaderMsg::RebuildIndex => {
                 self.building_index = true;
                 let s = self.search_context.clone();
                 let category_type = self.article_type;
+                let fut = rebuild_index(s, category_type);
                 Task::batch([
-                    Task::perform(
-                        async move {
-                            let s = s.clone();
-                            rebuild_index(s, category_type).await
-                        },
-                        move |result| match result {
-                            Ok(stats) => AppMsg::Header(HeaderMsg::IndexReady(stats)),
-                            Err(err) => {
-                                error!("Failed to create index {err}");
-                                AppMsg::Header(HeaderMsg::IndexFailed(err.to_string()))
-                            }
-                        },
-                    ),
+                    Task::perform(fut, move |result| match result {
+                        Ok(stats) => AppMsg::Header(HeaderMsg::IndexReady(stats)),
+                        Err(err) => {
+                            error!("Failed to create index {err}");
+                            AppMsg::Header(HeaderMsg::IndexFailed(err.to_string()))
+                        }
+                    }),
                     Task::done(FooterMsg::Error("Building index...".into())).map(AppMsg::Footer),
                 ])
             }

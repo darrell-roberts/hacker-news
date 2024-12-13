@@ -1,8 +1,10 @@
 use hacker_news_api::ArticleType;
+use log::info;
 use std::{
     collections::HashMap,
     fs::{create_dir_all, exists},
     path::Path,
+    time::Duration,
 };
 use tantivy::{
     directory::{error::OpenDirectoryError, MmapDirectory},
@@ -101,6 +103,12 @@ fn indices_map(
     let mut map = HashMap::new();
 
     for key in keys {
+        let full_path = base_path.join(key);
+        if !full_path.exists() {
+            info!("Creating directory {full_path:?} for index {key}");
+            create_dir_all(full_path)?;
+        }
+
         let index =
             Index::open_or_create(MmapDirectory::open(base_path.join(key))?, schema.clone())?;
         map.insert(key, index);
@@ -128,11 +136,11 @@ impl SearchContext {
         })
     }
 
-    pub fn activate_index(&mut self, active_index: ArticleType) -> Result<(), SearchError> {
+    pub fn activate_index(&mut self, active_index: ArticleType) -> Result<IndexStats, SearchError> {
         self.active_index = active_index;
         self.reader = self.indices.get(&active_index.as_str()).unwrap().reader()?;
 
-        Ok(())
+        document_stats(self, Duration::from_secs(1), active_index)
     }
 
     pub fn searcher(&self) -> Searcher {

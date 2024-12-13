@@ -47,10 +47,7 @@ enum ItemRef {
     Comment(CommentRef),
 }
 
-struct WriteContext<'a> {
-    writer: &'a mut IndexWriter,
-    story_category: &'a str,
-
+struct Fields {
     id: Field,
     parent: Field,
     title: Field,
@@ -67,16 +64,9 @@ struct WriteContext<'a> {
     score: Field,
 }
 
-impl<'a> WriteContext<'a> {
-    fn new(
-        ctx: &'a SearchContext,
-        writer: &'a mut IndexWriter,
-        story_category: &'a str,
-    ) -> Result<Self, SearchError> {
+impl Fields {
+    fn new(ctx: &SearchContext) -> Result<Self, SearchError> {
         Ok(Self {
-            writer,
-            story_category,
-
             id: ctx.schema.get_field(ITEM_ID)?,
             parent: ctx.schema.get_field(ITEM_PARENT_ID)?,
             title: ctx.schema.get_field(ITEM_TITLE)?,
@@ -91,6 +81,27 @@ impl<'a> WriteContext<'a> {
             parent_story: ctx.schema.get_field(ITEM_STORY_ID)?,
             kids: ctx.schema.get_field(ITEM_KIDS)?,
             score: ctx.schema.get_field(ITEM_SCORE)?,
+        })
+    }
+}
+
+struct WriteContext<'a> {
+    writer: IndexWriter,
+    story_category: &'a str,
+
+    fields: Fields,
+}
+
+impl<'a> WriteContext<'a> {
+    fn new(
+        fields: Fields,
+        writer: IndexWriter,
+        story_category: &'a str,
+    ) -> Result<Self, SearchError> {
+        Ok(Self {
+            writer,
+            story_category,
+            fields,
         })
     }
 
@@ -114,40 +125,40 @@ impl<'a> WriteContext<'a> {
     fn write_doc(&self, item: &Item, rank: u64, story_id: Option<u64>) -> Result<(), SearchError> {
         let mut doc = TantivyDocument::new();
 
-        doc.add_u64(self.rank, rank);
-        doc.add_u64(self.id, item.id);
+        doc.add_u64(self.fields.rank, rank);
+        doc.add_u64(self.fields.id, item.id);
         if let Some(id) = item.parent {
-            doc.add_u64(self.parent, id);
+            doc.add_u64(self.fields.parent, id);
         }
         if let Some(t) = item.title.as_deref() {
-            doc.add_text(self.title, t);
+            doc.add_text(self.fields.title, t);
         }
         if let Some(t) = item.text.as_deref() {
-            doc.add_text(self.body, t);
+            doc.add_text(self.fields.body, t);
         }
         if let Some(u) = item.url.as_deref() {
-            doc.add_text(self.url, u);
+            doc.add_text(self.fields.url, u);
         }
-        doc.add_text(self.by, &item.by);
-        doc.add_text(self.ty, &item.ty);
+        doc.add_text(self.fields.by, &item.by);
+        doc.add_text(self.fields.ty, &item.ty);
 
         if let Some(n) = item.descendants {
-            doc.add_u64(self.descendant_count, n);
+            doc.add_u64(self.fields.descendant_count, n);
         }
 
         if let Some(id) = story_id {
-            doc.add_u64(self.parent_story, id);
+            doc.add_u64(self.fields.parent_story, id);
         }
 
         if item.ty == "story" {
-            doc.add_text(self.category, self.story_category);
-            doc.add_u64(self.score, item.score);
+            doc.add_text(self.fields.category, self.story_category);
+            doc.add_u64(self.fields.score, item.score);
         }
 
-        doc.add_u64(self.time, item.time);
+        doc.add_u64(self.fields.time, item.time);
 
         for id in &item.kids {
-            doc.add_u64(self.kids, *id);
+            doc.add_u64(self.fields.kids, *id);
         }
 
         self.writer.add_document(doc)?;
@@ -202,7 +213,7 @@ async fn collect_story(
 ) -> Result<(), SearchError> {
     let story_id = story.id;
     timeout(
-        Duration::from_secs(20),
+        Duration::from_secs(60),
         send_comments(&client, story.id, mem::take(&mut story.kids), tx.clone()),
     )
     .await
@@ -232,7 +243,7 @@ async fn collect(
 
         handles.push(tokio::spawn(async move {
             timeout(
-                Duration::from_secs(60 * 2),
+                Duration::from_secs(60 * 3),
                 collect_story(client, tx, story, rank),
             )
             .await
@@ -251,18 +262,21 @@ pub async fn rebuild_index(
     ctx: Arc<RwLock<SearchContext>>,
     category_type: ArticleType,
 ) -> Result<IndexStats, SearchError> {
-    let g = ctx.read().unwrap();
     let start_time = Instant::now();
-    let index = g.indices.get(category_type.as_str()).unwrap();
-    let mut writer: IndexWriter = index.writer(50_000_000)?;
-    writer.delete_all_documents()?;
-
+    let c = ctx.clone();
+    let mut writer_context = {
+        let g = ctx.read().unwrap();
+        let index = g.indices.get(category_type.as_str()).unwrap();
+        let writer: IndexWriter = index.writer(50_000_000)?;
+        writer.delete_all_documents()?;
+        let fields = Fields::new(&g)?;
+        WriteContext::new(fields, writer, category_type.as_str())?
+    };
     info!("Creating index for {category_type}");
 
     let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
     let result = tokio::spawn(async move { collect(tx, category_type).await });
 
-    let writer_context = WriteContext::new(&g, &mut writer, category_type.as_str())?;
     while let Some(item) = rx.recv().await {
         match item {
             ItemRef::Story(s) => writer_context.write_story(s)?,
@@ -271,8 +285,9 @@ pub async fn rebuild_index(
     }
 
     result.await.unwrap()?;
-    writer.commit()?;
+    writer_context.writer.commit()?;
 
+    let g = c.read().unwrap();
     g.reader.reload()?;
     document_stats(&g, start_time.elapsed(), category_type)
 }

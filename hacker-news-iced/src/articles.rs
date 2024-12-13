@@ -14,7 +14,7 @@ use iced::{
 };
 use std::{
     collections::HashSet,
-    sync::{Arc, Mutex, RwLock},
+    sync::{Arc, RwLock},
 };
 
 pub struct ArticleState {
