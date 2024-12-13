@@ -18,7 +18,7 @@ use iced::{
     },
     Font, Size, Task, Theme,
 };
-use log::error;
+use log::{error, info};
 use std::sync::{Arc, RwLock};
 
 /// Application state.
@@ -43,6 +43,8 @@ pub struct App {
     pub panes: pane_grid::State<PaneState>,
     /// Search context.
     pub search_context: Arc<RwLock<SearchContext>>,
+    /// Pane with focus
+    pub focused_pane: Option<widget::pane_grid::Pane>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -86,6 +88,7 @@ pub enum AppMsg {
     SwitchIndex { category: ArticleType, count: usize },
     NextInput,
     PrevInput,
+    FocusPane(widget::pane_grid::Pane),
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -239,6 +242,11 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         }
         AppMsg::NextInput => focus_next(),
         AppMsg::PrevInput => focus_previous(),
+        AppMsg::FocusPane(pane) => {
+            info!("Focused pane {pane:?}");
+            app.focused_pane = Some(pane);
+            Task::none()
+        }
     }
 }
 
@@ -294,6 +302,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                             app.article_state.search.as_deref().unwrap_or_default(),
                         )
                         .padding(5)
+                        .id(widget::text_input::Id::new("article_search"))
                         .on_input(|search| AppMsg::Articles(ArticleMsg::Search(search))),
                     )
                     .push(widget::tooltip(
@@ -326,7 +335,8 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
             },
         })
     })
-    .on_resize(10, AppMsg::PaneResized);
+    .on_resize(10, AppMsg::PaneResized)
+    .on_click(AppMsg::FocusPane);
 
     let main_layout = Column::new()
         .push(app.header.view().map(AppMsg::Header))

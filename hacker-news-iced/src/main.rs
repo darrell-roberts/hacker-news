@@ -12,7 +12,10 @@ use header::{HeaderMsg, HeaderState};
 use iced::{
     advanced::graphics::core::window,
     keyboard::{key::Named, on_key_press, Key, Modifiers},
-    widget::pane_grid::{self, Configuration},
+    widget::{
+        pane_grid::{self, Configuration},
+        text_input::{self, focus},
+    },
     window::{close_requests, resize_events},
     Size, Subscription, Task, Theme,
 };
@@ -111,6 +114,7 @@ fn main() -> anyhow::Result<()> {
                     page: 1,
                     full_count: 0,
                 },
+                focused_pane: None,
             }
         })
         .unwrap_or_else(|err| {
@@ -161,6 +165,7 @@ fn main() -> anyhow::Result<()> {
                     page: 1,
                     full_count: 0,
                 },
+                focused_pane: None,
             }
         });
 
@@ -188,11 +193,14 @@ fn main() -> anyhow::Result<()> {
             let article_count = app.header.article_count;
             (
                 app,
-                Task::done(HeaderMsg::Select {
-                    article_type,
-                    article_count,
-                })
-                .map(AppMsg::Header),
+                Task::batch([
+                    Task::done(HeaderMsg::Select {
+                        article_type,
+                        article_count,
+                    })
+                    .map(AppMsg::Header),
+                    focus(text_input::Id::new("article_search")),
+                ]),
             )
         })
         .context("Failed to run UI")
