@@ -232,6 +232,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 Task::done(AppMsg::CommentsClosed),
                 Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch),
             ]))
+            .chain(Task::done(AppMsg::SaveConfig))
         }
     }
 }

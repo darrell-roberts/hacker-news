@@ -1,20 +1,20 @@
 use anyhow::Context;
 use app::{update, view, App, AppMsg, PaneState, ScrollBy};
 use app_dirs2::get_app_dir;
-use articles::{ArticleMsg, ArticleState};
+use articles::ArticleState;
 use chrono::{DateTime, Utc};
-use flexi_logger::FileSpec;
+use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 use footer::FooterState;
 use full_search::FullSearchState;
 use hacker_news_api::ArticleType;
 use hacker_news_search::SearchContext;
-use header::HeaderState;
+use header::{HeaderMsg, HeaderState};
 use iced::{
     advanced::graphics::core::window,
     keyboard::{key::Named, on_key_press, Key, Modifiers},
     widget::pane_grid::{self, Configuration},
     window::{close_requests, resize_events},
-    Size, Subscription, Theme,
+    Size, Subscription, Task, Theme,
 };
 use log::error;
 use std::{
@@ -41,6 +41,11 @@ fn main() -> anyhow::Result<()> {
                 .directory(log_dir)
                 .basename("hacker-news"),
         )
+        .rotate(
+            Criterion::Age(Age::Day),
+            Naming::Timestamps,
+            Cleanup::KeepLogFiles(5),
+        )
         .print_message()
         .start()?;
 
@@ -49,7 +54,6 @@ fn main() -> anyhow::Result<()> {
         &config::APP_INFO,
         "hacker-news-index",
     )?;
-    let have_index = index_dir.exists();
 
     let search_context = Arc::new(RwLock::new(SearchContext::new(
         &index_dir,
@@ -180,14 +184,15 @@ fn main() -> anyhow::Result<()> {
         })
         .scale_factor(|app| app.scale)
         .run_with(move || {
-            let limit = app.header.article_count;
+            let article_type = app.header.article_type;
+            let article_count = app.header.article_count;
             (
                 app,
-                if have_index {
-                    iced::Task::done(AppMsg::Articles(ArticleMsg::TopStories(limit)))
-                } else {
-                    iced::Task::none()
-                },
+                Task::done(HeaderMsg::Select {
+                    article_type,
+                    article_count,
+                })
+                .map(AppMsg::Header),
             )
         })
         .context("Failed to run UI")
