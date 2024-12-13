@@ -65,7 +65,14 @@ impl FooterState {
                                 .push_maybe((stats.build_time.as_secs() / 60 != 0).then(|| {
                                     text(format!("{} min", stats.build_time.as_secs() / 60))
                                 }))
-                                .push(text(format!("{} secs,", stats.build_time.as_secs() % 60)))
+                                .push_maybe(
+                                    (stats.build_time.as_millis() < 1000).then(|| {
+                                        text(format!("{} ms", stats.build_time.as_millis()))
+                                    }),
+                                )
+                                .push_maybe((stats.build_time.as_secs() >= 1).then(|| {
+                                    text(format!("{} secs,", stats.build_time.as_secs() % 60))
+                                }))
                                 .push(text(format!(
                                     "docs: {}, comments: {}, stories: {}, jobs: {}, polls: {}",
                                     stats.total_documents,
