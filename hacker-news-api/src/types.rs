@@ -100,7 +100,7 @@ pub enum ArticleType {
 }
 
 impl ArticleType {
-    pub fn as_str(&self) -> &str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             ArticleType::New => "New",
             ArticleType::Best => "Best",

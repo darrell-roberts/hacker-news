@@ -4,7 +4,7 @@ use crate::{
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState},
-    header::{self, HeaderMsg, HeaderState},
+    header::{self, HeaderState},
     widget::hoverable,
 };
 use hacker_news_api::ArticleType;
@@ -82,7 +82,7 @@ pub enum AppMsg {
     FullSearch(FullSearchMsg),
     SaveConfig,
     Clipboard(String),
-    SwitchIndex(ArticleType),
+    SwitchIndex { category: ArticleType, count: usize },
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -218,10 +218,13 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::FullSearch(msg) => app.full_search_state.update(msg),
         AppMsg::SaveConfig => save_task(app),
         AppMsg::Clipboard(s) => clipboard::write(s),
-        AppMsg::SwitchIndex(index_key) => {
+        AppMsg::SwitchIndex { category, count } => {
             let mut g = app.search_context.write().unwrap();
-            match g.activate_index(index_key) {
-                Ok(stats) => Task::done(HeaderMsg::IndexReady(stats)).map(AppMsg::Header),
+            match g.activate_index(category) {
+                Ok(_) => Task::batch([
+                    Task::done(FooterMsg::CurrentIndex(category)).map(AppMsg::Footer),
+                    Task::done(ArticleMsg::TopStories(count)).map(AppMsg::Articles),
+                ]),
                 Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
             }
             .chain(Task::batch([
@@ -338,7 +341,8 @@ impl From<&App> for Config {
             visited: visited.clone(),
             theme: state.theme.to_string(),
             window_size: (state.size.width, state.size.height),
-            index_stats: state.footer.index_stats,
+            current_index_stats: state.footer.current_index_stats,
+            index_stats: state.footer.index_stats.values().cloned().collect(),
         }
     }
 }

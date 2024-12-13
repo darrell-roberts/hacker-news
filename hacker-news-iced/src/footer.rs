@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use crate::app::AppMsg;
 use chrono::{DateTime, Local, Utc};
 use chrono_tz::America::New_York;
+use hacker_news_api::ArticleType;
 use hacker_news_search::IndexStats;
 use iced::{
     alignment::Vertical,
@@ -13,7 +16,8 @@ pub struct FooterState {
     pub status_line: String,
     pub last_update: Option<DateTime<Local>>,
     pub scale: f64,
-    pub index_stats: Option<IndexStats>,
+    pub current_index_stats: Option<IndexStats>,
+    pub index_stats: HashMap<&'static str, IndexStats>,
 }
 
 #[derive(Debug, Clone)]
@@ -23,7 +27,11 @@ pub enum FooterMsg {
     Url(String),
     NoUrl,
     Scale(f64),
-    IndexStats(IndexStats),
+    IndexStats {
+        stats: IndexStats,
+        category: ArticleType,
+    },
+    CurrentIndex(ArticleType),
 }
 
 impl FooterState {
@@ -46,7 +54,7 @@ impl FooterState {
             .push(
                 container(
                     Row::new()
-                        .push_maybe(self.index_stats.as_ref().map(|stats| {
+                        .push_maybe(self.current_index_stats.as_ref().map(|stats| {
                             Row::new()
                                 .push(text(format!("{}", stats.category)))
                                 .push_maybe(
@@ -66,6 +74,7 @@ impl FooterState {
                                     stats.total_jobs,
                                     stats.total_polls
                                 )))
+                                .spacing(5)
                         }))
                         .push(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
                         .push(pick_list(themes, Some(theme), |selected| {
@@ -116,9 +125,19 @@ impl FooterState {
             FooterMsg::Scale(scale) => {
                 self.scale = scale;
             }
-            FooterMsg::IndexStats(stats) => {
-                self.index_stats = Some(stats);
+            FooterMsg::IndexStats { stats, category } => {
+                self.current_index_stats = Some(stats);
+                self.index_stats
+                    .entry(category.as_str())
+                    .and_modify(|s| *s = stats)
+                    .or_insert(stats);
                 return Task::done(AppMsg::SaveConfig);
+            }
+            FooterMsg::CurrentIndex(category) => {
+                self.current_index_stats = self
+                    .index_stats
+                    .get(category.as_str())
+                    .map(ToOwned::to_owned);
             }
         }
         Task::none()

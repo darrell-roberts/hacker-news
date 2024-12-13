@@ -1,4 +1,4 @@
-use crate::{app::AppMsg, articles::ArticleMsg, footer::FooterMsg, full_search::FullSearchMsg};
+use crate::{app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg};
 use chrono::Local;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{rebuild_index, IndexStats, SearchContext};
@@ -29,7 +29,10 @@ pub enum HeaderMsg {
     },
     ClearVisisted,
     RebuildIndex,
-    IndexReady(IndexStats),
+    IndexReady {
+        stats: IndexStats,
+        category: ArticleType,
+    },
     Search(String),
     IndexFailed(String),
 }
@@ -244,17 +247,20 @@ impl HeaderState {
             } => {
                 self.article_type = article_type;
                 self.article_count = article_count;
-                Task::done(AppMsg::SwitchIndex(self.article_type))
+                Task::done(AppMsg::SwitchIndex {
+                    category: self.article_type,
+                    count: article_count,
+                })
             }
             HeaderMsg::ClearVisisted => Task::done(AppMsg::ClearVisited),
             HeaderMsg::RebuildIndex => {
                 self.building_index = true;
                 let s = self.search_context.clone();
-                let category_type = self.article_type;
-                let fut = rebuild_index(s, category_type);
+                let category = self.article_type;
+                let fut = rebuild_index(s, category);
                 Task::batch([
                     Task::perform(fut, move |result| match result {
-                        Ok(stats) => AppMsg::Header(HeaderMsg::IndexReady(stats)),
+                        Ok(stats) => AppMsg::Header(HeaderMsg::IndexReady { stats, category }),
                         Err(err) => {
                             error!("Failed to create index {err}");
                             AppMsg::Header(HeaderMsg::IndexFailed(err.to_string()))
@@ -263,13 +269,17 @@ impl HeaderState {
                     Task::done(FooterMsg::Error("Building index...".into())).map(AppMsg::Footer),
                 ])
             }
-            HeaderMsg::IndexReady(stats) => {
+            HeaderMsg::IndexReady { stats, category } => {
                 self.building_index = false;
-                Task::batch([
-                    Task::done(ArticleMsg::TopStories(self.article_count)).map(AppMsg::Articles),
+                self.article_type = category;
+                Task::done(AppMsg::SwitchIndex {
+                    category,
+                    count: self.article_count,
+                })
+                .chain(Task::batch([
                     Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer),
-                    Task::done(FooterMsg::IndexStats(stats)).map(AppMsg::Footer),
-                ])
+                    Task::done(FooterMsg::IndexStats { stats, category }).map(AppMsg::Footer),
+                ]))
             }
             HeaderMsg::IndexFailed(err) => {
                 self.building_index = false;

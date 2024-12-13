@@ -4,7 +4,6 @@ use std::{
     collections::HashMap,
     fs::{create_dir_all, exists},
     path::Path,
-    time::Duration,
 };
 use tantivy::{
     directory::{error::OpenDirectoryError, MmapDirectory},
@@ -136,11 +135,10 @@ impl SearchContext {
         })
     }
 
-    pub fn activate_index(&mut self, active_index: ArticleType) -> Result<IndexStats, SearchError> {
+    pub fn activate_index(&mut self, active_index: ArticleType) -> Result<(), SearchError> {
         self.active_index = active_index;
         self.reader = self.indices.get(&active_index.as_str()).unwrap().reader()?;
-
-        document_stats(self, Duration::from_secs(1), active_index)
+        Ok(())
     }
 
     pub fn searcher(&self) -> Searcher {

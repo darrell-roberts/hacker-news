@@ -263,7 +263,8 @@ pub async fn rebuild_index(
     category_type: ArticleType,
 ) -> Result<IndexStats, SearchError> {
     let start_time = Instant::now();
-    let c = ctx.clone();
+    info!("Creating index for {category_type}");
+
     let mut writer_context = {
         let g = ctx.read().unwrap();
         let index = g.indices.get(category_type.as_str()).unwrap();
@@ -272,7 +273,6 @@ pub async fn rebuild_index(
         let fields = Fields::new(&g)?;
         WriteContext::new(fields, writer, category_type.as_str())?
     };
-    info!("Creating index for {category_type}");
 
     let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
     let result = tokio::spawn(async move { collect(tx, category_type).await });
@@ -287,8 +287,10 @@ pub async fn rebuild_index(
     result.await.unwrap()?;
     writer_context.writer.commit()?;
 
-    let g = c.read().unwrap();
-    g.reader.reload()?;
+    let g = ctx.read().unwrap();
+    if g.active_index == category_type {
+        g.reader.reload()?;
+    }
     document_stats(&g, start_time.elapsed(), category_type)
 }
 
@@ -392,7 +394,16 @@ pub fn document_stats(
     build_time: Duration,
     category: ArticleType,
 ) -> Result<IndexStats, SearchError> {
-    let searcher = ctx.searcher();
+    let searcher = if ctx.active_index == category {
+        ctx.searcher()
+    } else {
+        ctx.indices
+            .get(category.as_str())
+            .unwrap()
+            .reader()?
+            .searcher()
+    };
+
     let type_field = ctx.schema.get_field(ITEM_TYPE)?;
 
     let total_comments = searcher.doc_freq(&Term::from_field_text(type_field, "comment"))?;

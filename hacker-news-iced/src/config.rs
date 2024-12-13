@@ -18,7 +18,8 @@ pub struct Config {
     pub visited: HashSet<u64>,
     pub theme: String,
     pub window_size: (f32, f32),
-    pub index_stats: Option<IndexStats>,
+    pub current_index_stats: Option<IndexStats>,
+    pub index_stats: Vec<IndexStats>,
 }
 
 pub async fn save_config(config: Config) -> anyhow::Result<()> {
