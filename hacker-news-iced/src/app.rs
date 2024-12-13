@@ -18,7 +18,7 @@ use iced::{
     },
     Font, Size, Task, Theme,
 };
-use log::{error, info};
+use log::error;
 use std::sync::{Arc, RwLock};
 
 /// Application state.
@@ -243,7 +243,6 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::NextInput => focus_next(),
         AppMsg::PrevInput => focus_previous(),
         AppMsg::FocusPane(pane) => {
-            info!("Focused pane {pane:?}");
             app.focused_pane = Some(pane);
             Task::none()
         }
