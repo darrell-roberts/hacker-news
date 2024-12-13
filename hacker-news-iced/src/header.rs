@@ -104,20 +104,20 @@ impl HeaderState {
                         article_type: self.article_type
                     }
                 ),
-                self.header_count_button(
-                    100,
-                    HeaderMsg::Select {
-                        article_count: 100,
-                        article_type: self.article_type
-                    }
-                ),
-                self.header_count_button(
-                    500,
-                    HeaderMsg::Select {
-                        article_count: 500,
-                        article_type: self.article_type
-                    }
-                ),
+                // self.header_count_button(
+                //     100,
+                //     HeaderMsg::Select {
+                //         article_count: 100,
+                //         article_type: self.article_type
+                //     }
+                // ),
+                // self.header_count_button(
+                //     500,
+                //     HeaderMsg::Select {
+                //         article_count: 500,
+                //         article_type: self.article_type
+                //     }
+                // ),
             ]
             .spacing(10),
         )
