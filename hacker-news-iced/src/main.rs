@@ -208,6 +208,8 @@ fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
             Named::ArrowDown => AppMsg::ScrollBy(ScrollBy::LineDown),
             Named::Home => AppMsg::ScrollBy(ScrollBy::Top),
             Named::End => AppMsg::ScrollBy(ScrollBy::Bottom),
+            Named::Tab if modifiers.shift() => AppMsg::PrevInput,
+            Named::Tab => AppMsg::NextInput,
             _ => return None,
         }),
         Key::Character(c) => {

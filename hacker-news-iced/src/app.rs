@@ -13,7 +13,8 @@ use iced::{
     clipboard,
     font::Weight,
     widget::{
-        self, button, container, pane_grid, scrollable::AbsoluteOffset, text::Shaping, Column,
+        self, button, container, focus_next, focus_previous, pane_grid, scrollable::AbsoluteOffset,
+        text::Shaping, Column,
     },
     Font, Size, Task, Theme,
 };
@@ -83,6 +84,8 @@ pub enum AppMsg {
     SaveConfig,
     Clipboard(String),
     SwitchIndex { category: ArticleType, count: usize },
+    NextInput,
+    PrevInput,
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -234,6 +237,8 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             ]))
             .chain(Task::done(AppMsg::SaveConfig))
         }
+        AppMsg::NextInput => focus_next(),
+        AppMsg::PrevInput => focus_previous(),
     }
 }
 
