@@ -252,7 +252,8 @@ pub async fn rebuild_index(
     category_type: ArticleType,
 ) -> Result<IndexStats, SearchError> {
     let start_time = Instant::now();
-    let mut writer: IndexWriter = ctx.index.writer(50_000_000)?;
+    let index = ctx.indices.get(category_type.as_str()).unwrap();
+    let mut writer: IndexWriter = index.writer(50_000_000)?;
     writer.delete_all_documents()?;
 
     info!("Creating index for {category_type}");

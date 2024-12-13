@@ -47,7 +47,7 @@ fn main() -> anyhow::Result<()> {
         "hacker-news-index",
     )?;
     let have_index = index_dir.exists();
-    let search_context = Arc::new(SearchContext::new(&index_dir)?);
+    let search_context = Arc::new(SearchContext::new(&index_dir, ArticleType::Top)?);
 
     let app = config::load_config()
         .map(|config| App {

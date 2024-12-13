@@ -21,19 +21,19 @@ async fn create() -> anyhow::Result<()> {
     }
     create_dir_all(INDEX_PATH).await?;
 
-    let ctx = SearchContext::new(Path::new(INDEX_PATH))?;
+    let ctx = SearchContext::new(Path::new(INDEX_PATH), ArticleType::Top)?;
     rebuild_index(&ctx, ArticleType::Top).await?;
     Ok(())
 }
 
 fn comments() -> anyhow::Result<()> {
-    let ctx = SearchContext::new(Path::new(INDEX_PATH))?;
+    let ctx = SearchContext::new(Path::new(INDEX_PATH), ArticleType::Top)?;
     dbg!(ctx.comments(42344002, 10, 0)?);
     Ok(())
 }
 
 fn top_stories() -> anyhow::Result<()> {
-    let ctx = SearchContext::new(Path::new(INDEX_PATH))?;
+    let ctx = SearchContext::new(Path::new(INDEX_PATH), ArticleType::Top)?;
     dbg!(ctx.top_stories(100, 0)?);
 
     Ok(())
