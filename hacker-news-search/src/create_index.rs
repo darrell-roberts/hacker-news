@@ -275,7 +275,7 @@ pub async fn rebuild_index(
     };
 
     let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
-    let result = tokio::spawn(async move { collect(tx, category_type).await });
+    let result = tokio::spawn(collect(tx, category_type));
 
     while let Some(item) = rx.recv().await {
         match item {
@@ -410,8 +410,8 @@ pub fn document_stats(
     let total_jobs = searcher.doc_freq(&Term::from_field_text(type_field, "job"))?;
     let total_stories = searcher.doc_freq(&Term::from_field_text(type_field, "story"))?;
     let total_polls = searcher.doc_freq(&Term::from_field_text(type_field, "poll"))?;
-
     let total_documents = searcher.num_docs();
+
     Ok(IndexStats {
         total_documents,
         total_comments,

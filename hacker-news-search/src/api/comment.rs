@@ -69,10 +69,15 @@ impl SearchContext {
             1,
             true,
         ));
+        // let term_search = Box::new(TermQuery::new(
+        //     Term::from_field_text(self.schema.get_field(ITEM_BODY)?, search),
+        //     IndexRecordOption::Basic,
+        // ));
 
         let combined_query = BooleanQuery::new(vec![
             (Occur::Must, parent_query),
             (Occur::Must, fuzzy_search),
+            // (Occur::Must, term_search),
         ]);
 
         self.top_comments_with_count(limit, offset, combined_query)

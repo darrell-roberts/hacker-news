@@ -1,10 +1,6 @@
 use hacker_news_api::ArticleType;
 use log::info;
-use std::{
-    collections::HashMap,
-    fs::{create_dir_all, exists},
-    path::Path,
-};
+use std::{collections::HashMap, fs::create_dir_all, path::Path};
 use tantivy::{
     directory::{error::OpenDirectoryError, MmapDirectory},
     query::{QueryParser, QueryParserError},
@@ -56,29 +52,6 @@ pub enum SearchError {
     TimedOut(String),
 }
 
-// #[derive(Debug, Clone, Copy, Hash)]
-// pub enum IndexKey {
-//     Top,
-//     Best,
-//     New,
-//     Ask,
-//     Show,
-//     Job,
-// }
-
-// impl IndexKey {
-//     fn as_str(&self) -> &str {
-//         match self {
-//             IndexKey::Top => todo!(),
-//             IndexKey::Best => todo!(),
-//             IndexKey::New => todo!(),
-//             IndexKey::Ask => todo!(),
-//             IndexKey::Show => todo!(),
-//             IndexKey::Job => todo!(),
-//         }
-//     }
-// }
-
 pub struct SearchContext {
     reader: IndexReader,
     schema: Schema,
@@ -118,13 +91,8 @@ fn indices_map(
 
 impl SearchContext {
     pub fn new(index_path: &Path, active_index: ArticleType) -> Result<Self, SearchError> {
-        if !exists(index_path)? {
-            create_dir_all(index_path)?;
-        }
-
         let schema = document_schema();
         let indices = indices_map(index_path, &schema)?;
-
         let reader = indices.get(active_index.as_str()).unwrap().reader()?;
 
         Ok(SearchContext {
