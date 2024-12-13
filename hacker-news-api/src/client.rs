@@ -124,8 +124,8 @@ impl ApiClient {
             .collect::<FuturesUnordered<_>>();
 
         try_stream! {
-            while let Some(result) = handles.try_next().await? {
-                let item = result?;
+            while let Some(result) = handles.try_next().await.context("Failed to join handle")? {
+                let item = result.context("HTTP API failure")?;
 
                 if !(item.1.dead || item.1.deleted) {
                     yield item
