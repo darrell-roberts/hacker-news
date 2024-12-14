@@ -1,3 +1,11 @@
+use crate::{
+    app::{App, PaneState},
+    articles::ArticleState,
+    footer::FooterState,
+    full_search::FullSearchState,
+    header::HeaderState,
+    theme,
+};
 use anyhow::Context;
 use app_dirs2::{get_app_root, AppDataType, AppInfo};
 use hacker_news_api::ArticleType;
@@ -10,15 +18,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, RwLock},
-};
-
-use crate::{
-    app::{App, PaneState},
-    articles::ArticleState,
-    footer::FooterState,
-    full_search::FullSearchState,
-    header::HeaderState,
-    theme,
 };
 
 pub const APP_INFO: AppInfo = AppInfo {

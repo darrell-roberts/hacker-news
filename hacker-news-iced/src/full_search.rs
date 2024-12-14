@@ -1,7 +1,8 @@
-use crate::{
-    app::AppMsg, articles::ArticleMsg, footer::FooterMsg, parse_date, richtext::render_rich_text,
+use crate::{app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text};
+use hacker_news_search::{
+    api::{Comment, CommentStack},
+    SearchContext,
 };
-use hacker_news_search::{api::Comment, SearchContext};
 use iced::{
     alignment::Vertical,
     border,
@@ -28,7 +29,7 @@ pub enum FullSearchMsg {
     CloseSearch,
     Forward,
     Back,
-    Story(u64),
+    ShowThread(u64),
     JumpPage(usize),
 }
 
@@ -164,7 +165,7 @@ impl FullSearchState {
                     .width(Length::Fill),
             )
             .style(widget::button::text)
-            .on_press(AppMsg::FullSearch(FullSearchMsg::Story(comment.story_id))),
+            .on_press(AppMsg::FullSearch(FullSearchMsg::ShowThread(comment.id))),
         )
     }
 
@@ -217,8 +218,17 @@ impl FullSearchState {
                 ))
                 .map(AppMsg::FullSearch)
             }
-            FullSearchMsg::Story(story_id) => {
-                Task::done(ArticleMsg::ViewingItem(story_id)).map(AppMsg::Articles)
+            FullSearchMsg::ShowThread(comment_id) => {
+                let g = self.search_context.read().unwrap();
+                match g.parents(comment_id) {
+                    Ok(CommentStack { comments, story }) => Task::done(AppMsg::OpenComment {
+                        parent_id: story.id,
+                        article: story,
+                        comment_stack: comments,
+                    }),
+                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                }
+                // Task::done(ArticleMsg::ViewingItem(story_id)).map(AppMsg::Articles)
             }
             FullSearchMsg::JumpPage(page) => {
                 self.page = page;

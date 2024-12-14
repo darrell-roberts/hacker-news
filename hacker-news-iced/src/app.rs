@@ -8,7 +8,10 @@ use crate::{
     widget::hoverable,
 };
 use hacker_news_api::ArticleType;
-use hacker_news_search::{api::Story, SearchContext};
+use hacker_news_search::{
+    api::{Comment, Story},
+    SearchContext,
+};
 use iced::{
     clipboard,
     font::Weight,
@@ -69,8 +72,15 @@ pub enum AppMsg {
     Articles(articles::ArticleMsg),
     Footer(footer::FooterMsg),
     Comments(comments::CommentMsg),
-    OpenComment { article: Story, parent_id: u64 },
-    OpenLink { url: String, item_id: u64 },
+    OpenComment {
+        article: Story,
+        parent_id: u64,
+        comment_stack: Vec<Comment>,
+    },
+    OpenLink {
+        url: String,
+        item_id: u64,
+    },
     ChangeTheme(Theme),
     WindowClose,
     IncreaseScale,
@@ -85,7 +95,10 @@ pub enum AppMsg {
     FullSearch(FullSearchMsg),
     SaveConfig,
     Clipboard(String),
-    SwitchIndex { category: ArticleType, count: usize },
+    SwitchIndex {
+        category: ArticleType,
+        count: usize,
+    },
     NextInput,
     PrevInput,
     FocusPane(widget::pane_grid::Pane),
@@ -93,19 +106,39 @@ pub enum AppMsg {
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
     match message {
-        AppMsg::OpenComment { article, parent_id } => {
+        AppMsg::OpenComment {
+            article,
+            parent_id,
+            mut comment_stack,
+        } => {
             // Opening first set of comments from an article.
             let item_id = article.id;
+
+            let from_full_search = !comment_stack.is_empty();
+
+            comment_stack.reverse();
+
+            let comments = comment_stack.pop().map(|c| vec![c]).unwrap_or_default();
+
+            let mut nav_stack = vec![NavStack {
+                comment: None,
+                offset: 0,
+                page: 1,
+            }];
+
+            if !comment_stack.is_empty() {
+                nav_stack.extend(comment_stack.into_iter().map(|comment| NavStack {
+                    comment: Some(comment),
+                    offset: 0,
+                    page: 1,
+                }));
+            };
 
             app.comment_state = Some(CommentState {
                 search_context: app.search_context.clone(),
                 article,
-                comments: Vec::new(),
-                nav_stack: vec![NavStack {
-                    comment: None,
-                    offset: 0,
-                    page: 1,
-                }],
+                comments,
+                nav_stack,
                 search: None,
                 oneline: false,
                 search_results: Vec::new(),
@@ -115,11 +148,15 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 parent_id: 0,
             });
 
-            Task::done(CommentMsg::FetchComments {
-                parent_id,
-                parent_comment: None,
-            })
-            .map(AppMsg::Comments)
+            if from_full_search {
+                Task::none()
+            } else {
+                Task::done(CommentMsg::FetchComments {
+                    parent_id,
+                    parent_comment: None,
+                })
+                .map(AppMsg::Comments)
+            }
             .chain(Task::done(ArticleMsg::ViewingItem(item_id)).map(AppMsg::Articles))
             .chain(Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch))
         }

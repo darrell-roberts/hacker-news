@@ -1,12 +1,14 @@
 use crate::{
     SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_DESCENDANT_COUNT, ITEM_ID, ITEM_KIDS,
-    ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
+    ITEM_PARENT_ID, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
 };
 use std::collections::HashMap;
 use tantivy::{schema::OwnedValue, Document, TantivyDocument};
 
 mod comment;
 mod story;
+
+pub use comment::CommentStack;
 
 #[derive(Debug, Clone)]
 /// Hacker news story
@@ -46,6 +48,8 @@ pub struct Comment {
     pub kids: Vec<u64>,
     /// Parent story
     pub story_id: u64,
+    /// Parent comment or story
+    pub parent_id: u64,
 }
 
 impl SearchContext {
@@ -108,6 +112,10 @@ impl SearchContext {
                 .remove(ITEM_STORY_ID)
                 .and_then(u64_value)
                 .ok_or_else(|| missing_field(ITEM_STORY_ID))?,
+            parent_id: fields
+                .remove(ITEM_PARENT_ID)
+                .and_then(u64_value)
+                .ok_or_else(|| missing_field(ITEM_PARENT_ID))?,
         })
     }
 

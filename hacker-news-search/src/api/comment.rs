@@ -1,11 +1,11 @@
 //! Search API for user comments.
-use super::Comment;
-use crate::{SearchContext, SearchError, ITEM_BODY, ITEM_RANK, ITEM_STORY_ID, ITEM_TYPE};
+use super::{Comment, Story};
+use crate::{SearchContext, SearchError, ITEM_BODY, ITEM_ID, ITEM_RANK, ITEM_STORY_ID, ITEM_TYPE};
 use tantivy::{
     collector::{Count, MultiCollector, TopDocs},
     query::{BooleanQuery, FuzzyTermQuery, Occur, Query, TermQuery},
     schema::IndexRecordOption,
-    Order, TantivyDocument, Term,
+    Order, Searcher, TantivyDocument, Term,
 };
 
 impl SearchContext {
@@ -138,4 +138,52 @@ impl SearchContext {
 
         Ok((comments, count))
     }
+
+    pub fn parents(&self, comment_id: u64) -> Result<CommentStack, SearchError> {
+        let searcher = self.searcher();
+
+        let comment = self.comment(&searcher, comment_id)?;
+        let story_id = comment.story_id;
+
+        let mut parent_id = (comment.parent_id != comment.story_id).then_some(comment.parent_id);
+        let mut parents = Vec::from_iter([comment]);
+
+        while let Some(id) = parent_id.take() {
+            // info!("Getting comment: {id}");
+            let next = self.comment(&searcher, id)?;
+            parent_id = (next.parent_id != next.story_id).then_some(next.parent_id);
+            // info!("Next parent: {parent_id:?}");
+            parents.push(next);
+        }
+
+        let story = self.story(story_id)?;
+
+        Ok(CommentStack {
+            story,
+            comments: parents,
+        })
+    }
+
+    fn comment(&self, searcher: &Searcher, comment_id: u64) -> Result<Comment, SearchError> {
+        let top_docs = TopDocs::with_limit(1);
+        let parent_query: Box<dyn Query> = Box::new(TermQuery::new(
+            Term::from_field_u64(self.schema.get_field(ITEM_ID)?, comment_id),
+            IndexRecordOption::Basic,
+        ));
+
+        let (_score, doc_address) = searcher
+            .search(&parent_query, &top_docs)?
+            .into_iter()
+            .next()
+            .ok_or_else(|| SearchError::MissingDoc)?;
+
+        let doc = searcher.doc::<TantivyDocument>(doc_address)?;
+        self.to_comment(doc)
+    }
+}
+
+#[derive(Debug)]
+pub struct CommentStack {
+    pub comments: Vec<Comment>,
+    pub story: Story,
 }

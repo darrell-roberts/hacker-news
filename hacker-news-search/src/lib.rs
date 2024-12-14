@@ -50,6 +50,8 @@ pub enum SearchError {
     MissingField(String),
     #[error("Api timed out {0}")]
     TimedOut(String),
+    #[error("Document does not exist")]
+    MissingDoc,
 }
 
 pub struct SearchContext {

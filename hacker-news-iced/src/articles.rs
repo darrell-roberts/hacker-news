@@ -86,6 +86,7 @@ impl ArticleState {
                                 story.body.as_ref().map(|_| AppMsg::OpenComment {
                                     article: story.clone(),
                                     parent_id: story.id,
+                                    comment_stack: Vec::new(),
                                 })
                             }),
                     )
@@ -124,6 +125,7 @@ impl ArticleState {
             .on_press_maybe((story.descendants > 0).then(|| AppMsg::OpenComment {
                 article: story.clone(),
                 parent_id: story.id,
+                comment_stack: Vec::new(),
             }));
 
         let title_wrapper = match story.url.as_deref() {
