@@ -30,6 +30,7 @@ impl ApiClient {
         Ok(Self {
             client: reqwest::Client::builder()
                 .connect_timeout(Duration::from_secs(5))
+                .gzip(true)
                 // .http2_prior_knowledge()
                 // .pool_max_idle_per_host(1)
                 .build()
@@ -43,9 +44,7 @@ impl ApiClient {
             .client
             .get(format!("{}/{api}", Self::API_END_POINT))
             .send()
-            .await
-            .context("Failed to send request")?
-            .json::<Vec<u64>>()
+            .and_then(|resp| resp.json::<Vec<u64>>())
             .await
             .context("Failed to deserialize response")?;
 
