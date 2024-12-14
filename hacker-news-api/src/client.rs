@@ -15,6 +15,7 @@ use tokio::{
     sync::mpsc::{self, Receiver, Sender},
     task::JoinHandle,
 };
+use tracing::instrument;
 
 /// Hacker News Api client.
 pub struct ApiClient {
@@ -104,6 +105,7 @@ impl ApiClient {
         Ok(result)
     }
 
+    #[instrument(skip_all)]
     pub fn items_stream(&self, ids: &[u64]) -> impl Stream<Item = Result<(u64, Item)>> {
         // The firebase api only provides the option to get each item one by
         // one.
@@ -124,8 +126,8 @@ impl ApiClient {
             .collect::<FuturesUnordered<_>>();
 
         try_stream! {
-            while let Some(result) = handles.try_next().await.context("Failed to join handle")? {
-                let item = result.context("HTTP API failure")?;
+            while let Some(result) = handles.try_next().await? {
+                let item = result?;
 
                 if !(item.1.dead || item.1.deleted) {
                     yield item

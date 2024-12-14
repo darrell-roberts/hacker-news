@@ -33,9 +33,11 @@ mod footer;
 mod full_search;
 mod header;
 mod richtext;
+#[cfg(feature = "trace")]
+mod tracing;
 mod widget;
 
-fn main() -> anyhow::Result<()> {
+fn start() -> anyhow::Result<()> {
     let log_dir = get_app_dir(app_dirs2::AppDataType::UserData, &config::APP_INFO, "logs")?;
 
     let _logger = flexi_logger::Logger::try_with_env_or_str("info")?
@@ -204,6 +206,13 @@ fn main() -> anyhow::Result<()> {
             )
         })
         .context("Failed to run UI")
+}
+
+fn main() -> anyhow::Result<()> {
+    #[cfg(feature = "trace")]
+    tracing::init_tracing()?;
+
+    start()
 }
 
 fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {

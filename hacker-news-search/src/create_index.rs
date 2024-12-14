@@ -18,6 +18,7 @@ use tokio::{
     sync::mpsc::{self, UnboundedSender},
     time::timeout,
 };
+use tracing::instrument;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct IndexStats {
@@ -183,6 +184,7 @@ fn comments_iter(
         })
 }
 
+#[instrument(skip_all)]
 async fn send_comments(
     client: &ApiClient,
     story_id: u64,
@@ -205,6 +207,7 @@ async fn send_comments(
     Ok(())
 }
 
+#[instrument(skip_all)]
 async fn collect_story(
     client: Arc<ApiClient>,
     tx: UnboundedSender<ItemRef>,
@@ -223,6 +226,7 @@ async fn collect_story(
     Ok(())
 }
 
+#[instrument(skip(tx))]
 async fn collect(
     tx: UnboundedSender<ItemRef>,
     category_type: ArticleType,
@@ -254,6 +258,7 @@ async fn collect(
     Ok(())
 }
 
+#[instrument(skip(ctx))]
 pub async fn rebuild_index(
     ctx: Arc<RwLock<SearchContext>>,
     category_type: ArticleType,

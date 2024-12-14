@@ -42,4 +42,16 @@ else
 	@echo "Unsupported platform for install: " $(PLATFORM)
 endif
 
-.PHONY: all clean-dist check build bundle-mac install-local-linux install
+
+# Marker for completed builds
+.stamp: $(wildcard *.yml) $(wildcard *.yaml)
+	docker compose build --pull
+	@touch $@
+
+otel: .stamp
+	docker compose up --detach --remove-orphans --wait
+
+otel-down:
+	docker compose down
+
+.PHONY: all clean-dist check build bundle-mac install-local-linux install otel otel-down

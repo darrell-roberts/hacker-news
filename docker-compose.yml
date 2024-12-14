@@ -1,0 +1,11 @@
+networks:
+  default:
+    internal: false
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP http receiver
