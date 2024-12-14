@@ -149,17 +149,13 @@ impl SearchContext {
         let mut parents = Vec::from_iter([comment]);
 
         while let Some(id) = parent_id.take() {
-            // info!("Getting comment: {id}");
             let next = self.comment(&searcher, id)?;
             parent_id = (next.parent_id != next.story_id).then_some(next.parent_id);
-            // info!("Next parent: {parent_id:?}");
             parents.push(next);
         }
 
-        let story = self.story(story_id)?;
-
         Ok(CommentStack {
-            story,
+            story: self.story(story_id)?,
             comments: parents,
         })
     }
@@ -177,8 +173,9 @@ impl SearchContext {
             .next()
             .ok_or_else(|| SearchError::MissingDoc)?;
 
-        let doc = searcher.doc::<TantivyDocument>(doc_address)?;
-        self.to_comment(doc)
+        searcher
+            .doc::<TantivyDocument>(doc_address)
+            .map(|doc| self.to_comment(doc))?
     }
 }
 

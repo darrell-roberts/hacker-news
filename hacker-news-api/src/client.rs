@@ -32,6 +32,7 @@ impl ApiClient {
             client: reqwest::Client::builder()
                 .connect_timeout(Duration::from_secs(5))
                 .gzip(true)
+                .hickory_dns(true)
                 // .http2_prior_knowledge()
                 // .pool_max_idle_per_host(1)
                 .build()

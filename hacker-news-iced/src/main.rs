@@ -159,7 +159,7 @@ fn start() -> anyhow::Result<()> {
 fn main() -> anyhow::Result<()> {
     #[cfg(feature = "trace")]
     tracing::init_tracing()?;
-
+    // console_subscriber::init();
     start()
 }
 
