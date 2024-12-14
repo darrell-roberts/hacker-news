@@ -14,6 +14,8 @@ trace = [
     "tracing-opentelemetry",
     "opentelemetry-semantic-conventions",
     "tracing-subscriber",
+    "hacker-news-search/trace",
+    "tracing"
 ]
 
 [dependencies]
@@ -36,8 +38,9 @@ chrono-tz.workspace = true
 serde.workspace = true
 tokio.workspace = true
 flexi_logger.workspace = true
-tracing = "0.1"
 
+
+tracing = {version = "0.1", optional = true}
 opentelemetry = { version = "0.26", features = ["trace"], optional = true }
 opentelemetry-otlp = { version = "0.26", features = ["grpc-tonic", "trace"], optional = true }
 opentelemetry_sdk = { version = "0.26", features = ["rt-tokio", "trace"], optional = true }

@@ -18,6 +18,7 @@ use tokio::{
     sync::mpsc::{self, UnboundedSender},
     time::timeout,
 };
+#[cfg(feature = "trace")]
 use tracing::instrument;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -184,7 +185,7 @@ fn comments_iter(
         })
 }
 
-#[instrument(skip_all)]
+#[cfg_attr(feature = "trace", instrument(skip_all))]
 async fn send_comments(
     client: &ApiClient,
     story_id: u64,
@@ -207,7 +208,7 @@ async fn send_comments(
     Ok(())
 }
 
-#[instrument(skip_all, fields(story_id = story.id))]
+#[cfg_attr(feature = "trace", instrument(skip_all, fields(story_id = story.id)))]
 async fn collect_story(
     client: Arc<ApiClient>,
     tx: UnboundedSender<ItemRef>,
@@ -226,7 +227,7 @@ async fn collect_story(
     Ok(())
 }
 
-#[instrument(skip(tx))]
+#[cfg_attr(feature = "trace", instrument(skip(tx)))]
 async fn collect(
     tx: UnboundedSender<ItemRef>,
     category_type: ArticleType,
@@ -258,7 +259,7 @@ async fn collect(
     Ok(())
 }
 
-#[instrument(skip(ctx))]
+#[cfg_attr(feature = "trace", instrument(skip(ctx)))]
 pub async fn rebuild_index(
     ctx: Arc<RwLock<SearchContext>>,
     category_type: ArticleType,

@@ -4,6 +4,9 @@ version = "0.1.0"
 license.workspace = true
 edition.workspace = true
 
+[features]
+trace = ["tracing"]
+
 [dependencies]
 tantivy = "0.22"
 async-stream = "0.3"
@@ -16,4 +19,5 @@ anyhow.workspace = true
 tokio.workspace = true
 serde.workspace = true
 log.workspace = true
-tracing = "0.1"
+
+tracing = { version = "0.1", optional = true }

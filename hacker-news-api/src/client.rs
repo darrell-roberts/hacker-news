@@ -15,6 +15,7 @@ use tokio::{
     sync::mpsc::{self, Receiver, Sender},
     task::JoinHandle,
 };
+#[cfg(feature = "trace")]
 use tracing::instrument;
 
 /// Hacker News Api client.
@@ -104,7 +105,7 @@ impl ApiClient {
         Ok(result)
     }
 
-    #[instrument(skip_all)]
+    #[cfg_attr(feature = "trace", instrument(skip_all))]
     pub fn items_stream(&self, ids: &[u64]) -> impl Stream<Item = Result<(u64, Item)>> {
         // The firebase api only provides the option to get each item one by
         // one.
