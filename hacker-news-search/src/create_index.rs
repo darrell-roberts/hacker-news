@@ -207,7 +207,7 @@ async fn send_comments(
     Ok(())
 }
 
-#[instrument(skip_all)]
+#[instrument(skip_all, fields(story_id = story.id))]
 async fn collect_story(
     client: Arc<ApiClient>,
     tx: UnboundedSender<ItemRef>,
