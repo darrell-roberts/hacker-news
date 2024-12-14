@@ -105,6 +105,8 @@ impl SearchContext {
         self.top_comments_with_count(limit, offset, query)
     }
 
+    /// Search query returning the total count and matching documents within
+    /// offset and limit.
     fn top_comments_with_count(
         &self,
         limit: usize,
@@ -139,6 +141,7 @@ impl SearchContext {
         Ok((comments, count))
     }
 
+    /// Build a comment stack by walking up the tree of nested comments.
     pub fn parents(&self, comment_id: u64) -> Result<CommentStack, SearchError> {
         let searcher = self.searcher();
 
@@ -160,6 +163,7 @@ impl SearchContext {
         })
     }
 
+    /// Get a single comment.
     fn comment(&self, searcher: &Searcher, comment_id: u64) -> Result<Comment, SearchError> {
         let top_docs = TopDocs::with_limit(1);
         let parent_query: Box<dyn Query> = Box::new(TermQuery::new(

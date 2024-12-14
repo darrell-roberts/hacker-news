@@ -101,6 +101,7 @@ impl SearchContext {
         Ok(stories)
     }
 
+    /// Lookup a single story.
     pub fn story(&self, story_id: u64) -> Result<Story, SearchError> {
         let searcher = self.searcher();
         let top_docs = TopDocs::with_limit(1);

@@ -100,6 +100,11 @@ impl FullSearchState {
         };
 
         let content = widget::Column::new()
+            .push(
+                widget::container(widget::text(format!("{}", self.full_count)))
+                    .align_right(Length::Fill)
+                    .padding(iced::padding::right(5)),
+            )
             .push_maybe((self.full_count > 0).then(pagination))
             .push(
                 widget::scrollable(
