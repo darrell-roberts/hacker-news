@@ -66,59 +66,7 @@ fn start() -> anyhow::Result<()> {
     )?));
 
     let app = config::load_config()
-        .map(|config| {
-            let index_stats = HashMap::from_iter(
-                config
-                    .index_stats
-                    .into_iter()
-                    .map(|index_stat| (index_stat.category.as_str(), index_stat)),
-            );
-
-            App {
-                search_context: search_context.clone(),
-                theme: theme(&config.theme).unwrap_or_default(),
-                scale: config.scale,
-                header: HeaderState {
-                    search_context: search_context.clone(),
-                    article_count: config.article_count,
-                    article_type: config.article_type,
-                    building_index: false,
-                    full_search: None,
-                },
-                footer: FooterState {
-                    status_line: String::new(),
-                    last_update: None,
-                    scale: config.scale,
-                    current_index_stats: config.current_index_stats,
-                    index_stats,
-                },
-                article_state: ArticleState {
-                    search_context: search_context.clone(),
-                    articles: Vec::new(),
-                    visited: config.visited,
-                    search: None,
-                    viewing_item: None,
-                    article_limit: config.article_count,
-                },
-                comment_state: None,
-                size: Size::new(config.window_size.0, config.window_size.1),
-                panes: pane_grid::State::with_configuration(pane_grid::Configuration::Split {
-                    axis: pane_grid::Axis::Vertical,
-                    ratio: 0.3,
-                    a: Box::new(Configuration::Pane(PaneState::Articles)),
-                    b: Box::new(Configuration::Pane(PaneState::Comments)),
-                }),
-                full_search_state: FullSearchState {
-                    search_context: search_context.clone(),
-                    search: None,
-                    search_results: Vec::new(),
-                    offset: 0,
-                    page: 1,
-                    full_count: 0,
-                },
-                focused_pane: None,
-            }
-        })
+        .map(|config| config.into_app(search_context.clone()))
         .unwrap_or_else(|err| {
             error!("Could not load config: {err}");
 
