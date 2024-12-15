@@ -4,11 +4,12 @@ use crate::{
     ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
 };
 use futures_core::Stream;
-use futures_util::{pin_mut, stream::FuturesUnordered, TryFutureExt, TryStreamExt};
+use futures_util::{pin_mut, stream::FuturesUnordered, StreamExt, TryFutureExt, TryStreamExt};
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::{
+    convert::identity,
     mem,
     sync::{Arc, RwLock},
     time::{Duration, Instant, SystemTime},
@@ -167,6 +168,7 @@ impl<'a> WriteContext<'a> {
         Ok(())
     }
 
+    /// Delete a story and all it's child comments.
     fn delete_story(&self, story: &Story) {
         self.writer
             .delete_term(Term::from_field_u64(self.fields.id, story.id));
@@ -174,15 +176,19 @@ impl<'a> WriteContext<'a> {
             .delete_term(Term::from_field_u64(self.fields.parent_story, story.id));
     }
 
+    /// Delete all documents from the active index.
     fn delete_all_docs(&mut self) -> Result<u64, SearchError> {
         Ok(self.writer.delete_all_documents()?)
     }
 
+    /// Commit changes to the index.
     fn commit(&mut self) -> Result<u64, SearchError> {
         Ok(self.writer.commit()?)
     }
 }
 
+/// Yield a stream of comments for the given comment_ids.
+#[cfg_attr(feature = "trace", instrument(skip_all))]
 fn comments_iter(
     client: &ApiClient,
     story_id: u64,
@@ -200,6 +206,8 @@ fn comments_iter(
         })
 }
 
+/// Recurse through all child comments and send each one to the index
+/// writer channel.
 #[cfg_attr(feature = "trace", instrument(skip_all))]
 async fn send_comments(
     client: &ApiClient,
@@ -217,6 +225,11 @@ async fn send_comments(
         while let Some(child) = stream.try_next().await? {
             comment_stack.push(child);
         }
+        if tx.is_closed() {
+            error!("index writer channel is closed");
+            break;
+        }
+
         if let Err(err) = tx.send(ItemRef::Comment(comment)) {
             error!("Failed to send comment {err}");
         }
@@ -225,6 +238,8 @@ async fn send_comments(
     Ok(())
 }
 
+/// Get the story and nested comments from the firebase REST api and send each
+/// document to the index writer channel.
 #[cfg_attr(feature = "trace", instrument(skip_all, fields(story_id = story.id)))]
 async fn collect_story(
     client: Arc<ApiClient>,
@@ -241,12 +256,19 @@ async fn collect_story(
     .await
     .map_err(|_| SearchError::TimedOut(format!("story_id {story_id}, sending comments")))??;
 
+    if tx.is_closed() {
+        error!("index writer channel is closed");
+        return Ok(());
+    }
+
     if let Err(err) = tx.send(ItemRef::Story(StoryRef { story, rank })) {
         error!("Failed to send story {err}");
     }
     Ok(())
 }
 
+/// Get all stories and nested comments for the given category and send
+/// each document to the index writer channel.
 #[cfg_attr(feature = "trace", instrument(skip(tx)))]
 async fn collect(
     tx: UnboundedSender<ItemRef>,
@@ -272,8 +294,11 @@ async fn collect(
         })
         .collect::<FuturesUnordered<_>>();
 
-    while let Some(handle) = handles.try_next().await? {
-        handle?;
+    while let Some(result) = handles.next().await {
+        let r = result.and_then(identity);
+        if let Err(err) = r {
+            error!("Failed to join story task: {err}");
+        }
     }
 
     Ok(())
