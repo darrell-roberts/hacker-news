@@ -213,7 +213,9 @@ async fn send_comments(
         while let Some(child) = stream.try_next().await? {
             comment_stack.push(child);
         }
-        tx.send(ItemRef::Comment(comment)).unwrap();
+        if let Err(err) = tx.send(ItemRef::Comment(comment)) {
+            error!("Failed to send comment {err}");
+        }
     }
 
     Ok(())
@@ -235,7 +237,9 @@ async fn collect_story(
     .await
     .map_err(|_| SearchError::TimedOut(format!("story_id {story_id}, sending comments")))??;
 
-    tx.send(ItemRef::Story(StoryRef { story, rank })).unwrap();
+    if let Err(err) = tx.send(ItemRef::Story(StoryRef { story, rank })) {
+        error!("Failed to send story {err}");
+    }
     Ok(())
 }
 

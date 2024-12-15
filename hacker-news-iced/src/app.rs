@@ -407,4 +407,5 @@ pub fn save_task(app: &App) -> Task<AppMsg> {
             Err(err) => FooterMsg::Error(err.to_string()),
         })
     })
+    .discard()
 }
