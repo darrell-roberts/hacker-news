@@ -216,6 +216,7 @@ async fn collect_story(
     rank: u64,
 ) -> Result<(), SearchError> {
     let story_id = story.id;
+    info!("Collecting comments for story_id {story_id}");
     timeout(
         Duration::from_secs(60),
         send_comments(&client, story.id, mem::take(&mut story.kids), tx.clone()),
@@ -285,6 +286,8 @@ pub async fn rebuild_index(
             ItemRef::Comment(c) => writer_context.write_comment(c)?,
         }
     }
+
+    info!("Finished indexing");
 
     result.await.unwrap()?;
     writer_context.writer.commit()?;

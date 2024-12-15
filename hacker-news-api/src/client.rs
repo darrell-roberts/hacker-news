@@ -47,8 +47,7 @@ impl ApiClient {
             .get(format!("{}/{api}", Self::API_END_POINT))
             .send()
             .and_then(|resp| resp.json::<Vec<u64>>())
-            .await
-            .context("Failed to deserialize response")?;
+            .await?;
 
         ids.truncate(limit);
         self.items(&ids).await
@@ -97,7 +96,7 @@ impl ApiClient {
         let mut result = Vec::with_capacity(handles.len());
 
         while let Some(handle) = handles.try_next().await? {
-            let item = handle.context("Failed to fetch item")?;
+            let item = handle?;
             if !(item.dead || item.deleted) {
                 result.push(item);
             }
@@ -128,11 +127,22 @@ impl ApiClient {
 
         try_stream! {
             while let Some(result) = handles.try_next().await? {
-                let item = result?;
-
-                if !(item.1.dead || item.1.deleted) {
-                    yield item
+                match result {
+                    Ok(item) => {
+                        if !(item.1.dead || item.1.deleted) {
+                           yield item
+                        }
+                    },
+                    Err(err) => {
+                        error!("Failed to get comment: {err}, {:?}", err.status());
+                    },
                 }
+
+                // let item = result?;
+
+                // if !(item.1.dead || item.1.deleted) {
+                //     yield item
+                // }
             }
         }
     }
