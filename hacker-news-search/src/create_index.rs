@@ -302,7 +302,7 @@ pub async fn rebuild_index(
 
     info!("Finished indexing");
 
-    result.await.unwrap()?;
+    result.await??;
     writer_context.commit()?;
 
     let g = ctx.read().unwrap();
@@ -368,7 +368,7 @@ async fn rebuild_story(
             ItemRef::Comment(c) => writer_context.write_comment(c)?,
         }
     }
-    result.await.unwrap()?;
+    result.await??;
     writer_context.commit()?;
     Ok(())
 }

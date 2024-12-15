@@ -52,6 +52,8 @@ pub enum SearchError {
     TimedOut(String),
     #[error("Document does not exist")]
     MissingDoc,
+    #[error("Failed to join async task: {0}")]
+    Join(#[from] tokio::task::JoinError),
 }
 
 pub struct SearchContext {

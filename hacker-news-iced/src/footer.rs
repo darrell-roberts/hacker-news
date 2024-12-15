@@ -8,7 +8,7 @@ use hacker_news_search::IndexStats;
 use iced::{
     alignment::Vertical,
     font::{Style, Weight},
-    widget::{container, pick_list, text, Row},
+    widget::{container, pick_list, text, Column, Row},
     Background, Element, Font, Length, Task, Theme,
 };
 use log::error;
@@ -45,12 +45,15 @@ impl FooterState {
             ..Default::default()
         };
 
-        let row = Row::new()
+        let column = Column::new()
             .push(
-                text(&self.status_line)
-                    .font(light_font())
-                    .width(Length::Fill.enclose(Length::Fill))
-                    .align_y(Vertical::Bottom),
+                container(
+                    text(&self.status_line)
+                        .font(light_font())
+                        .width(Length::Fill)
+                        .align_y(Vertical::Bottom),
+                )
+                .padding(iced::padding::top(5)),
             )
             .push(container(
                 Row::new()
@@ -98,13 +101,9 @@ impl FooterState {
                     )
                     .align_y(Vertical::Center)
                     .spacing(5),
-            ))
-            .align_y(Vertical::Center)
-            .spacing(5)
-            .wrap();
-        // .clip(true);
+            ));
 
-        container(row)
+        container(column)
             .align_y(Vertical::Bottom)
             .style(|theme: &Theme| {
                 let palette = theme.extended_palette();
