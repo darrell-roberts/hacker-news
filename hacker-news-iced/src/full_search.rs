@@ -171,7 +171,7 @@ impl FullSearchState {
                     .spacing(15)
                     .width(Length::Fill),
             )
-            .style(widget::button::text)
+            .style(|theme, _status| widget::button::text(theme, widget::button::Status::Active))
             .on_press(AppMsg::FullSearch(FullSearchMsg::ShowThread(comment.id))),
         )
     }
