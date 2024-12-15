@@ -176,9 +176,10 @@ impl HeaderState {
                             .style(|_| {
                                 widget::container::Style::default()
                                     .background(Background::Color(iced::Color::BLACK))
+                                    .border(iced::border::rounded(8))
                             })
-                            .padding([2, 2]),
-                            widget::tooltip::Position::Left,
+                            .padding(4),
+                            widget::tooltip::Position::Bottom,
                         ))
                         .spacing(5),
                 )

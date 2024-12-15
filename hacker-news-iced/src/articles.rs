@@ -147,7 +147,7 @@ impl ArticleState {
                             Row::new()
                                 .push(
                                     widget::container(title_wrapper)
-                                        .width(Length::FillPortion(3).enclose(Length::Fill)),
+                                        .width(Length::FillPortion(4).enclose(Length::Fill)),
                                 )
                                 .push(
                                     widget::container(
@@ -174,7 +174,7 @@ impl ArticleState {
                                                     )
                                                 },
                                             ))
-                                            .push(
+                                            .push(widget::tooltip(
                                                 widget::button(
                                                     widget::text("↻")
                                                         .shaping(text::Shaping::Advanced),
@@ -184,7 +184,20 @@ impl ArticleState {
                                                 .on_press(AppMsg::Articles(
                                                     ArticleMsg::UpdateStory(story.clone()),
                                                 )),
-                                            )
+                                                widget::container(
+                                                    widget::text("Re-Index")
+                                                        .color(iced::Color::WHITE),
+                                                )
+                                                .style(|_| {
+                                                    widget::container::Style::default()
+                                                        .background(Background::Color(
+                                                            iced::Color::BLACK,
+                                                        ))
+                                                        .border(iced::border::rounded(8))
+                                                })
+                                                .padding(4),
+                                                widget::tooltip::Position::FollowCursor,
+                                            ))
                                             .spacing(5),
                                     )
                                     .align_right(Length::Fill)

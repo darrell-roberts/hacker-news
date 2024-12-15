@@ -174,6 +174,10 @@ impl<'a> WriteContext<'a> {
             .delete_term(Term::from_field_u64(self.fields.parent_story, story.id));
     }
 
+    fn delete_all_docs(&mut self) -> Result<u64, SearchError> {
+        Ok(self.writer.delete_all_documents()?)
+    }
+
     fn commit(&mut self) -> Result<u64, SearchError> {
         Ok(self.writer.commit()?)
     }
@@ -283,14 +287,8 @@ pub async fn rebuild_index(
     let start_time = Instant::now();
     info!("Creating index for {category_type}");
 
-    let mut writer_context = {
-        let g = ctx.read().unwrap();
-        let index = g.indices.get(category_type.as_str()).unwrap();
-        let writer: IndexWriter = index.writer(50_000_000)?;
-        writer.delete_all_documents()?;
-        let fields = Fields::new(&g)?;
-        WriteContext::new(fields, writer, category_type.as_str())?
-    };
+    let mut writer_context = writer_context(ctx.clone(), category_type)?;
+    writer_context.delete_all_docs()?;
 
     let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
     let result = tokio::spawn(collect(tx, category_type));
@@ -314,6 +312,16 @@ pub async fn rebuild_index(
     document_stats(&g, start_time.elapsed(), category_type)
 }
 
+fn writer_context(
+    ctx: Arc<RwLock<SearchContext>>,
+    category_type: ArticleType,
+) -> Result<WriteContext<'static>, SearchError> {
+    let g = ctx.read().unwrap();
+    let index = g.indices.get(category_type.as_str()).unwrap();
+    let fields = Fields::new(&g)?;
+    WriteContext::new(fields, index.writer(50_000_000)?, category_type.as_str())
+}
+
 pub async fn update_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
@@ -329,13 +337,7 @@ pub async fn update_story(
             latest.descendants.unwrap_or_default()
         );
 
-        let writer_context = {
-            let g = ctx.read().unwrap();
-            let index = g.indices.get(category_type.as_str()).unwrap();
-            let writer: IndexWriter = index.writer(50_000_000)?;
-            let fields = Fields::new(&g)?;
-            WriteContext::new(fields, writer, category_type.as_str())?
-        };
+        let writer_context = writer_context(ctx.clone(), category_type)?;
 
         rebuild_story(api, writer_context, story, latest).await?;
 
