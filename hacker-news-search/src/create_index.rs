@@ -319,30 +319,55 @@ pub async fn update_story(
     story: Story,
     category_type: ArticleType,
 ) -> Result<(), SearchError> {
-    let api = ApiClient::new()?;
+    let api = Arc::new(ApiClient::new()?);
     let latest = api.item(story.id).await?;
+    let story_id = story.id;
 
     if latest.descendants.unwrap_or_default() != story.descendants {
         info!(
-            "New comments {}.. re-indexing story {}",
-            story.id,
+            "New comments {}.. re-indexing story {story_id}",
             latest.descendants.unwrap_or_default()
         );
+
+        let writer_context = {
+            let g = ctx.read().unwrap();
+            let index = g.indices.get(category_type.as_str()).unwrap();
+            let writer: IndexWriter = index.writer(50_000_000)?;
+            let fields = Fields::new(&g)?;
+            WriteContext::new(fields, writer, category_type.as_str())?
+        };
+
+        rebuild_story(api, writer_context, story, latest).await?;
+
         let g = ctx.read().unwrap();
-        let index = g.indices.get(category_type.as_str()).unwrap();
-        let fields = Fields::new(&g)?;
-
-        let writer: IndexWriter = index.writer(50_000_000)?;
-        let mut write_context = WriteContext::new(fields, writer, category_type.as_str())?;
-
-        write_context.delete_story(&story);
-        write_context.write_story(StoryRef {
-            rank: story.rank,
-            story: latest,
-        })?;
-        write_context.commit()?;
+        if g.active_index == category_type {
+            g.reader.reload()?;
+        }
+        info!("Rebuilt story {story_id}");
     }
 
+    Ok(())
+}
+
+async fn rebuild_story(
+    client: Arc<ApiClient>,
+    mut writer_context: WriteContext<'_>,
+    story: Story,
+    latest: Item,
+) -> Result<(), SearchError> {
+    writer_context.delete_story(&story);
+    let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
+
+    let result = tokio::spawn(collect_story(client, tx, latest, story.rank));
+
+    while let Some(item) = rx.recv().await {
+        match item {
+            ItemRef::Story(s) => writer_context.write_story(s)?,
+            ItemRef::Comment(c) => writer_context.write_comment(c)?,
+        }
+    }
+    result.await.unwrap()?;
+    writer_context.commit()?;
     Ok(())
 }
 

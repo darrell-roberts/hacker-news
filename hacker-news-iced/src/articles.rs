@@ -299,7 +299,6 @@ impl ArticleState {
                     Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
                 }
             }
-
             ArticleMsg::ViewingItem(story_id) => {
                 self.visited.insert(story_id);
                 self.viewing_item = Some(story_id);
