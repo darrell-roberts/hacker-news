@@ -33,6 +33,7 @@ impl ApiClient {
                 .connect_timeout(Duration::from_secs(5))
                 .gzip(true)
                 .hickory_dns(true)
+                .pool_max_idle_per_host(100)
                 // .http2_prior_knowledge()
                 // .pool_max_idle_per_host(1)
                 .build()
