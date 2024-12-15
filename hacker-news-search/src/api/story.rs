@@ -1,8 +1,6 @@
 //! Search API for top stories.
-use std::env::consts::OS;
-
 use super::Story;
-use crate::{SearchContext, SearchError, ITEM_ID, ITEM_RANK, ITEM_TITLE, ITEM_TYPE};
+use crate::{SearchContext, SearchError, ITEM_ID, ITEM_RANK, ITEM_TITLE};
 use anyhow::Context;
 use tantivy::{
     collector::TopDocs,
