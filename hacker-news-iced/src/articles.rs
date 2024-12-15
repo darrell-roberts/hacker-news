@@ -48,13 +48,6 @@ impl ArticleState {
             Column::with_children(
                 self.articles
                     .iter()
-                    .filter(|article| match self.search.as_deref() {
-                        Some(search) => article
-                            .title
-                            .to_lowercase()
-                            .contains(&search.to_lowercase()),
-                        None => true,
-                    })
                     .map(|article| self.render_article(theme, article))
                     .map(Element::from),
             )

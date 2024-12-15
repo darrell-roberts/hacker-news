@@ -4,7 +4,7 @@ use crate::{SearchContext, SearchError, ITEM_ID, ITEM_RANK, ITEM_TITLE};
 use anyhow::Context;
 use tantivy::{
     collector::TopDocs,
-    query::{BooleanQuery, FuzzyTermQuery, Occur, Query, TermQuery},
+    query::{FuzzyTermQuery, Query, TermQuery},
     schema::IndexRecordOption,
     Order, TantivyDocument, Term,
 };
@@ -37,21 +37,16 @@ impl SearchContext {
 
     /// Search all stories with term and offset pagination.
     pub fn search_stories(&self, search: &str, offset: usize) -> Result<Vec<Story>, SearchError> {
-        // let type_story_query: Box<dyn Query> = Box::new(TermQuery::new(
-        //     Term::from_field_text(self.schema.get_field(ITEM_TYPE)?, "story"),
-        //     IndexRecordOption::Basic,
-        // ));
-
-        // let type_job_query: Box<dyn Query> = Box::new(TermQuery::new(
-        //     Term::from_field_text(self.schema.get_field(ITEM_TYPE)?, "job"),
-        //     IndexRecordOption::Basic,
-        // ));
-
         let fuzzy_query: Box<dyn Query> = Box::new(FuzzyTermQuery::new(
             Term::from_field_text(self.schema.get_field(ITEM_TITLE)?, search),
             1,
             true,
         ));
+
+        // let term_query: Box<dyn Query> = Box::new(TermQuery::new(
+        //     Term::from_field_text(self.schema.get_field(ITEM_TITLE)?, search),
+        //     IndexRecordOption::Basic,
+        // ));
 
         let story_id_query = search
             .parse::<u64>()
@@ -70,23 +65,7 @@ impl SearchContext {
             })
             .ok();
 
-        let options = [
-            Some((Occur::Should, fuzzy_query)),
-            // Some((Occur::Should, type_story_query)),
-            // Some((Occur::Should, type_job_query)),
-            story_id_query.map(|query| (Occur::Should, query)),
-        ]
-        .into_iter()
-        .flatten()
-        .collect::<Vec<_>>();
-
-        dbg!(&options);
-
-        // let query = BooleanQuery::new(vec![
-        //     (Occur::Must, Box::new(BooleanQuery::new(options))),
-        //     (Occur::Must, fuzzy_query),
-        // ]);
-        let query = BooleanQuery::new(options);
+        let query: Box<dyn Query> = story_id_query.unwrap_or(fuzzy_query);
 
         let searcher = self.searcher();
         let top_docs = TopDocs::with_limit(75).and_offset(offset);
@@ -100,6 +79,7 @@ impl SearchContext {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
+        dbg!(&stories);
         Ok(stories)
     }
 
