@@ -1,4 +1,6 @@
 //! Search API for top stories.
+use std::env::consts::OS;
+
 use super::Story;
 use crate::{SearchContext, SearchError, ITEM_ID, ITEM_RANK, ITEM_TITLE, ITEM_TYPE};
 use anyhow::Context;
@@ -42,10 +44,10 @@ impl SearchContext {
         //     IndexRecordOption::Basic,
         // ));
 
-        let type_job_query: Box<dyn Query> = Box::new(TermQuery::new(
-            Term::from_field_text(self.schema.get_field(ITEM_TYPE)?, "job"),
-            IndexRecordOption::Basic,
-        ));
+        // let type_job_query: Box<dyn Query> = Box::new(TermQuery::new(
+        //     Term::from_field_text(self.schema.get_field(ITEM_TYPE)?, "job"),
+        //     IndexRecordOption::Basic,
+        // ));
 
         let fuzzy_query: Box<dyn Query> = Box::new(FuzzyTermQuery::new(
             Term::from_field_text(self.schema.get_field(ITEM_TITLE)?, search),
@@ -73,12 +75,14 @@ impl SearchContext {
         let options = [
             Some((Occur::Should, fuzzy_query)),
             // Some((Occur::Should, type_story_query)),
-            Some((Occur::Should, type_job_query)),
+            // Some((Occur::Should, type_job_query)),
             story_id_query.map(|query| (Occur::Should, query)),
         ]
         .into_iter()
         .flatten()
         .collect::<Vec<_>>();
+
+        dbg!(&options);
 
         // let query = BooleanQuery::new(vec![
         //     (Occur::Must, Box::new(BooleanQuery::new(options))),

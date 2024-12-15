@@ -1,4 +1,6 @@
-use crate::{app::AppMsg, footer::FooterMsg, parse_date, richtext::render_rich_text};
+use crate::{
+    app::AppMsg, articles::ArticleMsg, footer::FooterMsg, parse_date, richtext::render_rich_text,
+};
 use hacker_news_search::{
     api::{Comment, CommentStack},
     SearchContext,
@@ -226,14 +228,21 @@ impl FullSearchState {
             FullSearchMsg::ShowThread(comment_id) => {
                 let g = self.search_context.read().unwrap();
                 match g.parents(comment_id) {
-                    Ok(CommentStack { comments, story }) => Task::done(AppMsg::OpenComment {
-                        parent_id: story.id,
-                        article: story,
-                        comment_stack: comments,
-                    }),
+                    Ok(CommentStack { comments, story }) => {
+                        let story_id = story.id;
+                        Task::batch([
+                            Task::done(AppMsg::OpenComment {
+                                parent_id: story_id,
+                                article: story,
+                                comment_stack: comments,
+                            }),
+                            Task::done(AppMsg::Articles(ArticleMsg::Search(
+                                format!("{story_id}",),
+                            ))),
+                        ])
+                    }
                     Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
                 }
-                // Task::done(ArticleMsg::ViewingItem(story_id)).map(AppMsg::Articles)
             }
             FullSearchMsg::JumpPage(page) => {
                 self.page = page;
