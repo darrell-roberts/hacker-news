@@ -6,10 +6,9 @@ use crate::{
 use futures_core::Stream;
 use futures_util::{pin_mut, stream::FuturesUnordered, StreamExt, TryFutureExt, TryStreamExt};
 use hacker_news_api::{ApiClient, ArticleType, Item};
-use log::{error, info};
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use std::{
-    convert::identity,
     mem,
     sync::{Arc, RwLock},
     time::{Duration, Instant, SystemTime},
@@ -248,7 +247,7 @@ async fn collect_story(
     rank: u64,
 ) -> Result<(), SearchError> {
     let story_id = story.id;
-    info!("Collecting comments for story_id {story_id}");
+    debug!("Collecting comments for story_id {story_id}");
     timeout(
         Duration::from_secs(60),
         send_comments(&client, story.id, mem::take(&mut story.kids), tx.clone()),
