@@ -288,14 +288,14 @@ async fn collect(
             let story_id = story.id;
             timeout(
                 Duration::from_secs(60 * 3),
-                collect_story(client, tx, story, rank),
+                tokio::spawn(collect_story(client, tx, story, rank)),
             )
             .map_err(move |_| SearchError::TimedOut(format!("collecting story: {story_id}")))
         })
         .collect::<FuturesUnordered<_>>();
 
     while let Some(result) = handles.next().await {
-        let r = result.and_then(identity);
+        let r = result.and_then(|r| r?);
         if let Err(err) = r {
             error!("Failed to join story task: {err}");
         }
