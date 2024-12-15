@@ -2,7 +2,7 @@ use crate::{
     app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg, parse_date,
     richtext::SearchSpanIter, widget::hoverable,
 };
-use hacker_news_search::{api::Story, SearchContext};
+use hacker_news_search::{api::Story, update_story, SearchContext};
 use iced::{
     advanced::image::{Bytes, Handle},
     alignment::{Horizontal, Vertical},
@@ -37,6 +37,7 @@ pub enum ArticleMsg {
     Receive(Vec<Story>),
     Search(String),
     ViewingItem(u64),
+    UpdateStory(Story),
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -144,7 +145,10 @@ impl ArticleState {
                     Column::new()
                         .push(
                             Row::new()
-                                .push(title_wrapper)
+                                .push(
+                                    widget::container(title_wrapper)
+                                        .width(Length::FillPortion(3).enclose(Length::Fill)),
+                                )
                                 .push(
                                     widget::container(
                                         Row::new()
@@ -158,7 +162,7 @@ impl ArticleState {
                                                         widget::image(Handle::from_bytes(
                                                             RUST_LOGO.clone(),
                                                         ))
-                                                        .content_fit(iced::ContentFit::None),
+                                                        .content_fit(iced::ContentFit::Contain),
                                                     )
                                                 })
                                             })
@@ -170,9 +174,21 @@ impl ArticleState {
                                                     )
                                                 },
                                             ))
+                                            .push(
+                                                widget::button(
+                                                    widget::text("↻")
+                                                        .shaping(text::Shaping::Advanced),
+                                                )
+                                                .style(widget::button::text)
+                                                .padding(padding::right(5))
+                                                .on_press(AppMsg::Articles(
+                                                    ArticleMsg::UpdateStory(story.clone()),
+                                                )),
+                                            )
                                             .spacing(5),
                                     )
-                                    .align_x(Horizontal::Right)
+                                    .align_right(Length::Fill)
+                                    // .align_x(Horizontal::Right)
                                     .width(Length::Fill),
                                 )
                                 .spacing(5),
@@ -288,6 +304,17 @@ impl ArticleState {
                 self.visited.insert(story_id);
                 self.viewing_item = Some(story_id);
                 Task::done(AppMsg::SaveConfig)
+            }
+            ArticleMsg::UpdateStory(story) => {
+                let category_type = self.search_context.read().unwrap().active_category();
+                let limit = self.article_limit;
+                Task::perform(
+                    update_story(self.search_context.clone(), story, category_type),
+                    move |result| match result {
+                        Ok(_) => AppMsg::Articles(ArticleMsg::TopStories(limit)),
+                        Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
+                    },
+                )
             }
         }
     }

@@ -11,6 +11,7 @@ use iced::{
     widget::{container, pick_list, text, Row},
     Background, Element, Font, Length, Task, Theme,
 };
+use log::error;
 
 pub struct FooterState {
     pub status_line: String,
@@ -114,6 +115,7 @@ impl FooterState {
     pub fn update(&mut self, message: FooterMsg) -> Task<AppMsg> {
         match message {
             FooterMsg::Error(s) => {
+                error!("{s}");
                 self.status_line = s;
             }
             FooterMsg::LastUpdate(dt) => {

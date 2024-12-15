@@ -103,6 +103,10 @@ impl SearchContext {
 
     /// Lookup a single story.
     pub fn story(&self, story_id: u64) -> Result<Story, SearchError> {
+        self.to_story(self.story_doc(story_id)?)
+    }
+
+    pub fn story_doc(&self, story_id: u64) -> Result<TantivyDocument, SearchError> {
         let searcher = self.searcher();
         let top_docs = TopDocs::with_limit(1);
         let story_query: Box<dyn Query> = Box::new(TermQuery::new(
@@ -116,7 +120,6 @@ impl SearchContext {
             .next()
             .ok_or_else(|| SearchError::MissingDoc)?;
 
-        let doc = searcher.doc::<TantivyDocument>(doc_address)?;
-        self.to_story(doc)
+        Ok(searcher.doc::<TantivyDocument>(doc_address)?)
     }
 }

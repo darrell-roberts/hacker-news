@@ -124,6 +124,10 @@ impl SearchContext {
             vec![title, body],
         ))
     }
+
+    pub fn active_category(&self) -> ArticleType {
+        self.active_index
+    }
 }
 
 fn document_schema() -> Schema {
@@ -136,7 +140,7 @@ fn document_schema() -> Schema {
         .set_indexing_options(text_field_indexing)
         .set_stored();
 
-    schema_builder.add_u64_field(ITEM_RANK, FAST);
+    schema_builder.add_u64_field(ITEM_RANK, STORED | INDEXED | FAST);
     schema_builder.add_u64_field(ITEM_ID, STORED | INDEXED | FAST);
     schema_builder.add_u64_field(ITEM_PARENT_ID, STORED | INDEXED | FAST);
     schema_builder.add_text_field(ITEM_TITLE, text_field_options.clone());

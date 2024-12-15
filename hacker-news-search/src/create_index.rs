@@ -1,7 +1,7 @@
 use crate::{
-    SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_CATEGORY, ITEM_DESCENDANT_COUNT, ITEM_ID,
-    ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE,
-    ITEM_TYPE, ITEM_URL,
+    api::Story, SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_CATEGORY,
+    ITEM_DESCENDANT_COUNT, ITEM_ID, ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE,
+    ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
 };
 use futures_core::Stream;
 use futures_util::{pin_mut, stream::FuturesUnordered, TryFutureExt, TryStreamExt};
@@ -166,6 +166,17 @@ impl<'a> WriteContext<'a> {
         self.writer.add_document(doc)?;
         Ok(())
     }
+
+    fn delete_story(&self, story: &Story) {
+        self.writer
+            .delete_term(Term::from_field_u64(self.fields.id, story.id));
+        self.writer
+            .delete_term(Term::from_field_u64(self.fields.parent_story, story.id));
+    }
+
+    fn commit(&mut self) -> Result<u64, SearchError> {
+        Ok(self.writer.commit()?)
+    }
 }
 
 fn comments_iter(
@@ -290,13 +301,45 @@ pub async fn rebuild_index(
     info!("Finished indexing");
 
     result.await.unwrap()?;
-    writer_context.writer.commit()?;
+    writer_context.commit()?;
 
     let g = ctx.read().unwrap();
     if g.active_index == category_type {
         g.reader.reload()?;
     }
     document_stats(&g, start_time.elapsed(), category_type)
+}
+
+pub async fn update_story(
+    ctx: Arc<RwLock<SearchContext>>,
+    story: Story,
+    category_type: ArticleType,
+) -> Result<(), SearchError> {
+    let api = ApiClient::new()?;
+    let latest = api.item(story.id).await?;
+
+    if latest.descendants.unwrap_or_default() != story.descendants {
+        info!(
+            "New comments {}.. re-indexing story {}",
+            story.id,
+            latest.descendants.unwrap_or_default()
+        );
+        let g = ctx.read().unwrap();
+        let index = g.indices.get(category_type.as_str()).unwrap();
+        let fields = Fields::new(&g)?;
+
+        let writer: IndexWriter = index.writer(50_000_000)?;
+        let mut write_context = WriteContext::new(fields, writer, category_type.as_str())?;
+
+        write_context.delete_story(&story);
+        write_context.write_story(StoryRef {
+            rank: story.rank,
+            story: latest,
+        })?;
+        write_context.commit()?;
+    }
+
+    Ok(())
 }
 
 // pub fn index_articles<'a>(

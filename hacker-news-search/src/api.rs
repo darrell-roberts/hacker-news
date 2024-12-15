@@ -1,6 +1,7 @@
 use crate::{
     SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_DESCENDANT_COUNT, ITEM_ID, ITEM_KIDS,
-    ITEM_PARENT_ID, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
+    ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE,
+    ITEM_URL,
 };
 use std::collections::HashMap;
 use tantivy::{schema::OwnedValue, Document, TantivyDocument};
@@ -31,6 +32,8 @@ pub struct Story {
     pub time: u64,
     /// Score
     pub score: u64,
+    /// Rank
+    pub rank: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +53,8 @@ pub struct Comment {
     pub story_id: u64,
     /// Parent comment or story
     pub parent_id: u64,
+    /// Rank
+    pub rank: u64,
 }
 
 impl SearchContext {
@@ -84,6 +89,10 @@ impl SearchContext {
                 .and_then(u64_value)
                 .ok_or_else(|| missing_field(ITEM_TIME))?,
             score: fields.remove(ITEM_SCORE).and_then(u64_value).unwrap_or(1),
+            rank: fields
+                .remove(ITEM_RANK)
+                .and_then(u64_value)
+                .ok_or_else(|| missing_field(ITEM_RANK))?,
         })
     }
 
@@ -116,6 +125,10 @@ impl SearchContext {
                 .remove(ITEM_PARENT_ID)
                 .and_then(u64_value)
                 .ok_or_else(|| missing_field(ITEM_PARENT_ID))?,
+            rank: fields
+                .remove(ITEM_RANK)
+                .and_then(u64_value)
+                .ok_or_else(|| missing_field(ITEM_RANK))?,
         })
     }
 
