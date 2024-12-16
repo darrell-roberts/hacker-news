@@ -49,7 +49,7 @@ enum ItemRef {
     Comment(CommentRef),
 }
 
-struct Fields {
+pub struct Fields {
     id: Field,
     parent: Field,
     title: Field,
@@ -67,7 +67,7 @@ struct Fields {
 }
 
 impl Fields {
-    fn new(ctx: &SearchContext) -> Result<Self, SearchError> {
+    pub fn new(ctx: &SearchContext) -> Result<Self, SearchError> {
         Ok(Self {
             id: ctx.schema.get_field(ITEM_ID)?,
             parent: ctx.schema.get_field(ITEM_PARENT_ID)?,
@@ -87,7 +87,7 @@ impl Fields {
     }
 }
 
-struct WriteContext<'a> {
+pub struct WriteContext<'a> {
     writer: IndexWriter,
     story_category: &'a str,
 
@@ -95,7 +95,7 @@ struct WriteContext<'a> {
 }
 
 impl<'a> WriteContext<'a> {
-    fn new(
+    pub fn new(
         fields: Fields,
         writer: IndexWriter,
         story_category: &'a str,
@@ -311,7 +311,7 @@ pub async fn rebuild_index(
     let start_time = Instant::now();
     info!("Creating index for {category_type}");
 
-    let mut writer_context = writer_context(ctx.clone(), category_type)?;
+    let mut writer_context = ctx.read().unwrap().writer_context()?;
     writer_context.delete_all_docs()?;
 
     let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
@@ -336,16 +336,6 @@ pub async fn rebuild_index(
     document_stats(&g, start_time.elapsed(), category_type)
 }
 
-fn writer_context(
-    ctx: Arc<RwLock<SearchContext>>,
-    category_type: ArticleType,
-) -> Result<WriteContext<'static>, SearchError> {
-    let g = ctx.read().unwrap();
-    let index = g.indices.get(category_type.as_str()).unwrap();
-    let fields = Fields::new(&g)?;
-    WriteContext::new(fields, index.writer(50_000_000)?, category_type.as_str())
-}
-
 pub async fn update_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
@@ -361,7 +351,7 @@ pub async fn update_story(
             latest.descendants.unwrap_or_default()
         );
 
-        let writer_context = writer_context(ctx.clone(), category_type)?;
+        let writer_context = ctx.read().unwrap().writer_context()?;
 
         rebuild_story(api, writer_context, story, latest).await?;
 

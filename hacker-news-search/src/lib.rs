@@ -130,6 +130,15 @@ impl SearchContext {
     pub fn active_category(&self) -> ArticleType {
         self.active_index
     }
+
+    pub fn writer_context(&self) -> Result<WriteContext<'static>, SearchError> {
+        let index = self.indices.get(self.active_index.as_str()).unwrap();
+        WriteContext::new(
+            Fields::new(self)?,
+            index.writer(50_000_000)?,
+            self.active_index.as_str(),
+        )
+    }
 }
 
 fn document_schema() -> Schema {
