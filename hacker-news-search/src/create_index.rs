@@ -206,7 +206,7 @@ async fn comments_iter(
                 rank,
             })
             .inspect_err(move |err| {
-                error!("Failed to fetch comments for story_id {story_id}: {err}");
+                error!("Failed to fetch comment for story_id {story_id}: {err}");
             }),
         ),
         Err(err) => {
