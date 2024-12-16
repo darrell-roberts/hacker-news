@@ -4,8 +4,8 @@ use crate::{
     ArticleType,
 };
 use anyhow::{Context, Result};
-use async_stream::try_stream;
 use futures::{
+    future,
     stream::{FuturesOrdered, FuturesUnordered},
     Stream, TryFutureExt, TryStreamExt,
 };
@@ -110,42 +110,21 @@ impl ApiClient {
     pub fn items_stream(&self, ids: &[u64]) -> impl Stream<Item = Result<(u64, Item)>> {
         // The firebase api only provides the option to get each item one by
         // one.
-        let mut handles = ids
-            .iter()
+        ids.iter()
             .copied()
             .zip(1_u64..)
             .map(|(id, rank)| {
                 let client = &self.client;
-                // tokio::spawn(
                 client
                     .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
                     .send()
                     .and_then(|resp| resp.json::<Item>())
                     .map_ok(move |item| (rank, item))
-                // )
+                    .map_err(anyhow::Error::new)
             })
-            .collect::<FuturesUnordered<_>>();
-
-        try_stream! {
-            while let Some(item) = handles.try_next().await? {
-                // match result {
-                //     Ok(item) => {
-                        if !(item.1.dead || item.1.deleted) {
-                           yield item
-                        }
-                //     },
-                //     Err(err) => {
-                //         error!("Failed to get comment: {err}, {:?}", err.status());
-                //     },
-                // }
-
-                // let item = result?;
-
-                // if !(item.1.dead || item.1.deleted) {
-                //     yield item
-                // }
-            }
-        }
+            .collect::<FuturesUnordered<_>>()
+            .into_stream()
+            .try_filter(|item| future::ready(!(item.1.dead || item.1.deleted)))
     }
 
     /// Get user by user handle.
