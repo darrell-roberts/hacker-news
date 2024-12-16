@@ -201,6 +201,7 @@ impl ArticleState {
                         )
                         .push(
                             Row::new()
+                                .push(widget::text(format!("{}", story.rank)))
                                 .push(
                                     widget::text(format!("🔼{}", story.score))
                                         .shaping(text::Shaping::Advanced),
