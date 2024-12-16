@@ -42,6 +42,7 @@ impl ApiClient {
     }
 
     /// Make firebase api call.
+    #[cfg_attr(feature = "trace", instrument(skip_all))]
     async fn call(&self, limit: usize, api: &str) -> Result<Vec<Item>> {
         let mut ids = self
             .client
@@ -54,6 +55,7 @@ impl ApiClient {
         self.items(&ids).await
     }
 
+    #[cfg_attr(feature = "trace", instrument(skip_all))]
     pub async fn articles(&self, limit: usize, article_type: ArticleType) -> Result<Vec<Item>> {
         match article_type {
             ArticleType::New => self.call(limit, "newstories.json").await,
@@ -66,6 +68,7 @@ impl ApiClient {
     }
 
     /// Get a single item via item id.
+    #[cfg_attr(feature = "trace", instrument(skip_all))]
     pub async fn item(&self, id: u64) -> Result<Item> {
         self.client
             .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
@@ -78,32 +81,23 @@ impl ApiClient {
     }
 
     /// Get multiple ids by item id.
+    #[cfg_attr(feature = "trace", instrument(skip_all))]
     pub async fn items(&self, ids: &[u64]) -> Result<Vec<Item>> {
         // The firebase api only provides the option to get each item one by
         // one.
-        let mut handles = ids
-            .iter()
+        ids.iter()
             .map(|id| {
                 let client = &self.client;
-                tokio::spawn(
-                    client
-                        .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
-                        .send()
-                        .and_then(|resp| resp.json::<Item>()),
-                )
+                client
+                    .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
+                    .send()
+                    .and_then(|resp| resp.json::<Item>())
             })
-            .collect::<FuturesOrdered<_>>();
-
-        let mut result = Vec::with_capacity(handles.len());
-
-        while let Some(handle) = handles.try_next().await? {
-            let item = handle?;
-            if !(item.dead || item.deleted) {
-                result.push(item);
-            }
-        }
-
-        Ok(result)
+            .collect::<FuturesOrdered<_>>()
+            .try_filter(|item| future::ready(!(item.dead || item.deleted)))
+            .try_collect::<Vec<_>>()
+            .await
+            .map_err(anyhow::Error::new)
     }
 
     /// Spawn a task that makes a call to each item endpoint and returns a stream
