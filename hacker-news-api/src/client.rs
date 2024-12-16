@@ -10,7 +10,7 @@ use futures::{
     Stream, TryFutureExt, TryStreamExt,
 };
 use log::{error, info};
-use std::time::Duration;
+use std::{future::Future, time::Duration};
 use tokio::{
     sync::mpsc::{self, Receiver, Sender},
     task::JoinHandle,
@@ -56,28 +56,29 @@ impl ApiClient {
     }
 
     #[cfg_attr(feature = "trace", instrument(skip_all))]
-    pub async fn articles(&self, limit: usize, article_type: ArticleType) -> Result<Vec<Item>> {
+    pub fn articles(
+        &self,
+        limit: usize,
+        article_type: ArticleType,
+    ) -> impl Future<Output = Result<Vec<Item>>> + use<'_> {
         match article_type {
-            ArticleType::New => self.call(limit, "newstories.json").await,
-            ArticleType::Best => self.call(limit, "beststories.json").await,
-            ArticleType::Top => self.call(limit, "topstories.json").await,
-            ArticleType::Ask => self.call(limit, "askstories.json").await,
-            ArticleType::Show => self.call(limit, "showstories.json").await,
-            ArticleType::Job => self.call(limit, "jobstories.json").await,
+            ArticleType::New => self.call(limit, "newstories.json"),
+            ArticleType::Best => self.call(limit, "beststories.json"),
+            ArticleType::Top => self.call(limit, "topstories.json"),
+            ArticleType::Ask => self.call(limit, "askstories.json"),
+            ArticleType::Show => self.call(limit, "showstories.json"),
+            ArticleType::Job => self.call(limit, "jobstories.json"),
         }
     }
 
     /// Get a single item via item id.
     #[cfg_attr(feature = "trace", instrument(skip_all))]
-    pub async fn item(&self, id: u64) -> Result<Item> {
+    pub fn item(&self, id: u64) -> impl Future<Output = Result<Item>> + use<'_> {
         self.client
             .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
             .send()
-            .await
-            .context("Failed to send request")?
-            .json::<Item>()
-            .await
-            .context("Failed to deserialize item")
+            .and_then(|result| result.json::<Item>())
+            .map_err(anyhow::Error::new)
     }
 
     /// Get multiple ids by item id.
@@ -129,13 +130,12 @@ impl ApiClient {
     }
 
     /// Get user by user handle.
-    pub async fn user(&self, handle: &str) -> Result<User> {
+    pub fn user(&self, handle: &str) -> impl Future<Output = Result<User>> + use<'_> {
         self.client
             .get(format!("{}/user/{handle}.json", Self::API_END_POINT))
             .send()
             .and_then(|resp| resp.json::<User>())
-            .await
-            .context("Failed to deserialize user")
+            .map_err(anyhow::Error::new)
     }
 
     /// Top stories event-source stream.
