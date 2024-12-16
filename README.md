@@ -42,4 +42,5 @@ make install
 
 This copies the binary and other assets into your `~/.local`.
 
-## Screenshots
+## Screenshot
+![Screenshot from 2024-12-16 15-47-32](https://github.com/user-attachments/assets/328cc63a-6a16-4ed1-8bfb-b8baf62206dd)
