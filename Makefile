@@ -45,6 +45,7 @@ endif
 # Starts the jaeger all-in-one docker container.
 trace:
 	docker compose up --detach --remove-orphans --wait
+	cargo run --bin hacker-news-iced --features trace
 
 # Stops the jaeger all-in-one docker container.
 trace-down:

@@ -23,7 +23,7 @@ use tokio::{
     time::timeout,
 };
 #[cfg(feature = "trace")]
-use tracing::instrument;
+use tracing::{instrument, Instrument as _};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct IndexStats {
@@ -299,6 +299,9 @@ async fn collect(
             let story_id = story.id;
             timeout(
                 Duration::from_secs(60 * 3),
+                #[cfg(feature = "trace")]
+                tokio::spawn(collect_story(client, tx, story, rank).in_current_span()),
+                #[cfg(not(feature = "trace"))]
                 tokio::spawn(collect_story(client, tx, story, rank)),
             )
             .map_err(move |_| SearchError::TimedOut(format!("collecting story: {story_id}")))
@@ -327,6 +330,9 @@ pub async fn rebuild_index(
     writer_context.delete_all_docs()?;
 
     let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
+    #[cfg(feature = "trace")]
+    let result = tokio::spawn(collect(tx, category_type).in_current_span());
+    #[cfg(not(feature = "trace"))]
     let result = tokio::spawn(collect(tx, category_type));
 
     while let Some(item) = rx.recv().await {
