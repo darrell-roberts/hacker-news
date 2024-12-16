@@ -10,8 +10,8 @@ use iced::{
     border,
     font::{Style, Weight},
     padding,
-    widget::{self, text::Shaping},
-    Font, Length, Task, Theme,
+    widget::{self, text::Shaping, tooltip::Position},
+    Color, Font, Length, Task, Theme,
 };
 use log::error;
 use std::sync::{Arc, RwLock};
@@ -122,57 +122,73 @@ impl FullSearchState {
 
     fn render_comment<'a>(&'a self, comment: &'a Comment) -> widget::Container<'a, AppMsg> {
         widget::container(
-            widget::button(
-                widget::Column::new()
-                    .push(widget::rich_text(render_rich_text(
+            widget::Column::new()
+                .push(
+                    widget::Row::new()
+                        .push(widget::container(
+                            widget::button(widget::text(format!("{}", comment.id)))
+                                .on_press(AppMsg::OpenLink {
+                                    url: format!(
+                                        "https://news.ycombinator.com/item?id={}",
+                                        comment.id
+                                    ),
+                                    item_id: comment.story_id,
+                                })
+                                .style(widget::button::text)
+                                .padding(0),
+                        ))
+                        .push(
+                            widget::container(widget::tooltip(
+                                widget::button(widget::text("🧵").shaping(Shaping::Advanced))
+                                    .style(widget::button::text)
+                                    .on_press(AppMsg::FullSearch(FullSearchMsg::ShowThread(
+                                        comment.id,
+                                    ))),
+                                widget::container(widget::text("Show thread"))
+                                    .padding(5)
+                                    .style(|_theme| {
+                                        widget::container::background(Color::BLACK)
+                                            .color(Color::WHITE)
+                                            .border(iced::border::rounded(8))
+                                    }),
+                                Position::Bottom,
+                            ))
+                            .align_right(Length::Fill),
+                        ),
+                )
+                .push(
+                    widget::container(widget::rich_text(render_rich_text(
                         &comment.body,
                         self.search.as_deref(),
                         false,
                     )))
-                    .push(
-                        widget::Row::new()
-                            .push(widget::rich_text([
-                                widget::span(format!(" by {}", comment.by))
-                                    .link(AppMsg::FullSearch(FullSearchMsg::Search(format!(
-                                        "by:{}",
-                                        comment.by
-                                    ))))
-                                    .font(Font {
-                                        style: Style::Italic,
-                                        ..Default::default()
-                                    })
-                                    .size(14),
-                                widget::span(" "),
-                                widget::span(parse_date(comment.time).unwrap_or_default())
-                                    .font(Font {
-                                        weight: Weight::Light,
-                                        style: Style::Italic,
-                                        ..Default::default()
-                                    })
-                                    .size(10),
-                            ]))
-                            .push(
-                                widget::container(
-                                    widget::button(widget::text(format!("{}", comment.id)))
-                                        .on_press(AppMsg::OpenLink {
-                                            url: format!(
-                                                "https://news.ycombinator.com/item?id={}",
-                                                comment.id
-                                            ),
-                                            item_id: comment.story_id,
-                                        })
-                                        .style(widget::button::text)
-                                        .padding(0),
-                                )
-                                .align_right(Length::Fill),
-                            ),
-                    )
-                    .padding([10, 10])
-                    .spacing(15)
-                    .width(Length::Fill),
-            )
-            .style(|theme, _status| widget::button::text(theme, widget::button::Status::Active))
-            .on_press(AppMsg::FullSearch(FullSearchMsg::ShowThread(comment.id))),
+                    .width(Length::FillPortion(6).enclose(Length::Fixed(50.))),
+                )
+                .push(
+                    widget::Row::new().push(widget::rich_text([
+                        widget::span(format!(" by {}", comment.by))
+                            .link(AppMsg::FullSearch(FullSearchMsg::Search(format!(
+                                "by:{}",
+                                comment.by
+                            ))))
+                            .font(Font {
+                                style: Style::Italic,
+                                ..Default::default()
+                            })
+                            .size(14),
+                        widget::span(" "),
+                        widget::span(parse_date(comment.time).unwrap_or_default())
+                            .font(Font {
+                                weight: Weight::Light,
+                                style: Style::Italic,
+                                ..Default::default()
+                            })
+                            .size(10),
+                    ])),
+                )
+                .padding([10, 10])
+                .spacing(15)
+                .width(Length::Fill),
         )
     }
 
