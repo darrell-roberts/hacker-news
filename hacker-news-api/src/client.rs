@@ -106,11 +106,14 @@ impl ApiClient {
         Ok(result)
     }
 
+    /// Spawn a task that makes a call to each item endpoint and returns a stream
+    /// of results.
     #[cfg_attr(feature = "trace", instrument(skip_all))]
-    pub fn items_stream(&self, ids: &[u64]) -> impl Stream<Item = Result<(u64, Item)>> {
+    pub fn items_stream(&self, ids: &[u64]) -> JoinHandle<impl Stream<Item = Result<(u64, Item)>>> {
         // The firebase api only provides the option to get each item one by
         // one.
-        ids.iter()
+        let futures = ids
+            .iter()
             .copied()
             .zip(1_u64..)
             .map(|(id, rank)| {
@@ -122,9 +125,13 @@ impl ApiClient {
                     .map_ok(move |item| (rank, item))
                     .map_err(anyhow::Error::new)
             })
-            .collect::<FuturesUnordered<_>>()
-            .into_stream()
-            .try_filter(|item| future::ready(!(item.1.dead || item.1.deleted)))
+            .collect::<FuturesUnordered<_>>();
+
+        tokio::spawn(async {
+            futures
+                .into_stream()
+                .try_filter(|item| future::ready(!(item.1.dead || item.1.deleted)))
+        })
     }
 
     /// Get user by user handle.

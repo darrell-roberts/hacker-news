@@ -4,7 +4,11 @@ use crate::{
     ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
 };
 use futures_core::Stream;
-use futures_util::{pin_mut, stream::FuturesUnordered, StreamExt, TryFutureExt, TryStreamExt};
+use futures_util::{
+    future, pin_mut,
+    stream::{self, FuturesUnordered},
+    StreamExt, TryFutureExt, TryStreamExt,
+};
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
@@ -188,21 +192,28 @@ impl<'a> WriteContext<'a> {
 
 /// Yield a stream of comments for the given comment_ids.
 #[cfg_attr(feature = "trace", instrument(skip_all))]
-fn comments_iter(
+async fn comments_iter(
     client: &ApiClient,
     story_id: u64,
     comment_ids: &[u64],
 ) -> impl Stream<Item = Result<CommentRef, anyhow::Error>> {
-    client
-        .items_stream(comment_ids)
-        .map_ok(move |(rank, item)| CommentRef {
-            story_id,
-            comment: item,
-            rank,
-        })
-        .inspect_err(move |err| {
-            error!("Failed to fetch comments for story_id {story_id}: {err}");
-        })
+    let batch = client.items_stream(comment_ids).await;
+    match batch {
+        Ok(s) => future::Either::Left(
+            s.map_ok(move |(rank, item)| CommentRef {
+                story_id,
+                comment: item,
+                rank,
+            })
+            .inspect_err(move |err| {
+                error!("Failed to fetch comments for story_id {story_id}: {err}");
+            }),
+        ),
+        Err(err) => {
+            error!("Failed to join comments batch task: {err}");
+            future::Either::Right(stream::empty())
+        }
+    }
 }
 
 /// Recurse through all child comments and send each one to the index
@@ -215,11 +226,12 @@ async fn send_comments(
     tx: UnboundedSender<ItemRef>,
 ) -> Result<(), SearchError> {
     let mut comment_stack = comments_iter(client, story_id, &comment_ids)
+        .await
         .try_collect::<Vec<_>>()
         .await?;
 
     while let Some(comment) = comment_stack.pop() {
-        let stream = comments_iter(client, story_id, &comment.comment.kids);
+        let stream = comments_iter(client, story_id, &comment.comment.kids).await;
         pin_mut!(stream);
         while let Some(child) = stream.try_next().await? {
             comment_stack.push(child);
