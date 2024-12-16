@@ -42,16 +42,12 @@ else
 	@echo "Unsupported platform for install: " $(PLATFORM)
 endif
 
-
-# Marker for completed builds
-.stamp: $(wildcard *.yml) $(wildcard *.yaml)
-	docker compose build --pull
-	@touch $@
-
-otel: .stamp
+# Starts the jaeger all-in-one docker container.
+trace:
 	docker compose up --detach --remove-orphans --wait
 
-otel-down:
+# Stops the jaeger all-in-one docker container.
+trace-down:
 	docker compose down
 
-.PHONY: all clean-dist check build bundle-mac install-local-linux install otel otel-down
+.PHONY: all clean-dist check build bundle-mac install-local-linux install trace trace-down
