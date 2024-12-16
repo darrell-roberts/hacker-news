@@ -5,13 +5,21 @@ edition = "2021"
 license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+trace = ["tracing"]
 
 [dependencies]
 anyhow.workspace = true
 log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+async-stream = "0.3"
+futures-core = "0.3"
+futures-util = "0.3"
+thiserror = "2"
 
-reqwest = { version = "0.12", features = ["json", "stream"] }
+tracing = { version = "0.1", optional = true }
+
+reqwest = { version = "0.12", features = ["json", "stream", "gzip", "hickory-dns"] }
 futures = "0.3"
 tokio = { version = "1", features = ["macros", "sync"] }

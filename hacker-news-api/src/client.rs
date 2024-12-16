@@ -4,13 +4,19 @@ use crate::{
     ArticleType,
 };
 use anyhow::{Context, Result};
-use futures::TryFutureExt;
+use futures::{
+    future,
+    stream::{FuturesOrdered, FuturesUnordered},
+    Stream, TryFutureExt, TryStreamExt,
+};
 use log::{error, info};
 use std::time::Duration;
 use tokio::{
     sync::mpsc::{self, Receiver, Sender},
     task::JoinHandle,
 };
+#[cfg(feature = "trace")]
+use tracing::instrument;
 
 /// Hacker News Api client.
 pub struct ApiClient {
@@ -25,6 +31,9 @@ impl ApiClient {
         Ok(Self {
             client: reqwest::Client::builder()
                 .connect_timeout(Duration::from_secs(5))
+                .gzip(true)
+                .hickory_dns(true)
+                .pool_max_idle_per_host(100)
                 // .http2_prior_knowledge()
                 // .pool_max_idle_per_host(1)
                 .build()
@@ -38,11 +47,8 @@ impl ApiClient {
             .client
             .get(format!("{}/{api}", Self::API_END_POINT))
             .send()
-            .await
-            .context("Failed to send request")?
-            .json::<Vec<u64>>()
-            .await
-            .context("Failed to deserialize response")?;
+            .and_then(|resp| resp.json::<Vec<u64>>())
+            .await?;
 
         ids.truncate(limit);
         self.items(&ids).await
@@ -75,24 +81,23 @@ impl ApiClient {
     pub async fn items(&self, ids: &[u64]) -> Result<Vec<Item>> {
         // The firebase api only provides the option to get each item one by
         // one.
-        let mut handles = Vec::with_capacity(ids.len());
-        for id in ids {
-            let client = &self.client;
-            handles.push(tokio::spawn(
-                client
-                    .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
-                    .send()
-                    .and_then(|resp| resp.json::<Item>()),
-            ));
-        }
+        let mut handles = ids
+            .iter()
+            .map(|id| {
+                let client = &self.client;
+                tokio::spawn(
+                    client
+                        .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
+                        .send()
+                        .and_then(|resp| resp.json::<Item>()),
+                )
+            })
+            .collect::<FuturesOrdered<_>>();
 
         let mut result = Vec::with_capacity(handles.len());
 
-        for h in handles {
-            let item = h
-                .await
-                .context("Failed to fetch item")?
-                .context("Failed to deserialize item")?;
+        while let Some(handle) = handles.try_next().await? {
+            let item = handle?;
             if !(item.dead || item.deleted) {
                 result.push(item);
             }
@@ -101,21 +106,46 @@ impl ApiClient {
         Ok(result)
     }
 
+    /// Spawn a task that makes a call to each item endpoint and returns a stream
+    /// of results.
+    #[cfg_attr(feature = "trace", instrument(skip_all))]
+    pub fn items_stream(&self, ids: &[u64]) -> JoinHandle<impl Stream<Item = Result<(u64, Item)>>> {
+        // The firebase api only provides the option to get each item one by
+        // one.
+        let futures = ids
+            .iter()
+            .copied()
+            .zip(1_u64..)
+            .map(|(id, rank)| {
+                let client = &self.client;
+                client
+                    .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
+                    .send()
+                    .and_then(|resp| resp.json::<Item>())
+                    .map_ok(move |item| (rank, item))
+                    .map_err(anyhow::Error::new)
+            })
+            .collect::<FuturesUnordered<_>>();
+
+        tokio::spawn(async {
+            futures
+                .into_stream()
+                .try_filter(|item| future::ready(!(item.1.dead || item.1.deleted)))
+        })
+    }
+
     /// Get user by user handle.
     pub async fn user(&self, handle: &str) -> Result<User> {
         self.client
             .get(format!("{}/user/{handle}.json", Self::API_END_POINT))
             .send()
-            .await
-            .context("Failed to send request")?
-            .json::<User>()
+            .and_then(|resp| resp.json::<User>())
             .await
             .context("Failed to deserialize user")
     }
 
     /// Top stories event-source stream.
     pub async fn top_stories_stream(&self, sender: Sender<EventData>) -> Result<()> {
-        use futures::stream::StreamExt;
         let mut stream = self
             .client
             .get(format!("{}/topstories.json", Self::API_END_POINT))
@@ -125,9 +155,7 @@ impl ApiClient {
             .context("Failed to send request")?
             .bytes_stream();
 
-        while let Some(item) = stream.next().await {
-            let bytes = item.context("Failed to fetch event from stream")?;
-
+        while let Some(bytes) = stream.try_next().await? {
             if let Some(data) = parse_event(&bytes) {
                 sender.send(data).await?;
             }

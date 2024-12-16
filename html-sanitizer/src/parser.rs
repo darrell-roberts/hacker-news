@@ -46,7 +46,7 @@ pub enum Element<'a> {
     Bold(String),
 }
 
-fn parse_bold<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
+fn parse_bold<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
@@ -58,7 +58,7 @@ where
     context("parse_bold", map(parse, Element::Bold))(input)
 }
 
-fn parse_italic<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
+fn parse_italic<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
@@ -80,7 +80,7 @@ where
     )(input)
 }
 
-fn parse_code<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
+fn parse_code<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
@@ -93,7 +93,7 @@ where
     map(parse, Element::Code).parse(input)
 }
 
-fn parse_paragraph<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
+fn parse_paragraph<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str>,
 {
@@ -132,7 +132,7 @@ where
     parse(input)
 }
 
-fn parse_escaped<'a, E>(input: &'a str) -> IResult<&str, Element, E>
+fn parse_escaped<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
@@ -160,7 +160,7 @@ where
     alt((quote, gt, lt, ampersand, apos, copy, reg, trade, deg, euro))(input)
 }
 
-fn parse_text<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
+fn parse_text<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str>,
 {
@@ -169,7 +169,7 @@ where
 }
 
 /// Parse an html attribute name value pair.
-fn parse_attribute<'a, E>(input: &'a str) -> IResult<&'a str, Attribute, E>
+fn parse_attribute<'a, E>(input: &'a str) -> IResult<&'a str, Attribute<'a>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
@@ -208,7 +208,7 @@ where
     context("parse_anchor_children", parser)(input)
 }
 
-fn parse_attr<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Attribute>, E>
+fn parse_attr<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Attribute<'a>>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
@@ -219,7 +219,7 @@ where
 }
 
 /// Parse an anchor element.
-fn parse_anchor<'a, E>(input: &'a str) -> IResult<&'a str, Element, E>
+fn parse_anchor<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
@@ -238,7 +238,7 @@ where
 }
 
 /// Parse html encoded string into a logical [`Element`]s.
-pub fn parse_elements<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element>, E>
+pub fn parse_elements<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element<'a>>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {

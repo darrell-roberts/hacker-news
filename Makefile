@@ -42,4 +42,13 @@ else
 	@echo "Unsupported platform for install: " $(PLATFORM)
 endif
 
-.PHONY: all clean-dist check build bundle-mac install-local-linux install
+# Starts the jaeger all-in-one docker container.
+trace:
+	docker compose up --detach --remove-orphans --wait
+	cargo run --bin hacker-news-iced --features trace
+
+# Stops the jaeger all-in-one docker container.
+trace-down:
+	docker compose down
+
+.PHONY: all clean-dist check build bundle-mac install-local-linux install trace trace-down

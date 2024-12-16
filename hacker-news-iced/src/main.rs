@@ -1,95 +1,121 @@
 use anyhow::Context;
 use app::{update, view, App, AppMsg, PaneState, ScrollBy};
-use articles::{ArticleMsg, ArticleState};
+use app_dirs2::get_app_dir;
+use articles::ArticleState;
 use chrono::{DateTime, Utc};
-use footer::{FooterMsg, FooterState};
-use hacker_news_api::{ApiClient, ArticleType};
-use header::HeaderState;
+use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
+use footer::FooterState;
+use full_search::FullSearchState;
+use hacker_news_api::ArticleType;
+use hacker_news_search::SearchContext;
+use header::{HeaderMsg, HeaderState};
 use iced::{
     advanced::graphics::core::window,
     keyboard::{key::Named, on_key_press, Key, Modifiers},
-    widget::pane_grid::{self, Configuration},
+    widget::{
+        pane_grid::{self, Configuration},
+        text_input::{self, focus},
+    },
     window::{close_requests, resize_events},
-    Size, Subscription, Theme,
+    Size, Subscription, Task, Theme,
 };
-use std::{collections::HashSet, sync::Arc};
+use log::error;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{Arc, RwLock},
+};
 
 mod app;
 mod articles;
 mod comments;
 mod config;
 mod footer;
+mod full_search;
 mod header;
 mod richtext;
+#[cfg(feature = "trace")]
+mod tracing;
 mod widget;
 
-fn main() -> anyhow::Result<()> {
-    let client = Arc::new(ApiClient::new().context("Could not create api client")?);
+fn start() -> anyhow::Result<()> {
+    let log_dir = get_app_dir(app_dirs2::AppDataType::UserData, &config::APP_INFO, "logs")?;
+
+    let _logger = flexi_logger::Logger::try_with_env_or_str("info")?
+        .log_to_file(
+            FileSpec::default()
+                .directory(log_dir)
+                .basename("hacker-news"),
+        )
+        .rotate(
+            Criterion::Age(Age::Day),
+            Naming::Timestamps,
+            Cleanup::KeepLogFiles(5),
+        )
+        .print_message()
+        .start()?;
+
+    let index_dir = get_app_dir(
+        app_dirs2::AppDataType::UserData,
+        &config::APP_INFO,
+        "hacker-news-index",
+    )?;
+
+    let search_context = Arc::new(RwLock::new(SearchContext::new(
+        &index_dir,
+        ArticleType::Top,
+    )?));
 
     let app = config::load_config()
-        .map(|config| App {
-            client: client.clone(),
-            theme: theme(&config.theme).unwrap_or_default(),
-            scale: config.scale,
-            header: HeaderState {
-                article_count: config.article_count,
-                article_type: config.article_type,
-            },
-            footer: FooterState {
-                status_line: String::new(),
-                last_update: None,
-                scale: config.scale,
-            },
-            article_state: ArticleState {
-                client: client.clone(),
-                articles: Vec::new(),
-                visited: config.visited,
-                search: None,
-                viewing_item: None,
-            },
-            comment_state: None,
-            size: Size::new(config.window_size.0, config.window_size.1),
-            panes: pane_grid::State::with_configuration(pane_grid::Configuration::Split {
-                axis: pane_grid::Axis::Vertical,
-                ratio: 0.3,
-                a: Box::new(Configuration::Pane(PaneState::Articles)),
-                b: Box::new(Configuration::Pane(PaneState::Comments)),
-            }),
-        })
+        .map(|config| config.into_app(search_context.clone()))
         .unwrap_or_else(|err| {
-            eprintln!("Could not load config: {err}");
+            error!("Could not load config: {err}");
 
             App {
-                client: client.clone(),
+                search_context: search_context.clone(),
                 #[cfg(target_os = "linux")]
                 theme: Theme::GruvboxDark,
                 #[cfg(not(target_os = "linux"))]
                 theme: Theme::GruvboxLight,
                 scale: 1.,
                 header: HeaderState {
+                    search_context: search_context.clone(),
                     article_count: 75,
                     article_type: ArticleType::Top,
+                    building_index: false,
+                    full_search: None,
                 },
                 footer: FooterState {
                     status_line: String::new(),
                     last_update: None,
                     scale: 1.,
+                    current_index_stats: None,
+                    index_stats: HashMap::new(),
                 },
                 article_state: ArticleState {
-                    client: client.clone(),
+                    search_context: search_context.clone(),
                     articles: Vec::new(),
                     visited: HashSet::new(),
                     search: None,
                     viewing_item: None,
+                    article_limit: 75,
                 },
                 comment_state: None,
                 size: Size::new(800., 600.),
                 panes: pane_grid::State::with_configuration(pane_grid::Configuration::Split {
                     axis: pane_grid::Axis::Vertical,
-                    ratio: 1.,
+                    ratio: 0.3,
                     a: Box::new(Configuration::Pane(PaneState::Articles)),
                     b: Box::new(Configuration::Pane(PaneState::Comments)),
                 }),
+                full_search_state: FullSearchState {
+                    search_context: search_context.clone(),
+                    search: None,
+                    search_results: Vec::new(),
+                    offset: 0,
+                    page: 1,
+                    full_count: 0,
+                },
+                focused_pane: None,
             }
         });
 
@@ -112,19 +138,29 @@ fn main() -> anyhow::Result<()> {
             ..Default::default()
         })
         .scale_factor(|app| app.scale)
-        .run_with(|| {
+        .run_with(move || {
+            let article_type = app.header.article_type;
+            let article_count = app.header.article_count;
             (
                 app,
-                iced::Task::perform(
-                    async move { client.articles(75, ArticleType::Top).await },
-                    |result| match result {
-                        Ok(articles) => AppMsg::Articles(ArticleMsg::Receive(articles)),
-                        Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
-                    },
-                ),
+                Task::batch([
+                    Task::done(HeaderMsg::Select {
+                        article_type,
+                        article_count,
+                    })
+                    .map(AppMsg::Header),
+                    focus(text_input::Id::new("article_search")),
+                ]),
             )
         })
         .context("Failed to run UI")
+}
+
+fn main() -> anyhow::Result<()> {
+    #[cfg(feature = "trace")]
+    tracing::init_tracing()?;
+    // console_subscriber::init();
+    start()
 }
 
 fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
@@ -137,6 +173,8 @@ fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
             Named::ArrowDown => AppMsg::ScrollBy(ScrollBy::LineDown),
             Named::Home => AppMsg::ScrollBy(ScrollBy::Top),
             Named::End => AppMsg::ScrollBy(ScrollBy::Bottom),
+            Named::Tab if modifiers.shift() => AppMsg::PrevInput,
+            Named::Tab => AppMsg::NextInput,
             _ => return None,
         }),
         Key::Character(c) => {

@@ -1,21 +1,28 @@
 use crate::{
     articles::{self, ArticleMsg, ArticleState},
-    comments::{self, CommentMsg, CommentState},
+    comments::{self, CommentMsg, CommentState, NavStack},
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
+    full_search::{FullSearchMsg, FullSearchState},
     header::{self, HeaderState},
     widget::hoverable,
 };
-use hacker_news_api::{ApiClient, Item};
+use hacker_news_api::ArticleType;
+use hacker_news_search::{
+    api::{Comment, Story},
+    SearchContext,
+};
 use iced::{
+    clipboard,
     font::Weight,
     widget::{
-        self, button, container, pane_grid, scrollable::AbsoluteOffset, text::Shaping, Column,
+        self, button, container, focus_next, focus_previous, pane_grid, scrollable::AbsoluteOffset,
+        text::Shaping, Column,
     },
     Font, Size, Task, Theme,
 };
 use log::error;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 
 /// Application state.
 pub struct App {
@@ -29,14 +36,18 @@ pub struct App {
     pub article_state: ArticleState,
     /// Comment state.
     pub comment_state: Option<CommentState>,
+    /// Full search state.
+    pub full_search_state: FullSearchState,
     /// Footer
     pub footer: FooterState,
-    /// API Client.
-    pub client: Arc<ApiClient>,
     /// Window size
     pub size: Size,
-    // Pane grid
+    /// Pane grid
     pub panes: pane_grid::State<PaneState>,
+    /// Search context.
+    pub search_context: Arc<RwLock<SearchContext>>,
+    /// Pane with focus
+    pub focused_pane: Option<widget::pane_grid::Pane>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -62,9 +73,9 @@ pub enum AppMsg {
     Footer(footer::FooterMsg),
     Comments(comments::CommentMsg),
     OpenComment {
-        article: Option<Item>,
-        comment_ids: Vec<u64>,
-        parent: Option<Item>,
+        article: Story,
+        parent_id: u64,
+        comment_stack: Vec<Comment>,
     },
     OpenLink {
         url: String,
@@ -77,54 +88,77 @@ pub enum AppMsg {
     ResetScale,
     WindowResize(Size),
     ScrollBy(ScrollBy),
-    // OpenSearch,
     CloseSearch,
     PaneResized(pane_grid::ResizeEvent),
     CommentsClosed,
     ClearVisited,
-    CloseComment,
+    FullSearch(FullSearchMsg),
+    SaveConfig,
+    Clipboard(String),
+    SwitchIndex {
+        category: ArticleType,
+        count: usize,
+    },
+    NextInput,
+    PrevInput,
+    FocusPane(widget::pane_grid::Pane),
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
     match message {
         AppMsg::OpenComment {
             article,
-            comment_ids,
-            parent,
+            parent_id,
+            mut comment_stack,
         } => {
             // Opening first set of comments from an article.
-            if let Some(item) = article {
-                let item_id = item.id;
+            let item_id = article.id;
 
-                app.comment_state = Some(CommentState {
-                    article: item,
-                    comments: Vec::new(),
-                    search: None,
-                    oneline: false,
-                });
+            let from_full_search = !comment_stack.is_empty();
 
-                app.article_state.viewing_item = Some(item_id);
-                app.article_state.visited.insert(item_id);
+            comment_stack.reverse();
+
+            let comments = comment_stack.pop().map(|c| vec![c]).unwrap_or_default();
+
+            let mut nav_stack = vec![NavStack {
+                comment: None,
+                offset: 0,
+                page: 1,
+            }];
+
+            if !comment_stack.is_empty() {
+                nav_stack.extend(comment_stack.into_iter().map(|comment| NavStack {
+                    comment: Some(comment),
+                    offset: 0,
+                    page: 1,
+                }));
+            };
+
+            app.comment_state = Some(CommentState {
+                search_context: app.search_context.clone(),
+                article,
+                comments,
+                nav_stack,
+                search: None,
+                oneline: false,
+                search_results: Vec::new(),
+                page: 1,
+                offset: 0,
+                full_count: 0,
+                parent_id: 0,
+            });
+
+            if from_full_search {
+                Task::none()
+            } else {
+                Task::done(CommentMsg::FetchComments {
+                    parent_id,
+                    parent_comment: None,
+                })
+                .map(AppMsg::Comments)
             }
-
-            let client = app.client.clone();
-            Task::batch([
-                Task::done(FooterMsg::Fetching).map(AppMsg::Footer),
-                Task::perform(
-                    async move { client.items(&comment_ids).await },
-                    move |result| match result {
-                        Ok(comments) => {
-                            AppMsg::Comments(CommentMsg::ReceiveComments(comments, parent.clone()))
-                        }
-                        Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
-                    },
-                ),
-                widget::scrollable::scroll_to(
-                    widget::scrollable::Id::new("comments"),
-                    AbsoluteOffset { x: 0., y: 0. },
-                ),
-                save_task(app),
-            ])
+            .chain(Task::done(ArticleMsg::ViewingItem(item_id)).map(AppMsg::Articles))
+            .chain(Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch))
         }
         AppMsg::CommentsClosed => {
             app.comment_state = None;
@@ -132,13 +166,12 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             Task::none()
         }
         AppMsg::OpenLink { url, item_id } => {
-            println!("Opening link {url}");
             open::with_detached(url, "firefox")
                 .inspect_err(|err| {
                     error!("Failed to open url {err}");
                 })
                 .unwrap_or_default();
-            Task::done(ArticleMsg::Visited(item_id)).map(AppMsg::Articles)
+            Task::done(ArticleMsg::ViewingItem(item_id)).map(AppMsg::Articles)
         }
         AppMsg::ChangeTheme(theme) => {
             app.theme = theme;
@@ -171,12 +204,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 save_task(app),
             ])
         }
-        AppMsg::Articles(msg) => {
-            if matches!(msg, ArticleMsg::Fetch { .. }) {
-                app.comment_state = None;
-            }
-            app.article_state.update(msg)
-        }
+        AppMsg::Articles(msg) => app.article_state.update(msg),
         AppMsg::Comments(msg) => app
             .comment_state
             .as_mut()
@@ -188,49 +216,39 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             app.size = size;
             save_task(&*app)
         }
-        AppMsg::ScrollBy(_scroll_by) => {
-            // let scroll_id =
-            //     scrollable::Id::new(if matches!(app.content, ContentScreen::Articles(_)) {
-            //         "articles"
-            //     } else {
-            //         "comments"
-            //     });
-            // match scroll_by {
-            //     ScrollBy::PageUp => {
-            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -100. })
-            //     }
-            //     ScrollBy::PageDown => {
-            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 100. })
-            //     }
-            //     ScrollBy::LineUp => {
-            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -10. })
-            //     }
-            //     ScrollBy::LineDown => {
-            //         scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 10. })
-            //     }
-            //     ScrollBy::Top => scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: 0. }),
-            //     ScrollBy::Bottom => {
-            //         scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: f32::MAX })
-            //     }
-            // }
-            Task::none()
+        AppMsg::ScrollBy(scroll_by) => {
+            let scroll_id =
+                widget::scrollable::Id::new(if app.full_search_state.search.is_some() {
+                    "full_search"
+                } else if app.comment_state.is_some() {
+                    "comments"
+                } else {
+                    "articles"
+                });
+            match scroll_by {
+                ScrollBy::PageUp => {
+                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -500. })
+                }
+                ScrollBy::PageDown => {
+                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 500. })
+                }
+                ScrollBy::LineUp => {
+                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -10. })
+                }
+                ScrollBy::LineDown => {
+                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 10. })
+                }
+                ScrollBy::Top => {
+                    widget::scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: 0. })
+                }
+                ScrollBy::Bottom => {
+                    widget::scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: f32::MAX })
+                }
+            }
         }
-        // AppMsg::OpenSearch => {
-        //     Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
-        //     // if matches!(app.content, ContentScreen::Articles(_)) {
-        //     //     Task::done(AppMsg::Header(header::HeaderMsg::OpenSearch))
-        //     // } else {
-        //     //     Task::done(AppMsg::Comments(CommentMsg::OpenSearch))
-        //     // }
-        // }
         AppMsg::CloseSearch => {
             app.article_state.search = None;
-            Task::none()
-            // if matches!(app.content, ContentScreen::Articles(_)) {
-            // Task::done(AppMsg::Header(header::HeaderMsg::CloseSearch))
-            // } else {
-            //     Task::done(AppMsg::Comments(CommentMsg::CloseSearch))
-            // }
+            Task::done(ArticleMsg::TopStories(app.header.article_count)).map(AppMsg::Articles)
         }
         AppMsg::PaneResized(p) => {
             app.panes.resize(p.split, p.ratio);
@@ -240,11 +258,31 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             app.article_state.visited.clear();
             save_task(app)
         }
-        AppMsg::CloseComment => app
-            .comment_state
-            .as_mut()
-            .map(|s| s.update(CommentMsg::CloseComment))
-            .unwrap_or_else(Task::none),
+        AppMsg::FullSearch(msg) => app.full_search_state.update(msg),
+        AppMsg::SaveConfig => save_task(app),
+        AppMsg::Clipboard(s) => clipboard::write(s),
+        AppMsg::SwitchIndex { category, count } => {
+            let mut g = app.search_context.write().unwrap();
+            match g.activate_index(category) {
+                Ok(_) => Task::batch([
+                    Task::done(FooterMsg::CurrentIndex(category)).map(AppMsg::Footer),
+                    Task::done(ArticleMsg::TopStories(count)).map(AppMsg::Articles),
+                ]),
+                Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+            }
+            .chain(Task::batch([
+                Task::done(AppMsg::CloseSearch),
+                Task::done(AppMsg::CommentsClosed),
+                Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch),
+            ]))
+            .chain(Task::done(AppMsg::SaveConfig))
+        }
+        AppMsg::NextInput => focus_next(),
+        AppMsg::PrevInput => focus_previous(),
+        AppMsg::FocusPane(pane) => {
+            app.focused_pane = Some(pane);
+            Task::none()
+        }
     }
 }
 
@@ -252,13 +290,12 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
     let body = widget::pane_grid(&app.panes, |_pane, state, _is_maximized| {
         let title = || -> Option<iced::Element<AppMsg>> {
             let comment_state = app.comment_state.as_ref()?;
-            let title_text =
-                widget::text(comment_state.article.title.as_deref().unwrap_or_default())
-                    .font(Font {
-                        weight: Weight::Bold,
-                        ..Default::default()
-                    })
-                    .shaping(Shaping::Advanced);
+            let title_text = widget::text(&comment_state.article.title)
+                .font(Font {
+                    weight: Weight::Bold,
+                    ..Default::default()
+                })
+                .shaping(Shaping::Advanced);
 
             let content: iced::Element<AppMsg> = match comment_state.article.url.as_deref() {
                 Some(url) => hoverable(
@@ -281,11 +318,16 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
 
         pane_grid::Content::new(match state {
             PaneState::Articles => app.article_state.view(&app.theme),
-            PaneState::Comments => app
-                .comment_state
-                .as_ref()
-                .map(|s| s.view())
-                .unwrap_or_else(|| widget::text("").into()),
+            PaneState::Comments => {
+                if app.full_search_state.search.is_some() {
+                    app.full_search_state.view()
+                } else {
+                    app.comment_state
+                        .as_ref()
+                        .map(|s| s.view())
+                        .unwrap_or_else(|| widget::text("").into())
+                }
+            }
         })
         .title_bar(match state {
             PaneState::Articles => pane_grid::TitleBar::new(
@@ -293,9 +335,10 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     .push(
                         widget::text_input(
                             "Search...",
-                            app.article_state.search.as_deref().unwrap_or(""),
+                            app.article_state.search.as_deref().unwrap_or_default(),
                         )
                         .padding(5)
+                        .id(widget::text_input::Id::new("article_search"))
                         .on_input(|search| AppMsg::Articles(ArticleMsg::Search(search))),
                     )
                     .push(widget::tooltip(
@@ -306,23 +349,30 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     )),
             ),
             PaneState::Comments => match app.comment_state.as_ref() {
-                Some(cs) => pane_grid::TitleBar::new(title().unwrap_or("".into()))
-                    .controls(pane_grid::Controls::new(
-                        widget::Row::new()
-                            .push(
-                                widget::toggler(cs.oneline)
-                                    .label("oneline")
-                                    .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
-                            )
-                            .push(widget::button("X").on_press(AppMsg::CloseComment))
-                            .spacing(5),
-                    ))
-                    .always_show_controls(),
-                None => pane_grid::TitleBar::new(""),
+                Some(cs) if app.full_search_state.search.is_none() => {
+                    pane_grid::TitleBar::new(title().unwrap_or("".into()))
+                        .controls(pane_grid::Controls::new(
+                            widget::Row::new()
+                                .push(widget::text(format!("{}", cs.full_count)))
+                                .push(
+                                    widget::toggler(cs.oneline)
+                                        .label("oneline")
+                                        .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
+                                )
+                                .push(
+                                    widget::button("X")
+                                        .on_press(AppMsg::Comments(CommentMsg::PopNavStack)),
+                                )
+                                .spacing(5),
+                        ))
+                        .always_show_controls()
+                }
+                _ => pane_grid::TitleBar::new(""),
             },
         })
     })
-    .on_resize(10, AppMsg::PaneResized);
+    .on_resize(10, AppMsg::PaneResized)
+    .on_click(AppMsg::FocusPane);
 
     let main_layout = Column::new()
         .push(app.header.view().map(AppMsg::Header))
@@ -343,6 +393,8 @@ impl From<&App> for Config {
             visited: visited.clone(),
             theme: state.theme.to_string(),
             window_size: (state.size.width, state.size.height),
+            current_index_stats: state.footer.current_index_stats,
+            index_stats: state.footer.index_stats.values().cloned().collect(),
         }
     }
 }
@@ -355,4 +407,5 @@ pub fn save_task(app: &App) -> Task<AppMsg> {
             Err(err) => FooterMsg::Error(err.to_string()),
         })
     })
+    .discard()
 }

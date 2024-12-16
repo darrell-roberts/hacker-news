@@ -1,16 +1,24 @@
+use std::collections::HashMap;
+
 use crate::app::AppMsg;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, Utc};
+use chrono_tz::America::New_York;
+use hacker_news_api::ArticleType;
+use hacker_news_search::IndexStats;
 use iced::{
     alignment::Vertical,
     font::{Style, Weight},
-    widget::{container, pick_list, text, Row},
+    widget::{container, pick_list, text, Column, Row},
     Background, Element, Font, Length, Task, Theme,
 };
+use log::error;
 
 pub struct FooterState {
     pub status_line: String,
     pub last_update: Option<DateTime<Local>>,
     pub scale: f64,
+    pub current_index_stats: Option<IndexStats>,
+    pub index_stats: HashMap<&'static str, IndexStats>,
 }
 
 #[derive(Debug, Clone)]
@@ -19,8 +27,12 @@ pub enum FooterMsg {
     LastUpdate(DateTime<Local>),
     Url(String),
     NoUrl,
-    Fetching,
     Scale(f64),
+    IndexStats {
+        stats: IndexStats,
+        category: ArticleType,
+    },
+    CurrentIndex(ArticleType),
 }
 
 impl FooterState {
@@ -33,29 +45,65 @@ impl FooterState {
             ..Default::default()
         };
 
-        let row = Row::new()
-            .push(
-                text(&self.status_line)
-                    .font(light_font())
-                    .width(Length::FillPortion(2).enclose(Length::Fill)),
-            )
+        let column = Column::new()
             .push(
                 container(
-                    Row::new()
-                        .push(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
-                        .push(pick_list(themes, Some(theme), |selected| {
-                            AppMsg::ChangeTheme(selected)
-                        }))
-                        .align_y(Vertical::Center)
-                        .spacing(5),
+                    text(&self.status_line)
+                        .font(light_font())
+                        .width(Length::Fill)
+                        .align_y(Vertical::Bottom),
                 )
-                .align_right(Length::Fill),
+                .padding(iced::padding::top(5)),
             )
-            .align_y(Vertical::Center)
-            .spacing(5)
-            .clip(true);
+            .push(container(
+                Row::new()
+                    .push_maybe(self.current_index_stats.as_ref().map(|stats| {
+                        Row::new()
+                            .push(text(format!("{}", stats.category)))
+                            .push_maybe(
+                                DateTime::<Utc>::from_timestamp(stats.built_on as i64, 0)
+                                    .map(|dt| dt.with_timezone(&New_York))
+                                    .map(|dt| text(dt.format("%d/%m/%y %H:%M,").to_string())),
+                            )
+                            .push_maybe(
+                                (stats.build_time.as_secs() / 60 != 0).then(|| {
+                                    text(format!("{} min", stats.build_time.as_secs() / 60))
+                                }),
+                            )
+                            .push_maybe(
+                                (stats.build_time.as_millis() < 1000)
+                                    .then(|| text(format!("{} ms", stats.build_time.as_millis()))),
+                            )
+                            .push_maybe((stats.build_time.as_secs() >= 1).then(|| {
+                                text(format!("{} secs,", stats.build_time.as_secs() % 60))
+                            }))
+                            .push(text(format!(
+                                "docs: {}, comments: {}, stories: {}, jobs: {}, polls: {}",
+                                stats.total_documents,
+                                stats.total_comments,
+                                stats.total_stories,
+                                stats.total_jobs,
+                                stats.total_polls
+                            )))
+                            .spacing(5)
+                    }))
+                    .push(
+                        container(
+                            Row::new()
+                                .push(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
+                                .push(pick_list(themes, Some(theme), |selected| {
+                                    AppMsg::ChangeTheme(selected)
+                                }))
+                                .align_y(Vertical::Center)
+                                .spacing(5),
+                        )
+                        .align_right(Length::Fill),
+                    )
+                    .align_y(Vertical::Center)
+                    .spacing(5),
+            ));
 
-        container(row)
+        container(column)
             .align_y(Vertical::Bottom)
             .style(|theme: &Theme| {
                 let palette = theme.extended_palette();
@@ -72,6 +120,7 @@ impl FooterState {
     pub fn update(&mut self, message: FooterMsg) -> Task<AppMsg> {
         match message {
             FooterMsg::Error(s) => {
+                error!("{s}");
                 self.status_line = s;
             }
             FooterMsg::LastUpdate(dt) => {
@@ -87,11 +136,22 @@ impl FooterState {
                 Some(dt) => self.status_line = format!("Updated: {}", dt.format("%d/%m/%Y %r")),
                 None => self.status_line.clear(),
             },
-            FooterMsg::Fetching => {
-                self.status_line = "Fetching...".into();
-            }
             FooterMsg::Scale(scale) => {
                 self.scale = scale;
+            }
+            FooterMsg::IndexStats { stats, category } => {
+                self.current_index_stats = Some(stats);
+                self.index_stats
+                    .entry(category.as_str())
+                    .and_modify(|s| *s = stats)
+                    .or_insert(stats);
+                return Task::done(AppMsg::SaveConfig);
+            }
+            FooterMsg::CurrentIndex(category) => {
+                self.current_index_stats = self
+                    .index_stats
+                    .get(category.as_str())
+                    .map(ToOwned::to_owned);
             }
         }
         Task::none()

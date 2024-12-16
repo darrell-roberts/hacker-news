@@ -5,20 +5,24 @@ members = [
     "html-sanitizer",
     "hacker-news-egui",
     "hacker-news-gpui",
-    "hacker-news-iced", "hacker-news-search",
+    "hacker-news-iced",
+    "hacker-news-search",
 ]
 
 [workspace.package]
-license = "Apache-2.0 OR MIT"
+license = "MIT"
 edition = "2021"
 
 [workspace.dependencies]
 log = "0.4"
 anyhow = "1"
 chrono = "0.4"
+chrono-tz = "0.10"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+flexi_logger = "0.29"
 
 hacker-news-api = { path = "hacker-news-api" }
 html-sanitizer = { path = "html-sanitizer" }
+hacker-news-search = { path = "hacker-news-search" }
