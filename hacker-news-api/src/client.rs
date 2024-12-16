@@ -116,28 +116,28 @@ impl ApiClient {
             .zip(1_u64..)
             .map(|(id, rank)| {
                 let client = &self.client;
-                tokio::spawn(
-                    client
-                        .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
-                        .send()
-                        .and_then(|resp| resp.json::<Item>())
-                        .map_ok(move |item| (rank, item)),
-                )
+                // tokio::spawn(
+                client
+                    .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
+                    .send()
+                    .and_then(|resp| resp.json::<Item>())
+                    .map_ok(move |item| (rank, item))
+                // )
             })
             .collect::<FuturesUnordered<_>>();
 
         try_stream! {
-            while let Some(result) = handles.try_next().await? {
-                match result {
-                    Ok(item) => {
+            while let Some(item) = handles.try_next().await? {
+                // match result {
+                //     Ok(item) => {
                         if !(item.1.dead || item.1.deleted) {
                            yield item
                         }
-                    },
-                    Err(err) => {
-                        error!("Failed to get comment: {err}, {:?}", err.status());
-                    },
-                }
+                //     },
+                //     Err(err) => {
+                //         error!("Failed to get comment: {err}, {:?}", err.status());
+                //     },
+                // }
 
                 // let item = result?;
 
