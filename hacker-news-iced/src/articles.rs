@@ -312,11 +312,11 @@ impl ArticleState {
             }
             ArticleMsg::UpdateStory(story) => {
                 let category_type = self.search_context.read().unwrap().active_category();
-                let limit = self.article_limit;
+                let story_id = story.id;
                 Task::perform(
                     update_story(self.search_context.clone(), story, category_type),
                     move |result| match result {
-                        Ok(_) => AppMsg::Articles(ArticleMsg::TopStories(limit)),
+                        Ok(_) => AppMsg::Articles(ArticleMsg::Search(format!("{story_id}"))),
                         Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
                     },
                 )

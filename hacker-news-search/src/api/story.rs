@@ -79,7 +79,6 @@ impl SearchContext {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        dbg!(&stories);
         Ok(stories)
     }
 
