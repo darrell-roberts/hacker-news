@@ -3191,6 +3191,7 @@ dependencies = [
  "hacker-news-search",
  "html-sanitizer",
  "iced",
+ "libc",
  "log",
  "open",
  "opentelemetry",
