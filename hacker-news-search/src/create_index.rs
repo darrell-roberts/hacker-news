@@ -5,7 +5,7 @@ use crate::{
 };
 use futures_core::Stream;
 use futures_util::{
-    future, pin_mut,
+    future,
     stream::{self, FuturesUnordered},
     StreamExt, TryFutureExt, TryStreamExt,
 };
@@ -196,22 +196,23 @@ async fn comments_iter(
     client: &ApiClient,
     story_id: u64,
     comment_ids: &[u64],
-) -> impl Stream<Item = Result<CommentRef, anyhow::Error>> {
+) -> impl Stream<Item = CommentRef> {
     let batch = client.items_stream(comment_ids).await;
     match batch {
-        Ok(s) => future::Either::Left(
-            s.map_ok(move |(rank, item)| CommentRef {
+        Ok(s) => s
+            .map_ok(move |(rank, item)| CommentRef {
                 story_id,
                 comment: item,
                 rank,
             })
             .inspect_err(move |err| {
                 error!("Failed to fetch comment for story_id {story_id}: {err}");
-            }),
-        ),
+            })
+            .filter_map(|r| future::ready(r.ok()))
+            .left_stream(),
         Err(err) => {
             error!("Failed to join comments batch task: {err}");
-            future::Either::Right(stream::empty())
+            stream::empty().right_stream()
         }
     }
 }
@@ -227,15 +228,13 @@ async fn send_comments(
 ) -> Result<(), SearchError> {
     let mut comment_stack = comments_iter(client, story_id, &comment_ids)
         .await
-        .try_collect::<Vec<_>>()
-        .await?;
+        .collect::<Vec<_>>()
+        .await;
 
     while let Some(comment) = comment_stack.pop() {
         let stream = comments_iter(client, story_id, &comment.comment.kids).await;
-        pin_mut!(stream);
-        while let Some(child) = stream.try_next().await? {
-            comment_stack.push(child);
-        }
+        comment_stack.extend(stream.collect::<Vec<_>>().await);
+
         if tx.is_closed() {
             error!("index writer channel is closed");
             break;
