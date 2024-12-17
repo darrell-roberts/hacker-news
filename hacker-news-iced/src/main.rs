@@ -19,7 +19,8 @@ use iced::{
     window::{close_requests, resize_events},
     Size, Subscription, Task, Theme,
 };
-use log::error;
+use libc::{getrlimit, rlimit, setrlimit, RLIMIT_NOFILE};
+use log::{error, info};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, RwLock},
@@ -53,6 +54,9 @@ fn start() -> anyhow::Result<()> {
         )
         .print_message()
         .start()?;
+
+    #[cfg(target_family = "unix")]
+    check_nofiles_limit();
 
     let index_dir = get_app_dir(
         app_dirs2::AppDataType::UserData,
@@ -218,4 +222,34 @@ fn theme(theme_name: &str) -> Option<Theme> {
         .iter()
         .find(|&theme| theme.to_string() == theme_name)
         .cloned()
+}
+
+#[cfg(target_family = "unix")]
+fn check_nofiles_limit() {
+    let mut rlim = rlimit {
+        rlim_cur: 0,
+        rlim_max: 0,
+    };
+
+    unsafe {
+        if getrlimit(RLIMIT_NOFILE, &mut rlim) != 0 {
+            error!("Could not get open files limit");
+            return;
+        }
+    }
+
+    info!("Current open file limits: {rlim:?}");
+
+    if rlim.rlim_cur < 100_000 {
+        rlim.rlim_cur = 100_000;
+        rlim.rlim_max = 100_000;
+
+        unsafe {
+            if setrlimit(RLIMIT_NOFILE, &rlim) != 0 {
+                error!("Could not set open files limit");
+                return;
+            }
+        }
+        info!("Increased open file limit to 100000");
+    }
 }
