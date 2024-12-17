@@ -19,6 +19,7 @@ use iced::{
     window::{close_requests, resize_events},
     Size, Subscription, Task, Theme,
 };
+#[cfg(target_family = "unix")]
 use libc::{getrlimit, rlimit, setrlimit, RLIMIT_NOFILE};
 use log::{error, info};
 use std::{
