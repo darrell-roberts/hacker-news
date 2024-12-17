@@ -227,6 +227,8 @@ fn theme(theme_name: &str) -> Option<Theme> {
 
 #[cfg(target_family = "unix")]
 fn check_nofiles_limit() {
+    const DESIRED_LIMIT: u64 = 10_240;
+
     let mut rlim = rlimit {
         rlim_cur: 0,
         rlim_max: 0,
@@ -241,9 +243,9 @@ fn check_nofiles_limit() {
 
     info!("Current open file limits: {rlim:?}");
 
-    if rlim.rlim_cur < 100_000 {
-        rlim.rlim_cur = 100_000;
-        rlim.rlim_max = 100_000;
+    if rlim.rlim_cur < DESIRED_LIMIT {
+        rlim.rlim_cur = DESIRED_LIMIT;
+        rlim.rlim_max = DESIRED_LIMIT;
 
         unsafe {
             if setrlimit(RLIMIT_NOFILE, &rlim) != 0 {
@@ -251,6 +253,6 @@ fn check_nofiles_limit() {
                 return;
             }
         }
-        info!("Increased open file limit to 100000");
+        info!("Increased open file limit to {DESIRED_LIMIT}");
     }
 }
