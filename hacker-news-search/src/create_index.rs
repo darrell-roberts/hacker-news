@@ -5,7 +5,7 @@ use crate::{
 };
 use futures_core::Stream;
 use futures_util::{
-    future, pin_mut,
+    future,
     stream::{self, FuturesUnordered},
     StreamExt, TryFutureExt, TryStreamExt,
 };
@@ -196,22 +196,23 @@ async fn comments_iter(
     client: &ApiClient,
     story_id: u64,
     comment_ids: &[u64],
-) -> impl Stream<Item = Result<CommentRef, anyhow::Error>> {
+) -> impl Stream<Item = CommentRef> {
     let batch = client.items_stream(comment_ids).await;
     match batch {
-        Ok(s) => future::Either::Left(
-            s.map_ok(move |(rank, item)| CommentRef {
+        Ok(s) => s
+            .map_ok(move |(rank, item)| CommentRef {
                 story_id,
                 comment: item,
                 rank,
             })
             .inspect_err(move |err| {
                 error!("Failed to fetch comment for story_id {story_id}: {err}");
-            }),
-        ),
+            })
+            .filter_map(|r| future::ready(r.ok()))
+            .left_stream(),
         Err(err) => {
             error!("Failed to join comments batch task: {err}");
-            future::Either::Right(stream::empty())
+            stream::empty().right_stream()
         }
     }
 }
@@ -224,20 +225,18 @@ async fn send_comments(
     story_id: u64,
     comment_ids: Vec<u64>,
     tx: UnboundedSender<ItemRef>,
-) -> Result<(), SearchError> {
+) {
     let mut comment_stack = comments_iter(client, story_id, &comment_ids)
         .await
-        .try_collect::<Vec<_>>()
-        .await?;
+        .collect::<Vec<_>>()
+        .await;
 
     while let Some(comment) = comment_stack.pop() {
         let stream = comments_iter(client, story_id, &comment.comment.kids).await;
-        pin_mut!(stream);
-        while let Some(child) = stream.try_next().await? {
-            comment_stack.push(child);
-        }
+        comment_stack.extend(stream.collect::<Vec<_>>().await);
+
         if tx.is_closed() {
-            error!("index writer channel is closed");
+            error!("Index writer channel is closed");
             break;
         }
 
@@ -245,8 +244,6 @@ async fn send_comments(
             error!("Failed to send comment {err}");
         }
     }
-
-    Ok(())
 }
 
 /// Get the story and nested comments from the firebase REST api and send each
@@ -257,25 +254,28 @@ async fn collect_story(
     tx: UnboundedSender<ItemRef>,
     mut story: Item,
     rank: u64,
-) -> Result<(), SearchError> {
+) {
     let story_id = story.id;
     debug!("Collecting comments for story_id {story_id}");
-    timeout(
+
+    let result = timeout(
         Duration::from_secs(60),
         send_comments(&client, story.id, mem::take(&mut story.kids), tx.clone()),
     )
     .await
-    .map_err(|_| SearchError::TimedOut(format!("story_id {story_id}, sending comments")))??;
+    .map_err(|_| SearchError::TimedOut(format!("story_id {story_id}, sending comments")));
+
+    if let Err(err) = result {
+        error!("{err}");
+    }
 
     if tx.is_closed() {
         error!("index writer channel is closed");
-        return Ok(());
     }
 
     if let Err(err) = tx.send(ItemRef::Story(StoryRef { story, rank })) {
         error!("Failed to send story {err}");
     }
-    Ok(())
 }
 
 /// Get all stories and nested comments for the given category and send
@@ -309,9 +309,8 @@ async fn collect(
         .collect::<FuturesUnordered<_>>();
 
     while let Some(result) = handles.next().await {
-        let r = result.and_then(|r| r?);
-        if let Err(err) = r {
-            error!("Failed to join story task: {err}");
+        if let Err(err) = result.and_then(|r| Ok(r?)) {
+            error!("Collect story failed: {err}");
         }
     }
 
@@ -400,7 +399,7 @@ async fn rebuild_story(
             ItemRef::Comment(c) => writer_context.write_comment(c)?,
         }
     }
-    result.await??;
+    result.await?;
     writer_context.commit()?;
     Ok(())
 }
