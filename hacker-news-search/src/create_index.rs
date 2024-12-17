@@ -13,13 +13,14 @@ use hacker_news_api::{ApiClient, ArticleType, Item};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use std::{
+    convert::identity,
     mem,
     sync::{Arc, RwLock},
     time::{Duration, Instant, SystemTime},
 };
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
 use tokio::{
-    sync::mpsc::{self, UnboundedSender},
+    sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
     time::timeout,
 };
 #[cfg(feature = "trace")]
@@ -317,6 +318,19 @@ async fn collect(
     Ok(())
 }
 
+async fn write_items(
+    mut rx: UnboundedReceiver<ItemRef>,
+    writer_context: &mut WriteContext<'_>,
+) -> Result<(), SearchError> {
+    while let Some(item) = rx.recv().await {
+        match item {
+            ItemRef::Story(s) => writer_context.write_story(s)?,
+            ItemRef::Comment(c) => writer_context.write_comment(c)?,
+        }
+    }
+    Ok(())
+}
+
 #[cfg_attr(feature = "trace", instrument(skip(ctx)))]
 pub async fn rebuild_index(
     ctx: Arc<RwLock<SearchContext>>,
@@ -328,22 +342,19 @@ pub async fn rebuild_index(
     let mut writer_context = ctx.read().unwrap().writer_context()?;
     writer_context.delete_all_docs()?;
 
-    let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
+    let (tx, rx) = mpsc::unbounded_channel::<ItemRef>();
     #[cfg(feature = "trace")]
     let result = tokio::spawn(collect(tx, category_type).in_current_span());
     #[cfg(not(feature = "trace"))]
     let result = tokio::spawn(collect(tx, category_type));
 
-    while let Some(item) = rx.recv().await {
-        match item {
-            ItemRef::Story(s) => writer_context.write_story(s)?,
-            ItemRef::Comment(c) => writer_context.write_comment(c)?,
-        }
-    }
+    let writing_result = write_items(rx, &mut writer_context).await;
 
     info!("Finished indexing");
 
-    result.await??;
+    result.await.map_err(SearchError::Join).and_then(identity)?;
+    writing_result?;
+
     writer_context.commit()?;
 
     let g = ctx.read().unwrap();

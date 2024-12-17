@@ -35,6 +35,7 @@ pub enum HeaderMsg {
     },
     Search(String),
     IndexFailed(String),
+    ClearSearch,
 }
 
 impl HeaderState {
@@ -146,7 +147,7 @@ impl HeaderState {
                                     widget::button(
                                         widget::text("⟲").shaping(text::Shaping::Advanced),
                                     )
-                                    .on_press(HeaderMsg::Search("".into())),
+                                    .on_press(HeaderMsg::ClearSearch),
                                 )),
                         )
                         .push(
@@ -248,10 +249,13 @@ impl HeaderState {
             } => {
                 self.article_type = article_type;
                 self.article_count = article_count;
-                Task::done(AppMsg::SwitchIndex {
-                    category: self.article_type,
-                    count: article_count,
-                })
+                Task::batch([
+                    Task::done(HeaderMsg::ClearSearch).map(AppMsg::Header),
+                    Task::done(AppMsg::SwitchIndex {
+                        category: self.article_type,
+                        count: article_count,
+                    }),
+                ])
             }
             HeaderMsg::ClearVisisted => Task::done(AppMsg::ClearVisited),
             HeaderMsg::RebuildIndex => {
@@ -288,11 +292,15 @@ impl HeaderState {
             }
             HeaderMsg::Search(search) => {
                 if search.is_empty() {
-                    self.full_search = None;
+                    Task::done(HeaderMsg::ClearSearch).map(AppMsg::Header)
                 } else {
                     self.full_search = Some(search.clone());
+                    Task::done(FullSearchMsg::Search(search)).map(AppMsg::FullSearch)
                 }
-                Task::done(FullSearchMsg::Search(search)).map(AppMsg::FullSearch)
+            }
+            HeaderMsg::ClearSearch => {
+                self.full_search = None;
+                Task::none()
             }
         }
     }

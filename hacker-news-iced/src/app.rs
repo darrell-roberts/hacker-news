@@ -4,7 +4,7 @@ use crate::{
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState},
-    header::{self, HeaderState},
+    header::{self, HeaderMsg, HeaderState},
     widget::hoverable,
 };
 use hacker_news_api::ArticleType;
@@ -157,6 +157,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 })
                 .map(AppMsg::Comments)
             }
+            .chain(Task::done(HeaderMsg::ClearSearch).map(AppMsg::Header))
             .chain(Task::done(ArticleMsg::ViewingItem(item_id)).map(AppMsg::Articles))
             .chain(Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch))
         }
