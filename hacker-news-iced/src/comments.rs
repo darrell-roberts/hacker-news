@@ -1,5 +1,5 @@
 use crate::{
-    app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg, parse_date,
+    app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg, header::HeaderMsg, parse_date,
     richtext::render_rich_text,
 };
 use hacker_news_search::{
@@ -231,7 +231,7 @@ impl CommentState {
                 widget::row![
                     widget::rich_text([
                         widget::span(format!(" by {}", comment.by))
-                            .link(AppMsg::FullSearch(FullSearchMsg::Search(format!(
+                            .link(AppMsg::Header(HeaderMsg::Search(format!(
                                 "by:{}",
                                 comment.by
                             ))))
