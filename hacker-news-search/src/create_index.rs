@@ -225,7 +225,7 @@ async fn send_comments(
     story_id: u64,
     comment_ids: Vec<u64>,
     tx: UnboundedSender<ItemRef>,
-) -> Result<(), SearchError> {
+) {
     let mut comment_stack = comments_iter(client, story_id, &comment_ids)
         .await
         .collect::<Vec<_>>()
@@ -236,7 +236,7 @@ async fn send_comments(
         comment_stack.extend(stream.collect::<Vec<_>>().await);
 
         if tx.is_closed() {
-            error!("index writer channel is closed");
+            error!("Index writer channel is closed");
             break;
         }
 
@@ -244,8 +244,6 @@ async fn send_comments(
             error!("Failed to send comment {err}");
         }
     }
-
-    Ok(())
 }
 
 /// Get the story and nested comments from the firebase REST api and send each
@@ -256,25 +254,28 @@ async fn collect_story(
     tx: UnboundedSender<ItemRef>,
     mut story: Item,
     rank: u64,
-) -> Result<(), SearchError> {
+) {
     let story_id = story.id;
     debug!("Collecting comments for story_id {story_id}");
-    timeout(
+
+    let result = timeout(
         Duration::from_secs(60),
         send_comments(&client, story.id, mem::take(&mut story.kids), tx.clone()),
     )
     .await
-    .map_err(|_| SearchError::TimedOut(format!("story_id {story_id}, sending comments")))??;
+    .map_err(|_| SearchError::TimedOut(format!("story_id {story_id}, sending comments")));
+
+    if let Err(err) = result {
+        error!("{err}");
+    }
 
     if tx.is_closed() {
         error!("index writer channel is closed");
-        return Ok(());
     }
 
     if let Err(err) = tx.send(ItemRef::Story(StoryRef { story, rank })) {
         error!("Failed to send story {err}");
     }
-    Ok(())
 }
 
 /// Get all stories and nested comments for the given category and send
@@ -308,9 +309,8 @@ async fn collect(
         .collect::<FuturesUnordered<_>>();
 
     while let Some(result) = handles.next().await {
-        let r = result.and_then(|r| r?);
-        if let Err(err) = r {
-            error!("Failed to join story task: {err}");
+        if let Err(err) = result.and_then(|r| Ok(r?)) {
+            error!("Collect story failed: {err}");
         }
     }
 
@@ -399,7 +399,7 @@ async fn rebuild_story(
             ItemRef::Comment(c) => writer_context.write_comment(c)?,
         }
     }
-    result.await??;
+    result.await?;
     writer_context.commit()?;
     Ok(())
 }
