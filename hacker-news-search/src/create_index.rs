@@ -20,7 +20,7 @@ use std::{
 };
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
 use tokio::{
-    sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
+    sync::mpsc::{self, Receiver, Sender},
     time::timeout,
 };
 #[cfg(feature = "trace")]
@@ -225,7 +225,7 @@ async fn send_comments(
     client: &ApiClient,
     story_id: u64,
     comment_ids: Vec<u64>,
-    tx: UnboundedSender<ItemRef>,
+    tx: Sender<ItemRef>,
 ) {
     let mut comment_stack = comments_iter(client, story_id, &comment_ids)
         .await
@@ -241,7 +241,7 @@ async fn send_comments(
             break;
         }
 
-        if let Err(err) = tx.send(ItemRef::Comment(comment)) {
+        if let Err(err) = tx.send(ItemRef::Comment(comment)).await {
             error!("Failed to send comment {err}");
         }
     }
@@ -250,12 +250,7 @@ async fn send_comments(
 /// Get the story and nested comments from the firebase REST api and send each
 /// document to the index writer channel.
 #[cfg_attr(feature = "trace", instrument(skip_all, fields(story_id = story.id)))]
-async fn collect_story(
-    client: Arc<ApiClient>,
-    tx: UnboundedSender<ItemRef>,
-    mut story: Item,
-    rank: u64,
-) {
+async fn collect_story(client: Arc<ApiClient>, tx: Sender<ItemRef>, mut story: Item, rank: u64) {
     let story_id = story.id;
     debug!("Collecting comments for story_id {story_id}");
 
@@ -274,7 +269,7 @@ async fn collect_story(
         error!("index writer channel is closed");
     }
 
-    if let Err(err) = tx.send(ItemRef::Story(StoryRef { story, rank })) {
+    if let Err(err) = tx.send(ItemRef::Story(StoryRef { story, rank })).await {
         error!("Failed to send story {err}");
     }
 }
@@ -282,10 +277,7 @@ async fn collect_story(
 /// Get all stories and nested comments for the given category and send
 /// each document to the index writer channel.
 #[cfg_attr(feature = "trace", instrument(skip(tx)))]
-async fn collect(
-    tx: UnboundedSender<ItemRef>,
-    category_type: ArticleType,
-) -> Result<(), SearchError> {
+async fn collect(tx: Sender<ItemRef>, category_type: ArticleType) -> Result<(), SearchError> {
     let client = Arc::new(ApiClient::new()?);
     let stories = client.articles(75, category_type).await?;
 
@@ -319,7 +311,7 @@ async fn collect(
 }
 
 async fn write_items(
-    mut rx: UnboundedReceiver<ItemRef>,
+    mut rx: Receiver<ItemRef>,
     writer_context: &mut WriteContext<'_>,
 ) -> Result<(), SearchError> {
     while let Some(item) = rx.recv().await {
@@ -342,7 +334,7 @@ pub async fn rebuild_index(
     let mut writer_context = ctx.read().unwrap().writer_context()?;
     writer_context.delete_all_docs()?;
 
-    let (tx, rx) = mpsc::unbounded_channel::<ItemRef>();
+    let (tx, rx) = mpsc::channel::<ItemRef>(100);
     #[cfg(feature = "trace")]
     let result = tokio::spawn(collect(tx, category_type).in_current_span());
     #[cfg(not(feature = "trace"))]
@@ -400,7 +392,7 @@ async fn rebuild_story(
     latest: Item,
 ) -> Result<(), SearchError> {
     writer_context.delete_story(&story);
-    let (tx, mut rx) = mpsc::unbounded_channel::<ItemRef>();
+    let (tx, mut rx) = mpsc::channel::<ItemRef>(100);
 
     let result = tokio::spawn(collect_story(client, tx, latest, story.rank));
 
