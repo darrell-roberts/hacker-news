@@ -1,6 +1,6 @@
-#![expect(dead_code)]
+#![expect(dead_code, unused_variables)]
 use hacker_news_api::ArticleType;
-use hacker_news_search::{rebuild_index, SearchContext};
+use hacker_news_search::SearchContext;
 use std::{
     fs::exists,
     path::Path,
