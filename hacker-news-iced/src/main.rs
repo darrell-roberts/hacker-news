@@ -236,7 +236,7 @@ fn check_nofiles_limit() {
 
     unsafe {
         if getrlimit(RLIMIT_NOFILE, &mut rlim) != 0 {
-            let errno = *libc::__error();
+            let errno = std::io::Error::last_os_error();
             error!("Could not get open files limit: {errno}");
             return;
         }
@@ -250,7 +250,7 @@ fn check_nofiles_limit() {
 
         unsafe {
             if setrlimit(RLIMIT_NOFILE, &rlim) != 0 {
-                let errno = *libc::__error();
+                let errno = std::io::Error::last_os_error();
                 error!("Could not set open files limit: {errno}");
                 return;
             }
