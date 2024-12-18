@@ -125,9 +125,8 @@ impl HeaderState {
             ]
             .spacing(10),
         )
-        .center_x(1)
         .width(Length::FillPortion(2))
-        .padding([5, 0]);
+        .padding(5);
 
         let top_row = widget::container(
             widget::Row::new().push(center_row).push(
