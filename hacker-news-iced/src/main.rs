@@ -95,6 +95,7 @@ fn start() -> anyhow::Result<()> {
                     scale: 1.,
                     current_index_stats: None,
                     index_stats: HashMap::new(),
+                    index_progress: None,
                 },
                 article_state: ArticleState {
                     search_context: search_context.clone(),

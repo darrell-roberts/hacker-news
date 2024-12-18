@@ -3212,6 +3212,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-stream",
+ "futures",
  "futures-core",
  "futures-util",
  "hacker-news-api",

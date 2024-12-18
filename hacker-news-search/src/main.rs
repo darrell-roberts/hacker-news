@@ -1,6 +1,6 @@
-#![expect(dead_code)]
+#![expect(dead_code, unused_variables)]
 use hacker_news_api::ArticleType;
-use hacker_news_search::{rebuild_index, SearchContext};
+use hacker_news_search::SearchContext;
 use std::{
     fs::exists,
     path::Path,
@@ -29,7 +29,7 @@ async fn create() -> anyhow::Result<()> {
         Path::new(INDEX_PATH),
         ArticleType::Top,
     )?));
-    rebuild_index(ctx.clone(), ArticleType::Top).await?;
+    // rebuild_index(ctx.clone(), ArticleType::Top).await?;
     Ok(())
 }
 

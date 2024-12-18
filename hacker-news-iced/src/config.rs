@@ -85,6 +85,7 @@ impl Config {
                 scale: config.scale,
                 current_index_stats: config.current_index_stats,
                 index_stats,
+                index_progress: None,
             },
             article_state: ArticleState {
                 search_context: search_context.clone(),

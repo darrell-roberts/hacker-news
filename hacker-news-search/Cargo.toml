@@ -12,6 +12,7 @@ tantivy = "0.22"
 async-stream = "0.3"
 futures-core = "0.3"
 futures-util = "0.3"
+futures = "0.3"
 hacker-news-api.workspace = true
 html-sanitizer.workspace = true
 thiserror = "2"
