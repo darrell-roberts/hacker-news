@@ -29,7 +29,7 @@ async fn create() -> anyhow::Result<()> {
         Path::new(INDEX_PATH),
         ArticleType::Top,
     )?));
-    rebuild_index(ctx.clone(), ArticleType::Top).await?;
+    // rebuild_index(ctx.clone(), ArticleType::Top).await?;
     Ok(())
 }
 

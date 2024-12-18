@@ -1,9 +1,10 @@
 use crate::{app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg};
 use chrono::Local;
 use hacker_news_api::ArticleType;
-use hacker_news_search::{rebuild_index, IndexStats, SearchContext};
+use hacker_news_search::{rebuild_index, IndexStats, RebuildProgress, SearchContext};
 use iced::{
     border,
+    futures::channel::mpsc,
     widget::{self, button, container, row, text, Column},
     Background, Border, Element, Length, Task,
 };
@@ -282,7 +283,10 @@ impl HeaderState {
                 self.building_index = true;
                 let s = self.search_context.clone();
                 let category = self.article_type;
-                let fut = rebuild_index(s, category);
+
+                let (tx, rx) = mpsc::channel::<RebuildProgress>(100);
+                let fut = rebuild_index(s, category, tx);
+
                 Task::batch([
                     Task::perform(fut, move |result| match result {
                         Ok(stats) => AppMsg::Header(HeaderMsg::IndexReady { stats, category }),
@@ -292,6 +296,7 @@ impl HeaderState {
                         }
                     }),
                     Task::done(FooterMsg::Error("Building index...".into())).map(AppMsg::Footer),
+                    Task::run(rx, FooterMsg::IndexProgress).map(AppMsg::Footer),
                 ])
             }
             HeaderMsg::IndexReady { stats, category } => {
