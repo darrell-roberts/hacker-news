@@ -27,7 +27,6 @@ cargo install --path hacker-news-iced --bin hacker-news-iced
 ## Install as Mac app
 Run the provided `Makefile` target
 
-
 ```bash
 make install
 ```
@@ -48,7 +47,7 @@ This copies the binary and other assets into your `~/.local`.
 <img width="1840" alt="Screenshot 2024-12-17 at 7 45 09 PM" src="https://github.com/user-attachments/assets/51003ae5-f366-4f41-a7ef-05d17e520775" />
 
 ### Linux Light mode theme
-![Screenshot from 2024-12-18 08-01-53](https://github.com/user-attachments/assets/a45f4328-dad2-4236-9230-c51b3b3f639d)
+![Screenshot from 2024-12-18 09-00-30](https://github.com/user-attachments/assets/2d6fb7ba-432d-4f19-ba32-7dae66ba0ef4)
 
 
 
