@@ -112,8 +112,7 @@ impl ApiClient {
             .copied()
             .zip(1_u64..)
             .map(|(id, rank)| {
-                let client = &self.client;
-                client
+                self.client
                     .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
                     .send()
                     .and_then(|resp| resp.json::<Item>())
