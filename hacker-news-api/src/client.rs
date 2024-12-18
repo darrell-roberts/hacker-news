@@ -1,4 +1,10 @@
 //! Hacker News API Client.
+//!
+//! I really want to use http/2 with multiplexing but I could not
+//! figure out how to get that to work with firebase.
+//!
+//! This is unfortunately just using the REST API with http/1 which
+//! results in multiple requests and connections.
 use crate::{
     types::{EventData, Item, ResultExt, User},
     ArticleType,
@@ -35,6 +41,7 @@ impl ApiClient {
                 .hickory_dns(true)
                 .pool_max_idle_per_host(100)
                 // .http2_prior_knowledge()
+                .use_rustls_tls()
                 // .pool_max_idle_per_host(1)
                 .build()
                 .context("Failed to create api client")?,
@@ -48,6 +55,13 @@ impl ApiClient {
             .client
             .get(format!("{}/{api}", Self::API_END_POINT))
             .send()
+            // .inspect_err(|err| {
+            //     dbg!(err);
+            // })
+            // .inspect_ok(|result| {
+            //     info!("Using http version {:?}", result.version());
+            //     info!("Headers: {:?}", result.headers())
+            // })
             .and_then(|resp| resp.json::<Vec<u64>>())
             .await?;
 
