@@ -1,4 +1,13 @@
 //! Hacker News API Client.
+//!
+//! I really want to use http/2 with multiplexing but I could not
+//! figure out how to get that to work with firebase. From what I could
+//! find out, the firebase realtime database only supports http/1 with
+//! server side events.
+//!
+//! This is unfortunately just using the REST API with http/1 and due to
+//! the structure of the REST API, multiple requests and connections are
+//! required to do most operations.
 use crate::{
     types::{EventData, Item, ResultExt, User},
     ArticleType,
@@ -33,9 +42,10 @@ impl ApiClient {
                 .connect_timeout(Duration::from_secs(5))
                 .gzip(true)
                 .hickory_dns(true)
+                // Cap this to 100
                 .pool_max_idle_per_host(100)
                 // .http2_prior_knowledge()
-                // .pool_max_idle_per_host(1)
+                .use_rustls_tls()
                 .build()
                 .context("Failed to create api client")?,
         })
@@ -48,6 +58,13 @@ impl ApiClient {
             .client
             .get(format!("{}/{api}", Self::API_END_POINT))
             .send()
+            // .inspect_err(|err| {
+            //     dbg!(err);
+            // })
+            // .inspect_ok(|result| {
+            //     info!("Using http version {:?}", result.version());
+            //     info!("Headers: {:?}", result.headers())
+            // })
             .and_then(|resp| resp.json::<Vec<u64>>())
             .await?;
 
