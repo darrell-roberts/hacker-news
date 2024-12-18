@@ -136,20 +136,30 @@ impl HeaderState {
                             widget::Row::new()
                                 .push(
                                     widget::text_input(
-                                        "Search everything...",
+                                        "Search all comments...",
                                         self.full_search.as_deref().unwrap_or_default(),
                                     )
                                     .on_input(HeaderMsg::Search)
                                     .padding(5),
                                 )
-                                .push(widget::container(
+                                .push(widget::tooltip(
                                     widget::button(
                                         widget::text("⟲").shaping(text::Shaping::Advanced),
                                     )
                                     .on_press(HeaderMsg::ClearSearch),
+                                    widget::container(
+                                        widget::text("Clear search").color(iced::Color::WHITE),
+                                    )
+                                    .style(|_| {
+                                        widget::container::Style::default()
+                                            .background(Background::Color(iced::Color::BLACK))
+                                            .border(iced::border::rounded(8))
+                                    })
+                                    .padding(4),
+                                    widget::tooltip::Position::Bottom,
                                 )),
                         )
-                        .push(
+                        .push(widget::tooltip(
                             widget::button("Re-index")
                                 .on_press_maybe(
                                     self.building_index.not().then_some(HeaderMsg::RebuildIndex),
@@ -160,7 +170,18 @@ impl HeaderState {
                                     style
                                 })
                                 .padding(5),
-                        )
+                            widget::container(
+                                widget::text(format!("Re-index {}", self.article_type.as_str()))
+                                    .color(iced::Color::WHITE),
+                            )
+                            .style(|_| {
+                                widget::container::Style::default()
+                                    .background(Background::Color(iced::Color::BLACK))
+                                    .border(iced::border::rounded(8))
+                            })
+                            .padding(4),
+                            widget::tooltip::Position::Bottom,
+                        ))
                         .push(widget::tooltip(
                             widget::button(widget::text("↻").shaping(text::Shaping::Advanced))
                                 .style(|theme, status| {
@@ -299,7 +320,7 @@ impl HeaderState {
             }
             HeaderMsg::ClearSearch => {
                 self.full_search = None;
-                Task::none()
+                Task::done(AppMsg::FullSearch(FullSearchMsg::CloseSearch))
             }
         }
     }
