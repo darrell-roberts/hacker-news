@@ -1,6 +1,6 @@
 use crate::{
-    app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg, parse_date,
-    richtext::SearchSpanIter, widget::hoverable,
+    app::AppMsg, footer::FooterMsg, header::HeaderMsg, parse_date, richtext::SearchSpanIter,
+    widget::hoverable,
 };
 use hacker_news_search::{api::Story, update_story, SearchContext};
 use iced::{
@@ -90,7 +90,7 @@ impl ArticleState {
 
         let by = widget::rich_text([
             widget::span(format!(" by {}", story.by))
-                .link(AppMsg::FullSearch(FullSearchMsg::Search(format!(
+                .link(AppMsg::Header(HeaderMsg::Search(format!(
                     "by:{}",
                     story.by
                 ))))
