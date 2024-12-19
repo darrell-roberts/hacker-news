@@ -14,13 +14,16 @@ use hacker_news_search::{
     SearchContext,
 };
 use iced::{
-    clipboard,
+    // clipboard,
     font::Weight,
     widget::{
         self, button, container, focus_next, focus_previous, pane_grid, scrollable::AbsoluteOffset,
         text::Shaping, Column,
     },
-    Font, Size, Task, Theme,
+    Font,
+    Size,
+    Task,
+    Theme,
 };
 use log::error;
 use std::sync::{Arc, RwLock};
@@ -95,7 +98,7 @@ pub enum AppMsg {
     ClearVisited,
     FullSearch(FullSearchMsg),
     SaveConfig,
-    Clipboard(String),
+    // Clipboard(String),
     SwitchIndex {
         category: ArticleType,
         count: usize,
@@ -262,7 +265,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         }
         AppMsg::FullSearch(msg) => app.full_search_state.update(msg),
         AppMsg::SaveConfig => save_task(app),
-        AppMsg::Clipboard(s) => clipboard::write(s),
+        // AppMsg::Clipboard(s) => clipboard::write(s),
         AppMsg::SwitchIndex { category, count } => {
             let mut g = app.search_context.write().unwrap();
             match g.activate_index(category) {
