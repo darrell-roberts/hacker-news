@@ -2,7 +2,7 @@ use crate::{
     app::AppMsg, footer::FooterMsg, header::HeaderMsg, parse_date, richtext::SearchSpanIter,
     widget::hoverable,
 };
-use hacker_news_search::{api::Story, update_story, SearchContext};
+use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
 use iced::{
     advanced::image::{Bytes, Handle},
     alignment::{Horizontal, Vertical},
@@ -12,10 +12,27 @@ use iced::{
     widget::{self, button, scrollable, text, Column, Row},
     Background, Color, Element, Font, Length, Shadow, Task, Theme,
 };
+use log::info;
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
+    mem,
     sync::{Arc, RwLock},
 };
+use tokio::task::AbortHandle;
+
+pub struct WatchHandles {
+    ui_receiver: iced::task::Handle,
+    event: AbortHandle,
+    event_handler: AbortHandle,
+}
+
+impl WatchHandles {
+    fn abort(self) {
+        self.ui_receiver.abort();
+        self.event.abort();
+        self.event_handler.abort();
+    }
+}
 
 pub struct ArticleState {
     pub search_context: Arc<RwLock<SearchContext>>,
@@ -29,6 +46,8 @@ pub struct ArticleState {
     pub viewing_item: Option<u64>,
     /// How many articles to fetch.
     pub article_limit: usize,
+    /// Handles for watch stories.
+    pub watch_handles: HashMap<u64, WatchHandles>,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +57,9 @@ pub enum ArticleMsg {
     Search(String),
     ViewingItem(u64),
     UpdateStory(Story),
+    WatchStory(Story),
+    UnWatchStory(u64),
+    StoryUpdated(Story),
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -224,6 +246,26 @@ impl ArticleState {
                                     .style(widget::button::text)
                                     .padding(0),
                                 )
+                                .push(widget::tooltip(
+                                    widget::toggler(self.watch_handles.contains_key(&story.id))
+                                        .on_toggle(|toggled| {
+                                            AppMsg::Articles(if toggled {
+                                                ArticleMsg::WatchStory(story.clone())
+                                            } else {
+                                                ArticleMsg::UnWatchStory(story.id)
+                                            })
+                                        }),
+                                    widget::container(
+                                        widget::text("Watch story").color(iced::Color::WHITE),
+                                    )
+                                    .style(|_| {
+                                        widget::container::Style::default()
+                                            .background(Background::Color(iced::Color::BLACK))
+                                            .border(iced::border::rounded(8))
+                                    })
+                                    .padding(4),
+                                    widget::tooltip::Position::Right,
+                                ))
                                 .push(
                                     widget::container(by)
                                         .align_x(Horizontal::Right)
@@ -301,6 +343,10 @@ impl ArticleState {
             ArticleMsg::TopStories(limit) => {
                 self.article_limit = limit;
                 let g = self.search_context.read().unwrap();
+                let watch_handles = mem::take(&mut self.watch_handles);
+                for handle in watch_handles.into_values() {
+                    handle.abort();
+                }
                 match g.top_stories(limit, 0) {
                     Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
                     Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
@@ -321,6 +367,47 @@ impl ArticleState {
                         Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
                     },
                 )
+            }
+            ArticleMsg::WatchStory(story) => {
+                info!("Watching story: {}", story.id);
+                let story_id = story.id;
+                let category_type = self.search_context.read().unwrap().active_category();
+                match watch_story(self.search_context.clone(), story, category_type) {
+                    Ok(WatchState {
+                        event_handle,
+                        event_handler_task,
+                        receiver,
+                    }) => {
+                        let (t, handle) = Task::run(receiver, ArticleMsg::StoryUpdated)
+                            .map(AppMsg::Articles)
+                            .abortable();
+                        self.watch_handles.insert(
+                            story_id,
+                            WatchHandles {
+                                ui_receiver: handle,
+                                event: event_handle,
+                                event_handler: event_handler_task,
+                            },
+                        );
+                        t
+                    }
+                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                }
+            }
+            ArticleMsg::StoryUpdated(story) => {
+                info!("Received story update for story: {}", story.id);
+                if let Some(s) = self.articles.iter_mut().find(|s| s.id == story.id) {
+                    info!("Replacing story: {}", story.id);
+                    *s = story;
+                }
+                Task::none()
+            }
+            ArticleMsg::UnWatchStory(story_id) => {
+                info!("Un-watching story: {story_id}");
+                if let Some(handle) = self.watch_handles.remove(&story_id) {
+                    handle.abort();
+                }
+                Task::none()
             }
         }
     }

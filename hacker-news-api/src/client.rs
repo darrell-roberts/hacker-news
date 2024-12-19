@@ -9,7 +9,7 @@
 //! the structure of the REST API, multiple requests and connections are
 //! required to do most operations.
 use crate::{
-    types::{EventData, Item, ResultExt, User},
+    types::{Item, ResultExt, StoryEventData, TopStoriesEventData, User},
     ArticleType,
 };
 use anyhow::{Context, Result};
@@ -19,6 +19,8 @@ use futures::{
     Stream, TryFutureExt, TryStreamExt,
 };
 use log::{error, info};
+use reqwest::{header, IntoUrl};
+use serde::Deserialize;
 use std::{future::Future, time::Duration};
 use tokio::{
     sync::mpsc::{self, Receiver, Sender},
@@ -130,7 +132,7 @@ impl ApiClient {
             .zip(1_u64..)
             .map(|(id, rank)| {
                 self.client
-                    .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
+                    .get(format!("{}/item/{id}.json", Self::API_END_POINT))
                     .send()
                     .and_then(|resp| resp.json::<Item>())
                     .map_ok(move |item| (rank, item))
@@ -154,29 +156,58 @@ impl ApiClient {
             .map_err(anyhow::Error::new)
     }
 
-    /// Top stories event-source stream.
-    pub async fn top_stories_stream(&self, sender: Sender<EventData>) -> Result<()> {
-        let mut stream = self
-            .client
-            .get(format!("{}/topstories.json", Self::API_END_POINT))
-            .header("Accept", "text/event-stream")
+    fn event_source<EventData>(
+        &self,
+        url: impl IntoUrl,
+    ) -> impl Future<Output = reqwest::Result<impl Stream<Item = Result<Option<EventData>>>>>
+    where
+        EventData: for<'a> Deserialize<'a>,
+    {
+        self.client
+            .get(url)
+            .header(header::ACCEPT, "text/event-stream")
             .send()
-            .await
-            .context("Failed to send request")?
-            .bytes_stream();
+            .map_ok(|response| {
+                response
+                    .bytes_stream()
+                    .map_ok(|bytes| parse_event(&bytes))
+                    .map_err(anyhow::Error::new)
+            })
+    }
 
-        while let Some(bytes) = stream.try_next().await? {
-            if let Some(data) = parse_event(&bytes) {
+    /// Top stories event-source stream.
+    pub async fn top_stories_stream(&self, sender: Sender<TopStoriesEventData>) -> Result<()> {
+        let mut stream = self
+            .event_source::<TopStoriesEventData>(format!("{}/topstories.json", Self::API_END_POINT))
+            .await?;
+
+        while let Some(event) = stream.try_next().await? {
+            if let Some(data) = event {
                 sender.send(data).await?;
             }
         }
+        Ok(())
+    }
 
+    pub async fn story_stream(&self, story_id: u64, sender: Sender<StoryEventData>) -> Result<()> {
+        let mut stream = self
+            .event_source::<StoryEventData>(format!("{}/item/{story_id}.json", Self::API_END_POINT))
+            .await?;
+
+        while let Some(event) = stream.try_next().await? {
+            if let Some(data) = event {
+                sender.send(data).await?;
+            }
+        }
         Ok(())
     }
 }
 
 /// Parse an event from the event-source.
-fn parse_event(bytes: &[u8]) -> Option<EventData> {
+fn parse_event<EventData>(bytes: &[u8]) -> Option<EventData>
+where
+    EventData: for<'a> Deserialize<'a>,
+{
     let mut lines = bytes.split(|b| *b == b'\n');
 
     // We are only concerned with put events for the top stories. This event
@@ -203,7 +234,7 @@ fn parse_event(bytes: &[u8]) -> Option<EventData> {
 
 /// Create a subscription to the top stories event stream. Provides a receive
 /// channel and a task handle for consuming events and canceling the task.
-pub fn subscribe_top_stories() -> (Receiver<EventData>, JoinHandle<()>) {
+pub fn subscribe_top_stories() -> (Receiver<TopStoriesEventData>, JoinHandle<()>) {
     let (tx, rx) = mpsc::channel(100);
 
     let handle = tokio::spawn(async move {
