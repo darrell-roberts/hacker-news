@@ -356,10 +356,27 @@ impl ArticleState {
                 }
             }
             ArticleMsg::StoryUpdated(story) => {
-                if let Some(s) = self.articles.iter_mut().find(|s| s.id == story.id) {
-                    *s = story;
+                let story_id = story.id;
+
+                match self.articles.iter_mut().find(|s| s.id == story.id) {
+                    Some(s) => {
+                        let last_total_comments = s.descendants;
+                        let task = match (
+                            last_total_comments == story.descendants,
+                            self.viewing_item == Some(story_id),
+                        ) {
+                            (false, true) => Task::done(AppMsg::OpenComment {
+                                article: story.clone(),
+                                parent_id: story_id,
+                                comment_stack: Vec::new(),
+                            }),
+                            _ => Task::none(),
+                        };
+                        *s = story;
+                        task
+                    }
+                    None => Task::none(),
                 }
-                Task::none()
             }
             ArticleMsg::UnWatchStory(story_id) => {
                 if let Some(handle) = self.watch_handles.remove(&story_id) {
