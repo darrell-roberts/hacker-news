@@ -47,7 +47,7 @@ This copies the binary and other assets into your `~/.local`.
 <img width="1840" alt="Screenshot 2024-12-17 at 7 45 09 PM" src="https://github.com/user-attachments/assets/51003ae5-f366-4f41-a7ef-05d17e520775" />
 
 ### Linux Light mode theme
-![Screenshot from 2024-12-18 08-01-53](https://github.com/user-attachments/assets/a45f4328-dad2-4236-9230-c51b3b3f639d)
+![Screenshot from 2024-12-19 15-03-21](https://github.com/user-attachments/assets/6cf0cc19-64ff-49de-aece-f52bc60afcda)
 
 ### Windows Dark mode theme
 <img width="1248" alt="Screenshot 2024-12-18 093635" src="https://github.com/user-attachments/assets/99d17244-6c7a-4c44-b130-9ed0cf95dcfc" />
