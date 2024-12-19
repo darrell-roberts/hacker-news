@@ -448,7 +448,6 @@ async fn handle_story_events(
         }
         let latest = item.data;
         let latest_descendants = latest.descendants.unwrap_or_default();
-        info!("Received updated story event: {latest:?}");
 
         if latest_descendants != story.descendants || latest.score != story.score {
             let writer_context = ctx.read().unwrap().writer_context()?;
@@ -496,15 +495,18 @@ pub fn watch_story(
     Ok(WatchState {
         receiver: ui_rx,
         abort_handles: [
-            tokio::spawn(async move { c.story_stream(story_id, tx).await }).abort_handle(),
-            tokio::spawn(handle_story_events(
-                ctx.clone(),
-                client.clone(),
-                category_type,
-                story,
-                ui_tx,
-                rx,
-            ))
+            tokio::spawn(async move {
+                c.story_stream(story_id, tx)
+                    .inspect_err(|err| error!("Failed to subscribe to story events: {err}"))
+                    .await
+            })
+            .abort_handle(),
+            tokio::spawn(
+                handle_story_events(ctx.clone(), client.clone(), category_type, story, ui_tx, rx)
+                    .inspect_err(|err| {
+                        error!("Story event handler encountered an error: {err}");
+                    }),
+            )
             .abort_handle(),
         ],
     })

@@ -231,19 +231,6 @@ impl ArticleState {
                                 } else {
                                     Element::from(comments_button)
                                 })
-                                .push(
-                                    widget::button(
-                                        widget::text(format!("{}", story.id))
-                                            .font(Font {
-                                                weight: Weight::Light,
-                                                ..Default::default()
-                                            })
-                                            .size(12),
-                                    )
-                                    .on_press(AppMsg::Clipboard(format!("{}", story.id)))
-                                    .style(widget::button::text)
-                                    .padding(0),
-                                )
                                 .push(widget::tooltip(
                                     widget::toggler(self.watch_handles.contains_key(&story.id))
                                         .on_toggle(|toggled| {
@@ -254,7 +241,7 @@ impl ArticleState {
                                             })
                                         }),
                                     widget::container(
-                                        widget::text("Watch story").color(iced::Color::WHITE),
+                                        widget::text("Watch").color(iced::Color::WHITE),
                                     )
                                     .style(|_| {
                                         widget::container::Style::default()
@@ -264,6 +251,19 @@ impl ArticleState {
                                     .padding(4),
                                     widget::tooltip::Position::Right,
                                 ))
+                                // .push(
+                                //     widget::button(
+                                //         widget::text(format!("{}", story.id))
+                                //             .font(Font {
+                                //                 weight: Weight::Light,
+                                //                 ..Default::default()
+                                //             })
+                                //             .size(12),
+                                //     )
+                                //     .on_press(AppMsg::Clipboard(format!("{}", story.id)))
+                                //     .style(widget::button::text)
+                                //     .padding(0),
+                                // )
                                 .push(
                                     widget::container(by)
                                         .align_x(Horizontal::Right)
