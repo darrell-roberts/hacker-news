@@ -479,8 +479,6 @@ async fn handle_story_events(
 
 pub struct WatchState {
     pub abort_handles: [AbortHandle; 2],
-    // pub event_handle: AbortHandle,
-    // pub event_handler_task: AbortHandle,
     pub receiver: mpsc::Receiver<Story>,
 }
 
