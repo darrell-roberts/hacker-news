@@ -451,6 +451,14 @@ async fn handle_story_events(
             break;
         }
 
+        if latest.deleted || latest.dead {
+            info!(
+                "Hmm this story {} has been deleted or is dead now",
+                latest.id
+            );
+            break;
+        }
+
         let latest_descendants = latest.descendants.unwrap_or_default();
 
         // We'll rebuild this story if either the number of comments or score has changed.
