@@ -56,9 +56,15 @@ pub struct User {
 
 /// An event-source for hacker-news.
 #[derive(Deserialize, Debug)]
-pub struct EventData {
+pub struct TopStoriesEventData {
     pub path: String,
     pub data: Vec<u64>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct StoryEventData {
+    pub path: String,
+    pub data: Item,
 }
 
 /// Extension trait for the Result type to add logging capabilities.
