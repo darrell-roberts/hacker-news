@@ -12,7 +12,6 @@ use iced::{
     widget::{self, button, scrollable, text, Column, Row},
     Background, Color, Element, Font, Length, Shadow, Task, Theme,
 };
-use log::info;
 use std::{
     collections::{HashMap, HashSet},
     mem,
@@ -334,7 +333,6 @@ impl ArticleState {
                 )
             }
             ArticleMsg::WatchStory(story) => {
-                info!("Watching story: {}", story.id);
                 let story_id = story.id;
                 let category_type = self.search_context.read().unwrap().active_category();
                 match watch_story(self.search_context.clone(), story, category_type) {
@@ -358,15 +356,12 @@ impl ArticleState {
                 }
             }
             ArticleMsg::StoryUpdated(story) => {
-                info!("Received story update for story: {}", story.id);
                 if let Some(s) = self.articles.iter_mut().find(|s| s.id == story.id) {
-                    info!("Replacing story: {}", story.id);
                     *s = story;
                 }
                 Task::none()
             }
             ArticleMsg::UnWatchStory(story_id) => {
-                info!("Un-watching story: {story_id}");
                 if let Some(handle) = self.watch_handles.remove(&story_id) {
                     handle.abort();
                 }

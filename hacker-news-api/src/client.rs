@@ -156,6 +156,8 @@ impl ApiClient {
             .map_err(anyhow::Error::new)
     }
 
+    /// Subscribe to a a server side event and return a stream that yields the generic
+    /// event data type.
     fn event_source<EventData>(
         &self,
         url: impl IntoUrl,
@@ -189,6 +191,7 @@ impl ApiClient {
         Ok(())
     }
 
+    /// Subscribe to updates to a story via server side event sourcing.
     pub async fn story_stream(&self, story_id: u64, sender: Sender<StoryEventData>) -> Result<()> {
         let mut stream = self
             .event_source::<StoryEventData>(format!("{}/item/{story_id}.json", Self::API_END_POINT))

@@ -409,6 +409,8 @@ pub async fn update_story(
     Ok(())
 }
 
+/// Re-index this story along with all it's nested comments. Comments
+/// will be be fetched recursively and concurrently.
 async fn rebuild_story(
     client: Arc<ApiClient>,
     mut writer_context: WriteContext<'_>,
@@ -431,6 +433,8 @@ async fn rebuild_story(
     Ok(())
 }
 
+/// Handles story server side event subscription and relays story updates
+/// when necessary to the UI.
 async fn handle_story_events(
     ctx: Arc<RwLock<SearchContext>>,
     client: Arc<ApiClient>,
@@ -440,20 +444,28 @@ async fn handle_story_events(
     mut rx: Receiver<StoryEventData>,
 ) -> Result<(), SearchError> {
     let story_id = story.id;
-    let mut story = story;
+    let mut current_story = story;
 
-    while let Some(item) = rx.recv().await {
+    while let Some(StoryEventData { data: latest, .. }) = rx.recv().await {
         if ui_tx.is_closed() {
             break;
         }
-        let latest = item.data;
+
         let latest_descendants = latest.descendants.unwrap_or_default();
 
-        if latest_descendants != story.descendants || latest.score != story.score {
+        // We'll rebuild this story if either the number of comments or score has changed.
+        if latest_descendants != current_story.descendants || latest.score != current_story.score {
             let writer_context = ctx.read().unwrap().writer_context()?;
-            match rebuild_story(client.clone(), writer_context, story.clone(), latest).await {
+            match rebuild_story(
+                client.clone(),
+                writer_context,
+                current_story.clone(),
+                latest,
+            )
+            .await
+            {
                 Ok(_) => {
-                    story.descendants = latest_descendants;
+                    current_story.descendants = latest_descendants;
                     let new_story = {
                         let g = ctx.read().unwrap();
                         if g.active_index == category_type {
@@ -461,6 +473,8 @@ async fn handle_story_events(
                         }
                         g.story(story_id)?
                     };
+                    current_story.descendants = new_story.descendants;
+                    current_story.score = new_story.score;
 
                     info!("Rebuilt story {story_id}");
                     if let Err(err) = ui_tx.send(new_story).await {
