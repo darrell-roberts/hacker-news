@@ -30,6 +30,7 @@ use std::{
 mod app;
 mod articles;
 mod comments;
+mod common;
 mod config;
 mod footer;
 mod full_search;

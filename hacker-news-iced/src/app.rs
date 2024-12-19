@@ -1,6 +1,7 @@
 use crate::{
     articles::{self, ArticleMsg, ArticleState},
     comments::{self, CommentMsg, CommentState, NavStack},
+    common,
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState},
@@ -19,7 +20,7 @@ use iced::{
         self, button, container, focus_next, focus_previous, pane_grid, scrollable::AbsoluteOffset,
         text::Shaping, Column,
     },
-    Background, Font, Size, Task, Theme,
+    Font, Size, Task, Theme,
 };
 use log::error;
 use std::sync::{Arc, RwLock};
@@ -342,11 +343,11 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         .id(widget::text_input::Id::new("article_search"))
                         .on_input(|search| AppMsg::Articles(ArticleMsg::Search(search))),
                     )
-                    .push(widget::tooltip(
+                    .push(common::tooltip(
                         widget::button(widget::text("⟲").shaping(Shaping::Advanced))
                             .on_press(AppMsg::CloseSearch),
-                        widget::container(widget::text("Clear search")).padding(5),
-                        widget::tooltip::Position::Left,
+                        "Clear search",
+                        widget::tooltip::Position::Right,
                     )),
             ),
             PaneState::Comments => match app.comment_state.as_ref() {
@@ -360,20 +361,14 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                                         .label("oneline")
                                         .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
                                 )
-                                .push(widget::tooltip(
+                                .push(common::tooltip(
                                     widget::button(if cs.nav_stack.len() > 1 { "^" } else { "X" })
                                         .on_press(AppMsg::Comments(CommentMsg::PopNavStack)),
-                                    widget::container(widget::text(if cs.nav_stack.len() > 1 {
+                                    if cs.nav_stack.len() > 1 {
                                         "Previous comment"
                                     } else {
                                         "Close"
-                                    }))
-                                    .style(|_| {
-                                        widget::container::Style::default()
-                                            .background(Background::Color(iced::Color::BLACK))
-                                            .border(iced::border::rounded(8))
-                                    })
-                                    .padding(4),
+                                    },
                                     widget::tooltip::Position::Bottom,
                                 ))
                                 .spacing(5),

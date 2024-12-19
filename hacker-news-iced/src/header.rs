@@ -1,4 +1,4 @@
-use crate::{app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg};
+use crate::{app::AppMsg, common::tooltip, footer::FooterMsg, full_search::FullSearchMsg};
 use chrono::Local;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{rebuild_index, IndexStats, RebuildProgress, SearchContext};
@@ -143,24 +143,16 @@ impl HeaderState {
                                     .on_input(HeaderMsg::Search)
                                     .padding(5),
                                 )
-                                .push(widget::tooltip(
+                                .push(tooltip(
                                     widget::button(
                                         widget::text("⟲").shaping(text::Shaping::Advanced),
                                     )
                                     .on_press(HeaderMsg::ClearSearch),
-                                    widget::container(
-                                        widget::text("Clear search").color(iced::Color::WHITE),
-                                    )
-                                    .style(|_| {
-                                        widget::container::Style::default()
-                                            .background(Background::Color(iced::Color::BLACK))
-                                            .border(iced::border::rounded(8))
-                                    })
-                                    .padding(4),
+                                    "Clear search",
                                     widget::tooltip::Position::Bottom,
                                 )),
                         )
-                        .push(widget::tooltip(
+                        .push(tooltip(
                             widget::button("Re-index")
                                 .on_press_maybe(
                                     self.building_index.not().then_some(HeaderMsg::RebuildIndex),
@@ -171,19 +163,10 @@ impl HeaderState {
                                     style
                                 })
                                 .padding(5),
-                            widget::container(
-                                widget::text(format!("Re-index {}", self.article_type.as_str()))
-                                    .color(iced::Color::WHITE),
-                            )
-                            .style(|_| {
-                                widget::container::Style::default()
-                                    .background(Background::Color(iced::Color::BLACK))
-                                    .border(iced::border::rounded(8))
-                            })
-                            .padding(4),
+                            format!("Re-index {}", self.article_type.as_str()),
                             widget::tooltip::Position::Bottom,
                         ))
-                        .push(widget::tooltip(
+                        .push(tooltip(
                             widget::button(widget::text("↻").shaping(text::Shaping::Advanced))
                                 .style(|theme, status| {
                                     let mut style = button::primary(theme, status);
@@ -192,15 +175,7 @@ impl HeaderState {
                                 })
                                 .on_press(HeaderMsg::ClearVisisted)
                                 .padding(5),
-                            widget::container(
-                                widget::text("Clear visited").color(iced::Color::WHITE),
-                            )
-                            .style(|_| {
-                                widget::container::Style::default()
-                                    .background(Background::Color(iced::Color::BLACK))
-                                    .border(iced::border::rounded(8))
-                            })
-                            .padding(4),
+                            "Clear visited",
                             widget::tooltip::Position::Bottom,
                         ))
                         .spacing(5),

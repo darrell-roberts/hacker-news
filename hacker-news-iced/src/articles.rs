@@ -1,6 +1,6 @@
 use crate::{
-    app::AppMsg, footer::FooterMsg, header::HeaderMsg, parse_date, richtext::SearchSpanIter,
-    widget::hoverable,
+    app::AppMsg, common::tooltip, footer::FooterMsg, header::HeaderMsg, parse_date,
+    richtext::SearchSpanIter, widget::hoverable,
 };
 use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
 use iced::{
@@ -187,7 +187,7 @@ impl ArticleState {
                                                     )
                                                 },
                                             ))
-                                            .push(widget::tooltip(
+                                            .push(tooltip(
                                                 widget::button(
                                                     widget::text("↻")
                                                         .shaping(text::Shaping::Advanced),
@@ -197,24 +197,12 @@ impl ArticleState {
                                                 .on_press(AppMsg::Articles(
                                                     ArticleMsg::UpdateStory(story.clone()),
                                                 )),
-                                                widget::container(
-                                                    widget::text("Re-Index")
-                                                        .color(iced::Color::WHITE),
-                                                )
-                                                .style(|_| {
-                                                    widget::container::Style::default()
-                                                        .background(Background::Color(
-                                                            iced::Color::BLACK,
-                                                        ))
-                                                        .border(iced::border::rounded(8))
-                                                })
-                                                .padding(4),
+                                                "Re-Index",
                                                 widget::tooltip::Position::FollowCursor,
                                             ))
                                             .spacing(5),
                                     )
                                     .align_right(Length::Fill)
-                                    // .align_x(Horizontal::Right)
                                     .width(Length::Fill),
                                 )
                                 .spacing(5),
@@ -231,7 +219,7 @@ impl ArticleState {
                                 } else {
                                     Element::from(comments_button)
                                 })
-                                .push(widget::tooltip(
+                                .push(tooltip(
                                     widget::toggler(self.watch_handles.contains_key(&story.id))
                                         .on_toggle(|toggled| {
                                             AppMsg::Articles(if toggled {
@@ -240,30 +228,9 @@ impl ArticleState {
                                                 ArticleMsg::UnWatchStory(story.id)
                                             })
                                         }),
-                                    widget::container(
-                                        widget::text("Watch").color(iced::Color::WHITE),
-                                    )
-                                    .style(|_| {
-                                        widget::container::Style::default()
-                                            .background(Background::Color(iced::Color::BLACK))
-                                            .border(iced::border::rounded(8))
-                                    })
-                                    .padding(4),
-                                    widget::tooltip::Position::Right,
+                                    "Watch",
+                                    widget::tooltip::Position::FollowCursor,
                                 ))
-                                // .push(
-                                //     widget::button(
-                                //         widget::text(format!("{}", story.id))
-                                //             .font(Font {
-                                //                 weight: Weight::Light,
-                                //                 ..Default::default()
-                                //             })
-                                //             .size(12),
-                                //     )
-                                //     .on_press(AppMsg::Clipboard(format!("{}", story.id)))
-                                //     .style(widget::button::text)
-                                //     .padding(0),
-                                // )
                                 .push(
                                     widget::container(by)
                                         .align_x(Horizontal::Right)
