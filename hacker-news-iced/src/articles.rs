@@ -22,15 +22,13 @@ use tokio::task::AbortHandle;
 
 pub struct WatchHandles {
     ui_receiver: iced::task::Handle,
-    event: AbortHandle,
-    event_handler: AbortHandle,
+    abort_handles: [AbortHandle; 2],
 }
 
 impl WatchHandles {
     fn abort(self) {
         self.ui_receiver.abort();
-        self.event.abort();
-        self.event_handler.abort();
+        self.abort_handles.into_iter().for_each(|h| h.abort());
     }
 }
 
@@ -374,9 +372,8 @@ impl ArticleState {
                 let category_type = self.search_context.read().unwrap().active_category();
                 match watch_story(self.search_context.clone(), story, category_type) {
                     Ok(WatchState {
-                        event_handle,
-                        event_handler_task,
                         receiver,
+                        abort_handles,
                     }) => {
                         let (t, handle) = Task::run(receiver, ArticleMsg::StoryUpdated)
                             .map(AppMsg::Articles)
@@ -385,8 +382,7 @@ impl ArticleState {
                             story_id,
                             WatchHandles {
                                 ui_receiver: handle,
-                                event: event_handle,
-                                event_handler: event_handler_task,
+                                abort_handles,
                             },
                         );
                         t

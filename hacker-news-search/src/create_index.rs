@@ -478,8 +478,9 @@ async fn handle_story_events(
 }
 
 pub struct WatchState {
-    pub event_handle: AbortHandle,
-    pub event_handler_task: AbortHandle,
+    pub abort_handles: [AbortHandle; 2],
+    // pub event_handle: AbortHandle,
+    // pub event_handler_task: AbortHandle,
     pub receiver: mpsc::Receiver<Story>,
 }
 
@@ -493,22 +494,21 @@ pub fn watch_story(
     let (ui_tx, ui_rx) = mpsc::channel::<Story>(10);
     let story_id = story.id;
     let c = client.clone();
-    let event_handle =
-        tokio::spawn(async move { c.story_stream(story_id, tx).await }).abort_handle();
-    let event_handler_task = tokio::spawn(handle_story_events(
-        ctx.clone(),
-        client.clone(),
-        category_type,
-        story,
-        ui_tx,
-        rx,
-    ))
-    .abort_handle();
 
     Ok(WatchState {
-        event_handle,
-        event_handler_task,
         receiver: ui_rx,
+        abort_handles: [
+            tokio::spawn(async move { c.story_stream(story_id, tx).await }).abort_handle(),
+            tokio::spawn(handle_story_events(
+                ctx.clone(),
+                client.clone(),
+                category_type,
+                story,
+                ui_tx,
+                rx,
+            ))
+            .abort_handle(),
+        ],
     })
 }
 
