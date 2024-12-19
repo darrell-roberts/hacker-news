@@ -375,7 +375,7 @@ impl ArticleState {
                         receiver,
                         abort_handles,
                     }) => {
-                        let (t, handle) = Task::run(receiver, ArticleMsg::StoryUpdated)
+                        let (task, handle) = Task::run(receiver, ArticleMsg::StoryUpdated)
                             .map(AppMsg::Articles)
                             .abortable();
                         self.watch_handles.insert(
@@ -385,7 +385,7 @@ impl ArticleState {
                                 abort_handles,
                             },
                         );
-                        t
+                        task
                     }
                     Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
                 }
