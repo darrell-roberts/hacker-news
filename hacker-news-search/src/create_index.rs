@@ -3,6 +3,7 @@ use crate::{
     ITEM_DESCENDANT_COUNT, ITEM_ID, ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE,
     ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
 };
+use futures::channel::mpsc;
 use futures_core::Stream;
 use futures_util::{
     future,
@@ -20,7 +21,7 @@ use std::{
 };
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
 use tokio::{
-    sync::mpsc::{self, Receiver, Sender},
+    sync::mpsc::{Receiver, Sender},
     time::timeout,
 };
 #[cfg(feature = "trace")]
@@ -277,9 +278,16 @@ async fn collect_story(client: Arc<ApiClient>, tx: Sender<ItemRef>, mut story: I
 /// Get all stories and nested comments for the given category and send
 /// each document to the index writer channel.
 #[cfg_attr(feature = "trace", instrument(skip(tx)))]
-async fn collect(tx: Sender<ItemRef>, category_type: ArticleType) -> Result<(), SearchError> {
+async fn collect(
+    tx: Sender<ItemRef>,
+    category_type: ArticleType,
+    mut progress_tx: mpsc::Sender<RebuildProgress>,
+) -> Result<(), SearchError> {
     let client = Arc::new(ApiClient::new()?);
     let stories = client.articles(75, category_type).await?;
+    if let Err(err) = progress_tx.try_send(RebuildProgress::Started(stories.len())) {
+        error!("Failed to send progress status: {err}");
+    }
 
     info!("Building {} top docs for {category_type}", stories.len());
 
@@ -305,6 +313,13 @@ async fn collect(tx: Sender<ItemRef>, category_type: ArticleType) -> Result<(), 
         if let Err(err) = result.and_then(|r| Ok(r?)) {
             error!("Collect story failed: {err}");
         }
+
+        if let Err(err) = progress_tx.try_send(RebuildProgress::StoryCompleted) {
+            error!("Failed to send progress status: {err}");
+        }
+    }
+    if let Err(err) = progress_tx.try_send(RebuildProgress::Completed) {
+        error!("Failed to send progress status: {err}");
     }
 
     Ok(())
@@ -327,6 +342,7 @@ async fn write_items(
 pub async fn rebuild_index(
     ctx: Arc<RwLock<SearchContext>>,
     category_type: ArticleType,
+    progress_tx: mpsc::Sender<RebuildProgress>,
 ) -> Result<IndexStats, SearchError> {
     let start_time = Instant::now();
     info!("Creating index for {category_type}");
@@ -334,11 +350,11 @@ pub async fn rebuild_index(
     let mut writer_context = ctx.read().unwrap().writer_context()?;
     writer_context.delete_all_docs()?;
 
-    let (tx, rx) = mpsc::channel::<ItemRef>(100);
+    let (tx, rx) = tokio::sync::mpsc::channel::<ItemRef>(100);
     #[cfg(feature = "trace")]
-    let result = tokio::spawn(collect(tx, category_type).in_current_span());
+    let result = tokio::spawn(collect(tx, category_type, progress_tx).in_current_span());
     #[cfg(not(feature = "trace"))]
-    let result = tokio::spawn(collect(tx, category_type));
+    let result = tokio::spawn(collect(tx, category_type, progress_tx));
 
     let writing_result = write_items(rx, &mut writer_context).await;
 
@@ -354,6 +370,13 @@ pub async fn rebuild_index(
         g.reader.reload()?;
     }
     document_stats(&g, start_time.elapsed(), category_type)
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum RebuildProgress {
+    Started(usize),
+    StoryCompleted,
+    Completed,
 }
 
 pub async fn update_story(
@@ -392,7 +415,7 @@ async fn rebuild_story(
     latest: Item,
 ) -> Result<(), SearchError> {
     writer_context.delete_story(&story);
-    let (tx, mut rx) = mpsc::channel::<ItemRef>(100);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<ItemRef>(100);
 
     let result = tokio::spawn(collect_story(client, tx, latest, story.rank));
 

@@ -4,14 +4,20 @@ use crate::app::AppMsg;
 use chrono::{DateTime, Local, Utc};
 use chrono_tz::America::New_York;
 use hacker_news_api::ArticleType;
-use hacker_news_search::IndexStats;
+use hacker_news_search::{IndexStats, RebuildProgress};
 use iced::{
     alignment::Vertical,
     font::{Style, Weight},
-    widget::{container, pick_list, text, Column, Row},
+    widget::{container, pick_list, progress_bar, text, Column, Row},
     Background, Element, Font, Length, Task, Theme,
 };
 use log::error;
+
+#[derive(Debug, Clone, Copy)]
+pub struct IndexProgress {
+    pub total_stories_to_index: f32,
+    pub total_stories_completed: f32,
+}
 
 pub struct FooterState {
     pub status_line: String,
@@ -19,6 +25,7 @@ pub struct FooterState {
     pub scale: f64,
     pub current_index_stats: Option<IndexStats>,
     pub index_stats: HashMap<&'static str, IndexStats>,
+    pub index_progress: Option<IndexProgress>,
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +40,7 @@ pub enum FooterMsg {
         category: ArticleType,
     },
     CurrentIndex(ArticleType),
+    IndexProgress(RebuildProgress),
 }
 
 impl FooterState {
@@ -47,13 +55,24 @@ impl FooterState {
 
         let column = Column::new()
             .push(
-                container(
-                    text(&self.status_line)
-                        .font(light_font())
-                        .width(Length::Fill)
-                        .align_y(Vertical::Bottom),
-                )
-                .padding(iced::padding::top(5)),
+                Row::new()
+                    .push(
+                        container(
+                            text(&self.status_line)
+                                .font(light_font())
+                                .width(Length::Fill)
+                                .align_y(Vertical::Bottom),
+                        )
+                        .padding(iced::padding::top(5)),
+                    )
+                    .push_maybe(self.index_progress.as_ref().map(|progress| {
+                        container(progress_bar(
+                            0_f32..=progress.total_stories_to_index,
+                            progress.total_stories_completed,
+                        ))
+                        .padding(5)
+                        .align_right(Length::Fill)
+                    })),
             )
             .push(container(
                 Row::new()
@@ -153,6 +172,20 @@ impl FooterState {
                     .get(category.as_str())
                     .map(ToOwned::to_owned);
             }
+            FooterMsg::IndexProgress(progress) => match progress {
+                RebuildProgress::Started(total_stories) => {
+                    self.index_progress = Some(IndexProgress {
+                        total_stories_to_index: total_stories as f32,
+                        total_stories_completed: 0.,
+                    });
+                }
+                RebuildProgress::StoryCompleted => {
+                    if let Some(progress) = self.index_progress.as_mut() {
+                        progress.total_stories_completed += 1.;
+                    }
+                }
+                RebuildProgress::Completed => self.index_progress = None,
+            },
         }
         Task::none()
     }

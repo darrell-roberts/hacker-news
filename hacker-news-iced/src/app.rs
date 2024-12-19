@@ -19,7 +19,7 @@ use iced::{
         self, button, container, focus_next, focus_previous, pane_grid, scrollable::AbsoluteOffset,
         text::Shaping, Column,
     },
-    Font, Size, Task, Theme,
+    Background, Font, Size, Task, Theme,
 };
 use log::error;
 use std::sync::{Arc, RwLock};
@@ -360,10 +360,22 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                                         .label("oneline")
                                         .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
                                 )
-                                .push(
-                                    widget::button("X")
+                                .push(widget::tooltip(
+                                    widget::button(if cs.nav_stack.len() > 1 { "^" } else { "X" })
                                         .on_press(AppMsg::Comments(CommentMsg::PopNavStack)),
-                                )
+                                    widget::container(widget::text(if cs.nav_stack.len() > 1 {
+                                        "Previous comment"
+                                    } else {
+                                        "Close"
+                                    }))
+                                    .style(|_| {
+                                        widget::container::Style::default()
+                                            .background(Background::Color(iced::Color::BLACK))
+                                            .border(iced::border::rounded(8))
+                                    })
+                                    .padding(4),
+                                    widget::tooltip::Position::Bottom,
+                                ))
                                 .spacing(5),
                         ))
                         .always_show_controls()
