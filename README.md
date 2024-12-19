@@ -4,6 +4,7 @@
 - Read comments and nested comments.
 - Search stories.
 - Search comments.
+- Watch stories via server side events.
 
 ## Install prerequisites
 Each install method will build and package from source. You'll first need to clone this repo.
