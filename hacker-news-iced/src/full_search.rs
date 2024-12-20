@@ -109,19 +109,6 @@ impl FullSearchState {
         };
 
         let content = widget::Column::new()
-            // .push(
-            //     widget::container(
-            //         widget::Row::new()
-            //             .push(widget::text(format!("{}", self.full_count)))
-            //             .push(
-            //                 widget::button("X")
-            //                     .on_press(AppMsg::FullSearch(FullSearchMsg::CloseSearch)),
-            //             )
-            //             .spacing(5),
-            //     )
-            //     .align_right(Length::Fill)
-            //     .padding(iced::padding::right(5)),
-            // )
             .push_maybe((self.full_count > 0).then(pagination))
             .push(
                 widget::scrollable(
