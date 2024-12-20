@@ -51,7 +51,8 @@ This copies the binary and other assets into your `~/.local`.
 ![Screenshot from 2024-12-20 13-00-27](https://github.com/user-attachments/assets/1340c952-ec0c-4fb7-b5f9-368cd3aa326d)
 
 ### Windows Dark mode theme
-<img width="1248" alt="Screenshot 2024-12-18 093635" src="https://github.com/user-attachments/assets/99d17244-6c7a-4c44-b130-9ed0cf95dcfc" />
+![Screenshot 2024-12-20 130915](https://github.com/user-attachments/assets/8477397a-dc70-4861-ab8c-4eaf6d2dfc54)
+
 
 
 
