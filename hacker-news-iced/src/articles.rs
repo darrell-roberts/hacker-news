@@ -185,13 +185,14 @@ impl ArticleState {
                                                     },
                                                 )),
                                             )
-                                            .style(|_theme| {
-                                                widget::container::background(Color::from_rgb8(
-                                                    255, 0, 0,
-                                                ))
-                                                .border(iced::border::rounded(25))
-                                            })
-                                            .padding(5)
+                                            .style(
+                                                |_theme| {
+                                                    widget::container::background(Color::from_rgb8(
+                                                        255, 0, 0,
+                                                    ))
+                                                    .border(iced::border::rounded(25))
+                                                },
+                                            )
                                         }),
                                 )
                                 .push(
