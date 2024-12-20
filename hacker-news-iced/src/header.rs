@@ -5,7 +5,7 @@ use hacker_news_search::{rebuild_index, IndexStats, RebuildProgress, SearchConte
 use iced::{
     futures::channel::mpsc,
     widget::{self, button, container, row, text, Column},
-    Background, Border, Element, Length, Task,
+    Background, Element, Length, Task,
 };
 use log::error;
 use std::{
@@ -205,17 +205,11 @@ impl HeaderState {
         widget::button(widget::text(count))
             .on_press(action)
             .style(move |theme, status| {
-                let mut style = if self.article_count == count {
+                if self.article_count == count {
                     button::primary(theme, status)
                 } else {
                     button::secondary(theme, status)
-                };
-
-                style.border = Border {
-                    radius: 4.into(),
-                    ..Default::default()
-                };
-                style
+                }
             })
             .into()
     }

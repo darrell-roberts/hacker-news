@@ -365,7 +365,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                                         .label("oneline")
                                         .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
                                 )
-                                .push(widget::button("all by time").on_press(AppMsg::FullSearch(
+                                .push(widget::button("by time").on_press(AppMsg::FullSearch(
                                     FullSearchMsg::StoryByTime(cs.article.id),
                                 )))
                                 .push(common::tooltip(
