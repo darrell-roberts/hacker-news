@@ -3,10 +3,9 @@ use chrono::Local;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{rebuild_index, IndexStats, RebuildProgress, SearchContext};
 use iced::{
-    border,
     futures::channel::mpsc,
     widget::{self, button, container, row, text, Column},
-    Background, Border, Element, Length, Task,
+    Background, Element, Length, Task,
 };
 use log::error;
 use std::{
@@ -157,22 +156,12 @@ impl HeaderState {
                                 .on_press_maybe(
                                     self.building_index.not().then_some(HeaderMsg::RebuildIndex),
                                 )
-                                .style(|theme, status| {
-                                    let mut style = button::primary(theme, status);
-                                    style.border = border::rounded(8.);
-                                    style
-                                })
                                 .padding(5),
                             format!("Re-index {}", self.article_type.as_str()),
                             widget::tooltip::Position::Bottom,
                         ))
                         .push(tooltip(
                             widget::button(widget::text("↻").shaping(text::Shaping::Advanced))
-                                .style(|theme, status| {
-                                    let mut style = button::primary(theme, status);
-                                    style.border = border::rounded(8.);
-                                    style
-                                })
                                 .on_press(HeaderMsg::ClearVisisted)
                                 .padding(5),
                             "Clear visited",
@@ -203,17 +192,11 @@ impl HeaderState {
         widget::button(widget::text(article_type.to_string()))
             .on_press(action)
             .style(move |theme, status| {
-                let mut style = if self.article_type == article_type {
+                if self.article_type == article_type {
                     button::primary(theme, status)
                 } else {
                     button::secondary(theme, status)
-                };
-
-                style.border = Border {
-                    radius: 4.into(),
-                    ..Default::default()
-                };
-                style
+                }
             })
             .into()
     }
@@ -222,17 +205,11 @@ impl HeaderState {
         widget::button(widget::text(count))
             .on_press(action)
             .style(move |theme, status| {
-                let mut style = if self.article_count == count {
+                if self.article_count == count {
                     button::primary(theme, status)
                 } else {
                     button::secondary(theme, status)
-                };
-
-                style.border = Border {
-                    radius: 4.into(),
-                    ..Default::default()
-                };
-                style
+                }
             })
             .into()
     }

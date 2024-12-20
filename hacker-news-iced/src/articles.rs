@@ -1,6 +1,6 @@
 use crate::{
-    app::AppMsg, common::tooltip, footer::FooterMsg, header::HeaderMsg, parse_date,
-    richtext::SearchSpanIter, widget::hoverable,
+    app::AppMsg, common::tooltip, footer::FooterMsg, full_search::FullSearchMsg, header::HeaderMsg,
+    parse_date, richtext::SearchSpanIter, widget::hoverable,
 };
 use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
 use iced::{
@@ -31,6 +31,11 @@ impl WatchHandles {
     }
 }
 
+pub struct WatchChange {
+    new_comments: u64,
+    beyond: u64,
+}
+
 pub struct ArticleState {
     pub search_context: Arc<RwLock<SearchContext>>,
     /// Viewing articles
@@ -45,6 +50,8 @@ pub struct ArticleState {
     pub article_limit: usize,
     /// Handles for watch stories.
     pub watch_handles: HashMap<u64, WatchHandles>,
+    /// Number of changes that have occurred to a watched story.
+    pub watch_changes: HashMap<u64, WatchChange>,
 }
 
 #[derive(Debug, Clone)]
@@ -157,6 +164,37 @@ impl ArticleState {
                     Column::new()
                         .push(
                             Row::new()
+                                .push_maybe(
+                                    self.watch_changes
+                                        .get(&article_id)
+                                        .filter(|w| w.new_comments > 0)
+                                        .map(|watch_change| {
+                                            widget::container(
+                                                widget::button(
+                                                    widget::text(format!(
+                                                        "+{}",
+                                                        watch_change.new_comments
+                                                    ))
+                                                    .color(Color::from_rgb8(255, 255, 153)),
+                                                )
+                                                .style(widget::button::text)
+                                                .on_press(AppMsg::FullSearch(
+                                                    FullSearchMsg::StoryByTime {
+                                                        story_id: article_id,
+                                                        beyond: Some(watch_change.beyond),
+                                                    },
+                                                )),
+                                            )
+                                            .style(
+                                                |_theme| {
+                                                    widget::container::background(Color::from_rgb8(
+                                                        255, 0, 0,
+                                                    ))
+                                                    .border(iced::border::rounded(25))
+                                                },
+                                            )
+                                        }),
+                                )
                                 .push(
                                     widget::container(title_wrapper)
                                         .width(Length::FillPortion(4).enclose(Length::Fill)),
@@ -311,6 +349,7 @@ impl ArticleState {
                 for handle in watch_handles.into_values() {
                     handle.abort();
                 }
+                self.watch_changes.clear();
                 match g.top_stories(limit, 0) {
                     Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
                     Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
@@ -319,6 +358,7 @@ impl ArticleState {
             ArticleMsg::ViewingItem(story_id) => {
                 self.visited.insert(story_id);
                 self.viewing_item = Some(story_id);
+                self.watch_changes.remove(&story_id);
                 Task::done(AppMsg::SaveConfig)
             }
             ArticleMsg::UpdateStory(story) => {
@@ -335,6 +375,22 @@ impl ArticleState {
             ArticleMsg::WatchStory(story) => {
                 let story_id = story.id;
                 let category_type = self.search_context.read().unwrap().active_category();
+
+                let last_comment_age = self
+                    .search_context
+                    .read()
+                    .unwrap()
+                    .last_comment_age(story_id)
+                    .unwrap_or_default();
+
+                self.watch_changes.insert(
+                    story_id,
+                    WatchChange {
+                        new_comments: 0,
+                        beyond: last_comment_age.unwrap_or_default(),
+                    },
+                );
+
                 match watch_story(self.search_context.clone(), story, category_type) {
                     Ok(WatchState {
                         receiver,
@@ -358,30 +414,23 @@ impl ArticleState {
             ArticleMsg::StoryUpdated(story) => {
                 let story_id = story.id;
 
-                match self.articles.iter_mut().find(|s| s.id == story.id) {
-                    Some(s) => {
-                        let last_total_comments = s.descendants;
-                        let task = match (
-                            last_total_comments == story.descendants,
-                            self.viewing_item == Some(story_id),
-                        ) {
-                            (false, true) => Task::done(AppMsg::OpenComment {
-                                article: story.clone(),
-                                parent_id: story_id,
-                                comment_stack: Vec::new(),
-                            }),
-                            _ => Task::none(),
-                        };
-                        *s = story;
-                        task
+                if let Some(s) = self.articles.iter_mut().find(|s| s.id == story.id) {
+                    if s.descendants < story.descendants {
+                        self.watch_changes.entry(story_id).and_modify(|last_new| {
+                            last_new.new_comments =
+                                story.descendants - (s.descendants - last_new.new_comments)
+                        });
                     }
-                    None => Task::none(),
+                    s.descendants = story.descendants;
+                    s.score = story.score;
                 }
+                Task::none()
             }
             ArticleMsg::UnWatchStory(story_id) => {
                 if let Some(handle) = self.watch_handles.remove(&story_id) {
                     handle.abort();
                 }
+                self.watch_changes.remove(&story_id);
                 Task::none()
             }
         }
