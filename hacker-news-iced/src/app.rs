@@ -431,6 +431,7 @@ impl From<&App> for Config {
 
 pub fn save_task(app: &App) -> Task<AppMsg> {
     let config = Config::from(app);
+
     Task::perform(save_config(config), |result| {
         AppMsg::Footer(match result {
             Ok(_) => FooterMsg::Error("Saved".into()),

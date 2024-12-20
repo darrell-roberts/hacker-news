@@ -1,18 +1,17 @@
 use crate::{
-    app::AppMsg, articles::ArticleMsg, footer::FooterMsg, header::HeaderMsg, parse_date,
-    richtext::render_rich_text,
+    app::AppMsg, articles::ArticleMsg, common::PaginatingView, footer::FooterMsg,
+    header::HeaderMsg, parse_date, richtext::render_rich_text,
 };
 use hacker_news_search::{
     api::{Comment, CommentStack},
     SearchContext,
 };
 use iced::{
-    alignment::Vertical,
     border,
     font::{Style, Weight},
     padding,
     widget::{self, text::Shaping, tooltip::Position},
-    Color, Font, Length, Task, Theme,
+    Color, Font, Length, Task,
 };
 use log::error;
 use std::sync::{Arc, RwLock};
@@ -60,56 +59,8 @@ impl FullSearchState {
             })
             .map(iced::Element::from);
 
-        let pagination = || {
-            let (div, rem) = (self.full_count / 10, self.full_count % 10);
-            let max = if rem > 0 { div + 1 } else { div };
-            let pages = (1..=max).map(|page| {
-                widget::button(
-                    widget::container(widget::text(format!("{page}")))
-                        .style(move |theme: &Theme| {
-                            let palette = theme.extended_palette();
-                            if page == self.page {
-                                widget::container::rounded_box(theme)
-                                    .background(palette.secondary.strong.color)
-                            } else {
-                                widget::container::transparent(theme)
-                            }
-                        })
-                        .padding(5),
-                )
-                .style(widget::button::text)
-                .padding(0)
-                .on_press(AppMsg::FullSearch(FullSearchMsg::JumpPage(page)))
-                .into()
-            });
-
-            widget::container(
-                widget::Row::new()
-                    .push(
-                        widget::button(widget::text("←").shaping(Shaping::Advanced))
-                            .on_press_maybe(
-                                self.page
-                                    .gt(&1)
-                                    .then_some(AppMsg::FullSearch(FullSearchMsg::Back)),
-                            ),
-                    )
-                    .extend(pages)
-                    .push(
-                        widget::button(widget::text("→").shaping(Shaping::Advanced))
-                            .on_press_maybe(
-                                (self.page < (self.full_count / 10) + 1)
-                                    .then_some(AppMsg::FullSearch(FullSearchMsg::Forward)),
-                            ),
-                    )
-                    .spacing(2)
-                    .align_y(Vertical::Center)
-                    .wrap(),
-            )
-            .center_x(Length::Fill)
-        };
-
         let content = widget::Column::new()
-            .push_maybe((self.full_count > 0).then(pagination))
+            .push_maybe((self.full_count > 0).then(|| self.pagination_element()))
             .push(
                 widget::scrollable(
                     widget::container(widget::Column::with_children(comment_rows).spacing(15))
@@ -304,5 +255,27 @@ impl FullSearchState {
             },
             None => todo!(),
         }
+    }
+}
+
+impl PaginatingView<AppMsg> for FullSearchState {
+    fn jump_page(&self, page: usize) -> AppMsg {
+        AppMsg::FullSearch(FullSearchMsg::JumpPage(page))
+    }
+
+    fn go_back(&self) -> AppMsg {
+        AppMsg::FullSearch(FullSearchMsg::Back)
+    }
+
+    fn go_forward(&self) -> AppMsg {
+        AppMsg::FullSearch(FullSearchMsg::Forward)
+    }
+
+    fn full_count(&self) -> usize {
+        self.full_count
+    }
+
+    fn current_page(&self) -> usize {
+        self.page
     }
 }

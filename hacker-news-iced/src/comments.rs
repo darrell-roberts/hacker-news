@@ -1,18 +1,17 @@
 use crate::{
-    app::AppMsg, footer::FooterMsg, full_search::FullSearchMsg, header::HeaderMsg, parse_date,
-    richtext::render_rich_text,
+    app::AppMsg, common::PaginatingView, footer::FooterMsg, full_search::FullSearchMsg,
+    header::HeaderMsg, parse_date, richtext::render_rich_text,
 };
 use hacker_news_search::{
     api::{Comment, Story},
     SearchContext,
 };
 use iced::{
-    alignment::Vertical,
     border,
     font::{Style, Weight},
     padding,
     widget::{self, button, container, text::Shaping, Column, Container},
-    Border, Element, Font, Length, Task, Theme,
+    Border, Element, Font, Length, Task,
 };
 use log::error;
 use std::sync::{Arc, RwLock};
@@ -150,54 +149,6 @@ impl CommentState {
             );
 
         container(content.width(Length::Fill)).into()
-    }
-
-    fn pagination_element(&self) -> Element<AppMsg> {
-        let (div, rem) = (self.full_count / 10, self.full_count % 10);
-        let max = if rem > 0 { div + 1 } else { div };
-        let pages = (1..=max).map(|page| {
-            widget::button(
-                widget::container(widget::text(format!("{page}")))
-                    .style(move |theme: &Theme| {
-                        let palette = theme.extended_palette();
-                        if page == self.page {
-                            widget::container::rounded_box(theme)
-                                .background(palette.secondary.strong.color)
-                        } else {
-                            widget::container::transparent(theme)
-                        }
-                    })
-                    .padding(5),
-            )
-            .style(widget::button::text)
-            .padding(0)
-            .on_press(AppMsg::Comments(CommentMsg::JumpPage(page)))
-            .into()
-        });
-
-        widget::container(
-            widget::Row::new()
-                .push(
-                    widget::button(widget::text("←").shaping(Shaping::Advanced)).on_press_maybe(
-                        self.page
-                            .gt(&1)
-                            .then_some(AppMsg::Comments(CommentMsg::Back)),
-                    ),
-                )
-                .extend(pages)
-                .push(
-                    widget::button(widget::text("→").shaping(Shaping::Advanced)).on_press_maybe(
-                        (self.page < (self.full_count / 10) + 1)
-                            .then_some(AppMsg::Comments(CommentMsg::Forward)),
-                    ),
-                )
-                .spacing(2)
-                .align_y(Vertical::Center)
-                .wrap(),
-        )
-        .center_x(Length::Fill)
-        .padding([5, 0])
-        .into()
     }
 
     fn render_comment<'a>(
@@ -469,5 +420,27 @@ impl CommentState {
             current.offset = self.offset;
             current.page = self.page;
         }
+    }
+}
+
+impl PaginatingView<AppMsg> for CommentState {
+    fn jump_page(&self, page: usize) -> AppMsg {
+        AppMsg::Comments(CommentMsg::JumpPage(page))
+    }
+
+    fn go_back(&self) -> AppMsg {
+        AppMsg::Comments(CommentMsg::Back)
+    }
+
+    fn go_forward(&self) -> AppMsg {
+        AppMsg::Comments(CommentMsg::Forward)
+    }
+
+    fn full_count(&self) -> usize {
+        self.full_count
+    }
+
+    fn current_page(&self) -> usize {
+        self.page
     }
 }
