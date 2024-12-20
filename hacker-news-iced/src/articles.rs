@@ -1,6 +1,6 @@
 use crate::{
-    app::AppMsg, common::tooltip, footer::FooterMsg, header::HeaderMsg, parse_date,
-    richtext::SearchSpanIter, widget::hoverable,
+    app::AppMsg, common::tooltip, footer::FooterMsg, full_search::FullSearchMsg, header::HeaderMsg,
+    parse_date, richtext::SearchSpanIter, widget::hoverable,
 };
 use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
 use iced::{
@@ -31,6 +31,11 @@ impl WatchHandles {
     }
 }
 
+pub struct WatchChange {
+    new_comments: u64,
+    beyond: u64,
+}
+
 pub struct ArticleState {
     pub search_context: Arc<RwLock<SearchContext>>,
     /// Viewing articles
@@ -46,7 +51,7 @@ pub struct ArticleState {
     /// Handles for watch stories.
     pub watch_handles: HashMap<u64, WatchHandles>,
     /// Number of changes that have occurred to a watched story.
-    pub watch_changes: HashMap<u64, usize>,
+    pub watch_changes: HashMap<u64, WatchChange>,
 }
 
 #[derive(Debug, Clone)]
@@ -159,17 +164,36 @@ impl ArticleState {
                     Column::new()
                         .push(
                             Row::new()
-                                .push_maybe(self.watch_changes.get(&article_id).map(|count| {
-                                    widget::container(
-                                        widget::text(format!("+{count}"))
-                                            .color(Color::from_rgb8(255, 255, 153)),
-                                    )
-                                    .style(|_theme| {
-                                        widget::container::background(Color::from_rgb8(255, 0, 0))
-                                            .border(iced::border::rounded(25))
-                                    })
-                                    .padding(5)
-                                }))
+                                .push_maybe(
+                                    self.watch_changes
+                                        .get(&article_id)
+                                        .filter(|w| w.new_comments > 0)
+                                        .map(|watch_change| {
+                                            widget::container(
+                                                widget::button(
+                                                    widget::text(format!(
+                                                        "+{}",
+                                                        watch_change.new_comments
+                                                    ))
+                                                    .color(Color::from_rgb8(255, 255, 153)),
+                                                )
+                                                .style(widget::button::text)
+                                                .on_press(AppMsg::FullSearch(
+                                                    FullSearchMsg::StoryByTime {
+                                                        story_id: article_id,
+                                                        beyond: Some(watch_change.beyond),
+                                                    },
+                                                )),
+                                            )
+                                            .style(|_theme| {
+                                                widget::container::background(Color::from_rgb8(
+                                                    255, 0, 0,
+                                                ))
+                                                .border(iced::border::rounded(25))
+                                            })
+                                            .padding(5)
+                                        }),
+                                )
                                 .push(
                                     widget::container(title_wrapper)
                                         .width(Length::FillPortion(4).enclose(Length::Fill)),
@@ -350,6 +374,22 @@ impl ArticleState {
             ArticleMsg::WatchStory(story) => {
                 let story_id = story.id;
                 let category_type = self.search_context.read().unwrap().active_category();
+
+                let last_comment_age = self
+                    .search_context
+                    .read()
+                    .unwrap()
+                    .last_comment_age(story_id)
+                    .unwrap_or_default();
+
+                self.watch_changes.insert(
+                    story_id,
+                    WatchChange {
+                        new_comments: 0,
+                        beyond: last_comment_age.map(|age| age + 2).unwrap_or_default(),
+                    },
+                );
+
                 match watch_story(self.search_context.clone(), story, category_type) {
                     Ok(WatchState {
                         receiver,
@@ -374,11 +414,11 @@ impl ArticleState {
                 let story_id = story.id;
 
                 if let Some(s) = self.articles.iter_mut().find(|s| s.id == story.id) {
-                    if s.descendants != story.descendants {
-                        self.watch_changes
-                            .entry(story_id)
-                            .and_modify(|new_comments| *new_comments += 1)
-                            .or_insert(1);
+                    if s.descendants < story.descendants {
+                        self.watch_changes.entry(story_id).and_modify(|last_new| {
+                            last_new.new_comments =
+                                story.descendants - (s.descendants - last_new.new_comments)
+                        });
                     }
                     s.descendants = story.descendants;
                     s.score = story.score;

@@ -366,7 +366,10 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                                         .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
                                 )
                                 .push(widget::button("by time").on_press(AppMsg::FullSearch(
-                                    FullSearchMsg::StoryByTime(cs.article.id),
+                                    FullSearchMsg::StoryByTime {
+                                        story_id: cs.article.id,
+                                        beyond: None,
+                                    },
                                 )))
                                 .push(common::tooltip(
                                     widget::button(if cs.nav_stack.len() > 1 { "^" } else { "X" })

@@ -1,3 +1,4 @@
+//! Common UI elements used by multiple views.
 use iced::{
     alignment::Vertical,
     widget::{

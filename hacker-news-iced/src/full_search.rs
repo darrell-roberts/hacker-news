@@ -27,7 +27,7 @@ pub struct FullSearchState {
 
 pub enum SearchCriteria {
     Query(String),
-    StoryId(u64),
+    StoryId { story_id: u64, beyond: Option<u64> },
 }
 
 #[derive(Debug, Clone)]
@@ -38,7 +38,7 @@ pub enum FullSearchMsg {
     Back,
     ShowThread(u64),
     JumpPage(usize),
-    StoryByTime(u64),
+    StoryByTime { story_id: u64, beyond: Option<u64> },
 }
 
 impl FullSearchState {
@@ -115,7 +115,7 @@ impl FullSearchState {
                         .iter()
                         .filter_map(|s| match s {
                             SearchCriteria::Query(s) => Some(s.as_str()),
-                            SearchCriteria::StoryId(_) => None,
+                            SearchCriteria::StoryId { .. } => None,
                         })
                         .next();
                     widget::container(widget::rich_text(render_rich_text(&comment.body, s, false)))
@@ -157,7 +157,7 @@ impl FullSearchState {
                 } else {
                     if !self.search.iter().any(|s| match s {
                         SearchCriteria::Query(s) => s == &search,
-                        SearchCriteria::StoryId(_) => false,
+                        SearchCriteria::StoryId { .. } => false,
                     }) {
                         self.page = 1;
                         self.offset = 0;
@@ -225,10 +225,11 @@ impl FullSearchState {
 
                 self.paginate_task()
             }
-            FullSearchMsg::StoryByTime(story_id) => {
-                self.search = Some(SearchCriteria::StoryId(story_id));
+            FullSearchMsg::StoryByTime { story_id, beyond } => {
+                self.search = Some(SearchCriteria::StoryId { story_id, beyond });
                 match self.search_context.read().unwrap().story_comments_by_date(
                     story_id,
+                    beyond,
                     10,
                     self.offset,
                 ) {
@@ -249,8 +250,12 @@ impl FullSearchState {
                 SearchCriteria::Query(s) => {
                     Task::done(FullSearchMsg::Search(s.to_owned())).map(AppMsg::FullSearch)
                 }
-                SearchCriteria::StoryId(story_id) => {
-                    Task::done(FullSearchMsg::StoryByTime(*story_id)).map(AppMsg::FullSearch)
+                SearchCriteria::StoryId { story_id, beyond } => {
+                    Task::done(FullSearchMsg::StoryByTime {
+                        story_id: *story_id,
+                        beyond: beyond.to_owned(),
+                    })
+                    .map(AppMsg::FullSearch)
                 }
             },
             None => todo!(),

@@ -1,11 +1,13 @@
 //! Search API for user comments.
+use std::time::SystemTime;
+
 use super::{Comment, Story};
 use crate::{
     SearchContext, SearchError, ITEM_BODY, ITEM_ID, ITEM_RANK, ITEM_STORY_ID, ITEM_TIME, ITEM_TYPE,
 };
 use tantivy::{
     collector::{Count, MultiCollector, TopDocs},
-    query::{BooleanQuery, FuzzyTermQuery, Occur, Query, TermQuery},
+    query::{BooleanQuery, FuzzyTermQuery, Occur, Query, RangeQuery, TermQuery},
     schema::IndexRecordOption,
     Order, Searcher, TantivyDocument, Term,
 };
@@ -56,15 +58,32 @@ impl SearchContext {
     pub fn story_comments_by_date(
         &self,
         story_id: u64,
+        beyond: Option<u64>,
         limit: usize,
         offset: usize,
     ) -> Result<(Vec<Comment>, usize), SearchError> {
         let searcher = self.searcher();
 
-        let query = TermQuery::new(
+        let by_story = Box::new(TermQuery::new(
             Term::from_field_u64(self.schema.get_field(ITEM_STORY_ID)?, story_id),
             IndexRecordOption::Basic,
-        );
+        ));
+
+        let by_time = beyond.map(|since| {
+            let now = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            Box::new(RangeQuery::new_u64(ITEM_TIME.into(), since..now))
+        });
+
+        let query: Box<dyn Query> = match by_time {
+            Some(q) => Box::new(BooleanQuery::new(vec![
+                (Occur::Must, q),
+                (Occur::Must, by_story),
+            ])),
+            None => by_story,
+        };
 
         let mut multi_collector = MultiCollector::new();
 
@@ -86,6 +105,24 @@ impl SearchContext {
             })
             .collect::<Result<Vec<_>, _>>()?;
         Ok((comments, count))
+    }
+
+    pub fn last_comment_age(&self, story_id: u64) -> Result<Option<u64>, SearchError> {
+        let by_story = TermQuery::new(
+            Term::from_field_u64(self.schema.get_field(ITEM_STORY_ID)?, story_id),
+            IndexRecordOption::Basic,
+        );
+        let top_docs = TopDocs::with_limit(1).order_by_u64_field(ITEM_TIME, Order::Desc);
+
+        let searcher = self.searcher();
+        Ok(searcher
+            .search(&by_story, &top_docs)?
+            .into_iter()
+            .next()
+            .and_then(|(_, doc_address)| {
+                let doc = searcher.doc::<TantivyDocument>(doc_address).ok()?;
+                self.to_comment(doc).ok().map(|doc| doc.time)
+            }))
     }
 
     /// Search user comments with term, related story, limit and pagination offset.
