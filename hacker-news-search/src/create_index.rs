@@ -1,7 +1,8 @@
 use crate::{
-    api::Story, SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_CATEGORY,
-    ITEM_DESCENDANT_COUNT, ITEM_ID, ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE,
-    ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
+    api::{Comment, Story},
+    SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_CATEGORY, ITEM_DESCENDANT_COUNT, ITEM_ID,
+    ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE,
+    ITEM_TYPE, ITEM_URL,
 };
 use futures::{channel::mpsc, SinkExt};
 use futures_core::Stream;
@@ -498,16 +499,16 @@ async fn handle_story_events(
     Ok(())
 }
 
-pub struct WatchState {
-    pub abort_handles: [AbortHandle; 2],
-    pub receiver: mpsc::Receiver<Story>,
+pub struct WatchState<const N: usize, EventData> {
+    pub abort_handles: [AbortHandle; N],
+    pub receiver: mpsc::Receiver<EventData>,
 }
 
 pub fn watch_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
     category_type: ArticleType,
-) -> Result<WatchState, SearchError> {
+) -> Result<WatchState<2, Story>, SearchError> {
     let client = Arc::new(ApiClient::new()?);
     let (tx, rx) = tokio::sync::mpsc::channel(10);
     let (ui_tx, ui_rx) = mpsc::channel::<Story>(10);
@@ -532,6 +533,14 @@ pub fn watch_story(
             .abort_handle(),
         ],
     })
+}
+
+pub fn watch_comment(
+    ctx: Arc<RwLock<SearchContext>>,
+    comment: Comment,
+    category_type: ArticleType,
+) -> Result<WatchState<2, Comment>, SearchError> {
+    todo!()
 }
 
 // pub fn un_watch_story(story_id: u64) {

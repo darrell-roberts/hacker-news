@@ -14,7 +14,7 @@ use iced::{
     widget::{self, button, container, text::Shaping, Column, Container},
     Border, Element, Font, Length, Task, Theme,
 };
-use log::error;
+use log::{error, info};
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
@@ -63,6 +63,7 @@ pub enum CommentMsg {
     Forward,
     Back,
     JumpPage(usize),
+    Close(u64),
 }
 
 impl CommentState {
@@ -222,50 +223,61 @@ impl CommentState {
         };
 
         container(
-            widget::column![
-                widget::rich_text(render_rich_text(
-                    &comment.body,
-                    self.search.as_deref(),
-                    self.oneline
-                )),
-                widget::row![
-                    widget::rich_text([
-                        widget::span(format!(" by {}", comment.by))
-                            .link(AppMsg::Header(HeaderMsg::Search(format!(
-                                "by:{}",
-                                comment.by
-                            ))))
-                            .font(Font {
-                                style: Style::Italic,
-                                ..Default::default()
-                            })
-                            .size(14),
-                        widget::span(" "),
-                        widget::span(parse_date(comment.time).unwrap_or_default())
-                            .font(Font {
-                                weight: Weight::Light,
-                                style: Style::Italic,
-                                ..Default::default()
-                            })
-                            .size(10),
-                    ]),
-                    by_button,
+            widget::Column::new()
+                .push_maybe(is_parent.then(|| {
                     widget::container(
-                        widget::button(widget::text(format!("{}", comment.id)))
-                            .on_press(AppMsg::OpenLink {
-                                url: format!("https://news.ycombinator.com/item?id={}", comment.id),
-                                item_id: comment.story_id
-                            })
-                            .style(widget::button::text)
-                            .padding(0)
+                        widget::button("X")
+                            .on_press(AppMsg::Comments(CommentMsg::Close(comment.id))),
                     )
                     .align_right(Length::Fill)
-                ]
-                .spacing(5)
-            ]
-            .padding([10, 10])
-            .spacing(15)
-            .width(Length::Fill),
+                }))
+                .push(widget::rich_text(render_rich_text(
+                    &comment.body,
+                    self.search.as_deref(),
+                    self.oneline,
+                )))
+                .push(
+                    widget::row![
+                        widget::rich_text([
+                            widget::span(format!(" by {}", comment.by))
+                                .link(AppMsg::Header(HeaderMsg::Search(format!(
+                                    "by:{}",
+                                    comment.by
+                                ))))
+                                .font(Font {
+                                    style: Style::Italic,
+                                    ..Default::default()
+                                })
+                                .size(14),
+                            widget::span(" "),
+                            widget::span(parse_date(comment.time).unwrap_or_default())
+                                .font(Font {
+                                    weight: Weight::Light,
+                                    style: Style::Italic,
+                                    ..Default::default()
+                                })
+                                .size(10),
+                        ]),
+                        by_button,
+                        widget::container(
+                            widget::button(widget::text(format!("{}", comment.id)))
+                                .on_press(AppMsg::OpenLink {
+                                    url: format!(
+                                        "https://news.ycombinator.com/item?id={}",
+                                        comment.id
+                                    ),
+                                    item_id: comment.story_id
+                                })
+                                .style(widget::button::text)
+                                .padding(0)
+                        )
+                        .align_right(Length::Fill)
+                    ]
+                    .spacing(5),
+                )
+                .padding([10, 10])
+                .spacing(15)
+                .width(Length::Fill),
         )
         .clip(false)
     }
@@ -402,6 +414,41 @@ impl CommentState {
                 }
                 self.update_nav_stack();
                 self.paginate_task()
+            }
+            CommentMsg::Close(comment_id) => {
+                while let Some(stack_item) = self.nav_stack.pop() {
+                    info!("removed comment stack item: {stack_item:?}");
+                    if let Some(c) = stack_item.comment {
+                        if c.id == comment_id {
+                            break;
+                        }
+                    }
+                }
+                self.parent_id = self
+                    .nav_stack
+                    .last()
+                    .map(|c| match c.comment.as_ref() {
+                        Some(c) => c.parent_id,
+                        None => 0,
+                    })
+                    .unwrap_or_default();
+
+                match self.nav_stack.last() {
+                    Some(current) => {
+                        self.offset = current.offset;
+                        self.page = current.page;
+                        Task::done(CommentMsg::FetchComments {
+                            parent_id: current
+                                .comment
+                                .as_ref()
+                                .map(|c| c.id)
+                                .unwrap_or_else(|| self.article.id),
+                            parent_comment: None,
+                        })
+                        .map(AppMsg::Comments)
+                    }
+                    None => Task::none(),
+                }
             }
         }
     }
