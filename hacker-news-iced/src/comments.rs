@@ -14,7 +14,7 @@ use iced::{
     widget::{self, button, container, text::Shaping, Column, Container},
     Border, Element, Font, Length, Task, Theme,
 };
-use log::{error, info};
+use log::error;
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
@@ -417,13 +417,13 @@ impl CommentState {
             }
             CommentMsg::Close(comment_id) => {
                 while let Some(stack_item) = self.nav_stack.pop() {
-                    info!("removed comment stack item: {stack_item:?}");
                     if let Some(c) = stack_item.comment {
                         if c.id == comment_id {
                             break;
                         }
                     }
                 }
+
                 self.parent_id = self
                     .nav_stack
                     .last()

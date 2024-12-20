@@ -535,6 +535,7 @@ pub fn watch_story(
     })
 }
 
+#[expect(unused_variables)]
 pub fn watch_comment(
     ctx: Arc<RwLock<SearchContext>>,
     comment: Comment,
