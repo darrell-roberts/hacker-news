@@ -387,7 +387,7 @@ impl ArticleState {
                     story_id,
                     WatchChange {
                         new_comments: 0,
-                        beyond: last_comment_age.map(|age| age + 2).unwrap_or_default(),
+                        beyond: last_comment_age.unwrap_or_default(),
                     },
                 );
 
