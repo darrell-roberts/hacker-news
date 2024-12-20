@@ -1,8 +1,8 @@
 use crate::{
-    app::AppMsg, footer::FooterMsg, header::HeaderMsg, parse_date, richtext::SearchSpanIter,
-    widget::hoverable,
+    app::AppMsg, common::tooltip, footer::FooterMsg, header::HeaderMsg, parse_date,
+    richtext::SearchSpanIter, widget::hoverable,
 };
-use hacker_news_search::{api::Story, update_story, SearchContext};
+use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
 use iced::{
     advanced::image::{Bytes, Handle},
     alignment::{Horizontal, Vertical},
@@ -13,9 +13,23 @@ use iced::{
     Background, Color, Element, Font, Length, Shadow, Task, Theme,
 };
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
+    mem,
     sync::{Arc, RwLock},
 };
+use tokio::task::AbortHandle;
+
+pub struct WatchHandles {
+    ui_receiver: iced::task::Handle,
+    abort_handles: [AbortHandle; 2],
+}
+
+impl WatchHandles {
+    fn abort(self) {
+        self.ui_receiver.abort();
+        self.abort_handles.into_iter().for_each(|h| h.abort());
+    }
+}
 
 pub struct ArticleState {
     pub search_context: Arc<RwLock<SearchContext>>,
@@ -29,6 +43,8 @@ pub struct ArticleState {
     pub viewing_item: Option<u64>,
     /// How many articles to fetch.
     pub article_limit: usize,
+    /// Handles for watch stories.
+    pub watch_handles: HashMap<u64, WatchHandles>,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +54,9 @@ pub enum ArticleMsg {
     Search(String),
     ViewingItem(u64),
     UpdateStory(Story),
+    WatchStory(Story),
+    UnWatchStory(u64),
+    StoryUpdated(Story),
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -167,7 +186,7 @@ impl ArticleState {
                                                     )
                                                 },
                                             ))
-                                            .push(widget::tooltip(
+                                            .push(tooltip(
                                                 widget::button(
                                                     widget::text("↻")
                                                         .shaping(text::Shaping::Advanced),
@@ -177,24 +196,12 @@ impl ArticleState {
                                                 .on_press(AppMsg::Articles(
                                                     ArticleMsg::UpdateStory(story.clone()),
                                                 )),
-                                                widget::container(
-                                                    widget::text("Re-Index")
-                                                        .color(iced::Color::WHITE),
-                                                )
-                                                .style(|_| {
-                                                    widget::container::Style::default()
-                                                        .background(Background::Color(
-                                                            iced::Color::BLACK,
-                                                        ))
-                                                        .border(iced::border::rounded(8))
-                                                })
-                                                .padding(4),
+                                                "Re-Index",
                                                 widget::tooltip::Position::FollowCursor,
                                             ))
                                             .spacing(5),
                                     )
                                     .align_right(Length::Fill)
-                                    // .align_x(Horizontal::Right)
                                     .width(Length::Fill),
                                 )
                                 .spacing(5),
@@ -211,19 +218,18 @@ impl ArticleState {
                                 } else {
                                     Element::from(comments_button)
                                 })
-                                .push(
-                                    widget::button(
-                                        widget::text(format!("{}", story.id))
-                                            .font(Font {
-                                                weight: Weight::Light,
-                                                ..Default::default()
+                                .push(tooltip(
+                                    widget::toggler(self.watch_handles.contains_key(&story.id))
+                                        .on_toggle(|toggled| {
+                                            AppMsg::Articles(if toggled {
+                                                ArticleMsg::WatchStory(story.clone())
+                                            } else {
+                                                ArticleMsg::UnWatchStory(story.id)
                                             })
-                                            .size(12),
-                                    )
-                                    .on_press(AppMsg::Clipboard(format!("{}", story.id)))
-                                    .style(widget::button::text)
-                                    .padding(0),
-                                )
+                                        }),
+                                    "Watch",
+                                    widget::tooltip::Position::FollowCursor,
+                                ))
                                 .push(
                                     widget::container(by)
                                         .align_x(Horizontal::Right)
@@ -301,6 +307,10 @@ impl ArticleState {
             ArticleMsg::TopStories(limit) => {
                 self.article_limit = limit;
                 let g = self.search_context.read().unwrap();
+                let watch_handles = mem::take(&mut self.watch_handles);
+                for handle in watch_handles.into_values() {
+                    handle.abort();
+                }
                 match g.top_stories(limit, 0) {
                     Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
                     Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
@@ -321,6 +331,58 @@ impl ArticleState {
                         Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
                     },
                 )
+            }
+            ArticleMsg::WatchStory(story) => {
+                let story_id = story.id;
+                let category_type = self.search_context.read().unwrap().active_category();
+                match watch_story(self.search_context.clone(), story, category_type) {
+                    Ok(WatchState {
+                        receiver,
+                        abort_handles,
+                    }) => {
+                        let (task, handle) = Task::run(receiver, ArticleMsg::StoryUpdated)
+                            .map(AppMsg::Articles)
+                            .abortable();
+                        self.watch_handles.insert(
+                            story_id,
+                            WatchHandles {
+                                ui_receiver: handle,
+                                abort_handles,
+                            },
+                        );
+                        task
+                    }
+                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                }
+            }
+            ArticleMsg::StoryUpdated(story) => {
+                let story_id = story.id;
+
+                match self.articles.iter_mut().find(|s| s.id == story.id) {
+                    Some(s) => {
+                        let last_total_comments = s.descendants;
+                        let task = match (
+                            last_total_comments == story.descendants,
+                            self.viewing_item == Some(story_id),
+                        ) {
+                            (false, true) => Task::done(AppMsg::OpenComment {
+                                article: story.clone(),
+                                parent_id: story_id,
+                                comment_stack: Vec::new(),
+                            }),
+                            _ => Task::none(),
+                        };
+                        *s = story;
+                        task
+                    }
+                    None => Task::none(),
+                }
+            }
+            ArticleMsg::UnWatchStory(story_id) => {
+                if let Some(handle) = self.watch_handles.remove(&story_id) {
+                    handle.abort();
+                }
+                Task::none()
             }
         }
     }

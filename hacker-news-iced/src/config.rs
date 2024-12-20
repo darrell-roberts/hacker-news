@@ -94,6 +94,7 @@ impl Config {
                 search: None,
                 viewing_item: None,
                 article_limit: config.article_count,
+                watch_handles: HashMap::new(),
             },
             comment_state: None,
             size: Size::new(config.window_size.0, config.window_size.1),

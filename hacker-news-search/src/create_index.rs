@@ -1,16 +1,17 @@
 use crate::{
-    api::Story, SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_CATEGORY,
-    ITEM_DESCENDANT_COUNT, ITEM_ID, ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE,
-    ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE, ITEM_URL,
+    api::{Comment, Story},
+    SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_CATEGORY, ITEM_DESCENDANT_COUNT, ITEM_ID,
+    ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE,
+    ITEM_TYPE, ITEM_URL,
 };
-use futures::channel::mpsc;
+use futures::{channel::mpsc, SinkExt};
 use futures_core::Stream;
 use futures_util::{
     future,
     stream::{self, FuturesUnordered},
     StreamExt, TryFutureExt, TryStreamExt,
 };
-use hacker_news_api::{ApiClient, ArticleType, Item};
+use hacker_news_api::{ApiClient, ArticleType, Item, StoryEventData};
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -22,6 +23,7 @@ use std::{
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
 use tokio::{
     sync::mpsc::{Receiver, Sender},
+    task::AbortHandle,
     time::timeout,
 };
 #[cfg(feature = "trace")]
@@ -408,6 +410,8 @@ pub async fn update_story(
     Ok(())
 }
 
+/// Re-index this story along with all it's nested comments. Comments
+/// will be be fetched recursively and concurrently.
 async fn rebuild_story(
     client: Arc<ApiClient>,
     mut writer_context: WriteContext<'_>,
@@ -429,6 +433,123 @@ async fn rebuild_story(
     writer_context.commit()?;
     Ok(())
 }
+
+/// Handles story server side event subscription and relays story updates
+/// when necessary to the UI.
+async fn handle_story_events(
+    ctx: Arc<RwLock<SearchContext>>,
+    client: Arc<ApiClient>,
+    category_type: ArticleType,
+    story: Story,
+    mut ui_tx: mpsc::Sender<Story>,
+    mut rx: Receiver<StoryEventData>,
+) -> Result<(), SearchError> {
+    let story_id = story.id;
+    let mut current_story = story;
+
+    while let Some(StoryEventData { data: latest, .. }) = rx.recv().await {
+        if ui_tx.is_closed() {
+            break;
+        }
+
+        if latest.deleted || latest.dead {
+            info!(
+                "Hmm this story {} has been deleted or is dead now",
+                latest.id
+            );
+            break;
+        }
+
+        let latest_descendants = latest.descendants.unwrap_or_default();
+
+        // We'll rebuild this story if either the number of comments or score has changed.
+        if latest_descendants != current_story.descendants || latest.score != current_story.score {
+            let writer_context = ctx.read().unwrap().writer_context()?;
+            match rebuild_story(
+                client.clone(),
+                writer_context,
+                current_story.clone(),
+                latest,
+            )
+            .await
+            {
+                Ok(_) => {
+                    current_story.descendants = latest_descendants;
+                    let new_story = {
+                        let g = ctx.read().unwrap();
+                        if g.active_index == category_type {
+                            g.reader.reload()?;
+                        }
+                        g.story(story_id)?
+                    };
+                    current_story.descendants = new_story.descendants;
+                    current_story.score = new_story.score;
+
+                    info!("Rebuilt story {story_id}");
+                    if let Err(err) = ui_tx.send(new_story).await {
+                        error!("Failed to notify UI of story event: {err}");
+                    }
+                }
+                Err(err) => {
+                    error!("Failed to update story event: {err}");
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+pub struct WatchState<const N: usize, EventData> {
+    pub abort_handles: [AbortHandle; N],
+    pub receiver: mpsc::Receiver<EventData>,
+}
+
+pub fn watch_story(
+    ctx: Arc<RwLock<SearchContext>>,
+    story: Story,
+    category_type: ArticleType,
+) -> Result<WatchState<2, Story>, SearchError> {
+    let client = Arc::new(ApiClient::new()?);
+    let (tx, rx) = tokio::sync::mpsc::channel(10);
+    let (ui_tx, ui_rx) = mpsc::channel::<Story>(10);
+    let story_id = story.id;
+    let c = client.clone();
+
+    Ok(WatchState {
+        receiver: ui_rx,
+        abort_handles: [
+            tokio::spawn(async move {
+                c.story_stream(story_id, tx)
+                    .inspect_err(|err| error!("Failed to subscribe to story events: {err}"))
+                    .await
+            })
+            .abort_handle(),
+            tokio::spawn(
+                handle_story_events(ctx.clone(), client.clone(), category_type, story, ui_tx, rx)
+                    .inspect_err(|err| {
+                        error!("Story event handler encountered an error: {err}");
+                    }),
+            )
+            .abort_handle(),
+        ],
+    })
+}
+
+#[expect(unused_variables)]
+pub fn watch_comment(
+    ctx: Arc<RwLock<SearchContext>>,
+    comment: Comment,
+    category_type: ArticleType,
+) -> Result<WatchState<2, Comment>, SearchError> {
+    todo!()
+}
+
+// pub fn un_watch_story(story_id: u64) {
+//     let subscriptions = SUBSCRIPTION_HANDLES.lock().unwrap();
+//     if let Some(handle) = subscriptions.remove(&story_id) {
+//         handle.ab
+//     }
+// }
 
 // pub fn index_articles<'a>(
 //     ctx: &'a SearchContext,
