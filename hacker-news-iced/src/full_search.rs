@@ -18,12 +18,17 @@ use log::error;
 use std::sync::{Arc, RwLock};
 
 pub struct FullSearchState {
-    pub search: Option<String>,
+    pub search: Option<SearchCriteria>,
     pub search_results: Vec<Comment>,
     pub search_context: Arc<RwLock<SearchContext>>,
     pub offset: usize,
     pub page: usize,
     pub full_count: usize,
+}
+
+pub enum SearchCriteria {
+    Query(String),
+    StoryId(u64),
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +39,7 @@ pub enum FullSearchMsg {
     Back,
     ShowThread(u64),
     JumpPage(usize),
+    StoryByTime(u64),
 }
 
 impl FullSearchState {
@@ -103,11 +109,19 @@ impl FullSearchState {
         };
 
         let content = widget::Column::new()
-            .push(
-                widget::container(widget::text(format!("{}", self.full_count)))
-                    .align_right(Length::Fill)
-                    .padding(iced::padding::right(5)),
-            )
+            // .push(
+            //     widget::container(
+            //         widget::Row::new()
+            //             .push(widget::text(format!("{}", self.full_count)))
+            //             .push(
+            //                 widget::button("X")
+            //                     .on_press(AppMsg::FullSearch(FullSearchMsg::CloseSearch)),
+            //             )
+            //             .spacing(5),
+            //     )
+            //     .align_right(Length::Fill)
+            //     .padding(iced::padding::right(5)),
+            // )
             .push_maybe((self.full_count > 0).then(pagination))
             .push(
                 widget::scrollable(
@@ -157,14 +171,18 @@ impl FullSearchState {
                             .align_right(Length::Fill),
                         ),
                 )
-                .push(
-                    widget::container(widget::rich_text(render_rich_text(
-                        &comment.body,
-                        self.search.as_deref(),
-                        false,
-                    )))
-                    .width(Length::FillPortion(6).enclose(Length::Fixed(50.))),
-                )
+                .push({
+                    let s = self
+                        .search
+                        .iter()
+                        .filter_map(|s| match s {
+                            SearchCriteria::Query(s) => Some(s.as_str()),
+                            SearchCriteria::StoryId(_) => None,
+                        })
+                        .next();
+                    widget::container(widget::rich_text(render_rich_text(&comment.body, s, false)))
+                        .width(Length::FillPortion(6).enclose(Length::Fixed(50.)))
+                })
                 .push(
                     widget::Row::new().push(widget::rich_text([
                         widget::span(format!(" by {}", comment.by))
@@ -199,11 +217,15 @@ impl FullSearchState {
                 if search.is_empty() {
                     return Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch);
                 } else {
-                    if self.search.as_deref().unwrap_or_default() != search {
+                    if !self.search.iter().any(|s| match s {
+                        SearchCriteria::Query(s) => s == &search,
+                        SearchCriteria::StoryId(_) => false,
+                    }) {
                         self.page = 1;
                         self.offset = 0;
                     }
-                    self.search = Some(search.clone());
+
+                    self.search = Some(SearchCriteria::Query(search.clone()));
                     let g = self.search_context.read().unwrap();
                     match g.search_all_comments(&search, 10, self.offset) {
                         Ok((comments, count)) => {
@@ -228,19 +250,13 @@ impl FullSearchState {
             FullSearchMsg::Forward => {
                 self.offset += 10;
                 self.page += 1;
-                Task::done(FullSearchMsg::Search(
-                    self.search.as_deref().unwrap_or_default().to_owned(),
-                ))
-                .map(AppMsg::FullSearch)
+                self.paginate_task()
             }
             FullSearchMsg::Back => {
                 self.offset -= 10;
                 self.page -= 1;
 
-                Task::done(FullSearchMsg::Search(
-                    self.search.as_deref().unwrap_or_default().to_owned(),
-                ))
-                .map(AppMsg::FullSearch)
+                self.paginate_task()
             }
             FullSearchMsg::ShowThread(comment_id) => {
                 let g = self.search_context.read().unwrap();
@@ -269,11 +285,37 @@ impl FullSearchState {
                     self.offset = 0;
                 }
 
-                Task::done(FullSearchMsg::Search(
-                    self.search.as_deref().unwrap_or_default().to_owned(),
-                ))
-                .map(AppMsg::FullSearch)
+                self.paginate_task()
             }
+            FullSearchMsg::StoryByTime(story_id) => {
+                self.search = Some(SearchCriteria::StoryId(story_id));
+                match self.search_context.read().unwrap().story_comments_by_date(
+                    story_id,
+                    10,
+                    self.offset,
+                ) {
+                    Ok((comments, total_comments)) => {
+                        self.search_results = comments;
+                        self.full_count = total_comments;
+                        Task::none()
+                    }
+                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                }
+            }
+        }
+    }
+
+    fn paginate_task(&self) -> Task<AppMsg> {
+        match self.search.as_ref() {
+            Some(s) => match s {
+                SearchCriteria::Query(s) => {
+                    Task::done(FullSearchMsg::Search(s.to_owned())).map(AppMsg::FullSearch)
+                }
+                SearchCriteria::StoryId(story_id) => {
+                    Task::done(FullSearchMsg::StoryByTime(*story_id)).map(AppMsg::FullSearch)
+                }
+            },
+            None => todo!(),
         }
     }
 }

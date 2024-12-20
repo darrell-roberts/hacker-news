@@ -21,6 +21,7 @@ use iced::{
         text::Shaping, Column,
     },
     Font,
+    Length,
     Size,
     Task,
     Theme,
@@ -364,6 +365,9 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                                         .label("oneline")
                                         .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
                                 )
+                                .push(widget::button("all by time").on_press(AppMsg::FullSearch(
+                                    FullSearchMsg::StoryByTime(cs.article.id),
+                                )))
                                 .push(common::tooltip(
                                     widget::button(if cs.nav_stack.len() > 1 { "^" } else { "X" })
                                         .on_press(AppMsg::Comments(CommentMsg::PopNavStack)),
@@ -378,6 +382,21 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         ))
                         .always_show_controls()
                 }
+                _ if app.full_search_state.search.is_some() => pane_grid::TitleBar::new(
+                    widget::container(
+                        widget::Row::new()
+                            .push(widget::text(format!(
+                                "{}",
+                                app.full_search_state.full_count
+                            )))
+                            .push(
+                                widget::button("X")
+                                    .on_press(AppMsg::Header(HeaderMsg::ClearSearch)),
+                            )
+                            .spacing(5),
+                    )
+                    .align_right(Length::Fill),
+                ),
                 _ => pane_grid::TitleBar::new(""),
             },
         })

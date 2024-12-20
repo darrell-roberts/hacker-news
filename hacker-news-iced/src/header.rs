@@ -157,22 +157,22 @@ impl HeaderState {
                                 .on_press_maybe(
                                     self.building_index.not().then_some(HeaderMsg::RebuildIndex),
                                 )
-                                .style(|theme, status| {
-                                    let mut style = button::primary(theme, status);
-                                    style.border = border::rounded(8.);
-                                    style
-                                })
+                                // .style(|theme, status| {
+                                //     let mut style = button::primary(theme, status);
+                                //     style.border = border::rounded(8.);
+                                //     style
+                                // })
                                 .padding(5),
                             format!("Re-index {}", self.article_type.as_str()),
                             widget::tooltip::Position::Bottom,
                         ))
                         .push(tooltip(
                             widget::button(widget::text("↻").shaping(text::Shaping::Advanced))
-                                .style(|theme, status| {
-                                    let mut style = button::primary(theme, status);
-                                    style.border = border::rounded(8.);
-                                    style
-                                })
+                                // .style(|theme, status| {
+                                //     let mut style = button::primary(theme, status);
+                                //     style.border = border::rounded(8.);
+                                //     style
+                                // })
                                 .on_press(HeaderMsg::ClearVisisted)
                                 .padding(5),
                             "Clear visited",

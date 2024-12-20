@@ -45,6 +45,8 @@ pub struct ArticleState {
     pub article_limit: usize,
     /// Handles for watch stories.
     pub watch_handles: HashMap<u64, WatchHandles>,
+    /// Number of changes that have occurred to a watched story.
+    pub watch_changes: HashMap<u64, usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -157,6 +159,17 @@ impl ArticleState {
                     Column::new()
                         .push(
                             Row::new()
+                                .push_maybe(self.watch_changes.get(&article_id).map(|count| {
+                                    widget::container(
+                                        widget::text(format!("+{count}"))
+                                            .color(Color::from_rgb8(255, 255, 153)),
+                                    )
+                                    .style(|_theme| {
+                                        widget::container::background(Color::from_rgb8(255, 0, 0))
+                                            .border(iced::border::rounded(25))
+                                    })
+                                    .padding(5)
+                                }))
                                 .push(
                                     widget::container(title_wrapper)
                                         .width(Length::FillPortion(4).enclose(Length::Fill)),
@@ -311,6 +324,7 @@ impl ArticleState {
                 for handle in watch_handles.into_values() {
                     handle.abort();
                 }
+                self.watch_changes.clear();
                 match g.top_stories(limit, 0) {
                     Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
                     Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
@@ -319,6 +333,7 @@ impl ArticleState {
             ArticleMsg::ViewingItem(story_id) => {
                 self.visited.insert(story_id);
                 self.viewing_item = Some(story_id);
+                self.watch_changes.remove(&story_id);
                 Task::done(AppMsg::SaveConfig)
             }
             ArticleMsg::UpdateStory(story) => {
@@ -358,30 +373,23 @@ impl ArticleState {
             ArticleMsg::StoryUpdated(story) => {
                 let story_id = story.id;
 
-                match self.articles.iter_mut().find(|s| s.id == story.id) {
-                    Some(s) => {
-                        let last_total_comments = s.descendants;
-                        let task = match (
-                            last_total_comments == story.descendants,
-                            self.viewing_item == Some(story_id),
-                        ) {
-                            (false, true) => Task::done(AppMsg::OpenComment {
-                                article: story.clone(),
-                                parent_id: story_id,
-                                comment_stack: Vec::new(),
-                            }),
-                            _ => Task::none(),
-                        };
-                        *s = story;
-                        task
+                if let Some(s) = self.articles.iter_mut().find(|s| s.id == story.id) {
+                    if s.descendants != story.descendants {
+                        self.watch_changes
+                            .entry(story_id)
+                            .and_modify(|new_comments| *new_comments += 1)
+                            .or_insert(1);
                     }
-                    None => Task::none(),
+                    s.descendants = story.descendants;
+                    s.score = story.score;
                 }
+                Task::none()
             }
             ArticleMsg::UnWatchStory(story_id) => {
                 if let Some(handle) = self.watch_handles.remove(&story_id) {
                     handle.abort();
                 }
+                self.watch_changes.remove(&story_id);
                 Task::none()
             }
         }
