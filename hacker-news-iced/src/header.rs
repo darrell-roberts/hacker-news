@@ -1,4 +1,7 @@
-use crate::{app::AppMsg, common::tooltip, footer::FooterMsg, full_search::FullSearchMsg};
+use crate::{
+    app::AppMsg, articles::ArticleMsg, common::tooltip, footer::FooterMsg,
+    full_search::FullSearchMsg,
+};
 use chrono::Local;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{rebuild_index, IndexStats, RebuildProgress, SearchContext};
@@ -7,7 +10,6 @@ use iced::{
     widget::{self, button, container, row, text, Column},
     Background, Element, Length, Task,
 };
-use log::error;
 use std::{
     ops::Not,
     sync::{Arc, RwLock},
@@ -240,11 +242,14 @@ impl HeaderState {
                 let fut = rebuild_index(s, category, tx);
 
                 Task::batch([
-                    Task::perform(fut, move |result| match result {
-                        Ok(stats) => AppMsg::Header(HeaderMsg::IndexReady { stats, category }),
+                    Task::future(fut).then(move |result| match result {
+                        Ok(stats) => Task::batch([
+                            Task::done(HeaderMsg::IndexReady { stats, category })
+                                .map(AppMsg::Header),
+                            Task::done(ArticleMsg::RemoveWatches).map(AppMsg::Articles),
+                        ]),
                         Err(err) => {
-                            error!("Failed to create index {err}");
-                            AppMsg::Header(HeaderMsg::IndexFailed(err.to_string()))
+                            Task::done(HeaderMsg::IndexFailed(err.to_string())).map(AppMsg::Header)
                         }
                     }),
                     Task::done(FooterMsg::Error("Building index...".into())).map(AppMsg::Footer),

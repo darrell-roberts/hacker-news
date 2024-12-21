@@ -64,6 +64,9 @@ pub enum ArticleMsg {
     WatchStory(Story),
     UnWatchStory(u64),
     StoryUpdated(Story),
+    RemoveWatches,
+    OpenNew { story_id: u64, beyond: u64 },
+    FetchStory(u64),
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -178,12 +181,10 @@ impl ArticleState {
                                                     .color(Color::from_rgb8(255, 255, 153)),
                                                 )
                                                 .style(widget::button::text)
-                                                .on_press(AppMsg::FullSearch(
-                                                    FullSearchMsg::StoryByTime {
-                                                        story_id: article_id,
-                                                        beyond: Some(watch_change.beyond),
-                                                    },
-                                                )),
+                                                .on_press(AppMsg::Articles(ArticleMsg::OpenNew {
+                                                    story_id: article_id,
+                                                    beyond: watch_change.beyond,
+                                                })),
                                             )
                                             .style(
                                                 |_theme| {
@@ -344,13 +345,12 @@ impl ArticleState {
             }
             ArticleMsg::TopStories(limit) => {
                 self.article_limit = limit;
-                let g = self.search_context.read().unwrap();
-                let watch_handles = mem::take(&mut self.watch_handles);
-                for handle in watch_handles.into_values() {
-                    handle.abort();
-                }
-                self.watch_changes.clear();
-                match g.top_stories(limit, 0) {
+                // let watch_handles = mem::take(&mut self.watch_handles);
+                // for handle in watch_handles.into_values() {
+                //     handle.abort();
+                // }
+                // self.watch_changes.clear();
+                match self.search_context.read().unwrap().top_stories(limit, 0) {
                     Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
                     Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
                 }
@@ -362,15 +362,20 @@ impl ArticleState {
                 Task::done(AppMsg::SaveConfig)
             }
             ArticleMsg::UpdateStory(story) => {
-                let category_type = self.search_context.read().unwrap().active_category();
                 let story_id = story.id;
-                Task::perform(
-                    update_story(self.search_context.clone(), story, category_type),
-                    move |result| match result {
-                        Ok(_) => AppMsg::Articles(ArticleMsg::Search(format!("{story_id}"))),
-                        Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
-                    },
-                )
+                let category_type = self.search_context.read().unwrap().active_category();
+                if let Some(handle) = self.watch_handles.remove(&story.id) {
+                    handle.abort();
+                }
+                Task::future(update_story(
+                    self.search_context.clone(),
+                    story,
+                    category_type,
+                ))
+                .then(move |result| match result {
+                    Ok(_) => Task::done(ArticleMsg::FetchStory(story_id)).map(AppMsg::Articles),
+                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                })
             }
             ArticleMsg::WatchStory(story) => {
                 let story_id = story.id;
@@ -432,6 +437,42 @@ impl ArticleState {
                 }
                 self.watch_changes.remove(&story_id);
                 Task::none()
+            }
+            ArticleMsg::RemoveWatches => {
+                let watches = mem::take(&mut self.watch_handles);
+                for handle in watches.into_values() {
+                    handle.abort()
+                }
+                Task::none()
+            }
+            ArticleMsg::OpenNew { story_id, beyond } => {
+                let latest_comment_time = self
+                    .search_context
+                    .read()
+                    .unwrap()
+                    .last_comment_age(story_id)
+                    .ok()
+                    .into_iter()
+                    .flatten()
+                    .next();
+
+                if let Some(watch_state) = self.watch_changes.get_mut(&story_id) {
+                    let previous_last_time = watch_state.beyond;
+                    watch_state.beyond = latest_comment_time.unwrap_or(previous_last_time);
+                    watch_state.new_comments = 0;
+                }
+
+                Task::done(FullSearchMsg::StoryByTime {
+                    story_id,
+                    beyond: Some(beyond),
+                })
+                .map(AppMsg::FullSearch)
+            }
+            ArticleMsg::FetchStory(story_id) => {
+                match self.search_context.read().unwrap().story(story_id) {
+                    Ok(story) => Task::done(ArticleMsg::StoryUpdated(story)).map(AppMsg::Articles),
+                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                }
             }
         }
     }

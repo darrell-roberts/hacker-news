@@ -458,11 +458,8 @@ impl From<&App> for Config {
 pub fn save_task(app: &App) -> Task<AppMsg> {
     let config = Config::from(app);
 
-    Task::perform(save_config(config), |result| {
-        AppMsg::Footer(match result {
-            Ok(_) => FooterMsg::Error("Saved".into()),
-            Err(err) => FooterMsg::Error(err.to_string()),
-        })
+    Task::future(save_config(config)).then(|result| match result {
+        Ok(_) => Task::none(),
+        Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
     })
-    .discard()
 }
