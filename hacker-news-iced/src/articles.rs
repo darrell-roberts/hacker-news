@@ -378,7 +378,7 @@ impl ArticleState {
             ArticleMsg::ViewingItem(story_id) => {
                 self.visited.insert(story_id);
                 self.viewing_item = Some(story_id);
-                self.watch_changes.remove(&story_id);
+                // self.watch_changes.remove(&story_id);
                 Task::done(AppMsg::SaveConfig)
             }
             ArticleMsg::UpdateStory(story) => {

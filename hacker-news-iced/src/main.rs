@@ -7,7 +7,7 @@ use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 use footer::FooterState;
 use full_search::FullSearchState;
 use hacker_news_api::ArticleType;
-use hacker_news_search::SearchContext;
+use hacker_news_search::{api_client, SearchContext};
 use header::{HeaderMsg, HeaderState};
 use iced::{
     advanced::graphics::core::window,
@@ -41,6 +41,9 @@ mod tracing;
 mod widget;
 
 fn start() -> anyhow::Result<()> {
+    // Load this here so if it fails we fail to launch.
+    let _ = api_client();
+
     let log_dir = get_app_dir(app_dirs2::AppDataType::UserData, &config::APP_INFO, "logs")?;
 
     let _logger = flexi_logger::Logger::try_with_env_or_str("info")?

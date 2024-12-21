@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     convert::identity,
     mem,
-    sync::{Arc, RwLock},
+    sync::{Arc, OnceLock, RwLock},
     time::{Duration, Instant, SystemTime},
 };
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
@@ -28,6 +28,15 @@ use tokio::{
 };
 #[cfg(feature = "trace")]
 use tracing::{instrument, Instrument as _};
+
+/// Single api client for connection pooling re-use.
+static API: OnceLock<Arc<ApiClient>> = OnceLock::new();
+
+pub fn api_client() -> Arc<ApiClient> {
+    let client =
+        API.get_or_init(|| Arc::new(ApiClient::new().expect("Could not create API client")));
+    client.clone()
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct IndexStats {
@@ -285,7 +294,7 @@ async fn collect(
     category_type: ArticleType,
     mut progress_tx: mpsc::Sender<RebuildProgress>,
 ) -> Result<(), SearchError> {
-    let client = Arc::new(ApiClient::new()?);
+    let client = api_client();
     let stories = client.articles(75, category_type).await?;
     if let Err(err) = progress_tx.try_send(RebuildProgress::Started(stories.len())) {
         error!("Failed to send progress status: {err}");
@@ -388,7 +397,7 @@ pub async fn update_story(
     story: Story,
     category_type: ArticleType,
 ) -> Result<(), SearchError> {
-    let api = Arc::new(ApiClient::new()?);
+    let api = api_client();
     let latest = api.item(story.id).await?;
     let story_id = story.id;
 
@@ -511,7 +520,7 @@ pub fn watch_story(
     story: Story,
     category_type: ArticleType,
 ) -> Result<WatchState<2, Story>, SearchError> {
-    let client = Arc::new(ApiClient::new()?);
+    let client = api_client();
     let (tx, rx) = tokio::sync::mpsc::channel(10);
     let (ui_tx, ui_rx) = mpsc::channel::<Story>(10);
     let story_id = story.id;
@@ -545,13 +554,6 @@ pub fn watch_comment(
 ) -> Result<WatchState<2, Comment>, SearchError> {
     todo!()
 }
-
-// pub fn un_watch_story(story_id: u64) {
-//     let subscriptions = SUBSCRIPTION_HANDLES.lock().unwrap();
-//     if let Some(handle) = subscriptions.remove(&story_id) {
-//         handle.ab
-//     }
-// }
 
 // pub fn index_articles<'a>(
 //     ctx: &'a SearchContext,
