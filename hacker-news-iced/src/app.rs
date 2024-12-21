@@ -21,6 +21,7 @@ use iced::{
         text::Shaping, Column,
     },
     Font,
+    Length,
     Size,
     Task,
     Theme,
@@ -364,6 +365,12 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                                         .label("oneline")
                                         .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
                                 )
+                                .push(widget::button("by time").on_press(AppMsg::FullSearch(
+                                    FullSearchMsg::StoryByTime {
+                                        story_id: cs.article.id,
+                                        beyond: None,
+                                    },
+                                )))
                                 .push(common::tooltip(
                                     widget::button(if cs.nav_stack.len() > 1 { "^" } else { "X" })
                                         .on_press(AppMsg::Comments(CommentMsg::PopNavStack)),
@@ -378,6 +385,21 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         ))
                         .always_show_controls()
                 }
+                _ if app.full_search_state.search.is_some() => pane_grid::TitleBar::new(
+                    widget::container(
+                        widget::Row::new()
+                            .push(widget::text(format!(
+                                "{}",
+                                app.full_search_state.full_count
+                            )))
+                            .push(
+                                widget::button("X")
+                                    .on_press(AppMsg::Header(HeaderMsg::ClearSearch)),
+                            )
+                            .spacing(5),
+                    )
+                    .align_right(Length::Fill),
+                ),
                 _ => pane_grid::TitleBar::new(""),
             },
         })
@@ -412,6 +434,7 @@ impl From<&App> for Config {
 
 pub fn save_task(app: &App) -> Task<AppMsg> {
     let config = Config::from(app);
+
     Task::perform(save_config(config), |result| {
         AppMsg::Footer(match result {
             Ok(_) => FooterMsg::Error("Saved".into()),

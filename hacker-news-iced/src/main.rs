@@ -106,6 +106,7 @@ fn start() -> anyhow::Result<()> {
                     viewing_item: None,
                     article_limit: 75,
                     watch_handles: HashMap::new(),
+                    watch_changes: HashMap::new(),
                 },
                 comment_state: None,
                 size: Size::new(800., 600.),
