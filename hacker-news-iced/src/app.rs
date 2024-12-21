@@ -4,7 +4,7 @@ use crate::{
     common,
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
-    full_search::{FullSearchMsg, FullSearchState},
+    full_search::{FullSearchMsg, FullSearchState, SearchCriteria},
     header::{self, HeaderMsg, HeaderState},
     widget::hoverable,
 };
@@ -21,7 +21,6 @@ use iced::{
         text::Shaping, Column,
     },
     Font,
-    Length,
     Size,
     Task,
     Theme,
@@ -355,6 +354,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     )),
             ),
             PaneState::Comments => match app.comment_state.as_ref() {
+                // Comment search for selected story
                 Some(cs) if app.full_search_state.search.is_none() => {
                     pane_grid::TitleBar::new(title().unwrap_or("".into()))
                         .controls(pane_grid::Controls::new(
@@ -385,21 +385,44 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         ))
                         .always_show_controls()
                 }
-                _ if app.full_search_state.search.is_some() => pane_grid::TitleBar::new(
-                    widget::container(
-                        widget::Row::new()
-                            .push(widget::text(format!(
-                                "{}",
-                                app.full_search_state.full_count
-                            )))
-                            .push(
-                                widget::button("X")
-                                    .on_press(AppMsg::Header(HeaderMsg::ClearSearch)),
-                            )
-                            .spacing(5),
-                    )
-                    .align_right(Length::Fill),
-                ),
+                // Search comments for story ordered by time
+                _ if matches!(
+                    app.full_search_state.search,
+                    Some(SearchCriteria::StoryId { .. })
+                ) =>
+                {
+                    pane_grid::TitleBar::new(title().unwrap_or("".into()))
+                        .controls(pane_grid::Controls::new(widget::container(
+                            widget::Row::new()
+                                .push(widget::text(format!(
+                                    "{}",
+                                    app.full_search_state.full_count
+                                )))
+                                .push(
+                                    widget::button("X")
+                                        .on_press(AppMsg::Header(HeaderMsg::ClearSearch)),
+                                )
+                                .spacing(5),
+                        )))
+                        .always_show_controls()
+                }
+                // Regular all comment search
+                _ if app.full_search_state.search.is_some() => {
+                    pane_grid::TitleBar::new("Searched all comments")
+                        .controls(pane_grid::Controls::new(widget::container(
+                            widget::Row::new()
+                                .push(widget::text(format!(
+                                    "{}",
+                                    app.full_search_state.full_count
+                                )))
+                                .push(
+                                    widget::button("X")
+                                        .on_press(AppMsg::Header(HeaderMsg::ClearSearch)),
+                                )
+                                .spacing(5),
+                        )))
+                        .always_show_controls()
+                }
                 _ => pane_grid::TitleBar::new(""),
             },
         })
