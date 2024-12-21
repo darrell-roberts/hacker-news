@@ -1,6 +1,12 @@
 use crate::{
-    app::AppMsg, common::tooltip, footer::FooterMsg, full_search::FullSearchMsg, header::HeaderMsg,
-    parse_date, richtext::SearchSpanIter, widget::hoverable,
+    app::AppMsg,
+    common::{error_task, tooltip},
+    footer::FooterMsg,
+    full_search::FullSearchMsg,
+    header::HeaderMsg,
+    parse_date,
+    richtext::SearchSpanIter,
+    widget::hoverable,
 };
 use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
 use iced::{
@@ -337,9 +343,7 @@ impl ArticleState {
                             self.articles = stories;
                             Task::none()
                         }
-                        Err(err) => {
-                            Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer)
-                        }
+                        Err(err) => error_task(err),
                     }
                 }
             }
@@ -352,7 +356,7 @@ impl ArticleState {
                 // self.watch_changes.clear();
                 match self.search_context.read().unwrap().top_stories(limit, 0) {
                     Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
-                    Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
+                    Err(err) => error_task(err),
                 }
             }
             ArticleMsg::ViewingItem(story_id) => {
@@ -374,7 +378,7 @@ impl ArticleState {
                 ))
                 .then(move |result| match result {
                     Ok(_) => Task::done(ArticleMsg::FetchStory(story_id)).map(AppMsg::Articles),
-                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                    Err(err) => error_task(err),
                 })
             }
             ArticleMsg::WatchStory(story) => {
@@ -413,7 +417,7 @@ impl ArticleState {
                         );
                         task
                     }
-                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                    Err(err) => error_task(err),
                 }
             }
             ArticleMsg::StoryUpdated(story) => {
@@ -471,7 +475,7 @@ impl ArticleState {
             ArticleMsg::FetchStory(story_id) => {
                 match self.search_context.read().unwrap().story(story_id) {
                     Ok(story) => Task::done(ArticleMsg::StoryUpdated(story)).map(AppMsg::Articles),
-                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                    Err(err) => error_task(err),
                 }
             }
         }

@@ -1,5 +1,8 @@
 use crate::{
-    app::AppMsg, articles::ArticleMsg, common::tooltip, footer::FooterMsg,
+    app::AppMsg,
+    articles::ArticleMsg,
+    common::{error_task, tooltip},
+    footer::FooterMsg,
     full_search::FullSearchMsg,
 };
 use chrono::Local;
@@ -252,7 +255,7 @@ impl HeaderState {
                             Task::done(HeaderMsg::IndexFailed(err.to_string())).map(AppMsg::Header)
                         }
                     }),
-                    Task::done(FooterMsg::Error("Building index...".into())).map(AppMsg::Footer),
+                    error_task("Building index..."),
                     Task::run(rx, FooterMsg::IndexProgress).map(AppMsg::Footer),
                 ])
             }
@@ -270,7 +273,7 @@ impl HeaderState {
             }
             HeaderMsg::IndexFailed(err) => {
                 self.building_index = false;
-                Task::done(FooterMsg::Error(err)).map(AppMsg::Footer)
+                error_task(err)
             }
             HeaderMsg::Search(search) => {
                 if search.is_empty() {

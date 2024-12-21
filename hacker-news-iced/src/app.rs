@@ -1,7 +1,7 @@
 use crate::{
     articles::{self, ArticleMsg, ArticleState},
     comments::{self, CommentMsg, CommentState, NavStack},
-    common,
+    common::{self, error_task},
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState, SearchCriteria},
@@ -273,7 +273,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     Task::done(FooterMsg::CurrentIndex(category)).map(AppMsg::Footer),
                     Task::done(ArticleMsg::TopStories(count)).map(AppMsg::Articles),
                 ]),
-                Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                Err(err) => error_task(err),
             }
             .chain(Task::batch([
                 Task::done(AppMsg::CloseSearch),
@@ -460,6 +460,6 @@ pub fn save_task(app: &App) -> Task<AppMsg> {
 
     Task::future(save_config(config)).then(|result| match result {
         Ok(_) => Task::none(),
-        Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+        Err(err) => error_task(err),
     })
 }
