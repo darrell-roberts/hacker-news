@@ -69,7 +69,7 @@ where
             widget::Row::new()
                 .push(
                     widget::button(widget::text("←").shaping(Shaping::Advanced))
-                        .on_press_maybe(self.current_page().gt(&1).then_some(self.go_back())),
+                        .on_press_maybe(self.current_page().gt(&1).then(|| self.go_back())),
                 )
                 .extend(pages)
                 .push(

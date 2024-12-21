@@ -320,6 +320,8 @@ async fn collect(
             error!("Failed to send progress status: {err}");
         }
     }
+
+    info!("Finished collecting stories");
     if let Err(err) = progress_tx.try_send(RebuildProgress::Completed) {
         error!("Failed to send progress status: {err}");
     }

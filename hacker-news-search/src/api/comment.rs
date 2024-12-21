@@ -133,25 +133,31 @@ impl SearchContext {
         limit: usize,
         offset: usize,
     ) -> Result<(Vec<Comment>, usize), SearchError> {
-        let parent_query = Box::new(TermQuery::new(
+        let story_term = Box::new(TermQuery::new(
             Term::from_field_u64(self.schema.get_field(ITEM_STORY_ID)?, story_id),
             IndexRecordOption::Basic,
         ));
 
-        let fuzzy_search = Box::new(FuzzyTermQuery::new(
+        let fuzzy_term = Box::new(FuzzyTermQuery::new(
             Term::from_field_text(self.schema.get_field(ITEM_BODY)?, search),
             1,
             true,
         ));
-        // let term_search = Box::new(TermQuery::new(
-        //     Term::from_field_text(self.schema.get_field(ITEM_BODY)?, search),
-        //     IndexRecordOption::Basic,
-        // ));
+
+        let term = Box::new(TermQuery::new(
+            Term::from_field_text(self.schema.get_field(ITEM_BODY)?, search),
+            IndexRecordOption::Basic,
+        ));
 
         let combined_query = BooleanQuery::new(vec![
-            (Occur::Must, parent_query),
-            (Occur::Must, fuzzy_search),
-            // (Occur::Must, term_search),
+            (Occur::Must, story_term),
+            (
+                Occur::Must,
+                Box::new(BooleanQuery::new(vec![
+                    (Occur::Should, term),
+                    (Occur::Should, fuzzy_term),
+                ])),
+            ),
         ]);
 
         self.top_comments_with_count(limit, offset, combined_query)
