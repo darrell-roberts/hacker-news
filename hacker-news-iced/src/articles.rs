@@ -367,11 +367,6 @@ impl ArticleState {
             }
             ArticleMsg::TopStories(limit) => {
                 self.article_limit = limit;
-                // let watch_handles = mem::take(&mut self.watch_handles);
-                // for handle in watch_handles.into_values() {
-                //     handle.abort();
-                // }
-                // self.watch_changes.clear();
                 match self.search_context.read().unwrap().top_stories(limit, 0) {
                     Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
                     Err(err) => error_task(err),
@@ -386,23 +381,20 @@ impl ArticleState {
             ArticleMsg::UpdateStory(story) => {
                 let story_id = story.id;
                 self.indexing_stories.push(story_id);
-                let category_type = self.search_context.read().unwrap().active_category();
                 if let Some(handle) = self.watch_handles.remove(&story.id) {
                     handle.abort();
                 }
-                Task::future(update_story(
-                    self.search_context.clone(),
-                    story,
-                    category_type,
-                ))
-                .then(move |result| match result {
-                    Ok(_) => Task::done(ArticleMsg::FetchStory(story_id)).map(AppMsg::Articles),
-                    Err(err) => Task::batch([error_task(err), clear_index_story_task(story_id)]),
+                Task::future(update_story(self.search_context.clone(), story)).then(move |result| {
+                    match result {
+                        Ok(_) => Task::done(ArticleMsg::FetchStory(story_id)).map(AppMsg::Articles),
+                        Err(err) => {
+                            Task::batch([error_task(err), clear_index_story_task(story_id)])
+                        }
+                    }
                 })
             }
             ArticleMsg::WatchStory(story) => {
                 let story_id = story.id;
-                let category_type = self.search_context.read().unwrap().active_category();
 
                 let last_comment_age = self
                     .search_context
@@ -419,7 +411,7 @@ impl ArticleState {
                     },
                 );
 
-                match watch_story(self.search_context.clone(), story, category_type) {
+                match watch_story(self.search_context.clone(), story) {
                     Ok(WatchState {
                         receiver,
                         abort_handles,

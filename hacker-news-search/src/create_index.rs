@@ -107,7 +107,6 @@ impl Fields {
 pub struct WriteContext<'a> {
     writer: IndexWriter,
     story_category: &'a str,
-
     fields: Fields,
 }
 
@@ -199,7 +198,9 @@ impl<'a> WriteContext<'a> {
 
     /// Commit changes to the index.
     fn commit(&mut self) -> Result<u64, SearchError> {
-        Ok(self.writer.commit()?)
+        let ts = self.writer.commit()?;
+        self.writer.index().reader()?.reload()?;
+        Ok(ts)
     }
 }
 
@@ -379,9 +380,6 @@ pub async fn rebuild_index(
     writer_context.commit()?;
 
     let g = ctx.read().unwrap();
-    if g.active_index == category_type {
-        g.reader.reload()?;
-    }
     document_stats(&g, start_time.elapsed(), category_type)
 }
 
@@ -395,7 +393,6 @@ pub enum RebuildProgress {
 pub async fn update_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
-    category_type: ArticleType,
 ) -> Result<(), SearchError> {
     let api = api_client();
     let latest = api.item(story.id).await?;
@@ -408,13 +405,7 @@ pub async fn update_story(
         );
 
         let writer_context = ctx.read().unwrap().writer_context()?;
-
         rebuild_story(api, writer_context, story, latest).await?;
-
-        let g = ctx.read().unwrap();
-        if g.active_index == category_type {
-            g.reader.reload()?;
-        }
         info!("Rebuilt story {story_id}");
     }
 
@@ -450,7 +441,6 @@ async fn rebuild_story(
 async fn handle_story_events(
     ctx: Arc<RwLock<SearchContext>>,
     client: Arc<ApiClient>,
-    category_type: ArticleType,
     story: Story,
     mut ui_tx: mpsc::Sender<Story>,
     mut rx: Receiver<StoryEventData>,
@@ -487,13 +477,7 @@ async fn handle_story_events(
             {
                 Ok(_) => {
                     current_story.descendants = latest_descendants;
-                    let new_story = {
-                        let g = ctx.read().unwrap();
-                        if g.active_index == category_type {
-                            g.reader.reload()?;
-                        }
-                        g.story(story_id)?
-                    };
+                    let new_story = ctx.read().unwrap().story(story_id)?;
                     current_story.descendants = new_story.descendants;
                     current_story.score = new_story.score;
 
@@ -521,7 +505,6 @@ pub struct WatchState<const N: usize, EventData> {
 pub fn watch_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
-    category_type: ArticleType,
 ) -> Result<WatchState<2, Story>, SearchError> {
     let client = api_client();
     let (tx, rx) = tokio::sync::mpsc::channel(10);
@@ -539,10 +522,11 @@ pub fn watch_story(
             })
             .abort_handle(),
             tokio::spawn(
-                handle_story_events(ctx.clone(), client.clone(), category_type, story, ui_tx, rx)
-                    .inspect_err(|err| {
+                handle_story_events(ctx.clone(), client.clone(), story, ui_tx, rx).inspect_err(
+                    |err| {
                         error!("Story event handler encountered an error: {err}");
-                    }),
+                    },
+                ),
             )
             .abort_handle(),
         ],
