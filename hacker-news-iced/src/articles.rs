@@ -21,6 +21,7 @@ use iced::{
 use std::{
     collections::{HashMap, HashSet},
     mem,
+    ops::Not,
     sync::{Arc, RwLock},
 };
 use tokio::task::AbortHandle;
@@ -58,6 +59,8 @@ pub struct ArticleState {
     pub watch_handles: HashMap<u64, WatchHandles>,
     /// Number of changes that have occurred to a watched story.
     pub watch_changes: HashMap<u64, WatchChange>,
+    /// Stories being index.
+    pub indexing_stories: Vec<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -73,6 +76,7 @@ pub enum ArticleMsg {
     RemoveWatches,
     OpenNew { story_id: u64, beyond: u64 },
     FetchStory(u64),
+    ClearIndexStory(u64),
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -231,19 +235,29 @@ impl ArticleState {
                                                     )
                                                 },
                                             ))
-                                            .push(tooltip(
-                                                widget::button(
-                                                    widget::text("↻")
-                                                        .shaping(text::Shaping::Advanced),
-                                                )
-                                                .style(widget::button::text)
-                                                .padding(padding::right(5))
-                                                .on_press(AppMsg::Articles(
-                                                    ArticleMsg::UpdateStory(story.clone()),
-                                                )),
-                                                "Re-Index",
-                                                widget::tooltip::Position::FollowCursor,
-                                            ))
+                                            .push_maybe(
+                                                self.indexing_stories
+                                                    .contains(&story.id)
+                                                    .not()
+                                                    .then(|| {
+                                                        tooltip(
+                                                            widget::button(
+                                                                widget::text("↻").shaping(
+                                                                    text::Shaping::Advanced,
+                                                                ),
+                                                            )
+                                                            .style(widget::button::text)
+                                                            .padding(padding::right(5))
+                                                            .on_press(AppMsg::Articles(
+                                                                ArticleMsg::UpdateStory(
+                                                                    story.clone(),
+                                                                ),
+                                                            )),
+                                                            "Re-Index",
+                                                            widget::tooltip::Position::FollowCursor,
+                                                        )
+                                                    }),
+                                            )
                                             .spacing(5),
                                     )
                                     .align_right(Length::Fill)
@@ -367,6 +381,7 @@ impl ArticleState {
             }
             ArticleMsg::UpdateStory(story) => {
                 let story_id = story.id;
+                self.indexing_stories.push(story_id);
                 let category_type = self.search_context.read().unwrap().active_category();
                 if let Some(handle) = self.watch_handles.remove(&story.id) {
                     handle.abort();
@@ -378,7 +393,7 @@ impl ArticleState {
                 ))
                 .then(move |result| match result {
                     Ok(_) => Task::done(ArticleMsg::FetchStory(story_id)).map(AppMsg::Articles),
-                    Err(err) => error_task(err),
+                    Err(err) => Task::batch([error_task(err), clear_index_story_task(story_id)]),
                 })
             }
             ArticleMsg::WatchStory(story) => {
@@ -433,7 +448,7 @@ impl ArticleState {
                     s.descendants = story.descendants;
                     s.score = story.score;
                 }
-                Task::none()
+                clear_index_story_task(story_id)
             }
             ArticleMsg::UnWatchStory(story_id) => {
                 if let Some(handle) = self.watch_handles.remove(&story_id) {
@@ -475,9 +490,17 @@ impl ArticleState {
             ArticleMsg::FetchStory(story_id) => {
                 match self.search_context.read().unwrap().story(story_id) {
                     Ok(story) => Task::done(ArticleMsg::StoryUpdated(story)).map(AppMsg::Articles),
-                    Err(err) => error_task(err),
+                    Err(err) => Task::batch([error_task(err), clear_index_story_task(story_id)]),
                 }
+            }
+            ArticleMsg::ClearIndexStory(story_id) => {
+                self.indexing_stories.retain(|id| id != &story_id);
+                Task::none()
             }
         }
     }
+}
+
+fn clear_index_story_task(story_id: u64) -> Task<AppMsg> {
+    Task::done(ArticleMsg::ClearIndexStory(story_id)).map(AppMsg::Articles)
 }
