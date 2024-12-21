@@ -204,6 +204,7 @@ impl ApiClient {
                 sender.send(data).await?;
             }
         }
+        info!("story stream has exited.");
         Ok(())
     }
 }

@@ -137,7 +137,8 @@ fn start() -> anyhow::Result<()> {
     iced::application("Hacker News", update, view)
         .theme(|app| app.theme.clone())
         .subscription(|app| {
-            let handle_watch = if !app.article_state.watch_handles.is_empty() {
+            // If we are watching any stories then check periodically on the subscriptions handles.
+            let story_handle_watcher = if !app.article_state.watch_handles.is_empty() {
                 every(Duration::from_secs(5)).map(|_| AppMsg::Articles(ArticleMsg::CheckHandles))
             } else {
                 Subscription::none()
@@ -147,7 +148,7 @@ fn start() -> anyhow::Result<()> {
                 on_key_press(listen_to_key_events),
                 close_requests().map(|_event| AppMsg::WindowClose),
                 resize_events().map(|(_id, size)| AppMsg::WindowResize(size)),
-                handle_watch,
+                story_handle_watcher,
             ])
         })
         .window(window::Settings {
