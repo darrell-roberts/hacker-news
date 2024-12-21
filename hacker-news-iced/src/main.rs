@@ -1,7 +1,7 @@
 use anyhow::Context;
 use app::{update, view, App, AppMsg, PaneState, ScrollBy};
 use app_dirs2::get_app_dir;
-use articles::ArticleState;
+use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
 use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 use footer::FooterState;
@@ -12,6 +12,7 @@ use header::{HeaderMsg, HeaderState};
 use iced::{
     advanced::graphics::core::window,
     keyboard::{key::Named, on_key_press, Key, Modifiers},
+    time::every,
     widget::{
         pane_grid::{self, Configuration},
         text_input::{self, focus},
@@ -25,6 +26,7 @@ use log::{error, info};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, RwLock},
+    time::Duration,
 };
 
 mod app;
@@ -134,11 +136,18 @@ fn start() -> anyhow::Result<()> {
 
     iced::application("Hacker News", update, view)
         .theme(|app| app.theme.clone())
-        .subscription(|_app| {
+        .subscription(|app| {
+            let handle_watch = if !app.article_state.watch_handles.is_empty() {
+                every(Duration::from_secs(5)).map(|_| AppMsg::Articles(ArticleMsg::CheckHandles))
+            } else {
+                Subscription::none()
+            };
+
             Subscription::batch([
                 on_key_press(listen_to_key_events),
                 close_requests().map(|_event| AppMsg::WindowClose),
                 resize_events().map(|(_id, size)| AppMsg::WindowResize(size)),
+                handle_watch,
             ])
         })
         .window(window::Settings {

@@ -12,7 +12,7 @@ use futures_util::{
     StreamExt, TryFutureExt, TryStreamExt,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item, StoryEventData};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::{
     convert::identity,
@@ -460,6 +460,7 @@ async fn handle_story_events(
 
     while let Some(StoryEventData { data: latest, .. }) = rx.recv().await {
         if ui_tx.is_closed() {
+            warn!("UI transmission channel is closed");
             break;
         }
 
@@ -507,6 +508,8 @@ async fn handle_story_events(
             }
         }
     }
+
+    info!("story event handler has terminated");
     Ok(())
 }
 

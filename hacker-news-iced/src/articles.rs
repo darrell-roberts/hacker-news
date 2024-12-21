@@ -18,6 +18,7 @@ use iced::{
     widget::{self, button, scrollable, text, Column, Row},
     Background, Color, Element, Font, Length, Shadow, Task, Theme,
 };
+use log::{error, info};
 use std::{
     collections::{HashMap, HashSet},
     mem,
@@ -77,6 +78,7 @@ pub enum ArticleMsg {
     OpenNew { story_id: u64, beyond: u64 },
     FetchStory(u64),
     ClearIndexStory(u64),
+    CheckHandles,
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -498,6 +500,45 @@ impl ArticleState {
             ArticleMsg::ClearIndexStory(story_id) => {
                 self.indexing_stories.retain(|id| id != &story_id);
                 Task::none()
+            }
+            ArticleMsg::CheckHandles => {
+                let aborted_watchers = self
+                    .watch_handles
+                    .iter()
+                    .filter_map(|(story_id, watch_handle)| {
+                        watch_handle
+                            .abort_handles
+                            .iter()
+                            .any(|h| h.is_finished() || watch_handle.ui_receiver.is_aborted())
+                            .then_some(*story_id)
+                    })
+                    .collect::<Vec<_>>();
+
+                let mut re_connect_tasks = Vec::new();
+
+                for story_id in aborted_watchers {
+                    if let Some(watch_handler) = self.watch_handles.remove(&story_id) {
+                        info!("Reconnecting watch handler for {story_id}");
+                        watch_handler.abort();
+
+                        let story = self.search_context.read().unwrap().story(story_id);
+
+                        match story {
+                            Ok(story) => {
+                                re_connect_tasks.push(
+                                    Task::done(ArticleMsg::WatchStory(story)).map(AppMsg::Articles),
+                                );
+                            }
+                            Err(err) => re_connect_tasks.push(error_task(err)),
+                        }
+                    }
+                }
+
+                if re_connect_tasks.is_empty() {
+                    Task::none()
+                } else {
+                    Task::batch(re_connect_tasks)
+                }
             }
         }
     }
