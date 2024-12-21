@@ -1,6 +1,10 @@
 use crate::{
-    app::AppMsg, articles::ArticleMsg, common::PaginatingView, footer::FooterMsg,
-    header::HeaderMsg, parse_date, richtext::render_rich_text,
+    app::AppMsg,
+    articles::ArticleMsg,
+    common::{error_task, PaginatingView},
+    header::HeaderMsg,
+    parse_date,
+    richtext::render_rich_text,
 };
 use hacker_news_search::{
     api::{Comment, CommentStack},
@@ -13,7 +17,6 @@ use iced::{
     widget::{self, text::Shaping, tooltip::Position},
     Color, Font, Length, Task,
 };
-use log::error;
 use std::sync::{Arc, RwLock};
 
 pub struct FullSearchState {
@@ -171,8 +174,7 @@ impl FullSearchState {
                             self.full_count = count;
                         }
                         Err(err) => {
-                            error!("Search failed: {err}");
-                            return Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string())));
+                            return error_task(err);
                         }
                     }
                 }
@@ -212,7 +214,7 @@ impl FullSearchState {
                             ))),
                         ])
                     }
-                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                    Err(err) => error_task(err),
                 }
             }
             FullSearchMsg::JumpPage(page) => {
@@ -238,7 +240,7 @@ impl FullSearchState {
                         self.full_count = total_comments;
                         Task::none()
                     }
-                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                    Err(err) => error_task(err),
                 }
             }
         }

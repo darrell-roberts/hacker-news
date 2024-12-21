@@ -44,6 +44,8 @@ impl ApiClient {
                 .connect_timeout(Duration::from_secs(5))
                 .gzip(true)
                 .hickory_dns(true)
+                .tcp_keepalive(Duration::from_secs(60 * 5))
+                .pool_idle_timeout(Duration::from_secs(60 * 5))
                 // Cap this to 100
                 .pool_max_idle_per_host(100)
                 // .http2_prior_knowledge()
@@ -202,6 +204,7 @@ impl ApiClient {
                 sender.send(data).await?;
             }
         }
+        info!("story stream has exited.");
         Ok(())
     }
 }

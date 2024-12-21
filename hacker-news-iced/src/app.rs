@@ -1,10 +1,10 @@
 use crate::{
     articles::{self, ArticleMsg, ArticleState},
     comments::{self, CommentMsg, CommentState, NavStack},
-    common,
+    common::{self, error_task},
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
-    full_search::{FullSearchMsg, FullSearchState},
+    full_search::{FullSearchMsg, FullSearchState, SearchCriteria},
     header::{self, HeaderMsg, HeaderState},
     widget::hoverable,
 };
@@ -21,7 +21,6 @@ use iced::{
         text::Shaping, Column,
     },
     Font,
-    Length,
     Size,
     Task,
     Theme,
@@ -274,7 +273,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     Task::done(FooterMsg::CurrentIndex(category)).map(AppMsg::Footer),
                     Task::done(ArticleMsg::TopStories(count)).map(AppMsg::Articles),
                 ]),
-                Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                Err(err) => error_task(err),
             }
             .chain(Task::batch([
                 Task::done(AppMsg::CloseSearch),
@@ -355,6 +354,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     )),
             ),
             PaneState::Comments => match app.comment_state.as_ref() {
+                // Comment search for selected story
                 Some(cs) if app.full_search_state.search.is_none() => {
                     pane_grid::TitleBar::new(title().unwrap_or("".into()))
                         .controls(pane_grid::Controls::new(
@@ -385,21 +385,44 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         ))
                         .always_show_controls()
                 }
-                _ if app.full_search_state.search.is_some() => pane_grid::TitleBar::new(
-                    widget::container(
-                        widget::Row::new()
-                            .push(widget::text(format!(
-                                "{}",
-                                app.full_search_state.full_count
-                            )))
-                            .push(
-                                widget::button("X")
-                                    .on_press(AppMsg::Header(HeaderMsg::ClearSearch)),
-                            )
-                            .spacing(5),
-                    )
-                    .align_right(Length::Fill),
-                ),
+                // Search comments for story ordered by time
+                _ if matches!(
+                    app.full_search_state.search,
+                    Some(SearchCriteria::StoryId { .. })
+                ) =>
+                {
+                    pane_grid::TitleBar::new(title().unwrap_or("".into()))
+                        .controls(pane_grid::Controls::new(widget::container(
+                            widget::Row::new()
+                                .push(widget::text(format!(
+                                    "{}",
+                                    app.full_search_state.full_count
+                                )))
+                                .push(
+                                    widget::button("X")
+                                        .on_press(AppMsg::Header(HeaderMsg::ClearSearch)),
+                                )
+                                .spacing(5),
+                        )))
+                        .always_show_controls()
+                }
+                // Regular all comment search
+                _ if app.full_search_state.search.is_some() => {
+                    pane_grid::TitleBar::new("Searched all comments")
+                        .controls(pane_grid::Controls::new(widget::container(
+                            widget::Row::new()
+                                .push(widget::text(format!(
+                                    "{}",
+                                    app.full_search_state.full_count
+                                )))
+                                .push(
+                                    widget::button("X")
+                                        .on_press(AppMsg::Header(HeaderMsg::ClearSearch)),
+                                )
+                                .spacing(5),
+                        )))
+                        .always_show_controls()
+                }
                 _ => pane_grid::TitleBar::new(""),
             },
         })
@@ -435,11 +458,8 @@ impl From<&App> for Config {
 pub fn save_task(app: &App) -> Task<AppMsg> {
     let config = Config::from(app);
 
-    Task::perform(save_config(config), |result| {
-        AppMsg::Footer(match result {
-            Ok(_) => FooterMsg::Error("Saved".into()),
-            Err(err) => FooterMsg::Error(err.to_string()),
-        })
+    Task::future(save_config(config)).then(|result| match result {
+        Ok(_) => Task::none(),
+        Err(err) => error_task(err),
     })
-    .discard()
 }

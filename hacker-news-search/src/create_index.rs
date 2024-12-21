@@ -12,12 +12,12 @@ use futures_util::{
     StreamExt, TryFutureExt, TryStreamExt,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item, StoryEventData};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::{
     convert::identity,
     mem,
-    sync::{Arc, RwLock},
+    sync::{Arc, OnceLock, RwLock},
     time::{Duration, Instant, SystemTime},
 };
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
@@ -28,6 +28,15 @@ use tokio::{
 };
 #[cfg(feature = "trace")]
 use tracing::{instrument, Instrument as _};
+
+/// Single api client for connection pooling re-use.
+static API: OnceLock<Arc<ApiClient>> = OnceLock::new();
+
+pub fn api_client() -> Arc<ApiClient> {
+    let client =
+        API.get_or_init(|| Arc::new(ApiClient::new().expect("Could not create API client")));
+    client.clone()
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct IndexStats {
@@ -98,7 +107,6 @@ impl Fields {
 pub struct WriteContext<'a> {
     writer: IndexWriter,
     story_category: &'a str,
-
     fields: Fields,
 }
 
@@ -190,7 +198,9 @@ impl<'a> WriteContext<'a> {
 
     /// Commit changes to the index.
     fn commit(&mut self) -> Result<u64, SearchError> {
-        Ok(self.writer.commit()?)
+        let ts = self.writer.commit()?;
+        self.writer.index().reader()?.reload()?;
+        Ok(ts)
     }
 }
 
@@ -285,7 +295,7 @@ async fn collect(
     category_type: ArticleType,
     mut progress_tx: mpsc::Sender<RebuildProgress>,
 ) -> Result<(), SearchError> {
-    let client = Arc::new(ApiClient::new()?);
+    let client = api_client();
     let stories = client.articles(75, category_type).await?;
     if let Err(err) = progress_tx.try_send(RebuildProgress::Started(stories.len())) {
         error!("Failed to send progress status: {err}");
@@ -320,6 +330,8 @@ async fn collect(
             error!("Failed to send progress status: {err}");
         }
     }
+
+    info!("Finished collecting stories");
     if let Err(err) = progress_tx.try_send(RebuildProgress::Completed) {
         error!("Failed to send progress status: {err}");
     }
@@ -368,9 +380,6 @@ pub async fn rebuild_index(
     writer_context.commit()?;
 
     let g = ctx.read().unwrap();
-    if g.active_index == category_type {
-        g.reader.reload()?;
-    }
     document_stats(&g, start_time.elapsed(), category_type)
 }
 
@@ -384,9 +393,8 @@ pub enum RebuildProgress {
 pub async fn update_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
-    category_type: ArticleType,
 ) -> Result<(), SearchError> {
-    let api = Arc::new(ApiClient::new()?);
+    let api = api_client();
     let latest = api.item(story.id).await?;
     let story_id = story.id;
 
@@ -397,13 +405,7 @@ pub async fn update_story(
         );
 
         let writer_context = ctx.read().unwrap().writer_context()?;
-
         rebuild_story(api, writer_context, story, latest).await?;
-
-        let g = ctx.read().unwrap();
-        if g.active_index == category_type {
-            g.reader.reload()?;
-        }
         info!("Rebuilt story {story_id}");
     }
 
@@ -439,7 +441,6 @@ async fn rebuild_story(
 async fn handle_story_events(
     ctx: Arc<RwLock<SearchContext>>,
     client: Arc<ApiClient>,
-    category_type: ArticleType,
     story: Story,
     mut ui_tx: mpsc::Sender<Story>,
     mut rx: Receiver<StoryEventData>,
@@ -449,6 +450,7 @@ async fn handle_story_events(
 
     while let Some(StoryEventData { data: latest, .. }) = rx.recv().await {
         if ui_tx.is_closed() {
+            warn!("UI transmission channel is closed");
             break;
         }
 
@@ -475,13 +477,7 @@ async fn handle_story_events(
             {
                 Ok(_) => {
                     current_story.descendants = latest_descendants;
-                    let new_story = {
-                        let g = ctx.read().unwrap();
-                        if g.active_index == category_type {
-                            g.reader.reload()?;
-                        }
-                        g.story(story_id)?
-                    };
+                    let new_story = ctx.read().unwrap().story(story_id)?;
                     current_story.descendants = new_story.descendants;
                     current_story.score = new_story.score;
 
@@ -496,6 +492,8 @@ async fn handle_story_events(
             }
         }
     }
+
+    info!("story event handler has terminated");
     Ok(())
 }
 
@@ -507,9 +505,8 @@ pub struct WatchState<const N: usize, EventData> {
 pub fn watch_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
-    category_type: ArticleType,
 ) -> Result<WatchState<2, Story>, SearchError> {
-    let client = Arc::new(ApiClient::new()?);
+    let client = api_client();
     let (tx, rx) = tokio::sync::mpsc::channel(10);
     let (ui_tx, ui_rx) = mpsc::channel::<Story>(10);
     let story_id = story.id;
@@ -525,10 +522,11 @@ pub fn watch_story(
             })
             .abort_handle(),
             tokio::spawn(
-                handle_story_events(ctx.clone(), client.clone(), category_type, story, ui_tx, rx)
-                    .inspect_err(|err| {
+                handle_story_events(ctx.clone(), client.clone(), story, ui_tx, rx).inspect_err(
+                    |err| {
                         error!("Story event handler encountered an error: {err}");
-                    }),
+                    },
+                ),
             )
             .abort_handle(),
         ],
@@ -543,13 +541,6 @@ pub fn watch_comment(
 ) -> Result<WatchState<2, Comment>, SearchError> {
     todo!()
 }
-
-// pub fn un_watch_story(story_id: u64) {
-//     let subscriptions = SUBSCRIPTION_HANDLES.lock().unwrap();
-//     if let Some(handle) = subscriptions.remove(&story_id) {
-//         handle.ab
-//     }
-// }
 
 // pub fn index_articles<'a>(
 //     ctx: &'a SearchContext,
