@@ -268,27 +268,29 @@ impl ArticleState {
                         .push(
                             Row::new()
                                 .push(widget::text(format!("{}", story.rank)))
-                                .push(
+                                .push_maybe((story.ty != "job").then(|| {
                                     widget::text(format!("🔼{}", story.score))
-                                        .shaping(text::Shaping::Advanced),
-                                )
+                                        .shaping(text::Shaping::Advanced)
+                                }))
                                 .push(if story.descendants == 0 {
                                     Element::from(text(""))
                                 } else {
                                     Element::from(comments_button)
                                 })
-                                .push(tooltip(
-                                    widget::toggler(self.watch_handles.contains_key(&story.id))
-                                        .on_toggle(|toggled| {
-                                            AppMsg::Articles(if toggled {
-                                                ArticleMsg::WatchStory(story.clone())
-                                            } else {
-                                                ArticleMsg::UnWatchStory(story.id)
-                                            })
-                                        }),
-                                    "Watch",
-                                    widget::tooltip::Position::FollowCursor,
-                                ))
+                                .push_maybe((story.ty != "job").then(|| {
+                                    tooltip(
+                                        widget::toggler(self.watch_handles.contains_key(&story.id))
+                                            .on_toggle(|toggled| {
+                                                AppMsg::Articles(if toggled {
+                                                    ArticleMsg::WatchStory(story.clone())
+                                                } else {
+                                                    ArticleMsg::UnWatchStory(story.id)
+                                                })
+                                            }),
+                                        "Watch",
+                                        widget::tooltip::Position::FollowCursor,
+                                    )
+                                }))
                                 .push(
                                     widget::container(by)
                                         .align_x(Horizontal::Right)
