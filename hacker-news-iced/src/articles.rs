@@ -18,7 +18,7 @@ use iced::{
     widget::{self, button, scrollable, text, Column, Row},
     Background, Color, Element, Font, Length, Shadow, Task, Theme,
 };
-use log::{error, info};
+use log::info;
 use std::{
     collections::{HashMap, HashSet},
     mem,
