@@ -239,11 +239,6 @@ where
     EventData: for<'a> Deserialize<'a>,
 {
     let mut lines = bytes.split(|b| *b == b'\n');
-
-    // We are only concerned with put events for the top stories. This event
-    // will provide a JSON number array payload of all the top stories in
-    // ranking order.
-
     lines
         .next()?
         .starts_with(b"event: put")

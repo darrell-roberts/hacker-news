@@ -62,6 +62,8 @@ pub struct ArticleState {
     pub watch_changes: HashMap<u64, WatchChange>,
     /// Stories being index.
     pub indexing_stories: Vec<u64>,
+    /// Filter articles being watched.
+    pub filter_watching: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -79,6 +81,7 @@ pub enum ArticleMsg {
     FetchStory(u64),
     ClearIndexStory(u64),
     CheckHandles,
+    ToggleWatchFilter,
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -89,6 +92,9 @@ impl ArticleState {
             Column::with_children(
                 self.articles
                     .iter()
+                    .filter(|story| {
+                        !self.filter_watching || self.watch_changes.contains_key(&story.id)
+                    })
                     .map(|article| self.render_article(theme, article))
                     .map(Element::from),
             )
@@ -492,6 +498,10 @@ impl ArticleState {
                 } else {
                     Task::batch(re_connect_tasks)
                 }
+            }
+            ArticleMsg::ToggleWatchFilter => {
+                self.filter_watching = !self.filter_watching;
+                Task::none()
             }
         }
     }
