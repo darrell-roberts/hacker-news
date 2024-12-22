@@ -21,13 +21,38 @@ use futures::{
 use log::{error, info};
 use reqwest::{header, IntoUrl};
 use serde::Deserialize;
-use std::{future::Future, time::Duration};
+use std::{
+    future::Future,
+    net::{SocketAddr, ToSocketAddrs},
+    sync::Arc,
+    time::Duration,
+};
 use tokio::{
     sync::mpsc::{self, Receiver, Sender},
     task::JoinHandle,
 };
 #[cfg(feature = "trace")]
 use tracing::instrument;
+
+pub struct Resolver {
+    ip: Vec<SocketAddr>,
+}
+
+impl Resolver {
+    fn new(host: &str) -> Result<Self> {
+        Ok(Self {
+            ip: host.to_socket_addrs()?.collect(),
+        })
+    }
+}
+
+impl reqwest::dns::Resolve for Resolver {
+    fn resolve(&self, _name: reqwest::dns::Name) -> reqwest::dns::Resolving {
+        let iter: Box<dyn Iterator<Item = SocketAddr> + Send> =
+            Box::new(self.ip.clone().into_iter());
+        Box::pin(async { Ok(iter) })
+    }
+}
 
 /// Hacker News Api client.
 pub struct ApiClient {
@@ -39,16 +64,15 @@ impl ApiClient {
 
     /// Create a new API client.
     pub fn new() -> Result<Self> {
+        let resolver = Arc::new(Resolver::new("hacker-news.firebaseio.com:443")?);
+
         Ok(Self {
             client: reqwest::Client::builder()
                 .connect_timeout(Duration::from_secs(5))
                 .gzip(true)
-                .hickory_dns(true)
-                .tcp_keepalive(Duration::from_secs(60 * 5))
-                .pool_idle_timeout(Duration::from_secs(60 * 5))
-                // Cap this to 100
-                .pool_max_idle_per_host(100)
-                // .http2_prior_knowledge()
+                .dns_resolver(resolver)
+                .tcp_keepalive(Duration::from_secs(60))
+                .pool_max_idle_per_host(10)
                 .use_rustls_tls()
                 .build()
                 .context("Failed to create api client")?,
