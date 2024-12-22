@@ -1,6 +1,10 @@
 use crate::{
-    app::AppMsg, common::PaginatingView, footer::FooterMsg, full_search::FullSearchMsg,
-    header::HeaderMsg, parse_date, richtext::render_rich_text,
+    app::AppMsg,
+    common::{error_task, PaginatingView},
+    full_search::FullSearchMsg,
+    header::HeaderMsg,
+    parse_date,
+    richtext::render_rich_text,
 };
 use hacker_news_search::{
     api::{Comment, Story},
@@ -13,7 +17,6 @@ use iced::{
     widget::{self, button, container, text::Shaping, Column, Container},
     Border, Element, Font, Length, Task,
 };
-use log::error;
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
@@ -259,7 +262,7 @@ impl CommentState {
 
                         Task::none()
                     }
-                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                    Err(err) => error_task(err),
                 };
                 self.parent_id = parent_id;
 
@@ -315,10 +318,7 @@ impl CommentState {
                             self.full_count = count;
                             Task::none()
                         }
-                        Err(err) => {
-                            error!("Failed search: {err}");
-                            Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string())))
-                        }
+                        Err(err) => error_task(err),
                     }
                 }
             }

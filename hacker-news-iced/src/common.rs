@@ -7,8 +7,10 @@ use iced::{
         tooltip::Position,
         Tooltip,
     },
-    Background, Element, Length, Theme,
+    Background, Element, Length, Task, Theme,
 };
+
+use crate::{app::AppMsg, footer::FooterMsg};
 
 /// Create a tooltip with a common hover tooltip message style.
 pub fn tooltip<'a, Message>(
@@ -69,7 +71,7 @@ where
             widget::Row::new()
                 .push(
                     widget::button(widget::text("←").shaping(Shaping::Advanced))
-                        .on_press_maybe(self.current_page().gt(&1).then_some(self.go_back())),
+                        .on_press_maybe(self.current_page().gt(&1).then(|| self.go_back())),
                 )
                 .extend(pages)
                 .push(
@@ -101,4 +103,8 @@ where
 
     /// Current page.
     fn current_page(&self) -> usize;
+}
+
+pub fn error_task(err: impl ToString) -> Task<AppMsg> {
+    Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer)
 }

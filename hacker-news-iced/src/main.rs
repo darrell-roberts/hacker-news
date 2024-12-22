@@ -1,17 +1,18 @@
 use anyhow::Context;
 use app::{update, view, App, AppMsg, PaneState, ScrollBy};
 use app_dirs2::get_app_dir;
-use articles::ArticleState;
+use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
 use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 use footer::FooterState;
 use full_search::FullSearchState;
 use hacker_news_api::ArticleType;
-use hacker_news_search::SearchContext;
+use hacker_news_search::{api_client, SearchContext};
 use header::{HeaderMsg, HeaderState};
 use iced::{
     advanced::graphics::core::window,
     keyboard::{key::Named, on_key_press, Key, Modifiers},
+    time::every,
     widget::{
         pane_grid::{self, Configuration},
         text_input::{self, focus},
@@ -25,6 +26,7 @@ use log::{error, info};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, RwLock},
+    time::Duration,
 };
 
 mod app;
@@ -41,6 +43,9 @@ mod tracing;
 mod widget;
 
 fn start() -> anyhow::Result<()> {
+    // Load this here so if it fails we fail to launch.
+    let _ = api_client();
+
     let log_dir = get_app_dir(app_dirs2::AppDataType::UserData, &config::APP_INFO, "logs")?;
 
     let _logger = flexi_logger::Logger::try_with_env_or_str("info")?
@@ -107,6 +112,7 @@ fn start() -> anyhow::Result<()> {
                     article_limit: 75,
                     watch_handles: HashMap::new(),
                     watch_changes: HashMap::new(),
+                    indexing_stories: Vec::new(),
                 },
                 comment_state: None,
                 size: Size::new(800., 600.),
@@ -130,11 +136,19 @@ fn start() -> anyhow::Result<()> {
 
     iced::application("Hacker News", update, view)
         .theme(|app| app.theme.clone())
-        .subscription(|_app| {
+        .subscription(|app| {
+            // If we are watching any stories then check periodically on the subscriptions handles.
+            let story_handle_watcher = if !app.article_state.watch_handles.is_empty() {
+                every(Duration::from_secs(5)).map(|_| AppMsg::Articles(ArticleMsg::CheckHandles))
+            } else {
+                Subscription::none()
+            };
+
             Subscription::batch([
                 on_key_press(listen_to_key_events),
                 close_requests().map(|_event| AppMsg::WindowClose),
                 resize_events().map(|(_id, size)| AppMsg::WindowResize(size)),
+                story_handle_watcher,
             ])
         })
         .window(window::Settings {

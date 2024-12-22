@@ -1,6 +1,12 @@
 use crate::{
-    app::AppMsg, common::tooltip, footer::FooterMsg, full_search::FullSearchMsg, header::HeaderMsg,
-    parse_date, richtext::SearchSpanIter, widget::hoverable,
+    app::AppMsg,
+    common::{error_task, tooltip},
+    footer::FooterMsg,
+    full_search::FullSearchMsg,
+    header::HeaderMsg,
+    parse_date,
+    richtext::SearchSpanIter,
+    widget::hoverable,
 };
 use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
 use iced::{
@@ -12,9 +18,11 @@ use iced::{
     widget::{self, button, scrollable, text, Column, Row},
     Background, Color, Element, Font, Length, Shadow, Task, Theme,
 };
+use log::info;
 use std::{
     collections::{HashMap, HashSet},
     mem,
+    ops::Not,
     sync::{Arc, RwLock},
 };
 use tokio::task::AbortHandle;
@@ -52,6 +60,8 @@ pub struct ArticleState {
     pub watch_handles: HashMap<u64, WatchHandles>,
     /// Number of changes that have occurred to a watched story.
     pub watch_changes: HashMap<u64, WatchChange>,
+    /// Stories being index.
+    pub indexing_stories: Vec<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -64,6 +74,11 @@ pub enum ArticleMsg {
     WatchStory(Story),
     UnWatchStory(u64),
     StoryUpdated(Story),
+    RemoveWatches,
+    OpenNew { story_id: u64, beyond: u64 },
+    FetchStory(u64),
+    ClearIndexStory(u64),
+    CheckHandles,
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -178,12 +193,10 @@ impl ArticleState {
                                                     .color(Color::from_rgb8(255, 255, 153)),
                                                 )
                                                 .style(widget::button::text)
-                                                .on_press(AppMsg::FullSearch(
-                                                    FullSearchMsg::StoryByTime {
-                                                        story_id: article_id,
-                                                        beyond: Some(watch_change.beyond),
-                                                    },
-                                                )),
+                                                .on_press(AppMsg::Articles(ArticleMsg::OpenNew {
+                                                    story_id: article_id,
+                                                    beyond: watch_change.beyond,
+                                                })),
                                             )
                                             .style(
                                                 |_theme| {
@@ -224,19 +237,29 @@ impl ArticleState {
                                                     )
                                                 },
                                             ))
-                                            .push(tooltip(
-                                                widget::button(
-                                                    widget::text("↻")
-                                                        .shaping(text::Shaping::Advanced),
-                                                )
-                                                .style(widget::button::text)
-                                                .padding(padding::right(5))
-                                                .on_press(AppMsg::Articles(
-                                                    ArticleMsg::UpdateStory(story.clone()),
-                                                )),
-                                                "Re-Index",
-                                                widget::tooltip::Position::FollowCursor,
-                                            ))
+                                            .push_maybe(
+                                                self.indexing_stories
+                                                    .contains(&story.id)
+                                                    .not()
+                                                    .then(|| {
+                                                        tooltip(
+                                                            widget::button(
+                                                                widget::text("↻").shaping(
+                                                                    text::Shaping::Advanced,
+                                                                ),
+                                                            )
+                                                            .style(widget::button::text)
+                                                            .padding(padding::right(5))
+                                                            .on_press(AppMsg::Articles(
+                                                                ArticleMsg::UpdateStory(
+                                                                    story.clone(),
+                                                                ),
+                                                            )),
+                                                            "Re-Index",
+                                                            widget::tooltip::Position::FollowCursor,
+                                                        )
+                                                    }),
+                                            )
                                             .spacing(5),
                                     )
                                     .align_right(Length::Fill)
@@ -247,27 +270,29 @@ impl ArticleState {
                         .push(
                             Row::new()
                                 .push(widget::text(format!("{}", story.rank)))
-                                .push(
+                                .push_maybe((story.ty != "job").then(|| {
                                     widget::text(format!("🔼{}", story.score))
-                                        .shaping(text::Shaping::Advanced),
-                                )
+                                        .shaping(text::Shaping::Advanced)
+                                }))
                                 .push(if story.descendants == 0 {
                                     Element::from(text(""))
                                 } else {
                                     Element::from(comments_button)
                                 })
-                                .push(tooltip(
-                                    widget::toggler(self.watch_handles.contains_key(&story.id))
-                                        .on_toggle(|toggled| {
-                                            AppMsg::Articles(if toggled {
-                                                ArticleMsg::WatchStory(story.clone())
-                                            } else {
-                                                ArticleMsg::UnWatchStory(story.id)
-                                            })
-                                        }),
-                                    "Watch",
-                                    widget::tooltip::Position::FollowCursor,
-                                ))
+                                .push_maybe((story.ty != "job").then(|| {
+                                    tooltip(
+                                        widget::toggler(self.watch_handles.contains_key(&story.id))
+                                            .on_toggle(|toggled| {
+                                                AppMsg::Articles(if toggled {
+                                                    ArticleMsg::WatchStory(story.clone())
+                                                } else {
+                                                    ArticleMsg::UnWatchStory(story.id)
+                                                })
+                                            }),
+                                        "Watch",
+                                        widget::tooltip::Position::FollowCursor,
+                                    )
+                                }))
                                 .push(
                                     widget::container(by)
                                         .align_x(Horizontal::Right)
@@ -336,45 +361,40 @@ impl ArticleState {
                             self.articles = stories;
                             Task::none()
                         }
-                        Err(err) => {
-                            Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer)
-                        }
+                        Err(err) => error_task(err),
                     }
                 }
             }
             ArticleMsg::TopStories(limit) => {
                 self.article_limit = limit;
-                let g = self.search_context.read().unwrap();
-                let watch_handles = mem::take(&mut self.watch_handles);
-                for handle in watch_handles.into_values() {
-                    handle.abort();
-                }
-                self.watch_changes.clear();
-                match g.top_stories(limit, 0) {
+                match self.search_context.read().unwrap().top_stories(limit, 0) {
                     Ok(stories) => Task::done(AppMsg::Articles(ArticleMsg::Receive(stories))),
-                    Err(err) => Task::done(AppMsg::Footer(FooterMsg::Error(err.to_string()))),
+                    Err(err) => error_task(err),
                 }
             }
             ArticleMsg::ViewingItem(story_id) => {
                 self.visited.insert(story_id);
                 self.viewing_item = Some(story_id);
-                self.watch_changes.remove(&story_id);
+                // self.watch_changes.remove(&story_id);
                 Task::done(AppMsg::SaveConfig)
             }
             ArticleMsg::UpdateStory(story) => {
-                let category_type = self.search_context.read().unwrap().active_category();
                 let story_id = story.id;
-                Task::perform(
-                    update_story(self.search_context.clone(), story, category_type),
-                    move |result| match result {
-                        Ok(_) => AppMsg::Articles(ArticleMsg::Search(format!("{story_id}"))),
-                        Err(err) => AppMsg::Footer(FooterMsg::Error(err.to_string())),
-                    },
-                )
+                self.indexing_stories.push(story_id);
+                if let Some(handle) = self.watch_handles.remove(&story.id) {
+                    handle.abort();
+                }
+                Task::future(update_story(self.search_context.clone(), story)).then(move |result| {
+                    match result {
+                        Ok(_) => Task::done(ArticleMsg::FetchStory(story_id)).map(AppMsg::Articles),
+                        Err(err) => {
+                            Task::batch([error_task(err), clear_index_story_task(story_id)])
+                        }
+                    }
+                })
             }
             ArticleMsg::WatchStory(story) => {
                 let story_id = story.id;
-                let category_type = self.search_context.read().unwrap().active_category();
 
                 let last_comment_age = self
                     .search_context
@@ -391,7 +411,7 @@ impl ArticleState {
                     },
                 );
 
-                match watch_story(self.search_context.clone(), story, category_type) {
+                match watch_story(self.search_context.clone(), story) {
                     Ok(WatchState {
                         receiver,
                         abort_handles,
@@ -408,7 +428,7 @@ impl ArticleState {
                         );
                         task
                     }
-                    Err(err) => Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer),
+                    Err(err) => error_task(err),
                 }
             }
             ArticleMsg::StoryUpdated(story) => {
@@ -424,7 +444,7 @@ impl ArticleState {
                     s.descendants = story.descendants;
                     s.score = story.score;
                 }
-                Task::none()
+                clear_index_story_task(story_id)
             }
             ArticleMsg::UnWatchStory(story_id) => {
                 if let Some(handle) = self.watch_handles.remove(&story_id) {
@@ -433,6 +453,89 @@ impl ArticleState {
                 self.watch_changes.remove(&story_id);
                 Task::none()
             }
+            ArticleMsg::RemoveWatches => {
+                let watches = mem::take(&mut self.watch_handles);
+                for handle in watches.into_values() {
+                    handle.abort()
+                }
+                Task::none()
+            }
+            ArticleMsg::OpenNew { story_id, beyond } => {
+                let latest_comment_time = self
+                    .search_context
+                    .read()
+                    .unwrap()
+                    .last_comment_age(story_id)
+                    .ok()
+                    .into_iter()
+                    .flatten()
+                    .next();
+
+                if let Some(watch_state) = self.watch_changes.get_mut(&story_id) {
+                    let previous_last_time = watch_state.beyond;
+                    watch_state.beyond = latest_comment_time.unwrap_or(previous_last_time);
+                    watch_state.new_comments = 0;
+                }
+
+                Task::done(FullSearchMsg::StoryByTime {
+                    story_id,
+                    beyond: Some(beyond),
+                })
+                .map(AppMsg::FullSearch)
+            }
+            ArticleMsg::FetchStory(story_id) => {
+                match self.search_context.read().unwrap().story(story_id) {
+                    Ok(story) => Task::done(ArticleMsg::StoryUpdated(story)).map(AppMsg::Articles),
+                    Err(err) => Task::batch([error_task(err), clear_index_story_task(story_id)]),
+                }
+            }
+            ArticleMsg::ClearIndexStory(story_id) => {
+                self.indexing_stories.retain(|id| id != &story_id);
+                Task::none()
+            }
+            ArticleMsg::CheckHandles => {
+                let aborted_watchers = self
+                    .watch_handles
+                    .iter()
+                    .filter_map(|(story_id, watch_handle)| {
+                        watch_handle
+                            .abort_handles
+                            .iter()
+                            .any(|h| h.is_finished() || watch_handle.ui_receiver.is_aborted())
+                            .then_some(*story_id)
+                    })
+                    .collect::<Vec<_>>();
+
+                let mut re_connect_tasks = Vec::new();
+
+                for story_id in aborted_watchers {
+                    if let Some(watch_handler) = self.watch_handles.remove(&story_id) {
+                        info!("Reconnecting watch handler for {story_id}");
+                        watch_handler.abort();
+
+                        let story = self.search_context.read().unwrap().story(story_id);
+
+                        match story {
+                            Ok(story) => {
+                                re_connect_tasks.push(
+                                    Task::done(ArticleMsg::WatchStory(story)).map(AppMsg::Articles),
+                                );
+                            }
+                            Err(err) => re_connect_tasks.push(error_task(err)),
+                        }
+                    }
+                }
+
+                if re_connect_tasks.is_empty() {
+                    Task::none()
+                } else {
+                    Task::batch(re_connect_tasks)
+                }
+            }
         }
     }
+}
+
+fn clear_index_story_task(story_id: u64) -> Task<AppMsg> {
+    Task::done(ArticleMsg::ClearIndexStory(story_id)).map(AppMsg::Articles)
 }
