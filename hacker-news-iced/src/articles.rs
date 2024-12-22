@@ -209,8 +209,9 @@ impl ArticleState {
                                         }),
                                 )
                                 .push(
-                                    widget::container(title_wrapper)
-                                        .width(Length::FillPortion(4).enclose(Length::Fill)),
+                                    widget::container(title_wrapper).width(
+                                        Length::FillPortion(4).enclose(Length::FillPortion(1)),
+                                    ),
                                 )
                                 .push(
                                     widget::container(
@@ -263,7 +264,7 @@ impl ArticleState {
                                             .spacing(5),
                                     )
                                     .align_right(Length::Fill)
-                                    .width(Length::Fill),
+                                    .width(Length::FillPortion(1)),
                                 )
                                 .spacing(5),
                         )
@@ -375,7 +376,6 @@ impl ArticleState {
             ArticleMsg::ViewingItem(story_id) => {
                 self.visited.insert(story_id);
                 self.viewing_item = Some(story_id);
-                // self.watch_changes.remove(&story_id);
                 Task::done(AppMsg::SaveConfig)
             }
             ArticleMsg::UpdateStory(story) => {
