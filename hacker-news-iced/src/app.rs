@@ -319,7 +319,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                 None => title_text.into(),
             };
 
-            Some(widget::container(content).padding([5, 5]).into())
+            Some(widget::container(content).padding(5).into())
         };
 
         pane_grid::Content::new(match state {
@@ -424,22 +424,23 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         .always_show_controls()
                 }
                 // Regular all comment search
-                _ if app.full_search_state.search.is_some() => {
-                    pane_grid::TitleBar::new("Searched all comments")
-                        .controls(pane_grid::Controls::new(widget::container(
-                            widget::Row::new()
-                                .push(widget::text(format!(
-                                    "{}",
-                                    app.full_search_state.full_count
-                                )))
-                                .push(
-                                    widget::button("X")
-                                        .on_press(AppMsg::Header(HeaderMsg::ClearSearch)),
-                                )
-                                .spacing(5),
+                _ if app.full_search_state.search.is_some() => pane_grid::TitleBar::new(
+                    widget::container(widget::text("Searched all comments").font(Font {
+                        weight: Weight::Bold,
+                        ..Default::default()
+                    }))
+                    .padding(5),
+                )
+                .controls(pane_grid::Controls::new(widget::container(
+                    widget::Row::new()
+                        .push(widget::text(format!(
+                            "{}",
+                            app.full_search_state.full_count
                         )))
-                        .always_show_controls()
-                }
+                        .push(widget::button("X").on_press(AppMsg::Header(HeaderMsg::ClearSearch)))
+                        .spacing(5),
+                )))
+                .always_show_controls(),
                 _ => pane_grid::TitleBar::new(""),
             },
         })
