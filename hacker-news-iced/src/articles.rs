@@ -78,7 +78,6 @@ pub enum ArticleMsg {
     StoryUpdated(Story),
     RemoveWatches,
     OpenNew { story_id: u64, beyond: u64 },
-    FetchStory(u64),
     ClearIndexStory(u64),
     CheckHandles,
     ToggleWatchFilter,
@@ -392,7 +391,9 @@ impl ArticleState {
                 }
                 Task::future(update_story(self.search_context.clone(), story)).then(move |result| {
                     match result {
-                        Ok(_) => Task::done(ArticleMsg::FetchStory(story_id)).map(AppMsg::Articles),
+                        Ok(story) => {
+                            Task::done(ArticleMsg::StoryUpdated(story)).map(AppMsg::Articles)
+                        }
                         Err(err) => {
                             Task::batch([error_task(err), clear_index_story_task(story_id)])
                         }
@@ -451,12 +452,6 @@ impl ArticleState {
                     beyond: Some(beyond),
                 })
                 .map(AppMsg::FullSearch)
-            }
-            ArticleMsg::FetchStory(story_id) => {
-                match self.search_context.read().unwrap().story(story_id) {
-                    Ok(story) => Task::done(ArticleMsg::StoryUpdated(story)).map(AppMsg::Articles),
-                    Err(err) => Task::batch([error_task(err), clear_index_story_task(story_id)]),
-                }
             }
             ArticleMsg::ClearIndexStory(story_id) => {
                 self.indexing_stories.retain(|id| id != &story_id);

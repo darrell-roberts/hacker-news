@@ -22,7 +22,7 @@ use std::{
 };
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
 use tokio::{
-    sync::mpsc::{Receiver, Sender},
+    sync::mpsc::{channel, Receiver, Sender},
     task::AbortHandle,
     time::timeout,
 };
@@ -199,7 +199,6 @@ impl<'a> WriteContext<'a> {
     /// Commit changes to the index.
     fn commit(&mut self) -> Result<u64, SearchError> {
         let ts = self.writer.commit()?;
-        self.writer.index().reader()?.reload()?;
         Ok(ts)
     }
 }
@@ -267,6 +266,7 @@ async fn collect_story(client: Arc<ApiClient>, tx: Sender<ItemRef>, mut story: I
     let story_id = story.id;
     debug!("Collecting comments for story_id {story_id}");
 
+    // Collect all the nested comments for the story.
     let result = timeout(
         Duration::from_secs(60),
         send_comments(&client, story.id, mem::take(&mut story.kids), tx.clone()),
@@ -282,6 +282,7 @@ async fn collect_story(client: Arc<ApiClient>, tx: Sender<ItemRef>, mut story: I
         error!("index writer channel is closed");
     }
 
+    // Create the story document.
     if let Err(err) = tx.send(ItemRef::Story(StoryRef { story, rank })).await {
         error!("Failed to send story {err}");
     }
@@ -364,7 +365,7 @@ pub async fn rebuild_index(
     let mut writer_context = ctx.read().unwrap().writer_context()?;
     writer_context.delete_all_docs()?;
 
-    let (tx, rx) = tokio::sync::mpsc::channel::<ItemRef>(100);
+    let (tx, rx) = channel::<ItemRef>(100);
     #[cfg(feature = "trace")]
     let result = tokio::spawn(collect(tx, category_type, progress_tx).in_current_span());
     #[cfg(not(feature = "trace"))]
@@ -393,7 +394,7 @@ pub enum RebuildProgress {
 pub async fn update_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
-) -> Result<(), SearchError> {
+) -> Result<Story, SearchError> {
     let api = api_client();
     let latest = api.item(story.id).await?;
     let story_id = story.id;
@@ -408,8 +409,9 @@ pub async fn update_story(
         rebuild_story(api, writer_context, story, latest).await?;
         info!("Rebuilt story {story_id}");
     }
-
-    Ok(())
+    let g = ctx.read().unwrap();
+    g.refresh_reader()?;
+    g.story(story_id)
 }
 
 /// Re-index this story along with all it's nested comments. Comments
@@ -421,7 +423,7 @@ async fn rebuild_story(
     latest: Item,
 ) -> Result<(), SearchError> {
     writer_context.delete_story(&story);
-    let (tx, rx) = tokio::sync::mpsc::channel::<ItemRef>(100);
+    let (tx, rx) = channel::<ItemRef>(100);
 
     let result = tokio::spawn(collect_story(client, tx, latest, story.rank));
 
@@ -473,7 +475,11 @@ async fn handle_story_events(
             {
                 Ok(_) => {
                     current_story.descendants = latest_descendants;
-                    let new_story = ctx.read().unwrap().story(story_id)?;
+                    let new_story = {
+                        let g = ctx.read().unwrap();
+                        g.refresh_reader()?;
+                        g.story(story_id)?
+                    };
                     current_story.descendants = new_story.descendants;
                     current_story.score = new_story.score;
 
@@ -502,7 +508,7 @@ async fn handle_comment_events(
 ) -> Result<(), SearchError> {
     while let Some(item_event) = rx.recv().await {
         let mut comment = comment.clone();
-        let (tx_comment, rx_comment) = tokio::sync::mpsc::channel(10);
+        let (tx_comment, rx_comment) = channel(10);
         let story_id = comment.story_id;
 
         let child_ids = item_event.data.kids.clone();
@@ -538,7 +544,7 @@ pub fn watch_story(
     story: Story,
 ) -> Result<WatchState<2, Story>, SearchError> {
     let client = api_client();
-    let (tx, rx) = tokio::sync::mpsc::channel(10);
+    let (tx, rx) = channel(10);
     let (ui_tx, ui_rx) = mpsc::channel::<Story>(10);
     let story_id = story.id;
     let c = client.clone();
@@ -569,7 +575,7 @@ pub fn watch_comment(
     comment: Comment,
 ) -> Result<WatchState<2, Comment>, SearchError> {
     let client = api_client();
-    let (tx, rx) = tokio::sync::mpsc::channel(10);
+    let (tx, rx) = channel(10);
     let (ui_tx, ui_rx) = mpsc::channel::<Comment>(10);
     let comment_id = comment.id;
     let c = client.clone();
