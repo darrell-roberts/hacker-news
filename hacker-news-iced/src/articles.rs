@@ -391,9 +391,10 @@ impl ArticleState {
                 }
                 Task::future(update_story(self.search_context.clone(), story)).then(move |result| {
                     match result {
-                        Ok(story) => {
+                        Ok(Some(story)) => {
                             Task::done(ArticleMsg::StoryUpdated(story)).map(AppMsg::Articles)
                         }
+                        Ok(None) => clear_index_story_task(story_id),
                         Err(err) => {
                             Task::batch([error_task(err), clear_index_story_task(story_id)])
                         }

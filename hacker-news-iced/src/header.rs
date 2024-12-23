@@ -260,12 +260,7 @@ impl HeaderState {
             }
             HeaderMsg::IndexReady { stats, category } => {
                 self.building_index = false;
-                self.article_type = category;
-                Task::done(AppMsg::SwitchIndex {
-                    category,
-                    count: self.article_count,
-                })
-                .chain(Task::done(FooterMsg::IndexStats { stats, category }).map(AppMsg::Footer))
+                Task::done(FooterMsg::IndexStats { stats, category }).map(AppMsg::Footer)
             }
             HeaderMsg::IndexFailed(err) => {
                 self.building_index = false;

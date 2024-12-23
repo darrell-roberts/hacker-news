@@ -160,7 +160,11 @@ impl FooterState {
                 self.scale = scale;
             }
             FooterMsg::IndexStats { stats, category } => {
-                self.current_index_stats = Some(stats);
+                if let Some(s) = self.current_index_stats.as_ref() {
+                    if s.category == category {
+                        self.current_index_stats = Some(stats);
+                    }
+                }
                 self.index_stats
                     .entry(category.as_str())
                     .and_modify(|s| *s = stats)

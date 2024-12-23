@@ -394,24 +394,28 @@ pub enum RebuildProgress {
 pub async fn update_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
-) -> Result<Story, SearchError> {
+) -> Result<Option<Story>, SearchError> {
     let api = api_client();
     let latest = api.item(story.id).await?;
     let story_id = story.id;
 
-    if latest.descendants.unwrap_or_default() != story.descendants {
-        info!(
-            "New comments {}.. re-indexing story {story_id}",
-            latest.descendants.unwrap_or_default()
-        );
+    Ok(
+        if latest.descendants.unwrap_or_default() != story.descendants {
+            info!(
+                "New comments {}.. re-indexing story {story_id}",
+                latest.descendants.unwrap_or_default()
+            );
 
-        let writer_context = ctx.read().unwrap().writer_context()?;
-        rebuild_story(api, writer_context, story, latest).await?;
-        info!("Rebuilt story {story_id}");
-    }
-    let g = ctx.read().unwrap();
-    g.refresh_reader()?;
-    g.story(story_id)
+            let writer_context = ctx.read().unwrap().writer_context()?;
+            rebuild_story(api, writer_context, story, latest).await?;
+            info!("Rebuilt story {story_id}");
+            let g = ctx.read().unwrap();
+            g.refresh_reader()?;
+            Some(g.story(story_id)?)
+        } else {
+            None
+        },
+    )
 }
 
 /// Re-index this story along with all it's nested comments. Comments
