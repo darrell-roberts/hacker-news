@@ -8,6 +8,7 @@ use hacker_news_search::{IndexStats, RebuildProgress};
 use iced::{
     alignment::Vertical,
     font::{Style, Weight},
+    padding,
     widget::{container, pick_list, progress_bar, text, Column, Row},
     Background, Element, Font, Length, Task, Theme,
 };
@@ -31,7 +32,6 @@ pub struct FooterState {
 #[derive(Debug, Clone)]
 pub enum FooterMsg {
     Error(String),
-    LastUpdate(DateTime<Local>),
     Url(String),
     NoUrl,
     Scale(f64),
@@ -66,11 +66,16 @@ impl FooterState {
                         .padding(iced::padding::top(5)),
                     )
                     .push_maybe(self.index_progress.as_ref().map(|progress| {
-                        container(progress_bar(
-                            0_f32..=progress.total_stories_to_index,
-                            progress.total_stories_completed,
-                        ))
-                        .padding(5)
+                        container(
+                            Row::new()
+                                .push(text("Syncing..."))
+                                .push(progress_bar(
+                                    0_f32..=progress.total_stories_to_index,
+                                    progress.total_stories_completed,
+                                ))
+                                .spacing(5),
+                        )
+                        .padding(padding::all(5).right(0))
                         .align_right(Length::Fill)
                     })),
             )
@@ -141,10 +146,6 @@ impl FooterState {
             FooterMsg::Error(s) => {
                 error!("{s}");
                 self.status_line = s;
-            }
-            FooterMsg::LastUpdate(dt) => {
-                self.status_line = format!("Updated: {}", dt.format("%d/%m/%Y %r"));
-                self.last_update = Some(dt);
             }
             FooterMsg::Url(url) => {
                 if self.status_line != url {

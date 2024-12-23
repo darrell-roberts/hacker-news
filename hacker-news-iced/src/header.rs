@@ -5,7 +5,6 @@ use crate::{
     footer::FooterMsg,
     full_search::FullSearchMsg,
 };
-use chrono::Local;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{rebuild_index, IndexStats, RebuildProgress, SearchContext};
 use iced::{
@@ -255,7 +254,7 @@ impl HeaderState {
                             Task::done(HeaderMsg::IndexFailed(err.to_string())).map(AppMsg::Header)
                         }
                     }),
-                    error_task("Building index..."),
+                    // error_task("Syncing..."),
                     Task::run(rx, FooterMsg::IndexProgress).map(AppMsg::Footer),
                 ])
             }
@@ -266,10 +265,7 @@ impl HeaderState {
                     category,
                     count: self.article_count,
                 })
-                .chain(Task::batch([
-                    Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer),
-                    Task::done(FooterMsg::IndexStats { stats, category }).map(AppMsg::Footer),
-                ]))
+                .chain(Task::done(FooterMsg::IndexStats { stats, category }).map(AppMsg::Footer))
             }
             HeaderMsg::IndexFailed(err) => {
                 self.building_index = false;

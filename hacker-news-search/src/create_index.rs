@@ -11,7 +11,7 @@ use futures_util::{
     stream::{self, FuturesUnordered},
     StreamExt, TryFutureExt, TryStreamExt,
 };
-use hacker_news_api::{ApiClient, ArticleType, Item, StoryEventData};
+use hacker_news_api::{ApiClient, ArticleType, Item, ItemEventData};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -421,16 +421,12 @@ async fn rebuild_story(
     latest: Item,
 ) -> Result<(), SearchError> {
     writer_context.delete_story(&story);
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<ItemRef>(100);
+    let (tx, rx) = tokio::sync::mpsc::channel::<ItemRef>(100);
 
     let result = tokio::spawn(collect_story(client, tx, latest, story.rank));
 
-    while let Some(item) = rx.recv().await {
-        match item {
-            ItemRef::Story(s) => writer_context.write_story(s)?,
-            ItemRef::Comment(c) => writer_context.write_comment(c)?,
-        }
-    }
+    write_items(rx, &mut writer_context).await?;
+
     result.await?;
     writer_context.commit()?;
     Ok(())
@@ -443,12 +439,12 @@ async fn handle_story_events(
     client: Arc<ApiClient>,
     story: Story,
     mut ui_tx: mpsc::Sender<Story>,
-    mut rx: Receiver<StoryEventData>,
+    mut rx: Receiver<ItemEventData>,
 ) -> Result<(), SearchError> {
     let story_id = story.id;
     let mut current_story = story;
 
-    while let Some(StoryEventData { data: latest, .. }) = rx.recv().await {
+    while let Some(ItemEventData { data: latest, .. }) = rx.recv().await {
         if ui_tx.is_closed() {
             warn!("UI transmission channel is closed");
             break;
@@ -497,6 +493,41 @@ async fn handle_story_events(
     Ok(())
 }
 
+async fn handle_comment_events(
+    ctx: Arc<RwLock<SearchContext>>,
+    client: Arc<ApiClient>,
+    comment: Comment,
+    mut ui_tx: mpsc::Sender<Comment>,
+    mut rx: Receiver<ItemEventData>,
+) -> Result<(), SearchError> {
+    while let Some(item_event) = rx.recv().await {
+        let mut comment = comment.clone();
+        let (tx_comment, rx_comment) = tokio::sync::mpsc::channel(10);
+        let story_id = comment.story_id;
+
+        let child_ids = item_event.data.kids.clone();
+
+        let client = client.clone();
+        let result = tokio::spawn(async move {
+            let client = client.clone();
+            send_comments(&client, story_id, child_ids, tx_comment.clone()).await;
+        });
+
+        let mut writer_context = ctx.read().unwrap().writer_context()?;
+        write_items(rx_comment, &mut writer_context).await?;
+
+        result.await?;
+
+        comment.kids = item_event.data.kids;
+        if let Err(err) = ui_tx.send(comment).await {
+            error!("Failed to send to ui: {err}");
+            break;
+        }
+    }
+
+    Ok(())
+}
+
 pub struct WatchState<const N: usize, EventData> {
     pub abort_handles: [AbortHandle; N],
     pub receiver: mpsc::Receiver<EventData>,
@@ -516,7 +547,7 @@ pub fn watch_story(
         receiver: ui_rx,
         abort_handles: [
             tokio::spawn(async move {
-                c.story_stream(story_id, tx)
+                c.item_stream(story_id, tx)
                     .inspect_err(|err| error!("Failed to subscribe to story events: {err}"))
                     .await
             })
@@ -539,7 +570,24 @@ pub fn watch_comment(
     comment: Comment,
     category_type: ArticleType,
 ) -> Result<WatchState<2, Comment>, SearchError> {
-    todo!()
+    let client = api_client();
+    let (tx, rx) = tokio::sync::mpsc::channel(10);
+    let (ui_tx, ui_rx) = mpsc::channel::<Comment>(10);
+    let comment_id = comment.id;
+    let c = client.clone();
+
+    Ok(WatchState {
+        receiver: ui_rx,
+        abort_handles: [
+            tokio::spawn(async move {
+                c.item_stream(comment_id, tx)
+                    .inspect_err(|err| error!("Failed to subscribe to item events: {err}"))
+                    .await
+            })
+            .abort_handle(),
+            tokio::spawn(handle_comment_events(ctx, client, comment, ui_tx, rx)).abort_handle(),
+        ],
+    })
 }
 
 // pub fn index_articles<'a>(
