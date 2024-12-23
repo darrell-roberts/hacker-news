@@ -260,7 +260,14 @@ impl HeaderState {
             }
             HeaderMsg::IndexReady { stats, category } => {
                 self.building_index = false;
-                Task::done(FooterMsg::IndexStats { stats, category }).map(AppMsg::Footer)
+                Task::batch([
+                    if self.article_type == category {
+                        Task::done(ArticleMsg::TopStories(self.article_count)).map(AppMsg::Articles)
+                    } else {
+                        Task::none()
+                    },
+                    Task::done(FooterMsg::IndexStats { stats, category }).map(AppMsg::Footer),
+                ])
             }
             HeaderMsg::IndexFailed(err) => {
                 self.building_index = false;

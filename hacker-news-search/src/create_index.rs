@@ -381,6 +381,7 @@ pub async fn rebuild_index(
     writer_context.commit()?;
 
     let g = ctx.read().unwrap();
+    g.refresh_reader()?;
     document_stats(&g, start_time.elapsed(), category_type)
 }
 
