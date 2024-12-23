@@ -360,10 +360,12 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                                 )),
                         )
                         .push(
-                            widget::container(
+                            widget::container(common::tooltip(
                                 widget::checkbox("Watching", app.article_state.filter_watching)
                                     .on_toggle(|_| AppMsg::Articles(ArticleMsg::ToggleWatchFilter)),
-                            )
+                                "Filter watched",
+                                widget::tooltip::Position::Bottom,
+                            ))
                             .align_right(Length::Fill),
                         ),
                 ))
