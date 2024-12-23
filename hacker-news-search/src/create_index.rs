@@ -564,11 +564,9 @@ pub fn watch_story(
     })
 }
 
-#[expect(unused_variables)]
 pub fn watch_comment(
     ctx: Arc<RwLock<SearchContext>>,
     comment: Comment,
-    category_type: ArticleType,
 ) -> Result<WatchState<2, Comment>, SearchError> {
     let client = api_client();
     let (tx, rx) = tokio::sync::mpsc::channel(10);
