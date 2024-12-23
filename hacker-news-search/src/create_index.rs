@@ -583,7 +583,11 @@ pub fn watch_comment(
                     .await
             })
             .abort_handle(),
-            tokio::spawn(handle_comment_events(ctx, client, comment, ui_tx, rx)).abort_handle(),
+            tokio::spawn(
+                handle_comment_events(ctx, client, comment, ui_tx, rx)
+                    .inspect_err(|err| error!("Comment event handler encountered an error: {err}")),
+            )
+            .abort_handle(),
         ],
     })
 }
