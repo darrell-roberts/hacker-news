@@ -41,9 +41,30 @@ pub enum Element<'a> {
     /// Source code block.
     Code(String),
     /// Italic text.
-    Italic(String),
+    Italic(Vec<Element<'a>>),
     /// Bold text.
-    Bold(String),
+    Bold(Vec<Element<'a>>),
+}
+
+pub fn parse_nodes<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element<'a>>, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
+{
+    many0(alt((parse_tag, parse_text)))(input)
+}
+
+fn parse_tag<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
+{
+    alt((
+        parse_bold,
+        parse_italic,
+        parse_anchor,
+        parse_paragraph,
+        parse_code,
+        parse_escaped,
+    ))(input)
 }
 
 fn parse_bold<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
@@ -52,7 +73,8 @@ where
 {
     let parse = delimited(
         tag("<b>"),
-        take_until("</b>").and_then(parse_escaped_text),
+        parse_nodes,
+        // take_until("</b>").and_then(parse_escaped_text),
         tag("</b>"),
     );
     context("parse_bold", map(parse, Element::Bold))(input)
@@ -64,7 +86,8 @@ where
 {
     let parse = delimited(
         tag("<i>"),
-        take_until("</i>").and_then(parse_escaped_text),
+        // take_until("</i>").and_then(parse_escaped_text),
+        parse_nodes,
         tag("</i>"),
     );
     context("parse_italic", map(parse, Element::Italic))(input)
@@ -264,8 +287,8 @@ where
 #[cfg(test)]
 mod test {
     use super::{
-        parse_anchor, parse_code, parse_elements, parse_escaped, parse_paragraph, parse_quote,
-        Element,
+        parse_anchor, parse_code, parse_elements, parse_escaped, parse_nodes, parse_paragraph,
+        parse_quote, Element,
     };
     use nom::{
         error::{convert_error, VerboseError},
@@ -394,5 +417,14 @@ mod test {
                 panic!("failed");
             }
         }
+    }
+
+    #[test]
+    fn test_nested() {
+        let s = r#"<b>This bold <i>italic&reg;</i>.</b>And some Code<pre><code>println!("")</code></pre> and more text"#;
+
+        let els = parse_nodes::<VerboseError<&str>>(s).unwrap();
+
+        dbg!(els);
     }
 }
