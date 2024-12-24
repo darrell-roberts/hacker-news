@@ -161,10 +161,6 @@ impl CommentState {
     ) -> Container<'a, AppMsg> {
         let by_button: Element<'_, AppMsg> = if comment.kids.is_empty() {
             widget::text("").into()
-        } else if is_parent {
-            widget::text(format!("💬{}", comment.kids.len()))
-                .shaping(Shaping::Advanced)
-                .into()
         } else {
             button(widget::text(format!("💬{}", comment.kids.len())).shaping(Shaping::Advanced))
                 .padding(0)
@@ -245,6 +241,18 @@ impl CommentState {
                 if let Some(parent) = parent_comment {
                     // We are viewing a nested comment
                     if self.parent_id != parent.id {
+                        if let Some(index) =
+                            self.nav_stack
+                                .iter()
+                                .enumerate()
+                                .find_map(|(index, stack_item)| match stack_item.comment.as_ref() {
+                                    Some(c) => (c.id == parent_id).then_some(index),
+                                    None => None,
+                                })
+                        {
+                            self.nav_stack.drain(index..);
+                        }
+
                         self.nav_stack.push(NavStack {
                             comment: Some(parent),
                             offset: 0,

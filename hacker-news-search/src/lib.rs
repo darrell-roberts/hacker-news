@@ -139,6 +139,10 @@ impl SearchContext {
             self.active_index.as_str(),
         )
     }
+
+    pub fn refresh_reader(&self) -> Result<(), SearchError> {
+        Ok(self.reader.reload()?)
+    }
 }
 
 fn document_schema() -> Schema {

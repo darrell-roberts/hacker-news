@@ -10,3 +10,6 @@ license.workspace = true
 anyhow.workspace = true
 log.workspace = true
 nom = "7"
+
+[dev-dependencies]
+cool_asserts = "2"

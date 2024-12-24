@@ -62,6 +62,8 @@ pub struct ArticleState {
     pub watch_changes: HashMap<u64, WatchChange>,
     /// Stories being index.
     pub indexing_stories: Vec<u64>,
+    /// Filter articles being watched.
+    pub filter_watching: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -76,9 +78,9 @@ pub enum ArticleMsg {
     StoryUpdated(Story),
     RemoveWatches,
     OpenNew { story_id: u64, beyond: u64 },
-    FetchStory(u64),
     ClearIndexStory(u64),
     CheckHandles,
+    ToggleWatchFilter,
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -89,6 +91,9 @@ impl ArticleState {
             Column::with_children(
                 self.articles
                     .iter()
+                    .filter(|story| {
+                        !self.filter_watching || self.watch_changes.contains_key(&story.id)
+                    })
                     .map(|article| self.render_article(theme, article))
                     .map(Element::from),
             )
@@ -386,7 +391,10 @@ impl ArticleState {
                 }
                 Task::future(update_story(self.search_context.clone(), story)).then(move |result| {
                     match result {
-                        Ok(_) => Task::done(ArticleMsg::FetchStory(story_id)).map(AppMsg::Articles),
+                        Ok(Some(story)) => {
+                            Task::done(ArticleMsg::StoryUpdated(story)).map(AppMsg::Articles)
+                        }
+                        Ok(None) => clear_index_story_task(story_id),
                         Err(err) => {
                             Task::batch([error_task(err), clear_index_story_task(story_id)])
                         }
@@ -446,12 +454,6 @@ impl ArticleState {
                 })
                 .map(AppMsg::FullSearch)
             }
-            ArticleMsg::FetchStory(story_id) => {
-                match self.search_context.read().unwrap().story(story_id) {
-                    Ok(story) => Task::done(ArticleMsg::StoryUpdated(story)).map(AppMsg::Articles),
-                    Err(err) => Task::batch([error_task(err), clear_index_story_task(story_id)]),
-                }
-            }
             ArticleMsg::ClearIndexStory(story_id) => {
                 self.indexing_stories.retain(|id| id != &story_id);
                 Task::none()
@@ -492,6 +494,10 @@ impl ArticleState {
                 } else {
                     Task::batch(re_connect_tasks)
                 }
+            }
+            ArticleMsg::ToggleWatchFilter => {
+                self.filter_watching = !self.filter_watching;
+                Task::none()
             }
         }
     }

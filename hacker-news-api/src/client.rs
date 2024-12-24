@@ -9,7 +9,7 @@
 //! the structure of the REST API, multiple requests and connections are
 //! required to do most operations.
 use crate::{
-    types::{Item, ResultExt, StoryEventData, TopStoriesEventData, User},
+    types::{Item, ItemEventData, ResultExt, TopStoriesEventData, User},
     ArticleType,
 };
 use anyhow::{Context, Result};
@@ -218,9 +218,9 @@ impl ApiClient {
     }
 
     /// Subscribe to updates to a story via server side event sourcing.
-    pub async fn story_stream(&self, story_id: u64, sender: Sender<StoryEventData>) -> Result<()> {
+    pub async fn item_stream(&self, story_id: u64, sender: Sender<ItemEventData>) -> Result<()> {
         let mut stream = self
-            .event_source::<StoryEventData>(format!("{}/item/{story_id}.json", Self::API_END_POINT))
+            .event_source::<ItemEventData>(format!("{}/item/{story_id}.json", Self::API_END_POINT))
             .await?;
 
         while let Some(event) = stream.try_next().await? {
@@ -228,7 +228,7 @@ impl ApiClient {
                 sender.send(data).await?;
             }
         }
-        info!("story stream has exited.");
+        info!("item stream has exited.");
         Ok(())
     }
 }
@@ -239,11 +239,6 @@ where
     EventData: for<'a> Deserialize<'a>,
 {
     let mut lines = bytes.split(|b| *b == b'\n');
-
-    // We are only concerned with put events for the top stories. This event
-    // will provide a JSON number array payload of all the top stories in
-    // ranking order.
-
     lines
         .next()?
         .starts_with(b"event: put")

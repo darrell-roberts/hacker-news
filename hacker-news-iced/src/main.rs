@@ -113,6 +113,7 @@ fn start() -> anyhow::Result<()> {
                     watch_handles: HashMap::new(),
                     watch_changes: HashMap::new(),
                     indexing_stories: Vec::new(),
+                    filter_watching: false,
                 },
                 comment_state: None,
                 size: Size::new(800., 600.),

@@ -1,4 +1,5 @@
 use crate::app::AppMsg;
+use html_sanitizer::Anchor;
 use iced::font::{Style, Weight};
 use iced::widget::span;
 use iced::widget::text::Span;
@@ -16,25 +17,7 @@ pub fn render_rich_text<'a>(
     for e in elements {
         match e {
             html_sanitizer::Element::Text(text) => spans.extend(SearchSpanIter::new(text, search)),
-            html_sanitizer::Element::Link(link) => spans.extend(
-                link.attributes
-                    .into_iter()
-                    .find(|attr| attr.name == "href")
-                    .map(move |attr| {
-                        if link.children.is_empty() {
-                            span(attr.value.clone()).link(AppMsg::OpenLink {
-                                url: attr.value,
-                                item_id: 0,
-                            })
-                        } else {
-                            span(link.children.clone()).link(AppMsg::OpenLink {
-                                url: attr.value,
-                                item_id: 0,
-                            })
-                        }
-                    })
-                    .into_iter(),
-            ),
+            html_sanitizer::Element::Link(link) => spans.extend(anchor_spans(link)),
             html_sanitizer::Element::Escaped(text) => spans.push(span(text)),
             html_sanitizer::Element::Paragraph => {
                 if oneline {
@@ -47,26 +30,121 @@ pub fn render_rich_text<'a>(
                     span.font(Font::MONOSPACE)
                 }));
             }
-            html_sanitizer::Element::Italic(text) => {
-                spans.extend(split_search(text, search, |s| {
-                    s.font(Font {
-                        style: Style::Italic,
-                        ..Default::default()
-                    })
-                }));
+            // We can have one level nesting here.
+            html_sanitizer::Element::Italic(nested) => {
+                for el in nested {
+                    match el {
+                        html_sanitizer::Element::Text(text) => spans.extend(
+                            SearchSpanIter::new(text, search)
+                                .map(|s| s.font(Font::default().italic())),
+                        ),
+                        html_sanitizer::Element::Link(link) => spans.extend(anchor_spans(link)),
+                        html_sanitizer::Element::Escaped(text) => {
+                            spans.push(span(text).font(Font::default().italic()))
+                        }
+                        html_sanitizer::Element::Paragraph => spans.push(span("\n\n")),
+                        html_sanitizer::Element::Bold(nested) => {
+                            for el in nested {
+                                match el {
+                                    html_sanitizer::Element::Text(text) => spans.extend(
+                                        SearchSpanIter::new(text, search)
+                                            .map(|s| s.font(Font::default().bold().italic())),
+                                    ),
+                                    html_sanitizer::Element::Link(link) => {
+                                        spans.extend(anchor_spans(link))
+                                    }
+                                    html_sanitizer::Element::Escaped(text) => {
+                                        spans.push(span(text).font(Font::default().italic().bold()))
+                                    }
+                                    html_sanitizer::Element::Paragraph => spans.push(span("\n\n")),
+                                    _ => (),
+                                }
+                            }
+                        }
+                        _ => (),
+                    }
+                }
             }
-            html_sanitizer::Element::Bold(text) => {
-                spans.extend(split_search(text, search, |s| {
-                    s.font(Font {
-                        weight: Weight::Bold,
-                        ..Default::default()
-                    })
-                }));
+            // We can have one level nesting here.
+            html_sanitizer::Element::Bold(inner) => {
+                for el in inner {
+                    match el {
+                        html_sanitizer::Element::Text(text) => spans.extend(
+                            SearchSpanIter::new(text, search)
+                                .map(|s| s.font(Font::default().bold())),
+                        ),
+                        html_sanitizer::Element::Link(link) => spans.extend(anchor_spans(link)),
+                        html_sanitizer::Element::Escaped(text) => {
+                            spans.push(span(text).font(Font::default().bold()))
+                        }
+                        html_sanitizer::Element::Paragraph => spans.push(span("\n\n")),
+                        html_sanitizer::Element::Italic(nested) => {
+                            for el in nested {
+                                match el {
+                                    html_sanitizer::Element::Text(text) => spans.extend(
+                                        SearchSpanIter::new(text, search)
+                                            .map(|s| s.font(Font::default().bold().italic())),
+                                    ),
+                                    html_sanitizer::Element::Link(link) => {
+                                        spans.extend(anchor_spans(link))
+                                    }
+                                    html_sanitizer::Element::Escaped(text) => {
+                                        spans.push(span(text).font(Font::default().italic().bold()))
+                                    }
+                                    html_sanitizer::Element::Paragraph => spans.push(span("\n\n")),
+                                    _ => (),
+                                }
+                            }
+                        }
+                        _ => (),
+                    }
+                }
             }
         }
     }
 
     spans
+}
+
+fn anchor_spans(link: Anchor<'_>) -> impl Iterator<Item = Span<'_, AppMsg>> {
+    link.attributes
+        .into_iter()
+        .find(|attr| attr.name == "href")
+        .map(move |attr| {
+            if link.children.is_empty() {
+                span(attr.value.clone()).link(AppMsg::OpenLink {
+                    url: attr.value,
+                    item_id: 0,
+                })
+            } else {
+                span(link.children.clone()).link(AppMsg::OpenLink {
+                    url: attr.value,
+                    item_id: 0,
+                })
+            }
+        })
+        .into_iter()
+}
+
+trait FontExt {
+    fn bold(self) -> Self;
+    fn italic(self) -> Self;
+}
+
+impl FontExt for Font {
+    fn bold(self) -> Self {
+        Self {
+            weight: Weight::Bold,
+            ..self
+        }
+    }
+
+    fn italic(self) -> Self {
+        Self {
+            style: Style::Italic,
+            ..self
+        }
+    }
 }
 
 /// Split an owned string into multiple owned spans.

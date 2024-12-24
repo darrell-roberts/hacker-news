@@ -3,8 +3,6 @@ resolver = "2"
 members = [
     "hacker-news-api",
     "html-sanitizer",
-    "hacker-news-egui",
-    "hacker-news-gpui",
     "hacker-news-iced",
     "hacker-news-search",
 ]

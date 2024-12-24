@@ -3,9 +3,9 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case, take_until, take_while1, take_while_m_n},
     character::complete::{alpha1, anychar, char, space1},
-    combinator::{cut, eof, map, map_opt, map_res, rest, value},
+    combinator::{cut, map, map_opt, map_res, value},
     error::{context, ContextError, FromExternalError, ParseError},
-    multi::{many0, many_till},
+    multi::many0,
     sequence::{delimited, pair, preceded, separated_pair, terminated},
     AsChar, IResult, Parser,
 };
@@ -41,9 +41,30 @@ pub enum Element<'a> {
     /// Source code block.
     Code(String),
     /// Italic text.
-    Italic(String),
+    Italic(Vec<Element<'a>>),
     /// Bold text.
-    Bold(String),
+    Bold(Vec<Element<'a>>),
+}
+
+pub fn parse_nodes<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element<'a>>, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
+{
+    many0(alt((parse_tag, parse_text)))(input)
+}
+
+fn parse_tag<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
+where
+    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
+{
+    alt((
+        parse_bold,
+        parse_italic,
+        parse_anchor,
+        parse_paragraph,
+        parse_code,
+        parse_escaped,
+    ))(input)
 }
 
 fn parse_bold<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
@@ -52,7 +73,8 @@ where
 {
     let parse = delimited(
         tag("<b>"),
-        take_until("</b>").and_then(parse_escaped_text),
+        parse_nodes,
+        // take_until("</b>").and_then(parse_escaped_text),
         tag("</b>"),
     );
     context("parse_bold", map(parse, Element::Bold))(input)
@@ -64,7 +86,8 @@ where
 {
     let parse = delimited(
         tag("<i>"),
-        take_until("</i>").and_then(parse_escaped_text),
+        // take_until("</i>").and_then(parse_escaped_text),
+        parse_nodes,
         tag("</i>"),
     );
     context("parse_italic", map(parse, Element::Italic))(input)
@@ -236,7 +259,7 @@ where
         ),
     )(input)
 }
-
+/*/
 /// Parse html encoded string into a logical [`Element`]s.
 pub fn parse_elements<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element<'a>>, E>
 where
@@ -260,13 +283,14 @@ where
     }
     Ok((rest, result))
 }
+*/
 
 #[cfg(test)]
 mod test {
     use super::{
-        parse_anchor, parse_code, parse_elements, parse_escaped, parse_paragraph, parse_quote,
-        Element,
+        parse_anchor, parse_code, parse_escaped, parse_nodes, parse_paragraph, parse_quote, Element,
     };
+    use cool_asserts::assert_matches;
     use nom::{
         error::{convert_error, VerboseError},
         Err,
@@ -352,7 +376,7 @@ mod test {
         let s = r#"123h&#x2F; <P>&#x2F;&#x23;<P>Hello<P>
             <a href="some url">some link</a>"#;
 
-        let el = parse_elements::<VerboseError<&str>>(s);
+        let el = parse_nodes::<VerboseError<&str>>(s);
 
         match el {
             Ok((rest, elements)) => {
@@ -394,5 +418,34 @@ mod test {
                 panic!("failed");
             }
         }
+    }
+
+    #[test]
+    fn test_nested() {
+        let s = r#"<b>This bold <i>italic&reg;</i>.</b>And some Code<pre><code>println!("")</code></pre> and more text"#;
+        let (rest, nodes) = parse_nodes::<VerboseError<&str>>(s).unwrap();
+
+        assert_eq!(rest, "");
+        assert_matches!(
+            nodes,
+            [
+                Element::Bold(inner) => {
+                    assert_matches!(inner, [
+                        Element::Text("This bold "),
+                        Element::Italic(italic) => {
+                            assert_matches!(italic,
+                                [Element::Text("italic"), Element::Escaped('®')]
+                            )
+                        },
+                        Element::Text("."),
+                    ])
+                },
+                Element::Text("And some Code"),
+                Element::Code(code) => {
+                    assert_eq!(code,"println!(\"\")");
+                },
+                Element::Text(" and more text"),
+            ],
+        );
     }
 }
