@@ -30,6 +30,7 @@ pub fn render_rich_text<'a>(
                     span.font(Font::MONOSPACE)
                 }));
             }
+            // We can have one level nesting here.
             html_sanitizer::Element::Italic(nested) => {
                 for el in nested {
                     match el {
@@ -64,6 +65,7 @@ pub fn render_rich_text<'a>(
                     }
                 }
             }
+            // We can have one level nesting here.
             html_sanitizer::Element::Bold(inner) => {
                 for el in inner {
                     match el {
@@ -144,20 +146,6 @@ impl FontExt for Font {
         }
     }
 }
-
-// fn bold_font() -> Font {
-//     Font {
-//         weight: Weight::Bold,
-//         ..Default::default()
-//     }
-// }
-
-// fn italic_font() -> Font {
-//     Font {
-//         style: Style::Italic,
-//         ..Default::default()
-//     }
-// }
 
 /// Split an owned string into multiple owned spans.
 fn split_search(
