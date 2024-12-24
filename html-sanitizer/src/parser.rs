@@ -290,6 +290,7 @@ mod test {
     use super::{
         parse_anchor, parse_code, parse_escaped, parse_nodes, parse_paragraph, parse_quote, Element,
     };
+    use cool_asserts::assert_matches;
     use nom::{
         error::{convert_error, VerboseError},
         Err,
@@ -423,8 +424,29 @@ mod test {
     fn test_nested() {
         let s = r#"<b>This bold <i>italic&reg;</i>.</b>And some Code<pre><code>println!("")</code></pre> and more text"#;
 
-        let els = parse_nodes::<VerboseError<&str>>(s).unwrap();
+        let (rest, nodes) = parse_nodes::<VerboseError<&str>>(s).unwrap();
 
-        dbg!(els);
+        assert_eq!(rest, "");
+        assert_matches!(
+            nodes,
+            [
+                Element::Bold(inner) => {
+                    assert_matches!(inner, [
+                        Element::Text("This bold "),
+                        Element::Italic(italic) => {
+                            assert_matches!(italic,
+                                [Element::Text("italic"), Element::Escaped('®')]
+                            )
+                        },
+                        Element::Text("."),
+                    ])
+                },
+                Element::Text("And some Code"),
+                Element::Code(code) => {
+                    assert_eq!(code,"println!(\"\")");
+                },
+                Element::Text(" and more text"),
+            ],
+        );
     }
 }
