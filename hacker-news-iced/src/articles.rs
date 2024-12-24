@@ -209,8 +209,9 @@ impl ArticleState {
                                         }),
                                 )
                                 .push(
-                                    widget::container(title_wrapper)
-                                        .width(Length::FillPortion(4).enclose(Length::Fill)),
+                                    widget::container(title_wrapper).width(
+                                        Length::FillPortion(4).enclose(Length::FillPortion(1)),
+                                    ),
                                 )
                                 .push(
                                     widget::container(
@@ -263,7 +264,7 @@ impl ArticleState {
                                             .spacing(5),
                                     )
                                     .align_right(Length::Fill)
-                                    .width(Length::Fill),
+                                    .width(Length::FillPortion(1)),
                                 )
                                 .spacing(5),
                         )
@@ -375,7 +376,6 @@ impl ArticleState {
             ArticleMsg::ViewingItem(story_id) => {
                 self.visited.insert(story_id);
                 self.viewing_item = Some(story_id);
-                // self.watch_changes.remove(&story_id);
                 Task::done(AppMsg::SaveConfig)
             }
             ArticleMsg::UpdateStory(story) => {
@@ -393,44 +393,7 @@ impl ArticleState {
                     }
                 })
             }
-            ArticleMsg::WatchStory(story) => {
-                let story_id = story.id;
-
-                let last_comment_age = self
-                    .search_context
-                    .read()
-                    .unwrap()
-                    .last_comment_age(story_id)
-                    .unwrap_or_default();
-
-                self.watch_changes.insert(
-                    story_id,
-                    WatchChange {
-                        new_comments: 0,
-                        beyond: last_comment_age.unwrap_or_default(),
-                    },
-                );
-
-                match watch_story(self.search_context.clone(), story) {
-                    Ok(WatchState {
-                        receiver,
-                        abort_handles,
-                    }) => {
-                        let (task, handle) = Task::run(receiver, ArticleMsg::StoryUpdated)
-                            .map(AppMsg::Articles)
-                            .abortable();
-                        self.watch_handles.insert(
-                            story_id,
-                            WatchHandles {
-                                ui_receiver: handle,
-                                abort_handles,
-                            },
-                        );
-                        task
-                    }
-                    Err(err) => error_task(err),
-                }
-            }
+            ArticleMsg::WatchStory(story) => self.watch_story(story),
             ArticleMsg::StoryUpdated(story) => {
                 let story_id = story.id;
 
@@ -517,9 +480,7 @@ impl ArticleState {
 
                         match story {
                             Ok(story) => {
-                                re_connect_tasks.push(
-                                    Task::done(ArticleMsg::WatchStory(story)).map(AppMsg::Articles),
-                                );
+                                re_connect_tasks.push(self.watch_story(story));
                             }
                             Err(err) => re_connect_tasks.push(error_task(err)),
                         }
@@ -532,6 +493,42 @@ impl ArticleState {
                     Task::batch(re_connect_tasks)
                 }
             }
+        }
+    }
+
+    fn watch_story(&mut self, story: Story) -> Task<AppMsg> {
+        let story_id = story.id;
+        let last_comment_age = self
+            .search_context
+            .read()
+            .unwrap()
+            .last_comment_age(story_id)
+            .unwrap_or_default();
+        self.watch_changes.insert(
+            story_id,
+            WatchChange {
+                new_comments: 0,
+                beyond: last_comment_age.unwrap_or_default(),
+            },
+        );
+        match watch_story(self.search_context.clone(), story) {
+            Ok(WatchState {
+                receiver,
+                abort_handles,
+            }) => {
+                let (task, handle) = Task::run(receiver, ArticleMsg::StoryUpdated)
+                    .map(AppMsg::Articles)
+                    .abortable();
+                self.watch_handles.insert(
+                    story_id,
+                    WatchHandles {
+                        ui_receiver: handle,
+                        abort_handles,
+                    },
+                );
+                task
+            }
+            Err(err) => error_task(err),
         }
     }
 }
