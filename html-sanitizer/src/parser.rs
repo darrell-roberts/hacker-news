@@ -3,9 +3,9 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case, take_until, take_while1, take_while_m_n},
     character::complete::{alpha1, anychar, char, space1},
-    combinator::{cut, eof, map, map_opt, map_res, rest, value},
+    combinator::{cut, map, map_opt, map_res, value},
     error::{context, ContextError, FromExternalError, ParseError},
-    multi::{many0, many_till},
+    multi::many0,
     sequence::{delimited, pair, preceded, separated_pair, terminated},
     AsChar, IResult, Parser,
 };
@@ -259,7 +259,7 @@ where
         ),
     )(input)
 }
-
+/*/
 /// Parse html encoded string into a logical [`Element`]s.
 pub fn parse_elements<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element<'a>>, E>
 where
@@ -283,12 +283,12 @@ where
     }
     Ok((rest, result))
 }
+*/
 
 #[cfg(test)]
 mod test {
     use super::{
-        parse_anchor, parse_code, parse_elements, parse_escaped, parse_nodes, parse_paragraph,
-        parse_quote, Element,
+        parse_anchor, parse_code, parse_escaped, parse_nodes, parse_paragraph, parse_quote, Element,
     };
     use nom::{
         error::{convert_error, VerboseError},
@@ -375,7 +375,7 @@ mod test {
         let s = r#"123h&#x2F; <P>&#x2F;&#x23;<P>Hello<P>
             <a href="some url">some link</a>"#;
 
-        let el = parse_elements::<VerboseError<&str>>(s);
+        let el = parse_nodes::<VerboseError<&str>>(s);
 
         match el {
             Ok((rest, elements)) => {
