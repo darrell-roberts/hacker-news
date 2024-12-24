@@ -423,7 +423,6 @@ mod test {
     #[test]
     fn test_nested() {
         let s = r#"<b>This bold <i>italic&reg;</i>.</b>And some Code<pre><code>println!("")</code></pre> and more text"#;
-
         let (rest, nodes) = parse_nodes::<VerboseError<&str>>(s).unwrap();
 
         assert_eq!(rest, "");
