@@ -1,29 +1,31 @@
-   name: Create Release
+name: Create Release
 
-   on:
-     push:
-       tags:
-         - 'v*'  # Triggers on tags starting with 'v'
+on:
+  push:
+    tags:
+      - "v*" # Triggers on tags starting with 'v'
 
-   jobs:
-     build-and-release:
-       runs-on: macos-latest
+permissions:
+  contents: write
 
-       steps:
-         # Step 1: Check out the repository
-         - name: Checkout repository
-           uses: actions/checkout@v3
+jobs:
+  build-and-release:
+    runs-on: macos-latest
 
-         - name: Build bundle
-           run: make bundle-mac
+    steps:
+      # Step 1: Check out the repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-         # Step 5: Create GitHub Release
-         - name: Create GitHub Release
-           id: create_release
-           uses: softprops/action-gh-release@v1
-           with:
-             files: |
-               dist/Hacker\ News.dmg
-           env:
-             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build bundle
+        run: make bundle-mac
 
+      # Step 5: Create GitHub Release
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/Hacker\ News.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
