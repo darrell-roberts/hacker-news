@@ -21,6 +21,7 @@ use iced::{
         text::Shaping, Column,
     },
     Font,
+    Length,
     Size,
     Task,
     Theme,
@@ -318,7 +319,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                 None => title_text.into(),
             };
 
-            Some(widget::container(content).padding([5, 5]).into())
+            Some(widget::container(content).padding(5).into())
         };
 
         pane_grid::Content::new(match state {
@@ -335,24 +336,40 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
             }
         })
         .title_bar(match state {
-            PaneState::Articles => pane_grid::TitleBar::new(
-                widget::Row::new()
-                    .push(
-                        widget::text_input(
-                            "Search...",
-                            app.article_state.search.as_deref().unwrap_or_default(),
+            PaneState::Articles => pane_grid::TitleBar::new("")
+                .controls(pane_grid::Controls::new(
+                    widget::Column::new()
+                        .push(
+                            widget::Row::new()
+                                .push(
+                                    widget::text_input(
+                                        "Search...",
+                                        app.article_state.search.as_deref().unwrap_or_default(),
+                                    )
+                                    .padding(5)
+                                    .id(widget::text_input::Id::new("article_search"))
+                                    .on_input(|search| {
+                                        AppMsg::Articles(ArticleMsg::Search(search))
+                                    }),
+                                )
+                                .push(common::tooltip(
+                                    widget::button(widget::text("⟲").shaping(Shaping::Advanced))
+                                        .on_press(AppMsg::CloseSearch),
+                                    "Clear search",
+                                    widget::tooltip::Position::Right,
+                                )),
                         )
-                        .padding(5)
-                        .id(widget::text_input::Id::new("article_search"))
-                        .on_input(|search| AppMsg::Articles(ArticleMsg::Search(search))),
-                    )
-                    .push(common::tooltip(
-                        widget::button(widget::text("⟲").shaping(Shaping::Advanced))
-                            .on_press(AppMsg::CloseSearch),
-                        "Clear search",
-                        widget::tooltip::Position::Right,
-                    )),
-            ),
+                        .push(
+                            widget::container(common::tooltip(
+                                widget::checkbox("Watching", app.article_state.filter_watching)
+                                    .on_toggle(|_| AppMsg::Articles(ArticleMsg::ToggleWatchFilter)),
+                                "Filter watched",
+                                widget::tooltip::Position::Bottom,
+                            ))
+                            .align_right(Length::Fill),
+                        ),
+                ))
+                .always_show_controls(),
             PaneState::Comments => match app.comment_state.as_ref() {
                 // Comment search for selected story
                 Some(cs) if app.full_search_state.search.is_none() => {
@@ -407,22 +424,23 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         .always_show_controls()
                 }
                 // Regular all comment search
-                _ if app.full_search_state.search.is_some() => {
-                    pane_grid::TitleBar::new("Searched all comments")
-                        .controls(pane_grid::Controls::new(widget::container(
-                            widget::Row::new()
-                                .push(widget::text(format!(
-                                    "{}",
-                                    app.full_search_state.full_count
-                                )))
-                                .push(
-                                    widget::button("X")
-                                        .on_press(AppMsg::Header(HeaderMsg::ClearSearch)),
-                                )
-                                .spacing(5),
+                _ if app.full_search_state.search.is_some() => pane_grid::TitleBar::new(
+                    widget::container(widget::text("Searched all comments").font(Font {
+                        weight: Weight::Bold,
+                        ..Default::default()
+                    }))
+                    .padding(5),
+                )
+                .controls(pane_grid::Controls::new(widget::container(
+                    widget::Row::new()
+                        .push(widget::text(format!(
+                            "{}",
+                            app.full_search_state.full_count
                         )))
-                        .always_show_controls()
-                }
+                        .push(widget::button("X").on_press(AppMsg::Header(HeaderMsg::ClearSearch)))
+                        .spacing(5),
+                )))
+                .always_show_controls(),
                 _ => pane_grid::TitleBar::new(""),
             },
         })

@@ -11,7 +11,7 @@ use futures_util::{
     stream::{self, FuturesUnordered},
     StreamExt, TryFutureExt, TryStreamExt,
 };
-use hacker_news_api::{ApiClient, ArticleType, Item, StoryEventData};
+use hacker_news_api::{ApiClient, ArticleType, Item, ItemEventData};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -22,7 +22,7 @@ use std::{
 };
 use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
 use tokio::{
-    sync::mpsc::{Receiver, Sender},
+    sync::mpsc::{channel, Receiver, Sender},
     task::AbortHandle,
     time::timeout,
 };
@@ -199,7 +199,6 @@ impl<'a> WriteContext<'a> {
     /// Commit changes to the index.
     fn commit(&mut self) -> Result<u64, SearchError> {
         let ts = self.writer.commit()?;
-        self.writer.index().reader()?.reload()?;
         Ok(ts)
     }
 }
@@ -267,6 +266,7 @@ async fn collect_story(client: Arc<ApiClient>, tx: Sender<ItemRef>, mut story: I
     let story_id = story.id;
     debug!("Collecting comments for story_id {story_id}");
 
+    // Collect all the nested comments for the story.
     let result = timeout(
         Duration::from_secs(60),
         send_comments(&client, story.id, mem::take(&mut story.kids), tx.clone()),
@@ -282,6 +282,7 @@ async fn collect_story(client: Arc<ApiClient>, tx: Sender<ItemRef>, mut story: I
         error!("index writer channel is closed");
     }
 
+    // Create the story document.
     if let Err(err) = tx.send(ItemRef::Story(StoryRef { story, rank })).await {
         error!("Failed to send story {err}");
     }
@@ -364,7 +365,7 @@ pub async fn rebuild_index(
     let mut writer_context = ctx.read().unwrap().writer_context()?;
     writer_context.delete_all_docs()?;
 
-    let (tx, rx) = tokio::sync::mpsc::channel::<ItemRef>(100);
+    let (tx, rx) = channel::<ItemRef>(100);
     #[cfg(feature = "trace")]
     let result = tokio::spawn(collect(tx, category_type, progress_tx).in_current_span());
     #[cfg(not(feature = "trace"))]
@@ -380,6 +381,7 @@ pub async fn rebuild_index(
     writer_context.commit()?;
 
     let g = ctx.read().unwrap();
+    g.refresh_reader()?;
     document_stats(&g, start_time.elapsed(), category_type)
 }
 
@@ -393,23 +395,28 @@ pub enum RebuildProgress {
 pub async fn update_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
-) -> Result<(), SearchError> {
+) -> Result<Option<Story>, SearchError> {
     let api = api_client();
     let latest = api.item(story.id).await?;
     let story_id = story.id;
 
-    if latest.descendants.unwrap_or_default() != story.descendants {
-        info!(
-            "New comments {}.. re-indexing story {story_id}",
-            latest.descendants.unwrap_or_default()
-        );
+    Ok(
+        if latest.descendants.unwrap_or_default() != story.descendants {
+            info!(
+                "New comments {}.. re-indexing story {story_id}",
+                latest.descendants.unwrap_or_default()
+            );
 
-        let writer_context = ctx.read().unwrap().writer_context()?;
-        rebuild_story(api, writer_context, story, latest).await?;
-        info!("Rebuilt story {story_id}");
-    }
-
-    Ok(())
+            let writer_context = ctx.read().unwrap().writer_context()?;
+            rebuild_story(api, writer_context, story, latest).await?;
+            info!("Rebuilt story {story_id}");
+            let g = ctx.read().unwrap();
+            g.refresh_reader()?;
+            Some(g.story(story_id)?)
+        } else {
+            None
+        },
+    )
 }
 
 /// Re-index this story along with all it's nested comments. Comments
@@ -421,16 +428,12 @@ async fn rebuild_story(
     latest: Item,
 ) -> Result<(), SearchError> {
     writer_context.delete_story(&story);
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<ItemRef>(100);
+    let (tx, rx) = channel::<ItemRef>(100);
 
     let result = tokio::spawn(collect_story(client, tx, latest, story.rank));
 
-    while let Some(item) = rx.recv().await {
-        match item {
-            ItemRef::Story(s) => writer_context.write_story(s)?,
-            ItemRef::Comment(c) => writer_context.write_comment(c)?,
-        }
-    }
+    write_items(rx, &mut writer_context).await?;
+
     result.await?;
     writer_context.commit()?;
     Ok(())
@@ -443,12 +446,12 @@ async fn handle_story_events(
     client: Arc<ApiClient>,
     story: Story,
     mut ui_tx: mpsc::Sender<Story>,
-    mut rx: Receiver<StoryEventData>,
+    mut rx: Receiver<ItemEventData>,
 ) -> Result<(), SearchError> {
     let story_id = story.id;
     let mut current_story = story;
 
-    while let Some(StoryEventData { data: latest, .. }) = rx.recv().await {
+    while let Some(ItemEventData { data: latest, .. }) = rx.recv().await {
         if ui_tx.is_closed() {
             warn!("UI transmission channel is closed");
             break;
@@ -477,7 +480,11 @@ async fn handle_story_events(
             {
                 Ok(_) => {
                     current_story.descendants = latest_descendants;
-                    let new_story = ctx.read().unwrap().story(story_id)?;
+                    let new_story = {
+                        let g = ctx.read().unwrap();
+                        g.refresh_reader()?;
+                        g.story(story_id)?
+                    };
                     current_story.descendants = new_story.descendants;
                     current_story.score = new_story.score;
 
@@ -497,6 +504,41 @@ async fn handle_story_events(
     Ok(())
 }
 
+async fn handle_comment_events(
+    ctx: Arc<RwLock<SearchContext>>,
+    client: Arc<ApiClient>,
+    comment: Comment,
+    mut ui_tx: mpsc::Sender<Comment>,
+    mut rx: Receiver<ItemEventData>,
+) -> Result<(), SearchError> {
+    while let Some(item_event) = rx.recv().await {
+        let mut comment = comment.clone();
+        let (tx_comment, rx_comment) = channel(10);
+        let story_id = comment.story_id;
+
+        let child_ids = item_event.data.kids.clone();
+
+        let client = client.clone();
+        let result = tokio::spawn(async move {
+            let client = client.clone();
+            send_comments(&client, story_id, child_ids, tx_comment.clone()).await;
+        });
+
+        let mut writer_context = ctx.read().unwrap().writer_context()?;
+        write_items(rx_comment, &mut writer_context).await?;
+
+        result.await?;
+
+        comment.kids = item_event.data.kids;
+        if let Err(err) = ui_tx.send(comment).await {
+            error!("Failed to send to ui: {err}");
+            break;
+        }
+    }
+
+    Ok(())
+}
+
 pub struct WatchState<const N: usize, EventData> {
     pub abort_handles: [AbortHandle; N],
     pub receiver: mpsc::Receiver<EventData>,
@@ -507,7 +549,7 @@ pub fn watch_story(
     story: Story,
 ) -> Result<WatchState<2, Story>, SearchError> {
     let client = api_client();
-    let (tx, rx) = tokio::sync::mpsc::channel(10);
+    let (tx, rx) = channel(10);
     let (ui_tx, ui_rx) = mpsc::channel::<Story>(10);
     let story_id = story.id;
     let c = client.clone();
@@ -516,7 +558,7 @@ pub fn watch_story(
         receiver: ui_rx,
         abort_handles: [
             tokio::spawn(async move {
-                c.story_stream(story_id, tx)
+                c.item_stream(story_id, tx)
                     .inspect_err(|err| error!("Failed to subscribe to story events: {err}"))
                     .await
             })
@@ -533,13 +575,32 @@ pub fn watch_story(
     })
 }
 
-#[expect(unused_variables)]
 pub fn watch_comment(
     ctx: Arc<RwLock<SearchContext>>,
     comment: Comment,
-    category_type: ArticleType,
 ) -> Result<WatchState<2, Comment>, SearchError> {
-    todo!()
+    let client = api_client();
+    let (tx, rx) = channel(10);
+    let (ui_tx, ui_rx) = mpsc::channel::<Comment>(10);
+    let comment_id = comment.id;
+    let c = client.clone();
+
+    Ok(WatchState {
+        receiver: ui_rx,
+        abort_handles: [
+            tokio::spawn(async move {
+                c.item_stream(comment_id, tx)
+                    .inspect_err(|err| error!("Failed to subscribe to item events: {err}"))
+                    .await
+            })
+            .abort_handle(),
+            tokio::spawn(
+                handle_comment_events(ctx, client, comment, ui_tx, rx)
+                    .inspect_err(|err| error!("Comment event handler encountered an error: {err}")),
+            )
+            .abort_handle(),
+        ],
+    })
 }
 
 // pub fn index_articles<'a>(

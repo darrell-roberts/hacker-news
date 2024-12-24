@@ -5,7 +5,6 @@ use crate::{
     footer::FooterMsg,
     full_search::FullSearchMsg,
 };
-use chrono::Local;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{rebuild_index, IndexStats, RebuildProgress, SearchContext};
 use iced::{
@@ -157,12 +156,12 @@ impl HeaderState {
                                 )),
                         )
                         .push(tooltip(
-                            widget::button("Re-index")
+                            widget::button("Sync")
                                 .on_press_maybe(
                                     self.building_index.not().then_some(HeaderMsg::RebuildIndex),
                                 )
                                 .padding(5),
-                            format!("Re-index {}", self.article_type.as_str()),
+                            format!("Sync {}", self.article_type.as_str()),
                             widget::tooltip::Position::Bottom,
                         ))
                         .push(tooltip(
@@ -255,21 +254,20 @@ impl HeaderState {
                             Task::done(HeaderMsg::IndexFailed(err.to_string())).map(AppMsg::Header)
                         }
                     }),
-                    error_task("Building index..."),
+                    // error_task("Syncing..."),
                     Task::run(rx, FooterMsg::IndexProgress).map(AppMsg::Footer),
                 ])
             }
             HeaderMsg::IndexReady { stats, category } => {
                 self.building_index = false;
-                self.article_type = category;
-                Task::done(AppMsg::SwitchIndex {
-                    category,
-                    count: self.article_count,
-                })
-                .chain(Task::batch([
-                    Task::done(FooterMsg::LastUpdate(Local::now())).map(AppMsg::Footer),
+                Task::batch([
+                    if self.article_type == category {
+                        Task::done(ArticleMsg::TopStories(self.article_count)).map(AppMsg::Articles)
+                    } else {
+                        Task::none()
+                    },
                     Task::done(FooterMsg::IndexStats { stats, category }).map(AppMsg::Footer),
-                ]))
+                ])
             }
             HeaderMsg::IndexFailed(err) => {
                 self.building_index = false;

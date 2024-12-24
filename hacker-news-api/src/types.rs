@@ -62,7 +62,7 @@ pub struct TopStoriesEventData {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct StoryEventData {
+pub struct ItemEventData {
     pub path: String,
     pub data: Item,
 }
