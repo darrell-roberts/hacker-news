@@ -7,7 +7,7 @@
 - Watch stories via server side events.
 
 # Install Options
-## Macos
+## MacOS (Arm)
 Download [prebuilt dmg](https://github.com/darrell-roberts/hacker-news/releases) from releases: 
 
 ## Any platform. Build binary.
