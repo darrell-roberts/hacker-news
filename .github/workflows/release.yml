@@ -25,7 +25,9 @@ jobs:
       - name: Setup Certificate
         run: |
           echo "$CODE_SIGN_CERTIFICATE" > self-signed-cert.pem
+          stat -f "%N %z" self-signed-cert.pem
           echo "$PRIVATE_KEY" > private-key.pem
+          stat -f "%N %z" private-key.pem
           security create-keychain -p "" build.keychain
           security default-keychain -d user -s build.keychain
           security unlock-keychain -p "" build.keychain
