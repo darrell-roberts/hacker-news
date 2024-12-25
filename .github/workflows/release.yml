@@ -30,7 +30,7 @@ jobs:
           security default-keychain -d user -s build.keychain
           security unlock-keychain -p "" build.keychain
           security import self-signed-cert.pem -f pemseq -k build.keychain -P "$CERT_PWD" -T /usr/bin/codesign
-          security import private-key.pem -f pemseq -k build.keychain -P "$CERT_PWD" -T /usr/bin/codesign
+          # security import private-key.pem -f pemseq -k build.keychain -P "$CERT_PWD" -T /usr/bin/codesign
 
       - name: Build bundle
         run: make bundle-mac
