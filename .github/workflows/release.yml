@@ -23,6 +23,10 @@ jobs:
           override: true
 
       - name: Setup Certificate
+        env:
+          CODE_SIGN_CERTIFICATE: ${{ secrets.CODE_SIGN_CERTIFICATE }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          CERT_PWD: ${{ secrets.CERT_PWD }}
         run: |
           echo "$CODE_SIGN_CERTIFICATE" > self-signed-cert.pem
           stat -f "%N %z" self-signed-cert.pem
