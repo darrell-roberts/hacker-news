@@ -17,8 +17,9 @@ bundle-mac: clean-dist build
 	cp assets/icon.icns "dist/Hacker News.app/Contents/Resources"
 	cp assets/Info.plist "dist/Hacker News.app/Contents"
 	cp target/release/hacker-news-iced "dist/Hacker News.app/Contents/MacOS"
-	hdiutil create -fs HFS+ -volname "Hacker News" -srcfolder "dist/Hacker News.app" "dist/Hacker News.dmg"
-	cd dist && zip "Hacker_News.zip" "Hacker News.dmg"
+	chmod +x "dist/Hacker News.app/Contents/MacOS/hacker-news-iced"
+	hdiutil create -format UDZO -fs HFS+ -volname "Hacker News" -srcfolder "dist/Hacker News.app" "dist/Hacker News.dmg"
+	cd dist && zip -y "Hacker_News.zip" "Hacker News.dmg"
 
 install-local-linux: build
 	echo "Installing for linux"
