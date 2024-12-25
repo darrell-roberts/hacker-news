@@ -18,7 +18,6 @@ bundle-mac: clean-dist build
 	cp assets/Info.plist "dist/Hacker News.app/Contents"
 	cp target/release/hacker-news-iced "dist/Hacker News.app/Contents/MacOS"
 	hdiutil create -fs HFS+ -volname "Hacker News" -srcfolder "dist/Hacker News.app" "dist/Hacker News.dmg"
-	open "dist/Hacker News.dmg"
 
 install-local-linux: build
 	echo "Installing for linux"
@@ -32,6 +31,7 @@ install:
 ifeq ($(PLATFORM), Darwin)
 	@echo "Installing for Mac"
 	@$(MAKE) bundle-mac
+	open "dist/Hacker News.dmg"
 else ifeq ($(PLATFORM), Linux)
 	@echo "Installing for Linux"
 	@$(MAKE) install-local-linux
