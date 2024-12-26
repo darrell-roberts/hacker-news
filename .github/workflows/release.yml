@@ -69,6 +69,7 @@ jobs:
 
       - name: Build bundle
         run: |
+          export PATH=$PATH:~/.local/bin
           make linux-app-image
           zip Hacker_News.AppImage.zip Hacker_News.AppImage
 
