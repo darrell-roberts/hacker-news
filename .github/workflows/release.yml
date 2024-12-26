@@ -76,7 +76,7 @@ jobs:
         run: |
           export PATH=$HOME/.local/bin:$PATH
           make linux-app-image
-          zip Hacker_News.AppImage.zip Hacker_News.AppImage
+          zip Hacker_News-x86_64.AppImage.zip Hacker_News-x86_64.AppImage
 
       # - name: Build bundle
       #   uses: AppImageCrafters/build-appimage-action@master
@@ -97,6 +97,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            Hacker_News.AppImage.zip
+            Hacker_News-x86_64.AppImage.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
