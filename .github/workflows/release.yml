@@ -28,15 +28,12 @@ jobs:
           PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           CERT_PWD: ${{ secrets.CERT_PWD }}
         run: |
-          echo "$CODE_SIGN_CERTIFICATE" > self-signed-cert.pem
-          stat -f "%N %z" self-signed-cert.pem
-          echo "$PRIVATE_KEY" > private-key.pem
-          stat -f "%N %z" private-key.pem
+          echo "$CODE_SIGN_CERTIFICATE" | base64 --decode > certificate.p12
+          stat -f "%N %z" certificate.p12
           security create-keychain -p "" build.keychain
           security default-keychain -d user -s build.keychain
           security unlock-keychain -p "" build.keychain
-          security import self-signed-cert.pem -k build.keychain -P "$CERT_PWD" -T /usr/bin/codesign
-          # security import private-key.pem -f pemseq -k build.keychain -P "$CERT_PWD" -T /usr/bin/codesign
+          security import certificate.p12 -k build.keychain -P "$CERT_PWD" -T /usr/bin/codesign
 
       - name: Build bundle
         run: make bundle-mac
