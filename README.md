@@ -17,7 +17,7 @@ Download [Linux AppImage](https://github.com/darrell-roberts/hacker-news/release
 
 Unzip and grant execute permission to the app image and [run it](https://docs.appimage.org/user-guide/faq.html#question-how-do-i-run-an-appimage).
 
-## Any platform. Build binary from source.
+## Build from source.
 
 ### Build prerequisites
 Each install method will build and package from source. You'll first need to clone this repo.
