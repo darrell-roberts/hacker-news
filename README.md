@@ -10,6 +10,8 @@
 ## MacOS (ARM)
 Download [prebuilt dmg](https://github.com/darrell-roberts/hacker-news/releases) from releases.
 
+Will require allowing non app store & known developers when launching. Open System Settings -> Privacy & Security and under Security allow running app.
+
 ## Linux (X86_64)
 Download [Linux AppImage](https://github.com/darrell-roberts/hacker-news/releases) from releases.
 
