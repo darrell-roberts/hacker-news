@@ -64,7 +64,7 @@ jobs:
           wget -nv -c https://github.com/linuxdeploy/linuxdeploy/releases/download/2.0.0-alpha-1-20241106/linuxdeploy-x86_64.AppImage
           chmod +x linuxdeploy-x86_64.AppImage
           mkdir -p ~/.local/bin
-          mv linuxdeploy-x86_64.AppImage ~/.local/bin/linuxdeploy
+          mv linuxdeploy-x86_64.AppImage ~/.local/bin
 
       - name: Build bundle
         run: |
