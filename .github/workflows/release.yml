@@ -25,7 +25,6 @@ jobs:
       - name: Setup Certificate
         env:
           CODE_SIGN_CERTIFICATE: ${{ secrets.CODE_SIGN_CERTIFICATE }}
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           CERT_PWD: ${{ secrets.CERT_PWD }}
         run: |
           echo "$CODE_SIGN_CERTIFICATE" | base64 --decode > certificate.p12
@@ -34,6 +33,7 @@ jobs:
           security default-keychain -d user -s build.keychain
           security unlock-keychain -p "" build.keychain
           security import certificate.p12 -k build.keychain -P "$CERT_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -k "" build.keychain
 
       - name: Build bundle
         run: make bundle-mac
