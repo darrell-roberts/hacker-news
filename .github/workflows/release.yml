@@ -43,7 +43,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/Hacker_News.zip
+            dist/Hacker_News_aarch64.dmg.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
