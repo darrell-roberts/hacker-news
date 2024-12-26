@@ -8,9 +8,14 @@
 
 # Install Options
 ## MacOS (ARM)
-Download [prebuilt dmg](https://github.com/darrell-roberts/hacker-news/releases) from releases: 
+Download [prebuilt dmg](https://github.com/darrell-roberts/hacker-news/releases) from releases.
 
-## Any platform. Build binary.
+## Linux (X86_64)
+Download [Linux AppImage](https://github.com/darrell-roberts/hacker-news/releases) from releases.
+
+Unzip and grant execute permission to the app image and [run it](https://docs.appimage.org/user-guide/faq.html#question-how-do-i-run-an-appimage).
+
+## Any platform. Build binary from source.
 
 ### Build prerequisites
 Each install method will build and package from source. You'll first need to clone this repo.
