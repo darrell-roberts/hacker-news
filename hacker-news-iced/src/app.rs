@@ -99,7 +99,6 @@ pub enum AppMsg {
     ClearVisited,
     FullSearch(FullSearchMsg),
     SaveConfig,
-    // Clipboard(String),
     SwitchIndex {
         category: ArticleType,
         count: usize,

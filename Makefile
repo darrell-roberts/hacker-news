@@ -23,6 +23,8 @@ bundle-mac: clean-dist build
 	cp target/release/hacker-news-iced "dist/Hacker News.app/Contents/MacOS"
 	chmod +x "dist/Hacker News.app/Contents/MacOS/hacker-news-iced"
 
+	codesign --sign "MyApps" "dist/Hacker News.app"
+
 	# Copy app to DMG staging area
 	cp -r "dist/Hacker News.app" "dist/dmg"
 
@@ -46,8 +48,21 @@ bundle-mac: clean-dist build
 
 	# Clean up
 	rm "dist/temp.dmg"
-	cd dist && zip -y "Hacker_News.zip" "Hacker News.dmg"
+	cd dist && zip -y "Hacker_News_aarch64.dmg.zip" "Hacker News.dmg"
 
+linux-app-image: clean-dist build
+	echo "Building linux app image"
+	rm -rf dist/AppDir
+	# create new AppDir
+	linuxdeploy-x86_64.AppImage --appdir dist/AppDir
+
+	# Copy contents into AppDir
+	cp target/release/hacker-news-iced dist/AppDir/usr/bin
+	cp assets/hacker-news.desktop dist/AppDir/usr/share/applications
+	tar zxvf assets/icons.tar.gz -C dist/AppDir/usr/share
+
+	# Create app image
+	linuxdeploy-x86_64.AppImage --appdir dist/AppDir --output appimage
 
 install-local-linux: build
 	echo "Installing for linux"

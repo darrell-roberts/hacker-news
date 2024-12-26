@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  build-and-release-macos:
     runs-on: macos-latest
 
     steps:
@@ -22,6 +22,19 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Setup Certificate
+        env:
+          CODE_SIGN_CERTIFICATE: ${{ secrets.CODE_SIGN_CERTIFICATE }}
+          CERT_PWD: ${{ secrets.CERT_PWD }}
+        run: |
+          echo "$CODE_SIGN_CERTIFICATE" | base64 --decode > certificate.p12
+          stat -f "%N %z" certificate.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -d user -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import certificate.p12 -k build.keychain -P "$CERT_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+
       - name: Build bundle
         run: make bundle-mac
 
@@ -30,6 +43,57 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/Hacker_News.zip
+            dist/Hacker_News_aarch64.dmg.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-release-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Download linuxdeploy
+        run: |
+          wget -nv -c https://github.com/linuxdeploy/linuxdeploy/releases/download/2.0.0-alpha-1-20241106/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+          mkdir -p ~/.local/bin
+          mv linuxdeploy-x86_64.AppImage ~/.local/bin
+          sudo add-apt-repository universe
+          sudo apt install libfuse2t64
+
+      - name: Build bundle
+        run: |
+          export PATH=$HOME/.local/bin:$PATH
+          make linux-app-image
+          zip Hacker_News-x86_64.AppImage.zip Hacker_News-x86_64.AppImage
+
+      # - name: Build bundle
+      #   uses: AppImageCrafters/build-appimage-action@master
+      #   env:
+      #     UPDATE_INFO: gh-releases-zsync|AppImageCrafters|latest|*x86_64.AppImage.zsync
+      #   with:
+      #     recipe: AppImageBuilder.yml
+
+      # - uses: actions/upload-artifact@v2
+      #   with:
+      #     name: AppImage
+      #     path: "./*.AppImage*"
+
+      # run: |
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            Hacker_News-x86_64.AppImage.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
