@@ -50,6 +50,17 @@ bundle-mac: clean-dist build
 	rm "dist/temp.dmg"
 	cd dist && zip -y "Hacker_News.zip" "Hacker News.dmg"
 
+linux-app-image: clean-dist build
+	echo "Building linux app image"
+	rm -rf dist/AppDir
+	linuxdeploy-x86_64.AppImage --appdir dist/AppDir
+
+	cp target/release/hacker-news-iced dist/AppDir/usr/bin
+	cp assets/hacker-news.desktop dist/AppDir/usr/share/applications
+	tar zxvf assets/icons.tar.gz -C dist/AppDir/usr/share
+
+	linuxdeploy-x86_64.AppImage --appdir dist/AppDir --output appimage
+
 
 install-local-linux: build
 	echo "Installing for linux"

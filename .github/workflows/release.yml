@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
+  build-and-release-macos:
     runs-on: macos-latest
 
     steps:
@@ -43,5 +43,39 @@ jobs:
         with:
           files: |
             dist/Hacker_News.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-and-release-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Download linuxdeploy
+        run: |
+          wget -nv -c https://github.com/linuxdeploy/linuxdeploy/releases/download/2.0.0-alpha-1-20241106/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage
+          mkdir -p ~/.local/bin
+          mv linuxdeploy-x86_64.AppImage ~/.local/bin/linuxdeploy
+
+      - name: Build bundle
+        run: |
+          make linux-app-image
+          zip Hacker_News.AppImage.zip Hacker_News.AppImage
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            Hacker_News.AppImage.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
