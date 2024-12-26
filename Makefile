@@ -23,7 +23,7 @@ bundle-mac: clean-dist build
 	cp target/release/hacker-news-iced "dist/Hacker News.app/Contents/MacOS"
 	chmod +x "dist/Hacker News.app/Contents/MacOS/hacker-news-iced"
 
-	codesign --sign --keychain build.keychain "Darrell Roberts" "dist/Hacker News.app"
+	codesign --sign "MyApps" "dist/Hacker News.app"
 
 	# Copy app to DMG staging area
 	cp -r "dist/Hacker News.app" "dist/dmg"
