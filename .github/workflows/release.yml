@@ -68,8 +68,23 @@ jobs:
 
       - name: Build bundle
         run: |
+          export PATH=$HOME/.local/bin:$PATH
           make linux-app-image
           zip Hacker_News.AppImage.zip Hacker_News.AppImage
+
+      # - name: Build bundle
+      #   uses: AppImageCrafters/build-appimage-action@master
+      #   env:
+      #     UPDATE_INFO: gh-releases-zsync|AppImageCrafters|latest|*x86_64.AppImage.zsync
+      #   with:
+      #     recipe: AppImageBuilder.yml
+
+      # - uses: actions/upload-artifact@v2
+      #   with:
+      #     name: AppImage
+      #     path: "./*.AppImage*"
+
+      # run: |
 
       - name: Create GitHub Release
         id: create_release

@@ -53,14 +53,16 @@ bundle-mac: clean-dist build
 linux-app-image: clean-dist build
 	echo "Building linux app image"
 	rm -rf dist/AppDir
+	# create new AppDir
 	linuxdeploy-x86_64.AppImage --appdir dist/AppDir
 
+	# Copy contents into AppDir
 	cp target/release/hacker-news-iced dist/AppDir/usr/bin
 	cp assets/hacker-news.desktop dist/AppDir/usr/share/applications
 	tar zxvf assets/icons.tar.gz -C dist/AppDir/usr/share
 
+	# Create app image
 	linuxdeploy-x86_64.AppImage --appdir dist/AppDir --output appimage
-
 
 install-local-linux: build
 	echo "Installing for linux"
