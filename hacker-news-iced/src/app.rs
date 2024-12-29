@@ -128,6 +128,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 comment: None,
                 offset: 0,
                 page: 1,
+                scroll_offset: None,
             }];
 
             if !comment_stack.is_empty() {
@@ -135,6 +136,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     comment: Some(comment),
                     offset: 0,
                     page: 1,
+                    scroll_offset: None,
                 }));
             };
 
@@ -158,6 +160,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 Task::done(CommentMsg::FetchComments {
                     parent_id,
                     parent_comment: None,
+                    scroll_to: None,
                 })
                 .map(AppMsg::Comments)
             }
