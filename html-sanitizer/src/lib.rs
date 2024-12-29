@@ -1,3 +1,9 @@
+//! Simple html parser for the following element types:
+//! - `<b>` bold
+//! - `<i>` italic
+//! - `<p>` paragraph
+//! - `<a>` anchor
+//! - `<pre><code>` monospaced code
 use log::{error, warn};
 use nom::error::VerboseError;
 

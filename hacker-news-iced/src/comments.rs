@@ -1,3 +1,4 @@
+//! State and view for viewing comments.
 use crate::{
     app::AppMsg,
     common::{error_task, PaginatingView},
@@ -14,16 +15,24 @@ use iced::{
     border,
     font::{Style, Weight},
     padding,
-    widget::{self, button, container, text::Shaping, Column, Container},
+    widget::{
+        self, button, container, scrollable::AbsoluteOffset, text::Shaping, Column, Container,
+    },
     Border, Element, Font, Length, Task,
 };
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
+/// A navigation stack element.
 pub struct NavStack {
+    /// Parent comment
     pub comment: Option<Comment>,
+    /// Pagination offset
     pub offset: usize,
+    /// Viewing page
     pub page: usize,
+    /// Scroll offset
+    pub scroll_offset: Option<AbsoluteOffset>,
 }
 
 /// Comment state
@@ -56,6 +65,7 @@ pub enum CommentMsg {
     FetchComments {
         parent_id: u64,
         parent_comment: Option<Comment>,
+        scroll_to: Option<AbsoluteOffset>,
     },
     PopNavStack,
     Search(String),
@@ -66,9 +76,11 @@ pub enum CommentMsg {
     Back,
     JumpPage(usize),
     Close(u64),
+    ScrollOffset(AbsoluteOffset),
 }
 
 impl CommentState {
+    /// Render the comments
     pub fn view(&self) -> Element<'_, AppMsg> {
         let article_text = self
             .article
@@ -147,13 +159,17 @@ impl CommentState {
                         .spacing(15)
                         .padding(padding::top(0).bottom(10).left(10).right(25)),
                 )
-                .id(widget::scrollable::Id::new("comments"))
+                .on_scroll(|viewport| {
+                    AppMsg::Comments(CommentMsg::ScrollOffset(viewport.absolute_offset()))
+                })
+                .id(comment_scroll_id())
                 .height(Length::Fill),
             );
 
         container(content.width(Length::Fill)).into()
     }
 
+    /// Render a single comment
     fn render_comment<'a>(
         &'a self,
         comment: &'a Comment,
@@ -167,6 +183,7 @@ impl CommentState {
                 .on_press(AppMsg::Comments(CommentMsg::FetchComments {
                     parent_id: comment.id,
                     parent_comment: Some(comment.clone()),
+                    scroll_to: None,
                 }))
                 .style(button::text)
                 .into()
@@ -232,11 +249,13 @@ impl CommentState {
         .clip(false)
     }
 
+    /// Update comment viewing state.
     pub fn update(&mut self, message: CommentMsg) -> Task<AppMsg> {
         match message {
             CommentMsg::FetchComments {
                 parent_id,
                 parent_comment,
+                scroll_to,
             } => {
                 if let Some(parent) = parent_comment {
                     // We are viewing a nested comment
@@ -257,6 +276,7 @@ impl CommentState {
                             comment: Some(parent),
                             offset: 0,
                             page: 1,
+                            scroll_offset: None,
                         });
                         self.offset = 0;
                         self.page = 1;
@@ -268,7 +288,10 @@ impl CommentState {
                         self.full_count = full_count;
                         self.comments = comments;
 
-                        Task::none()
+                        widget::scrollable::scroll_to(
+                            comment_scroll_id(),
+                            scroll_to.unwrap_or_default(),
+                        )
                     }
                     Err(err) => error_task(err),
                 };
@@ -294,6 +317,7 @@ impl CommentState {
                                 .map(|c| c.id)
                                 .unwrap_or_else(|| self.article.id),
                             parent_comment: None,
+                            scroll_to: current.scroll_offset,
                         })
                         .map(AppMsg::Comments)
                     }
@@ -336,6 +360,7 @@ impl CommentState {
                     comment: None,
                     offset: 0,
                     page: 1,
+                    scroll_offset: None,
                 });
                 self.offset = 0;
                 self.page = 1;
@@ -396,6 +421,7 @@ impl CommentState {
                     Some(current) => {
                         self.offset = current.offset;
                         self.page = current.page;
+
                         Task::done(CommentMsg::FetchComments {
                             parent_id: current
                                 .comment
@@ -403,11 +429,18 @@ impl CommentState {
                                 .map(|c| c.id)
                                 .unwrap_or_else(|| self.article.id),
                             parent_comment: None,
+                            scroll_to: current.scroll_offset,
                         })
                         .map(AppMsg::Comments)
                     }
                     None => Task::none(),
                 }
+            }
+            CommentMsg::ScrollOffset(offset) => {
+                if let Some(current_nav) = self.nav_stack.last_mut() {
+                    current_nav.scroll_offset = Some(offset);
+                }
+                Task::none()
             }
         }
     }
@@ -418,6 +451,7 @@ impl CommentState {
             None => Task::done(CommentMsg::FetchComments {
                 parent_id: self.parent_id,
                 parent_comment: None,
+                scroll_to: None,
             })
             .map(AppMsg::Comments),
         }
@@ -451,4 +485,9 @@ impl PaginatingView<AppMsg> for CommentState {
     fn current_page(&self) -> usize {
         self.page
     }
+}
+
+/// Id for the comment view scroller.
+fn comment_scroll_id() -> widget::scrollable::Id {
+    widget::scrollable::Id::new("comments")
 }

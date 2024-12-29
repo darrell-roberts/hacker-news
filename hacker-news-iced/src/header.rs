@@ -44,8 +44,6 @@ pub enum HeaderMsg {
 
 impl HeaderState {
     pub fn view(&self) -> Element<'_, HeaderMsg> {
-        // TODO: Add a search input here that searches the entire index.
-
         let center_row = container(
             row![
                 self.header_type_button(
@@ -254,7 +252,6 @@ impl HeaderState {
                             Task::done(HeaderMsg::IndexFailed(err.to_string())).map(AppMsg::Header)
                         }
                     }),
-                    // error_task("Syncing..."),
                     Task::run(rx, FooterMsg::IndexProgress).map(AppMsg::Footer),
                 ])
             }

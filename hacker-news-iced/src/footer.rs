@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::app::AppMsg;
 use chrono::{DateTime, Local, Utc};
 use chrono_tz::America::New_York;
@@ -13,6 +11,7 @@ use iced::{
     Background, Element, Font, Length, Task, Theme,
 };
 use log::error;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy)]
 pub struct IndexProgress {

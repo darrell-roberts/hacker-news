@@ -187,6 +187,7 @@ fn main() -> anyhow::Result<()> {
     start()
 }
 
+/// Keyboard event subscriptions.
 fn listen_to_key_events(key: Key, modifiers: Modifiers) -> Option<AppMsg> {
     match key {
         Key::Named(named) => Some(match named {
@@ -245,6 +246,7 @@ fn theme(theme_name: &str) -> Option<Theme> {
 }
 
 #[cfg(target_family = "unix")]
+/// Increase the number open files limit on unix.
 fn check_nofiles_limit() {
     const DESIRED_LIMIT: u64 = 10_240;
 
