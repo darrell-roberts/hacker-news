@@ -1,3 +1,4 @@
+//! View and state for viewing top level stories.
 use crate::{
     app::AppMsg,
     common::{error_task, tooltip},
@@ -27,20 +28,25 @@ use std::{
 };
 use tokio::task::AbortHandle;
 
+/// Abort handles and task handle for a watched story.
 pub struct WatchHandles {
     ui_receiver: iced::task::Handle,
     abort_handles: [AbortHandle; 2],
 }
 
 impl WatchHandles {
+    /// Call abort on all handles.
     fn abort(self) {
         self.ui_receiver.abort();
         self.abort_handles.into_iter().for_each(|h| h.abort());
     }
 }
 
+/// Current state of updates for a watched story.
 pub struct WatchChange {
+    /// Number of new comments since watching.
     new_comments: u64,
+    /// Time of oldest comment before watch turned on.
     beyond: u64,
 }
 
@@ -86,6 +92,7 @@ pub enum ArticleMsg {
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
 
 impl ArticleState {
+    /// Render the list of top level stories.
     pub fn view<'a>(&'a self, theme: &Theme) -> Element<'a, AppMsg> {
         widget::scrollable(
             Column::with_children(
@@ -106,6 +113,7 @@ impl ArticleState {
         .into()
     }
 
+    /// Render a single story.
     fn render_article<'a>(
         &'a self,
         theme: &Theme,
@@ -345,6 +353,7 @@ impl ArticleState {
         .clip(false)
     }
 
+    /// Update the state of the top level story list view
     pub fn update(&mut self, message: ArticleMsg) -> Task<AppMsg> {
         match message {
             ArticleMsg::Receive(articles) => {
@@ -502,6 +511,8 @@ impl ArticleState {
         }
     }
 
+    /// Turn on a watch on story. This subscribes to updates that originate from server
+    /// side events. Each update event will send an `ArticleMsg::StoryUpdated` message.
     fn watch_story(&mut self, story: Story) -> Task<AppMsg> {
         let story_id = story.id;
         let last_comment_age = self

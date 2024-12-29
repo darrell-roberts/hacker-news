@@ -1,3 +1,4 @@
+//! Application top level state and view.
 use crate::{
     articles::{self, ArticleMsg, ArticleState},
     comments::{self, CommentMsg, CommentState, NavStack},
@@ -294,6 +295,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
     }
 }
 
+/// Render the main view.
 pub fn view(app: &App) -> iced::Element<AppMsg> {
     let body = widget::pane_grid(&app.panes, |_pane, state, _is_maximized| {
         let comments_title = || -> Option<iced::Element<AppMsg>> {
@@ -475,6 +477,7 @@ impl From<&App> for Config {
     }
 }
 
+/// Save the current application state into a persistent configuration.
 pub fn save_task(app: &App) -> Task<AppMsg> {
     let config = Config::from(app);
 

@@ -1,3 +1,4 @@
+//! Persistent configuration for saving various settings and states between launches.
 use crate::{
     app::{App, PaneState},
     articles::ArticleState,

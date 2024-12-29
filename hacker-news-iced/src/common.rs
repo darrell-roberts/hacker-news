@@ -105,6 +105,7 @@ where
     fn current_page(&self) -> usize;
 }
 
+/// Common error task to display errors in the footer.
 pub fn error_task(err: impl ToString) -> Task<AppMsg> {
     Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer)
 }

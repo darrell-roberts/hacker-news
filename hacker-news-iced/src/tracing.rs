@@ -1,3 +1,4 @@
+//! Setup open telemetry tracing to export to Jaeger.
 use opentelemetry::{trace::TracerProvider as _, KeyValue};
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{

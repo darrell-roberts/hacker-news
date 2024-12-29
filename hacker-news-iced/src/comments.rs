@@ -1,3 +1,4 @@
+//! State and view for viewing comments.
 use crate::{
     app::AppMsg,
     common::{error_task, PaginatingView},
@@ -22,10 +23,15 @@ use iced::{
 use std::sync::{Arc, RwLock};
 
 #[derive(Debug)]
+/// A navigation stack element.
 pub struct NavStack {
+    /// Parent comment
     pub comment: Option<Comment>,
+    /// Pagination offset
     pub offset: usize,
+    /// Viewing page
     pub page: usize,
+    /// Scroll offset
     pub scroll_offset: Option<AbsoluteOffset>,
 }
 
@@ -74,6 +80,7 @@ pub enum CommentMsg {
 }
 
 impl CommentState {
+    /// Render the comments
     pub fn view(&self) -> Element<'_, AppMsg> {
         let article_text = self
             .article
@@ -162,6 +169,7 @@ impl CommentState {
         container(content.width(Length::Fill)).into()
     }
 
+    /// Render a single comment
     fn render_comment<'a>(
         &'a self,
         comment: &'a Comment,
@@ -241,6 +249,7 @@ impl CommentState {
         .clip(false)
     }
 
+    /// Update comment viewing state.
     pub fn update(&mut self, message: CommentMsg) -> Task<AppMsg> {
         match message {
             CommentMsg::FetchComments {
@@ -478,6 +487,7 @@ impl PaginatingView<AppMsg> for CommentState {
     }
 }
 
+/// Id for the comment view scroller.
 fn comment_scroll_id() -> widget::scrollable::Id {
     widget::scrollable::Id::new("comments")
 }

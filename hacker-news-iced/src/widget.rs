@@ -1,3 +1,5 @@
+//! A hoverable widget. This widget wraps an `Element` and sends a message whenever hover is entered
+//! and existed.
 use iced::{
     advanced::{self, mouse, renderer, widget, Widget},
     event,
@@ -24,6 +26,7 @@ impl<'a, Message, Theme, Renderer> Hoverable<'a, Message, Theme, Renderer>
 where
     Theme: container::Catalog,
 {
+    ///  Create a new hover wrapper.
     pub fn new(content: Element<'a, Message, Theme, Renderer>) -> Self {
         Self {
             content,
@@ -32,11 +35,13 @@ where
         }
     }
 
+    /// Message to send when hovered.
     pub fn on_hover(mut self, msg: Message) -> Self {
         self.on_hover = Some(msg);
         self
     }
 
+    /// Message to send when exit hover.
     pub fn on_exit(mut self, msg: Message) -> Self {
         self.on_exit = Some(msg);
         self
