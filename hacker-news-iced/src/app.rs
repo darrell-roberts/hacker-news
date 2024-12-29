@@ -293,7 +293,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
 
 pub fn view(app: &App) -> iced::Element<AppMsg> {
     let body = widget::pane_grid(&app.panes, |_pane, state, _is_maximized| {
-        let title = || -> Option<iced::Element<AppMsg>> {
+        let comments_title = || -> Option<iced::Element<AppMsg>> {
             let comment_state = app.comment_state.as_ref()?;
             let title_text = widget::text(&comment_state.article.title)
                 .font(Font {
@@ -372,7 +372,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
             PaneState::Comments => match app.comment_state.as_ref() {
                 // Comment search for selected story
                 Some(cs) if app.full_search_state.search.is_none() => {
-                    pane_grid::TitleBar::new(title().unwrap_or("".into()))
+                    pane_grid::TitleBar::new(comments_title().unwrap_or("".into()))
                         .controls(pane_grid::Controls::new(
                             widget::Row::new()
                                 .push(widget::text(format!("{}", cs.full_count)))
@@ -407,7 +407,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     Some(SearchCriteria::StoryId { .. })
                 ) =>
                 {
-                    pane_grid::TitleBar::new(title().unwrap_or("".into()))
+                    pane_grid::TitleBar::new(comments_title().unwrap_or("".into()))
                         .controls(pane_grid::Controls::new(widget::container(
                             widget::Row::new()
                                 .push(widget::text(format!(

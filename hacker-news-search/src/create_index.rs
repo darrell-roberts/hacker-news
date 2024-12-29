@@ -400,23 +400,21 @@ pub async fn update_story(
     let latest = api.item(story.id).await?;
     let story_id = story.id;
 
-    Ok(
-        if latest.descendants.unwrap_or_default() != story.descendants {
-            info!(
-                "New comments {}.. re-indexing story {story_id}",
-                latest.descendants.unwrap_or_default()
-            );
+    Ok(if latest.descendants != Some(story.descendants) {
+        info!(
+            "New comments {}.. re-indexing story {story_id}",
+            latest.descendants.unwrap_or_default()
+        );
 
-            let writer_context = ctx.read().unwrap().writer_context()?;
-            rebuild_story(api, writer_context, story, latest).await?;
-            info!("Rebuilt story {story_id}");
-            let g = ctx.read().unwrap();
-            g.refresh_reader()?;
-            Some(g.story(story_id)?)
-        } else {
-            None
-        },
-    )
+        let writer_context = ctx.read().unwrap().writer_context()?;
+        rebuild_story(api, writer_context, &story, latest).await?;
+        info!("Rebuilt story {story_id}");
+        let g = ctx.read().unwrap();
+        g.refresh_reader()?;
+        Some(g.story(story_id)?)
+    } else {
+        None
+    })
 }
 
 /// Re-index this story along with all it's nested comments. Comments
@@ -424,10 +422,10 @@ pub async fn update_story(
 async fn rebuild_story(
     client: Arc<ApiClient>,
     mut writer_context: WriteContext<'_>,
-    story: Story,
+    story: &Story,
     latest: Item,
 ) -> Result<(), SearchError> {
-    writer_context.delete_story(&story);
+    writer_context.delete_story(story);
     let (tx, rx) = channel::<ItemRef>(100);
 
     let result = tokio::spawn(collect_story(client, tx, latest, story.rank));
@@ -458,7 +456,7 @@ async fn handle_story_events(
         }
 
         if latest.deleted || latest.dead {
-            info!(
+            warn!(
                 "Hmm this story {} has been deleted or is dead now",
                 latest.id
             );
@@ -470,14 +468,7 @@ async fn handle_story_events(
         // We'll rebuild this story if either the number of comments or score has changed.
         if latest_descendants != current_story.descendants || latest.score != current_story.score {
             let writer_context = ctx.read().unwrap().writer_context()?;
-            match rebuild_story(
-                client.clone(),
-                writer_context,
-                current_story.clone(),
-                latest,
-            )
-            .await
-            {
+            match rebuild_story(client.clone(), writer_context, &current_story, latest).await {
                 Ok(_) => {
                     current_story.descendants = latest_descendants;
                     let new_story = {
