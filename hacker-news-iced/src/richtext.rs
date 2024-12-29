@@ -6,6 +6,7 @@ use iced::widget::text::Span;
 use iced::{Color, Font};
 use std::ops::Not;
 
+/// Render a simplified html string into `Span`s for a `RichText` widget.
 pub fn render_rich_text<'a>(
     escaped_text: &'a str,
     search: Option<&'a str>,
@@ -107,20 +108,17 @@ pub fn render_rich_text<'a>(
 }
 
 fn anchor_spans(link: Anchor<'_>) -> impl Iterator<Item = Span<'_, AppMsg>> {
+    let children = link.children;
+    let msg = |url| AppMsg::OpenLink { url, item_id: 0 };
+
     link.attributes
         .into_iter()
-        .find(|attr| attr.name == "href")
-        .map(move |attr| {
-            if link.children.is_empty() {
-                span(attr.value.clone()).link(AppMsg::OpenLink {
-                    url: attr.value,
-                    item_id: 0,
-                })
+        .find_map(|attr| (attr.name == "href").then_some(attr.value))
+        .map(move |url| {
+            if children.is_empty() {
+                span(url.clone()).link(msg(url))
             } else {
-                span(link.children.clone()).link(AppMsg::OpenLink {
-                    url: attr.value,
-                    item_id: 0,
-                })
+                span(children).link(msg(url))
             }
         })
         .into_iter()
