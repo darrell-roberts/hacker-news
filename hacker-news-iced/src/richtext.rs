@@ -1,3 +1,5 @@
+//! Renders rich text from a simplified html string. Allows creating spans
+//! for search matches so search strings can be highlighted.
 use crate::app::AppMsg;
 use html_sanitizer::Anchor;
 use iced::font::{Style, Weight};
