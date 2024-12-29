@@ -165,7 +165,6 @@ fn document_schema() -> Schema {
     schema_builder.add_text_field(ITEM_TYPE, TEXT | STORED);
     schema_builder.add_u64_field(ITEM_DESCENDANT_COUNT, STORED | INDEXED);
     schema_builder.add_text_field(ITEM_CATEGORY, STRING);
-    // schema_builder.add_date_field(ITEM_TIME, STORED | INDEXED | FAST);
     schema_builder.add_u64_field(ITEM_TIME, STORED | INDEXED | FAST);
     schema_builder.add_u64_field(ITEM_STORY_ID, FAST | INDEXED | STORED);
     schema_builder.add_u64_field(ITEM_KIDS, FAST | INDEXED | STORED);
