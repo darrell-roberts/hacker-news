@@ -113,13 +113,8 @@ impl ArticleState {
         .into()
     }
 
-    /// Render a single story.
-    fn render_article<'a>(
-        &'a self,
-        theme: &Theme,
-        story: &'a Story,
-    ) -> widget::Container<'a, AppMsg> {
-        let title = widget::rich_text(
+    fn render_article_title<'a>(&'a self, story: &'a Story) -> iced::Element<'a, AppMsg> {
+        let title: widget::text::Rich<'a, AppMsg> = widget::rich_text(
             SearchSpanIter::new(&story.title, self.search.as_deref())
                 .map(|span| {
                     span.link_maybe(
@@ -141,7 +136,17 @@ impl ArticleState {
                 })
                 .collect::<Vec<_>>(),
         );
+        match story.url.as_deref() {
+            Some(url) => hoverable(title)
+                .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
+                .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
+                .into(),
+            None => Element::from(title),
+        }
+    }
 
+    /// Render a single story.
+    fn render_article<'a>(&'a self, theme: &Theme, story: &'a Story) -> iced::Element<'a, AppMsg> {
         let by = widget::rich_text([
             widget::span(format!(" by {}", story.by))
                 .link(AppMsg::Header(HeaderMsg::Search(format!(
@@ -165,64 +170,27 @@ impl ArticleState {
                 .color_maybe(widget::text::primary(theme).color),
         ]);
 
-        let content = format!("💬{}", story.descendants);
-
-        let comments_button = button(widget::text(content).shaping(text::Shaping::Advanced))
-            .style(button::text)
-            .padding(0)
-            .on_press_maybe((story.descendants > 0).then(|| AppMsg::OpenComment {
-                article: story.clone(),
-                parent_id: story.id,
-                comment_stack: Vec::new(),
-            }));
-
-        let title_wrapper = match story.url.as_deref() {
-            Some(url) => hoverable(title)
-                .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
-                .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
-                .into(),
-            None => Element::from(title),
-        };
+        let comments_button = button(
+            widget::text(format!("💬{}", story.descendants)).shaping(text::Shaping::Advanced),
+        )
+        .style(button::text)
+        .padding(0)
+        .on_press_maybe((story.descendants > 0).then(|| AppMsg::OpenComment {
+            article: story.clone(),
+            parent_id: story.id,
+            comment_stack: Vec::new(),
+        }));
 
         let article_id = story.id;
 
-        widget::container(
+        let content = widget::container(
             Row::new()
                 .push(
                     Column::new()
                         .push(
                             Row::new()
-                                .push_maybe(
-                                    self.watch_changes
-                                        .get(&article_id)
-                                        .filter(|w| w.new_comments > 0)
-                                        .map(|watch_change| {
-                                            widget::container(
-                                                widget::button(
-                                                    widget::text(format!(
-                                                        "+{}",
-                                                        watch_change.new_comments
-                                                    ))
-                                                    .color(Color::from_rgb8(255, 255, 153)),
-                                                )
-                                                .style(widget::button::text)
-                                                .on_press(AppMsg::Articles(ArticleMsg::OpenNew {
-                                                    story_id: article_id,
-                                                    beyond: watch_change.beyond,
-                                                })),
-                                            )
-                                            .style(
-                                                |_theme| {
-                                                    widget::container::background(Color::from_rgb8(
-                                                        255, 0, 0,
-                                                    ))
-                                                    .border(iced::border::rounded(25))
-                                                },
-                                            )
-                                        }),
-                                )
                                 .push(
-                                    widget::container(title_wrapper).width(
+                                    widget::container(self.render_article_title(story)).width(
                                         Length::FillPortion(4).enclose(Length::FillPortion(1)),
                                     ),
                                 )
@@ -350,7 +318,48 @@ impl ArticleState {
             }
         })
         .padding([5, 15])
-        .clip(false)
+        .clip(false);
+
+        widget::stack(
+            [
+                Some(content.into()),
+                self.watch_changes
+                    .get(&article_id)
+                    .filter(|w| w.new_comments > 0)
+                    .map(|watch_change| {
+                        widget::opaque(
+                            widget::container(
+                                widget::container(
+                                    widget::button(
+                                        widget::text(format!("{}", watch_change.new_comments))
+                                            .color(Color::from_rgb8(255, 255, 153))
+                                            .font(Font {
+                                                weight: Weight::Bold,
+                                                ..Default::default()
+                                            }),
+                                    )
+                                    .style(widget::button::text)
+                                    .on_press(
+                                        AppMsg::Articles(ArticleMsg::OpenNew {
+                                            story_id: article_id,
+                                            beyond: watch_change.beyond,
+                                        }),
+                                    ),
+                                )
+                                .style(|_theme| {
+                                    widget::container::background(Color::from_rgba8(255, 0, 0, 0.7))
+                                        .border(iced::border::rounded(25))
+                                }),
+                            )
+                            .align_right(Length::Fill)
+                            .padding(iced::padding::top(10).right(10)),
+                        )
+                    }),
+            ]
+            .into_iter()
+            .flatten(),
+        )
+        .into()
     }
 
     /// Update the state of the top level story list view
