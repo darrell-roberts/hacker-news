@@ -113,7 +113,9 @@ impl FooterState {
                     .push(
                         container(
                             Row::new()
-                                .push(text(format!("Scale: {:.2}", self.scale)).font(light_font()))
+                                .push_maybe((self.scale != 1.0).then(|| {
+                                    text(format!("Scale: {:.2}", self.scale)).font(light_font())
+                                }))
                                 .push(pick_list(themes, Some(theme), |selected| {
                                     AppMsg::ChangeTheme(selected)
                                 }))
