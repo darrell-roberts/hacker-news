@@ -114,12 +114,8 @@ impl ArticleState {
     }
 
     /// Render a single story.
-    fn render_article<'a>(
-        &'a self,
-        theme: &Theme,
-        story: &'a Story,
-    ) -> widget::Container<'a, AppMsg> {
-        let title = widget::rich_text(
+    fn render_article<'a>(&'a self, theme: &Theme, story: &'a Story) -> iced::Element<'a, AppMsg> {
+        let title: widget::text::Rich<'a, AppMsg> = widget::rich_text(
             SearchSpanIter::new(&story.title, self.search.as_deref())
                 .map(|span| {
                     span.link_maybe(
@@ -186,41 +182,12 @@ impl ArticleState {
 
         let article_id = story.id;
 
-        widget::container(
+        let content = widget::container(
             Row::new()
                 .push(
                     Column::new()
                         .push(
                             Row::new()
-                                .push_maybe(
-                                    self.watch_changes
-                                        .get(&article_id)
-                                        .filter(|w| w.new_comments > 0)
-                                        .map(|watch_change| {
-                                            widget::container(
-                                                widget::button(
-                                                    widget::text(format!(
-                                                        "+{}",
-                                                        watch_change.new_comments
-                                                    ))
-                                                    .color(Color::from_rgb8(255, 255, 153)),
-                                                )
-                                                .style(widget::button::text)
-                                                .on_press(AppMsg::Articles(ArticleMsg::OpenNew {
-                                                    story_id: article_id,
-                                                    beyond: watch_change.beyond,
-                                                })),
-                                            )
-                                            .style(
-                                                |_theme| {
-                                                    widget::container::background(Color::from_rgb8(
-                                                        255, 0, 0,
-                                                    ))
-                                                    .border(iced::border::rounded(25))
-                                                },
-                                            )
-                                        }),
-                                )
                                 .push(
                                     widget::container(title_wrapper).width(
                                         Length::FillPortion(4).enclose(Length::FillPortion(1)),
@@ -350,7 +317,39 @@ impl ArticleState {
             }
         })
         .padding([5, 15])
-        .clip(false)
+        .clip(false);
+
+        widget::stack(
+            [
+                Some(content.into()),
+                self.watch_changes
+                    .get(&article_id)
+                    .filter(|w| w.new_comments > 0)
+                    .map(|watch_change| {
+                        widget::container(
+                            widget::button(
+                                widget::text(format!("+{}", watch_change.new_comments))
+                                    .color(Color::from_rgb8(255, 255, 153)),
+                            )
+                            .style(widget::button::text)
+                            .on_press(AppMsg::Articles(
+                                ArticleMsg::OpenNew {
+                                    story_id: article_id,
+                                    beyond: watch_change.beyond,
+                                },
+                            )),
+                        )
+                        .style(|_theme| {
+                            widget::container::background(Color::from_rgb8(255, 0, 0))
+                                .border(iced::border::rounded(25))
+                        })
+                        .into()
+                    }),
+            ]
+            .into_iter()
+            .flatten(),
+        )
+        .into()
     }
 
     /// Update the state of the top level story list view
