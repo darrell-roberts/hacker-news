@@ -76,6 +76,7 @@ jobs:
 
       - name: Build debian package
         run: |
+          cargo install cargo-deb
           make linux-debian
 
       # - name: Build bundle
