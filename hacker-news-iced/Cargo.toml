@@ -1,8 +1,9 @@
 [package]
 name = "hacker-news-iced"
-version = "0.1.0"
+version = "0.1.2"
 license.workspace = true
 edition.workspace = true
+description = "Hacker News Desktop Reader"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -62,3 +63,18 @@ console-subscriber = "0.4"
 
 [target.'cfg(target_family = "unix")'.dependencies]
 libc = "0.2"
+
+[package.metadata.deb]
+maintainer = "Darrell Roberts"
+copyright = "2024, Darrell Roberts"
+license-file = "../LICENSE"
+extended-description = """Hacker News Desktop Reader"""
+section = "utility"
+priority = "optional"
+assets = [
+    ["target/release/hacker-news-iced", "usr/bin/", "755"],
+    ["../assets/hacker-news.desktop", "usr/share/applications/", "644"],
+    ["../dist/icons/hicolor/32x32/apps/hacker-news.png", "usr/share/icons/hicolor/32x32/apps/", "644"],
+    ["../dist/icons/hicolor/128x128/apps/hacker-news.png", "usr/share/icons/hicolor/128x128/apps/", "644"],
+    ["../dist/icons/hicolor/256x256@2/apps/hacker-news.png", "usr/share/icons/hicolor/256x256@2/apps/", "644"],
+]
