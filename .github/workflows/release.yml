@@ -69,10 +69,14 @@ jobs:
           sudo add-apt-repository universe
           sudo apt install libfuse2t64
 
-      - name: Build bundle
+      - name: Build Linux App Image
         run: |
           export PATH=$HOME/.local/bin:$PATH
           make linux-app-image
+
+      - name: Build debian package
+        run: |
+          make linux-debian
 
       # - name: Build bundle
       #   uses: AppImageCrafters/build-appimage-action@master
@@ -94,5 +98,6 @@ jobs:
         with:
           files: |
             Hacker_News-x86_64.AppImage
+            target/debian/*.deb
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
