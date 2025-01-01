@@ -11,7 +11,8 @@ finish-args:
   - --socket=wayland
   - --device=dri
   - --share=network
-  - --filesystem=xdg-config/cursors
+  - --filesystem=xdg-config/cursors:ro
+  - --filesystem=xdg-config/fontconfig:ro
   - --env=XCURSOR_THEME=Adwaita
 build-options:
   append-path: /usr/lib/sdk/rust-stable/bin

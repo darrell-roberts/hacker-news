@@ -1,6 +1,6 @@
 //! Search API for top stories.
 use super::Story;
-use crate::{SearchContext, SearchError, ITEM_ID, ITEM_RANK, ITEM_TITLE};
+use crate::{SearchContext, SearchError, ITEM_ID, ITEM_RANK};
 use anyhow::Context;
 use tantivy::{
     collector::TopDocs,
