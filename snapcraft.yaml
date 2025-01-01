@@ -20,7 +20,6 @@ parts:
 apps:
   hacker-news:
     command: bin/hacker-news-iced
-    # desktop: usr/share/applications/hacker-news.desktop
     plugs:
       - desktop
       - desktop-legacy
