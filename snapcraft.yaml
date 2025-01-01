@@ -1,0 +1,28 @@
+name: hacker-news
+version: git
+summary: A Hacker News Desktop Reader
+description: |
+  A desktop reader for Hacker News.
+
+base: core24
+confinement: devmode
+compression: lzo
+
+parts:
+  hacker-news:
+    plugin: rust
+    source: .
+    stage-packages:
+      - libssl-dev
+    rust-path:
+      - hacker-news-iced
+
+apps:
+  hacker-news:
+    command: bin/hacker-news-iced
+    plugs:
+      - desktop
+      - desktop-legacy
+      - wayland
+      - network
+      - opengl
