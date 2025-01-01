@@ -37,17 +37,6 @@ impl SearchContext {
 
     /// Search all stories with term and offset pagination.
     pub fn search_stories(&self, search: &str, offset: usize) -> Result<Vec<Story>, SearchError> {
-        // let fuzzy_query: Box<dyn Query> = Box::new(FuzzyTermQuery::new(
-        //     Term::from_field_text(self.schema.get_field(ITEM_TITLE)?, search),
-        //     1,
-        //     true,
-        // ));
-
-        let title_query: Box<dyn Query> = Box::new(TermQuery::new(
-            Term::from_field_text(self.schema.get_field(ITEM_TITLE)?, search),
-            IndexRecordOption::Basic,
-        ));
-
         let story_id_query = search
             .parse::<u64>()
             .context("Not an id")
