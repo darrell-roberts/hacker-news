@@ -83,6 +83,7 @@ jobs:
         run: |
           sudo apt install flatpak
           sudo apt install flatpak-builder
+          flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
           flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install builddir com.dr.hacker-news.yml
           flatpak build-bundle repo hacker-news.flatpak com.dr.hacker-news
 

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Categories=News
+Comment=Hacker News Reader
+Exec=hacker-news-iced
+Icon=com.dr.hacker-news
+Name=Hacker News
+Terminal=false
+Type=Application

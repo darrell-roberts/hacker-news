@@ -21,7 +21,11 @@ modules:
         CARGO_HOME: /run/build/hacker-news/cargo
     build-commands:
       - mkdir -p /app/share
-      - tar zxvf assets/icons.tar.gz -C /app/share/
+      - install -Dm644 assets/com.dr.hacker-news.desktop -t /app/share/applications/
+      - tar zxvf assets/icons.tar.gz -C /app/share
+      - mv /app/share/icons/hicolor/32x32/apps/hacker-news.png /app/share/icons/hicolor/32x32/apps/com.dr.hacker-news.png
+      - mv /app/share/icons/hicolor/128x128/apps/hacker-news.png /app/share/icons/hicolor/128x128/apps/com.dr.hacker-news.png
+      - mv /app/share/icons/hicolor/256x256@2/apps/hacker-news.png /app/share/icons/hicolor/256x256@2/apps/com.dr.hacker-news.png
       - cargo --offline fetch --manifest-path Cargo.toml
       - cargo --offline build --release
       - install -Dm755 ./target/release/hacker-news-iced -t /app/bin/
