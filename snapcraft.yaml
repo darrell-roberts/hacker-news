@@ -6,6 +6,7 @@ description: |
 
 base: core24
 confinement: devmode
+compression: lzo
 
 parts:
   hacker-news:
@@ -24,5 +25,5 @@ apps:
       - desktop
       - desktop-legacy
       - wayland
-      - unity7
       - network
+      - opengl

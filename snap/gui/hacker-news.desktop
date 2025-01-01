@@ -2,7 +2,7 @@
 Categories=News
 Comment=Hacker News Reader
 Exec=hacker-news-iced
-Icon=hacker-news
+Icon=${SNAP}/meta/gui/hacker-news.png
 Name=Hacker News
 Terminal=false
 Type=Application
