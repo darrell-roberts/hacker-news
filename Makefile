@@ -48,7 +48,7 @@ bundle-mac: clean-dist build
 
 	# Clean up
 	rm "dist/temp.dmg"
-	cd dist && zip -y "Hacker_News_aarch64.dmg.zip" "Hacker News.dmg"
+	# cd dist && zip -y "Hacker_News_aarch64.dmg.zip" "Hacker News.dmg"
 
 linux-app-image: clean-dist build
 	echo "Building linux app image"
