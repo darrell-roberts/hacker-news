@@ -58,7 +58,7 @@ linux-app-image: clean-dist build
 
 	# Copy contents into AppDir
 	cp target/release/hacker-news-iced dist/AppDir/usr/bin
-	cp assets/hacker-news.desktop dist/AppDir/usr/share/applications
+	cp assets/io.github.darrellroberts.hacker-news.desktop dist/AppDir/usr/share/applications
 	tar zxvf assets/icons.tar.gz -C dist/AppDir/usr/share
 
 	# Create app image
@@ -74,7 +74,7 @@ install-local-linux: build
 	mkdir -p ~/.local/share/applications
 	mkdir -p ~/.local/bin
 	cp target/release/hacker-news-iced ~/.local/bin
-	cp assets/hacker-news.desktop ~/.local/share/applications
+	cp assets/io.github.darrellroberts.hacker-news.desktop ~/.local/share/applications
 	tar zxvf assets/icons.tar.gz -C ~/.local/share
 
 install:
