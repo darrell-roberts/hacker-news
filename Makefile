@@ -64,6 +64,11 @@ linux-app-image: clean-dist build
 	# Create app image
 	linuxdeploy-x86_64.AppImage --appdir dist/AppDir --output appimage
 
+linux-debian: clean-dist build
+	mkdir -p dist
+	tar zxvf assets/icons.tar.gz -C dist
+	cargo deb -p hacker-news-iced
+
 install-local-linux: build
 	echo "Installing for linux"
 	mkdir -p ~/.local/share/applications
