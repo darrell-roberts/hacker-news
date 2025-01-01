@@ -461,6 +461,7 @@ impl CommentState {
         if let Some(current) = self.nav_stack.last_mut() {
             current.offset = self.offset;
             current.page = self.page;
+            current.scroll_offset = None;
         }
     }
 }
