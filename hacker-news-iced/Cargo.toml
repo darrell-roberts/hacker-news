@@ -1,6 +1,6 @@
 [package]
 name = "hacker-news-iced"
-version = "0.1.2"
+version = "0.1.3"
 license.workspace = true
 edition.workspace = true
 description = "Hacker News Desktop Reader"
