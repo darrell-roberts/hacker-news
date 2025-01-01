@@ -7,3 +7,4 @@ dist/
 .flatpak-builder
 **/*.swp
 repo/
+*.flatpak

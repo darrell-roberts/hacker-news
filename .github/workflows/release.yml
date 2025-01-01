@@ -79,6 +79,13 @@ jobs:
           cargo install cargo-deb
           make linux-debian
 
+      - name: Build FlatPak
+        run: |
+          sudo apt install flatpak
+          sudo apt install flatpak-builder
+          flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install builddir com.dr.hacker-news.yml
+          flatpak build-bundle repo hacker-news.flatpak com.dr.hacker-news
+
       # - name: Build bundle
       #   uses: AppImageCrafters/build-appimage-action@master
       #   env:
@@ -100,5 +107,6 @@ jobs:
           files: |
             Hacker_News-x86_64.AppImage
             target/debian/*.deb
+            *.flatpak
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
