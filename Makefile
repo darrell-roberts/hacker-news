@@ -44,7 +44,7 @@ bundle-mac: clean-dist build
 	hdiutil detach "/Volumes/Hacker News"
 
 	# Convert to compressed DMG
-	hdiutil convert "dist/temp.dmg" -format UDZO -imagekey zlib-level=9 -o "dist/Hacker News.dmg"
+	hdiutil convert "dist/temp.dmg" -format UDZO -imagekey zlib-level=9 -o "dist/HackerNews.dmg"
 
 	# Clean up
 	rm "dist/temp.dmg"
