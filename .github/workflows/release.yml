@@ -43,7 +43,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/Hacker_News_aarch64.dmg.zip
+            dist/Hacker_News_aarch64.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -79,19 +79,13 @@ jobs:
           cargo install cargo-deb
           make linux-debian
 
-      # - name: Build bundle
-      #   uses: AppImageCrafters/build-appimage-action@master
-      #   env:
-      #     UPDATE_INFO: gh-releases-zsync|AppImageCrafters|latest|*x86_64.AppImage.zsync
-      #   with:
-      #     recipe: AppImageBuilder.yml
-
-      # - uses: actions/upload-artifact@v2
-      #   with:
-      #     name: AppImage
-      #     path: "./*.AppImage*"
-
-      # run: |
+      - name: Build FlatPak
+        run: |
+          sudo apt install flatpak
+          sudo apt install flatpak-builder
+          flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install builddir io.github.darrellroberts.hacker-news.yml
+          flatpak build-bundle repo hacker-news.flatpak io.github.darrellroberts.hacker-news
 
       - name: Create GitHub Release
         id: create_release
@@ -100,5 +94,6 @@ jobs:
           files: |
             Hacker_News-x86_64.AppImage
             target/debian/*.deb
+            *.flatpak
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

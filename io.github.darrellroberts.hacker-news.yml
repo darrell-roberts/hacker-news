@@ -1,0 +1,35 @@
+app-id: io.github.darrellroberts.hacker-news
+runtime: org.freedesktop.Platform
+runtime-version: "24.08"
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: hacker-news-iced
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --share=network
+  - --filesystem=xdg-config/cursors:ro
+  - --filesystem=xdg-config/fontconfig:ro
+  - --env=XCURSOR_THEME=Adwaita
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+modules:
+  - name: hacker-news
+    buildsystem: simple
+    build-options:
+      env:
+        CARGO_HOME: /run/build/hacker-news/cargo
+    build-commands:
+      - mkdir -p /app/share
+      - install -Dm644 assets/io.github.darrellroberts.hacker-news.desktop -t /app/share/applications/
+      - tar zxvf assets/icons.tar.gz -C /app/share
+      - cargo --offline fetch --manifest-path Cargo.toml
+      - cargo --offline build --release
+      - install -Dm755 ./target/release/hacker-news-iced -t /app/bin/
+    sources:
+      - type: dir
+        path: .
+      - cargo-sources.json

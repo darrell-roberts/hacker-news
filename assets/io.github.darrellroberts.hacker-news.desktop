@@ -2,7 +2,7 @@
 Categories=News
 Comment=Hacker News Reader
 Exec=hacker-news-iced
-Icon=hacker-news
+Icon=io.github.darrellroberts.hacker-news
 Name=Hacker News
 Terminal=false
 Type=Application
