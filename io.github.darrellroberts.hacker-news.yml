@@ -25,6 +25,7 @@ modules:
     build-commands:
       - mkdir -p /app/share
       - install -Dm644 assets/io.github.darrellroberts.hacker-news.desktop -t /app/share/applications/
+      - install -Dm644 assets/io.github.darrellroberts.hacker-news.metainfo.xml -t /app/share/metainfo/
       - tar zxvf assets/icons.tar.gz -C /app/share
       - cargo --offline fetch --manifest-path Cargo.toml
       - cargo --offline build --release
