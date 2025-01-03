@@ -175,7 +175,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             Task::none()
         }
         AppMsg::OpenLink { url, item_id } => {
-            open::with_detached(url, "firefox")
+            open::that(url)
                 .inspect_err(|err| {
                     error!("Failed to open url {err}");
                 })
