@@ -1,7 +1,7 @@
 //! View and state for viewing top level stories.
 use crate::{
     app::AppMsg,
-    common::{error_task, tooltip},
+    common::{self, error_task, tooltip},
     footer::FooterMsg,
     full_search::FullSearchMsg,
     header::HeaderMsg,
@@ -237,7 +237,7 @@ impl ArticleState {
                                                                     story.clone(),
                                                                 ),
                                                             )),
-                                                            "Re-Index",
+                                                            "Sync",
                                                             widget::tooltip::Position::FollowCursor,
                                                         )
                                                     }),
@@ -329,7 +329,7 @@ impl ArticleState {
                     .map(|watch_change| {
                         widget::opaque(
                             widget::container(
-                                widget::container(
+                                widget::container(common::tooltip(
                                     widget::button(
                                         widget::text(format!("{}", watch_change.new_comments))
                                             .color(Color::from_rgb8(255, 255, 153))
@@ -345,9 +345,11 @@ impl ArticleState {
                                             beyond: watch_change.beyond,
                                         }),
                                     ),
-                                )
+                                    "Open new",
+                                    widget::tooltip::Position::Left,
+                                ))
                                 .style(|_theme| {
-                                    widget::container::background(Color::from_rgba8(255, 0, 0, 0.7))
+                                    widget::container::background(Color::from_rgba8(255, 0, 0, 0.8))
                                         .border(iced::border::rounded(25))
                                 }),
                             )

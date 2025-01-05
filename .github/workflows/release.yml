@@ -92,7 +92,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            Hacker_News-x86_64.AppImage
+            *.AppImage
             target/debian/*.deb
             *.flatpak
         env:
