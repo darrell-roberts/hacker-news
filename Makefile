@@ -44,11 +44,11 @@ bundle-mac: clean-dist build
 	hdiutil detach "/Volumes/Hacker News"
 
 	# Convert to compressed DMG
-	hdiutil convert "dist/temp.dmg" -format UDZO -imagekey zlib-level=9 -o "dist/Hacker News.dmg"
+	hdiutil convert "dist/temp.dmg" -format UDZO -imagekey zlib-level=9 -o "dist/HackerNews.dmg"
 
 	# Clean up
 	rm "dist/temp.dmg"
-	cd dist && zip -y "Hacker_News_aarch64.dmg.zip" "Hacker News.dmg"
+	# cd dist && zip -y "Hacker_News_aarch64.dmg.zip" "Hacker News.dmg"
 
 linux-app-image: clean-dist build
 	echo "Building linux app image"
@@ -58,18 +58,23 @@ linux-app-image: clean-dist build
 
 	# Copy contents into AppDir
 	cp target/release/hacker-news-iced dist/AppDir/usr/bin
-	cp assets/hacker-news.desktop dist/AppDir/usr/share/applications
+	cp assets/io.github.darrellroberts.hacker-news.desktop dist/AppDir/usr/share/applications
 	tar zxvf assets/icons.tar.gz -C dist/AppDir/usr/share
 
 	# Create app image
 	linuxdeploy-x86_64.AppImage --appdir dist/AppDir --output appimage
+
+linux-debian: clean-dist build
+	mkdir -p dist
+	tar zxvf assets/icons.tar.gz -C dist
+	cargo deb -p hacker-news-iced
 
 install-local-linux: build
 	echo "Installing for linux"
 	mkdir -p ~/.local/share/applications
 	mkdir -p ~/.local/bin
 	cp target/release/hacker-news-iced ~/.local/bin
-	cp assets/hacker-news.desktop ~/.local/share/applications
+	cp assets/io.github.darrellroberts.hacker-news.desktop ~/.local/share/applications
 	tar zxvf assets/icons.tar.gz -C ~/.local/share
 
 install:

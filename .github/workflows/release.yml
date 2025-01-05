@@ -43,7 +43,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/Hacker_News_aarch64.dmg.zip
+            dist/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -69,30 +69,31 @@ jobs:
           sudo add-apt-repository universe
           sudo apt install libfuse2t64
 
-      - name: Build bundle
+      - name: Build Linux App Image
         run: |
           export PATH=$HOME/.local/bin:$PATH
           make linux-app-image
 
-      # - name: Build bundle
-      #   uses: AppImageCrafters/build-appimage-action@master
-      #   env:
-      #     UPDATE_INFO: gh-releases-zsync|AppImageCrafters|latest|*x86_64.AppImage.zsync
-      #   with:
-      #     recipe: AppImageBuilder.yml
+      - name: Build debian package
+        run: |
+          cargo install cargo-deb
+          make linux-debian
 
-      # - uses: actions/upload-artifact@v2
-      #   with:
-      #     name: AppImage
-      #     path: "./*.AppImage*"
-
-      # run: |
+      - name: Build FlatPak
+        run: |
+          sudo apt install flatpak
+          sudo apt install flatpak-builder
+          flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install builddir io.github.darrellroberts.hacker-news.yml
+          flatpak build-bundle repo hacker-news.flatpak io.github.darrellroberts.hacker-news
 
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            Hacker_News-x86_64.AppImage
+            *.AppImage
+            target/debian/*.deb
+            *.flatpak
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

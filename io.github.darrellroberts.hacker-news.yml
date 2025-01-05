@@ -1,0 +1,44 @@
+app-id: io.github.darrellroberts.hacker-news
+runtime: org.freedesktop.Platform
+runtime-version: "24.08"
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: hacker-news-iced
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --share=network
+  - --filesystem=xdg-config/cursors:ro
+  - --filesystem=xdg-config/fontconfig:ro
+  - --env=XCURSOR_THEME=Adwaita
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+modules:
+  - name: hacker-news
+    buildsystem: simple
+    build-options:
+      env:
+        CARGO_HOME: /run/build/hacker-news/cargo
+    build-commands:
+      - mkdir -p /app/share
+      - install -Dm644 assets/io.github.darrellroberts.hacker-news.desktop -t /app/share/applications/
+      - install -Dm644 assets/io.github.darrellroberts.hacker-news.metainfo.xml -t /app/share/metainfo/
+      - tar zxvf assets/icons.tar.gz -C /app/share
+      # - unzip -o UbuntuSans.zip -d /app/share/fonts
+      # - unzip -o Ubuntu.zip -d /app/share/fonts
+      - cargo --offline fetch --manifest-path Cargo.toml
+      - cargo --offline build --release
+      - install -Dm755 ./target/release/hacker-news-iced -t /app/bin/
+    sources:
+      - type: dir
+        path: .
+      - cargo-sources.json
+      # - type: file
+      #   url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/UbuntuSans.zip
+      #   sha256: 65d74bd6d3b5d4447fb6abe8da009fcc133a888a29b27be46baec98872f5dee9
+      # - type: file
+      #   url: https://github.com/ryanoasis/nerd-fonts/releases/download/v3.3.0/Ubuntu.zip
+      #   sha256: aa64690dab5b4f5cb6f0223999d44ca30fa51d837d83fcd86eacec527ec4f598

@@ -13,9 +13,13 @@ Download [prebuilt dmg](https://github.com/darrell-roberts/hacker-news/releases)
 Will require allowing non app store & known developers when launching. Open System Settings -> Privacy & Security and under Security allow running app.
 
 ## Linux (X86_64)
-Download [Linux AppImage](https://github.com/darrell-roberts/hacker-news/releases) from releases.
+Download Linux app image, flatpak or debian package [from releases](https://github.com/darrell-roberts/hacker-news/releases).
 
+### App image
 Unzip and grant execute permission to the app image and [run it](https://docs.appimage.org/user-guide/faq.html#question-how-do-i-run-an-appimage).
+
+### Flatpak
+Download the `hacker-news.flatpak` file and run `flatpak install hacker-news.flatpak`.
 
 ## Build from source.
 

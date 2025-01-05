@@ -156,7 +156,7 @@ fn start() -> anyhow::Result<()> {
             size: app.size,
             #[cfg(target_os = "linux")]
             platform_specific: window::settings::PlatformSpecific {
-                application_id: "hacker-news".into(),
+                application_id: "io.github.darrellroberts.hacker-news".into(),
                 ..Default::default()
             },
             ..Default::default()
