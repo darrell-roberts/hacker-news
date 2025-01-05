@@ -1,6 +1,7 @@
 //! State and view for viewing comments.
 use crate::{
     app::AppMsg,
+    articles::ArticleMsg,
     common::{error_task, PaginatingView},
     full_search::FullSearchMsg,
     header::HeaderMsg,
@@ -288,10 +289,14 @@ impl CommentState {
                         self.full_count = full_count;
                         self.comments = comments;
 
-                        widget::scrollable::scroll_to(
-                            comment_scroll_id(),
-                            scroll_to.unwrap_or_default(),
-                        )
+                        Task::batch([
+                            widget::scrollable::scroll_to(
+                                comment_scroll_id(),
+                                scroll_to.unwrap_or_default(),
+                            ),
+                            Task::done(ArticleMsg::ViewingItem(self.article.id))
+                                .map(AppMsg::Articles),
+                        ])
                     }
                     Err(err) => error_task(err),
                 };
