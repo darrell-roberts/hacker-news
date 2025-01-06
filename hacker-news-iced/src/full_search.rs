@@ -69,7 +69,7 @@ impl FullSearchState {
                     widget::container(widget::Column::with_children(comment_rows).spacing(15))
                         .padding(padding::top(0).bottom(10).left(10).right(25)),
                 )
-                .id(widget::scrollable::Id::new("full_search")),
+                .id(full_search_scroll_id()),
             )
             .spacing(5);
 
@@ -260,8 +260,12 @@ impl FullSearchState {
                     .map(AppMsg::FullSearch)
                 }
             },
-            None => todo!(),
+            None => Task::none(),
         }
+        .chain(widget::scrollable::scroll_to(
+            full_search_scroll_id(),
+            Default::default(),
+        ))
     }
 }
 
@@ -285,4 +289,8 @@ impl PaginatingView<AppMsg> for FullSearchState {
     fn current_page(&self) -> usize {
         self.page
     }
+}
+
+fn full_search_scroll_id() -> widget::scrollable::Id {
+    widget::scrollable::Id::new("full_search")
 }
