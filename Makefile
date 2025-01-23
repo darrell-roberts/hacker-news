@@ -81,7 +81,7 @@ install:
 ifeq ($(PLATFORM), Darwin)
 	@echo "Installing for Mac"
 	@$(MAKE) bundle-mac
-	open "dist/Hacker News.dmg"
+	open "dist/HackerNews.dmg"
 else ifeq ($(PLATFORM), Linux)
 	@echo "Installing for Linux"
 	@$(MAKE) install-local-linux
