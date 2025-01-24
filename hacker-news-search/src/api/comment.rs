@@ -213,6 +213,12 @@ impl SearchContext {
     }
 
     /// Get a single comment.
+    pub fn get_comment(&self, comment_id: u64) -> Result<Comment, SearchError> {
+        let searcher = self.searcher();
+        self.comment(&searcher, comment_id)
+    }
+
+    /// Get a single comment.
     fn comment(&self, searcher: &Searcher, comment_id: u64) -> Result<Comment, SearchError> {
         let top_docs = TopDocs::with_limit(1);
         let parent_query: Box<dyn Query> = Box::new(TermQuery::new(
