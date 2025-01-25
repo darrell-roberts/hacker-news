@@ -64,6 +64,11 @@ linux-app-image: clean-dist build
 	# Create app image
 	linuxdeploy-x86_64.AppImage --appdir dist/AppDir --output appimage
 
+linux-flatpak:
+	python3 ./flatpak-cargo-generator.py Cargo.lock -o cargo-sources.json
+	flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install builddir io.github.darrellroberts.hacker-news.yml
+	flatpak build-bundle repo hacker-news.flatpak io.github.darrellroberts.hacker-news
+
 linux-debian: clean-dist build
 	mkdir -p dist
 	tar zxvf assets/icons.tar.gz -C dist
@@ -81,7 +86,7 @@ install:
 ifeq ($(PLATFORM), Darwin)
 	@echo "Installing for Mac"
 	@$(MAKE) bundle-mac
-	open "dist/Hacker News.dmg"
+	open "dist/HackerNews.dmg"
 else ifeq ($(PLATFORM), Linux)
 	@echo "Installing for Linux"
 	@$(MAKE) install-local-linux
@@ -98,4 +103,4 @@ trace:
 trace-down:
 	docker compose down
 
-.PHONY: all clean-dist check build bundle-mac install-local-linux install trace trace-down
+.PHONY: all clean-dist check build bundle-mac install-local-linux install trace trace-down linux-flatpak

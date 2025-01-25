@@ -237,7 +237,7 @@ impl ArticleState {
                                                                     story.clone(),
                                                                 ),
                                                             )),
-                                                            "Sync",
+                                                            "Update",
                                                             widget::tooltip::Position::FollowCursor,
                                                         )
                                                     }),

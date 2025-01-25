@@ -1,6 +1,7 @@
 use crate::{
     app::AppMsg,
     articles::ArticleMsg,
+    comments::CommentMsg,
     common::{error_task, PaginatingView},
     header::HeaderMsg,
     parse_date,
@@ -8,14 +9,14 @@ use crate::{
 };
 use hacker_news_search::{
     api::{Comment, CommentStack},
-    SearchContext,
+    SearchContext, SearchError,
 };
 use iced::{
     border,
     font::{Style, Weight},
     padding,
     widget::{self, text::Shaping, tooltip::Position},
-    Color, Font, Length, Task,
+    Color, Element, Font, Length, Task,
 };
 use std::sync::{Arc, RwLock};
 
@@ -42,6 +43,7 @@ pub enum FullSearchMsg {
     ShowThread(u64),
     JumpPage(usize),
     StoryByTime { story_id: u64, beyond: Option<u64> },
+    OpenComment { story_id: u64, comment_id: u64 },
 }
 
 impl FullSearchState {
@@ -77,6 +79,20 @@ impl FullSearchState {
     }
 
     fn render_comment<'a>(&'a self, comment: &'a Comment) -> widget::Container<'a, AppMsg> {
+        let child_comments_button: Element<'_, AppMsg> = if comment.kids.is_empty() {
+            widget::text("").into()
+        } else {
+            widget::button(
+                widget::text(format!("💬{}", comment.kids.len())).shaping(Shaping::Advanced),
+            )
+            .padding(0)
+            .on_press(AppMsg::FullSearch(FullSearchMsg::OpenComment {
+                story_id: comment.story_id,
+                comment_id: comment.id,
+            }))
+            .style(widget::button::text)
+            .into()
+        };
         widget::container(
             widget::Column::new()
                 .push(
@@ -125,26 +141,29 @@ impl FullSearchState {
                         .width(Length::FillPortion(6).enclose(Length::Fixed(50.)))
                 })
                 .push(
-                    widget::Row::new().push(widget::rich_text([
-                        widget::span(format!(" by {}", comment.by))
-                            .link(AppMsg::Header(HeaderMsg::Search(format!(
-                                "by:{}",
-                                comment.by
-                            ))))
-                            .font(Font {
-                                style: Style::Italic,
-                                ..Default::default()
-                            })
-                            .size(14),
-                        widget::span(" "),
-                        widget::span(parse_date(comment.time).unwrap_or_default())
-                            .font(Font {
-                                weight: Weight::Light,
-                                style: Style::Italic,
-                                ..Default::default()
-                            })
-                            .size(10),
-                    ])),
+                    widget::Row::new()
+                        .push(widget::rich_text([
+                            widget::span(format!(" by {}", comment.by))
+                                .link(AppMsg::Header(HeaderMsg::Search(format!(
+                                    "by:{}",
+                                    comment.by
+                                ))))
+                                .font(Font {
+                                    style: Style::Italic,
+                                    ..Default::default()
+                                })
+                                .size(14),
+                            widget::span(" "),
+                            widget::span(parse_date(comment.time).unwrap_or_default())
+                                .font(Font {
+                                    weight: Weight::Light,
+                                    style: Style::Italic,
+                                    ..Default::default()
+                                })
+                                .size(10),
+                        ]))
+                        .push(child_comments_button)
+                        .spacing(5),
                 )
                 .padding([10, 10])
                 .spacing(15)
@@ -240,6 +259,38 @@ impl FullSearchState {
                         self.full_count = total_comments;
                         Task::none()
                     }
+                    Err(err) => error_task(err),
+                }
+            }
+            FullSearchMsg::OpenComment {
+                story_id,
+                comment_id,
+            } => {
+                let open_comments_task = || {
+                    let g = self.search_context.read().unwrap();
+                    let CommentStack { story, comments } = g.parents(comment_id)?;
+                    let comment = g.get_comment(comment_id)?;
+                    let task = Task::done(AppMsg::OpenComment {
+                        article: story,
+                        parent_id: comment_id,
+                        comment_stack: comments,
+                    })
+                    .chain(
+                        Task::done(CommentMsg::FetchComments {
+                            parent_id: comment_id,
+                            parent_comment: Some(comment),
+                            scroll_to: None,
+                        })
+                        .map(AppMsg::Comments),
+                    );
+                    Result::<_, SearchError>::Ok(task)
+                };
+
+                match open_comments_task() {
+                    Ok(msg) => Task::batch([
+                        msg,
+                        Task::done(ArticleMsg::Search(format!("{story_id}"))).map(AppMsg::Articles),
+                    ]),
                     Err(err) => error_task(err),
                 }
             }

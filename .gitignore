@@ -8,3 +8,4 @@ dist/
 **/*.swp
 repo/
 *.flatpak
+cargo-sources.json

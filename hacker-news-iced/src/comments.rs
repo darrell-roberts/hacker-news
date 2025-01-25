@@ -176,7 +176,7 @@ impl CommentState {
         comment: &'a Comment,
         is_parent: bool,
     ) -> Container<'a, AppMsg> {
-        let by_button: Element<'_, AppMsg> = if comment.kids.is_empty() {
+        let child_comments_button: Element<'_, AppMsg> = if comment.kids.is_empty() {
             widget::text("").into()
         } else {
             button(widget::text(format!("💬{}", comment.kids.len())).shaping(Shaping::Advanced))
@@ -226,7 +226,7 @@ impl CommentState {
                                 })
                                 .size(10),
                         ]),
-                        by_button,
+                        child_comments_button,
                         widget::container(
                             widget::button(widget::text(format!("{}", comment.id)))
                                 .on_press(AppMsg::OpenLink {

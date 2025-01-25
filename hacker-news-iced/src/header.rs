@@ -154,12 +154,12 @@ impl HeaderState {
                                 )),
                         )
                         .push(tooltip(
-                            widget::button("Sync")
+                            widget::button("Update")
                                 .on_press_maybe(
                                     self.building_index.not().then_some(HeaderMsg::RebuildIndex),
                                 )
                                 .padding(5),
-                            format!("Sync {}", self.article_type.as_str()),
+                            format!("Update {} articles", self.article_type.as_str()),
                             widget::tooltip::Position::Bottom,
                         ))
                         .push(tooltip(
