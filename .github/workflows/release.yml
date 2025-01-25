@@ -81,12 +81,9 @@ jobs:
 
       - name: Build FlatPak
         run: |
-          sudo apt install flatpak
-          sudo apt install flatpak-builder
+          sudo apt install flatpak flatpak-builder python3
           flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          flatpak-builder --force-clean --user --install-deps-from=flathub --repo=repo --install builddir io.github.darrellroberts.hacker-news.yml
-          flatpak build-bundle repo hacker-news.flatpak io.github.darrellroberts.hacker-news
-
+          make linux-flatpak
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v1
