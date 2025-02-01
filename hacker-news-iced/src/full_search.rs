@@ -104,7 +104,6 @@ impl FullSearchState {
                                         "https://news.ycombinator.com/item?id={}",
                                         comment.id
                                     ),
-                                    item_id: comment.story_id,
                                 })
                                 .style(widget::button::text)
                                 .padding(0),
