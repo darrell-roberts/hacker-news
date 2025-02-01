@@ -67,7 +67,7 @@ impl FooterState {
                     .push_maybe(self.index_progress.as_ref().map(|progress| {
                         container(
                             Row::new()
-                                .push(text("Syncing..."))
+                                .push(text("Updating..."))
                                 .push(progress_bar(
                                     0_f32..=progress.total_stories_to_index,
                                     progress.total_stories_completed,
