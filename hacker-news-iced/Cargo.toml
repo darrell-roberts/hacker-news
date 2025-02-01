@@ -51,7 +51,7 @@ opentelemetry_sdk = { version = "0.26", features = [
     "trace",
 ], optional = true }
 opentelemetry-semantic-conventions = { version = "0.26", optional = true }
-tracing-opentelemetry = { version = "0.27", optional = true }
+tracing-opentelemetry = { version = "0.28", optional = true }
 tracing-subscriber = { version = "0.3", optional = true }
 
 open = "5"
