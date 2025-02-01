@@ -46,7 +46,7 @@ opentelemetry-otlp = { version = "0.26", features = [
     "grpc-tonic",
     "trace",
 ], optional = true }
-opentelemetry_sdk = { version = "0.26", features = [
+opentelemetry_sdk = { version = "0.27", features = [
     "rt-tokio",
     "trace",
 ], optional = true }
