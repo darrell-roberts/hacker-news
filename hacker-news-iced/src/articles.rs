@@ -16,7 +16,7 @@ use iced::{
     border::{self},
     font::{Style, Weight},
     padding,
-    widget::{self, button, scrollable, text, Column, Row},
+    widget::{self, scrollable, text, Column, Row},
     Background, Color, Element, Font, Length, Shadow, Task, Theme,
 };
 use log::info;
@@ -87,6 +87,7 @@ pub enum ArticleMsg {
     ClearIndexStory(u64),
     CheckHandles,
     ToggleWatchFilter,
+    StoryClicked(Story),
 }
 
 static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
@@ -116,24 +117,7 @@ impl ArticleState {
     fn render_article_title<'a>(&'a self, story: &'a Story) -> iced::Element<'a, AppMsg> {
         let title: widget::text::Rich<'a, AppMsg> = widget::rich_text(
             SearchSpanIter::new(&story.title, self.search.as_deref())
-                .map(|span| {
-                    span.link_maybe(
-                        story
-                            .url
-                            .clone()
-                            .map(|url| AppMsg::OpenLink {
-                                url,
-                                item_id: story.id,
-                            })
-                            .or_else(|| {
-                                story.body.as_ref().map(|_| AppMsg::OpenComment {
-                                    article: story.clone(),
-                                    parent_id: story.id,
-                                    comment_stack: Vec::new(),
-                                })
-                            }),
-                    )
-                })
+                .map(|span| span.link(AppMsg::Articles(ArticleMsg::StoryClicked(story.clone()))))
                 .collect::<Vec<_>>(),
         );
         match story.url.as_deref() {
@@ -169,17 +153,6 @@ impl ArticleState {
                 .size(10)
                 .color_maybe(widget::text::primary(theme).color),
         ]);
-
-        let comments_button = button(
-            widget::text(format!("💬{}", story.descendants)).shaping(text::Shaping::Advanced),
-        )
-        .style(button::text)
-        .padding(0)
-        .on_press_maybe((story.descendants > 0).then(|| AppMsg::OpenComment {
-            article: story.clone(),
-            parent_id: story.id,
-            comment_stack: Vec::new(),
-        }));
 
         let article_id = story.id;
 
@@ -259,7 +232,10 @@ impl ArticleState {
                                 .push(if story.descendants == 0 {
                                     Element::from(text(""))
                                 } else {
-                                    Element::from(comments_button)
+                                    Element::from(
+                                        widget::text(format!("💬{}", story.descendants))
+                                            .shaping(text::Shaping::Advanced),
+                                    )
                                 })
                                 .push_maybe((story.ty != "job").then(|| {
                                     tooltip(
@@ -320,9 +296,15 @@ impl ArticleState {
         .padding([5, 15])
         .clip(false);
 
+        let clickable = widget::mouse_area(content).on_press(AppMsg::OpenComment {
+            article: story.clone(),
+            parent_id: story.id,
+            comment_stack: Vec::new(),
+        });
+
         widget::stack(
             [
-                Some(content.into()),
+                Some(clickable.into()),
                 self.watch_changes
                     .get(&article_id)
                     .filter(|w| w.new_comments > 0)
@@ -518,6 +500,23 @@ impl ArticleState {
             ArticleMsg::ToggleWatchFilter => {
                 self.filter_watching = !self.filter_watching;
                 Task::none()
+            }
+            ArticleMsg::StoryClicked(story) => {
+                let story_id = story.id;
+                Task::batch([
+                    match story.url.as_deref() {
+                        Some(url) => Task::done(AppMsg::OpenLink {
+                            url: url.to_string(),
+                        }),
+                        None => Task::none(),
+                    },
+                    Task::done(AppMsg::OpenComment {
+                        article: story,
+                        parent_id: story_id,
+                        comment_stack: Vec::new(),
+                    }),
+                    Task::done(ArticleMsg::ViewingItem(story_id)).map(AppMsg::Articles),
+                ])
             }
         }
     }

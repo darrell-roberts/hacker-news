@@ -111,7 +111,7 @@ pub fn render_rich_text<'a>(
 
 fn anchor_spans(link: Anchor<'_>) -> impl Iterator<Item = Span<'_, AppMsg>> {
     let children = link.children;
-    let msg = |url| AppMsg::OpenLink { url, item_id: 0 };
+    let msg = |url| AppMsg::OpenLink { url };
 
     link.attributes
         .into_iter()

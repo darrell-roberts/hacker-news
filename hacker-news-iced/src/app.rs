@@ -85,7 +85,6 @@ pub enum AppMsg {
     },
     OpenLink {
         url: String,
-        item_id: u64,
     },
     ChangeTheme(Theme),
     WindowClose,
@@ -174,13 +173,13 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             app.article_state.viewing_item = None;
             Task::none()
         }
-        AppMsg::OpenLink { url, item_id } => {
+        AppMsg::OpenLink { url } => {
             open::that(url)
                 .inspect_err(|err| {
                     error!("Failed to open url {err}");
                 })
                 .unwrap_or_default();
-            Task::done(ArticleMsg::ViewingItem(item_id)).map(AppMsg::Articles)
+            Task::none()
         }
         AppMsg::ChangeTheme(theme) => {
             app.theme = theme;
@@ -312,7 +311,6 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     widget::button(title_text)
                         .on_press(AppMsg::OpenLink {
                             url: url.to_string(),
-                            item_id: comment_state.article.id,
                         })
                         .style(button::text)
                         .padding(0),
