@@ -1,6 +1,6 @@
 [package]
 name = "hacker-news-iced"
-version = "0.1.8"
+version = "0.1.9"
 license.workspace = true
 edition.workspace = true
 description = "Hacker News Desktop Reader"
@@ -9,23 +9,23 @@ description = "Hacker News Desktop Reader"
 
 [features]
 trace = [
-    "opentelemetry",
-    "opentelemetry-otlp",
-    "opentelemetry_sdk",
-    "tracing-opentelemetry",
-    "opentelemetry-semantic-conventions",
-    "tracing-subscriber",
-    "hacker-news-search/trace",
-    "tracing",
+  "opentelemetry",
+  "opentelemetry-otlp",
+  "opentelemetry_sdk",
+  "tracing-opentelemetry",
+  "opentelemetry-semantic-conventions",
+  "tracing-subscriber",
+  "hacker-news-search/trace",
+  "tracing",
 ]
 
 [dependencies]
 iced = { version = "0.13", features = [
-    "lazy",
-    "tokio",
-    "advanced",
-    "auto-detect-theme",
-    "image",
+  "lazy",
+  "tokio",
+  "advanced",
+  "auto-detect-theme",
+  "image",
 ] }
 
 hacker-news-api.workspace = true
@@ -43,12 +43,12 @@ flexi_logger.workspace = true
 tracing = { version = "0.1", optional = true }
 opentelemetry = { version = "0.26", features = ["trace"], optional = true }
 opentelemetry-otlp = { version = "0.26", features = [
-    "grpc-tonic",
-    "trace",
+  "grpc-tonic",
+  "trace",
 ], optional = true }
 opentelemetry_sdk = { version = "0.26", features = [
-    "rt-tokio",
-    "trace",
+  "rt-tokio",
+  "trace",
 ], optional = true }
 opentelemetry-semantic-conventions = { version = "0.26", optional = true }
 tracing-opentelemetry = { version = "0.27", optional = true }
@@ -71,29 +71,29 @@ extended-description = """Hacker News Desktop Reader"""
 section = "utility"
 priority = "optional"
 assets = [
-    [
-        "target/release/hacker-news-iced",
-        "usr/bin/",
-        "755",
-    ],
-    [
-        "../assets/io.github.darrellroberts.hacker-news.desktop",
-        "usr/share/applications/",
-        "644",
-    ],
-    [
-        "../dist/icons/hicolor/32x32/apps/io.github.darrellroberts.hacker-news.png",
-        "usr/share/icons/hicolor/32x32/apps/",
-        "644",
-    ],
-    [
-        "../dist/icons/hicolor/128x128/apps/io.github.darrellroberts.hacker-news.png",
-        "usr/share/icons/hicolor/128x128/apps/",
-        "644",
-    ],
-    [
-        "../dist/icons/hicolor/256x256@2/apps/io.github.darrellroberts.hacker-news.png",
-        "usr/share/icons/hicolor/256x256@2/apps/",
-        "644",
-    ],
+  [
+    "target/release/hacker-news-iced",
+    "usr/bin/",
+    "755",
+  ],
+  [
+    "../assets/io.github.darrellroberts.hacker-news.desktop",
+    "usr/share/applications/",
+    "644",
+  ],
+  [
+    "../dist/icons/hicolor/32x32/apps/io.github.darrellroberts.hacker-news.png",
+    "usr/share/icons/hicolor/32x32/apps/",
+    "644",
+  ],
+  [
+    "../dist/icons/hicolor/128x128/apps/io.github.darrellroberts.hacker-news.png",
+    "usr/share/icons/hicolor/128x128/apps/",
+    "644",
+  ],
+  [
+    "../dist/icons/hicolor/256x256@2/apps/io.github.darrellroberts.hacker-news.png",
+    "usr/share/icons/hicolor/256x256@2/apps/",
+    "644",
+  ],
 ]
