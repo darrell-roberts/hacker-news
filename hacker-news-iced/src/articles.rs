@@ -450,11 +450,14 @@ impl ArticleState {
                     watch_state.new_comments = 0;
                 }
 
-                Task::done(FullSearchMsg::StoryByTime {
-                    story_id,
-                    beyond: Some(beyond),
-                })
-                .map(AppMsg::FullSearch)
+                Task::batch([
+                    Task::done(FullSearchMsg::StoryByTime {
+                        story_id,
+                        beyond: Some(beyond),
+                    })
+                    .map(AppMsg::FullSearch),
+                    Task::done(ArticleMsg::ViewingItem(story_id)).map(AppMsg::Articles),
+                ])
             }
             ArticleMsg::ClearIndexStory(story_id) => {
                 self.indexing_stories.retain(|id| id != &story_id);
