@@ -61,12 +61,11 @@ make install
 This copies the binary and other assets into your `~/.local`.
 
 # Screenshots
-### MacOS Dark mode theme
+### MacOS dark mode theme
 <img width="1840" alt="Screenshot 2024-12-29 at 12 17 58 PM" src="https://github.com/user-attachments/assets/f0bb408d-b048-4869-b562-ab013a4ba1a5" />
 
-### Linux Dark mode theme
-![Screenshot from 2024-12-29 11-45-07](https://github.com/user-attachments/assets/dfa56deb-501e-4a96-a8f2-dd680fd02939)
-
+### Linux light mode theme
+![Screenshot from 2025-02-08 14-00-54](https://github.com/user-attachments/assets/6d121c6f-9b5f-49eb-9e4d-9ea3143241ef)
 
 
 
