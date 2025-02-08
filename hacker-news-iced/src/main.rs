@@ -18,7 +18,7 @@ use iced::{
         text_input::{self, focus},
     },
     window::{close_requests, resize_events},
-    Size, Subscription, Task, Theme,
+    Font, Size, Subscription, Task, Theme,
 };
 #[cfg(target_family = "unix")]
 use libc::{getrlimit, rlimit, setrlimit, RLIMIT_NOFILE};
@@ -41,6 +41,8 @@ mod richtext;
 #[cfg(feature = "trace")]
 mod tracing;
 mod widget;
+
+const ROBOTO_FONT: Font = Font::with_name("Roboto");
 
 fn start() -> anyhow::Result<()> {
     // Load this here so if it fails we fail to launch.
@@ -162,6 +164,10 @@ fn start() -> anyhow::Result<()> {
             ..Default::default()
         })
         .scale_factor(|app| app.scale)
+        .font(include_bytes!(
+            "../../assets/fonts/Roboto-VariableFont_wdth,wght.ttf"
+        ))
+        .default_font(ROBOTO_FONT)
         .run_with(move || {
             let article_type = app.header.article_type;
             let article_count = app.header.article_count;
