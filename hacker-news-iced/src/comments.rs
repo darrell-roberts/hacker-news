@@ -59,6 +59,8 @@ pub struct CommentState {
     pub search_results: Vec<Comment>,
     /// Parent id being viewed.
     pub parent_id: u64,
+    /// Active comment
+    pub active_comment_id: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -78,6 +80,7 @@ pub enum CommentMsg {
     JumpPage(usize),
     Close(u64),
     ScrollOffset(AbsoluteOffset),
+    Activate(u64),
 }
 
 impl CommentState {
@@ -96,9 +99,12 @@ impl CommentState {
             .map(|item| {
                 self.render_comment(item, false).style(|theme| {
                     let palette = theme.extended_palette();
-
                     container::Style {
-                        background: Some(palette.background.weak.color.into()),
+                        background: Some(if self.active_comment_id == Some(item.id) {
+                            palette.background.strong.color.into()
+                        } else {
+                            palette.background.weak.color.into()
+                        }),
                         border: border::rounded(8),
                         ..Default::default()
                     }
@@ -191,62 +197,67 @@ impl CommentState {
         };
 
         container(
-            widget::Column::new()
-                .push_maybe(is_parent.then(|| {
-                    widget::container(
-                        widget::button("X")
-                            .on_press(AppMsg::Comments(CommentMsg::Close(comment.id))),
-                    )
-                    .align_right(Length::Fill)
-                }))
-                .push(widget::rich_text(render_rich_text(
-                    &comment.body,
-                    self.search.as_deref(),
-                    self.oneline,
-                )))
-                .push(
-                    widget::row![
-                        widget::rich_text([
-                            widget::span(format!(" by {}", comment.by))
-                                .link(AppMsg::Header(HeaderMsg::Search(format!(
-                                    "by:{}",
-                                    comment.by
-                                ))))
-                                .font(Font {
-                                    style: Style::Italic,
-                                    ..Default::default()
-                                })
-                                .size(14),
-                            widget::span(" "),
-                            widget::span(parse_date(comment.time).unwrap_or_default())
-                                .font(Font {
-                                    weight: Weight::Light,
-                                    style: Style::Italic,
-                                    ..Default::default()
-                                })
-                                .size(10),
-                        ]),
-                        child_comments_button,
-                        widget::container(
-                            widget::button(widget::text(format!("{}", comment.id)))
-                                .on_press(AppMsg::OpenLink {
-                                    url: format!(
-                                        "https://news.ycombinator.com/item?id={}",
-                                        comment.id
-                                    ),
-                                })
-                                .style(widget::button::text)
-                                .padding(0)
+            widget::mouse_area(
+                container(
+                    widget::Column::new()
+                        .push_maybe(is_parent.then(|| {
+                            widget::container(
+                                widget::button("X")
+                                    .on_press(AppMsg::Comments(CommentMsg::Close(comment.id))),
+                            )
+                            .align_right(Length::Fill)
+                        }))
+                        .push(widget::rich_text(render_rich_text(
+                            &comment.body,
+                            self.search.as_deref(),
+                            self.oneline,
+                        )))
+                        .push(
+                            widget::row![
+                                widget::rich_text([
+                                    widget::span(format!(" by {}", comment.by))
+                                        .link(AppMsg::Header(HeaderMsg::Search(format!(
+                                            "by:{}",
+                                            comment.by
+                                        ))))
+                                        .font(Font {
+                                            style: Style::Italic,
+                                            ..Default::default()
+                                        })
+                                        .size(14),
+                                    widget::span(" "),
+                                    widget::span(parse_date(comment.time).unwrap_or_default())
+                                        .font(Font {
+                                            weight: Weight::Light,
+                                            style: Style::Italic,
+                                            ..Default::default()
+                                        })
+                                        .size(10),
+                                ]),
+                                child_comments_button,
+                                widget::container(
+                                    widget::button(widget::text(format!("{}", comment.id)))
+                                        .on_press(AppMsg::OpenLink {
+                                            url: format!(
+                                                "https://news.ycombinator.com/item?id={}",
+                                                comment.id
+                                            ),
+                                        })
+                                        .style(widget::button::text)
+                                        .padding(0)
+                                )
+                                .align_right(Length::Fill)
+                            ]
+                            .spacing(5),
                         )
-                        .align_right(Length::Fill)
-                    ]
-                    .spacing(5),
+                        .padding([10, 10])
+                        .spacing(15)
+                        .width(Length::Fill),
                 )
-                .padding([10, 10])
-                .spacing(15)
-                .width(Length::Fill),
+                .clip(false),
+            )
+            .on_press(AppMsg::Comments(CommentMsg::Activate(comment.id))),
         )
-        .clip(false)
     }
 
     /// Update comment viewing state.
@@ -260,15 +271,12 @@ impl CommentState {
                 if let Some(parent) = parent_comment {
                     // We are viewing a nested comment
                     if self.parent_id != parent.id {
-                        if let Some(index) =
-                            self.nav_stack
-                                .iter()
-                                .enumerate()
-                                .find_map(|(index, stack_item)| match stack_item.comment.as_ref() {
-                                    Some(c) => (c.id == parent_id).then_some(index),
-                                    None => None,
-                                })
-                        {
+                        if let Some(index) = self.nav_stack.iter().enumerate().find_map(
+                            |(index, stack_item)| {
+                                matches!(stack_item.comment.as_ref(), Some(c) if c.id == parent_id)
+                                    .then_some(index)
+                            },
+                        ) {
                             self.nav_stack.drain(index..);
                         }
 
@@ -307,7 +315,9 @@ impl CommentState {
                 ])
             }
             CommentMsg::PopNavStack => {
-                self.nav_stack.pop();
+                if let Some(c) = self.nav_stack.pop().and_then(|stack| stack.comment) {
+                    self.active_comment_id.replace(c.id);
+                };
 
                 match self.nav_stack.last() {
                     Some(current) => {
@@ -404,6 +414,9 @@ impl CommentState {
                 self.paginate_task()
             }
             CommentMsg::Close(comment_id) => {
+                self.active_comment_id.replace(comment_id);
+
+                // Check if this is a top level comment.
                 while let Some(stack_item) = self.nav_stack.pop() {
                     if let Some(c) = stack_item.comment {
                         if c.id == comment_id {
@@ -444,6 +457,10 @@ impl CommentState {
                 if let Some(current_nav) = self.nav_stack.last_mut() {
                     current_nav.scroll_offset = Some(offset);
                 }
+                Task::none()
+            }
+            CommentMsg::Activate(comment_id) => {
+                self.active_comment_id = Some(comment_id);
                 Task::none()
             }
         }

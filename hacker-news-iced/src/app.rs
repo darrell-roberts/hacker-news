@@ -152,6 +152,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 offset: 0,
                 full_count: 0,
                 parent_id: 0,
+                active_comment_id: None,
             });
 
             if from_full_search {
