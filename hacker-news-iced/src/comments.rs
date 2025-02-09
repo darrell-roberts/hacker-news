@@ -7,6 +7,7 @@ use crate::{
     header::HeaderMsg,
     parse_date,
     richtext::render_rich_text,
+    ROBOTO_FONT,
 };
 use hacker_news_search::{
     api::{Comment, Story},
@@ -215,14 +216,14 @@ impl CommentState {
                         .push(
                             widget::row![
                                 widget::rich_text([
-                                    widget::span(format!(" by {}", comment.by))
+                                    widget::span(format!("by {}", comment.by))
                                         .link(AppMsg::Header(HeaderMsg::Search(format!(
                                             "by:{}",
                                             comment.by
                                         ))))
                                         .font(Font {
                                             style: Style::Italic,
-                                            ..Default::default()
+                                            ..ROBOTO_FONT
                                         })
                                         .size(14),
                                     widget::span(" "),
@@ -230,7 +231,7 @@ impl CommentState {
                                         .font(Font {
                                             weight: Weight::Light,
                                             style: Style::Italic,
-                                            ..Default::default()
+                                            ..ROBOTO_FONT
                                         })
                                         .size(10),
                                 ]),

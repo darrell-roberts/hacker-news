@@ -1,4 +1,4 @@
-use crate::app::AppMsg;
+use crate::{app::AppMsg, ROBOTO_FONT};
 use chrono::{DateTime, Local, Utc};
 use chrono_tz::America::New_York;
 use hacker_news_api::ArticleType;
@@ -49,7 +49,7 @@ impl FooterState {
         let light_font = || Font {
             style: Style::Italic,
             weight: Weight::Light,
-            ..Default::default()
+            ..ROBOTO_FONT
         };
 
         let column = Column::new()

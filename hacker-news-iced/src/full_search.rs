@@ -6,6 +6,7 @@ use crate::{
     header::HeaderMsg,
     parse_date,
     richtext::render_rich_text,
+    ROBOTO_FONT,
 };
 use hacker_news_search::{
     api::{Comment, CommentStack},
@@ -149,7 +150,7 @@ impl FullSearchState {
                                 ))))
                                 .font(Font {
                                     style: Style::Italic,
-                                    ..Default::default()
+                                    ..ROBOTO_FONT
                                 })
                                 .size(14),
                             widget::span(" "),
@@ -157,7 +158,7 @@ impl FullSearchState {
                                 .font(Font {
                                     weight: Weight::Light,
                                     style: Style::Italic,
-                                    ..Default::default()
+                                    ..ROBOTO_FONT
                                 })
                                 .size(10),
                         ]))

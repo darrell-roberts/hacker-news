@@ -8,6 +8,7 @@ use crate::{
     full_search::{FullSearchMsg, FullSearchState, SearchCriteria},
     header::{self, HeaderMsg, HeaderState},
     widget::hoverable,
+    ROBOTO_FONT,
 };
 use hacker_news_api::ArticleType;
 use hacker_news_search::{
@@ -303,7 +304,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
             let title_text = widget::text(&comment_state.article.title)
                 .font(Font {
                     weight: Weight::Bold,
-                    ..Default::default()
+                    ..ROBOTO_FONT
                 })
                 .shaping(Shaping::Advanced);
 
@@ -430,7 +431,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                 _ if app.full_search_state.search.is_some() => pane_grid::TitleBar::new(
                     widget::container(widget::text("Searched all comments").font(Font {
                         weight: Weight::Bold,
-                        ..Default::default()
+                        ..ROBOTO_FONT
                     }))
                     .padding(5),
                 )

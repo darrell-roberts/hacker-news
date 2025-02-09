@@ -8,6 +8,7 @@ use crate::{
     parse_date,
     richtext::SearchSpanIter,
     widget::hoverable,
+    ROBOTO_FONT,
 };
 use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
 use iced::{
@@ -139,7 +140,7 @@ impl ArticleState {
                 ))))
                 .font(Font {
                     style: Style::Italic,
-                    ..Default::default()
+                    ..ROBOTO_FONT
                 })
                 .size(14)
                 .color_maybe(widget::text::primary(theme).color),
@@ -148,7 +149,7 @@ impl ArticleState {
                 .font(Font {
                     weight: Weight::Light,
                     style: Style::Italic,
-                    ..Default::default()
+                    ..ROBOTO_FONT
                 })
                 .size(10)
                 .color_maybe(widget::text::primary(theme).color),
@@ -317,7 +318,7 @@ impl ArticleState {
                                             .color(Color::from_rgb8(255, 255, 153))
                                             .font(Font {
                                                 weight: Weight::Bold,
-                                                ..Default::default()
+                                                ..ROBOTO_FONT
                                             }),
                                     )
                                     .style(widget::button::text)

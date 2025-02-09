@@ -43,6 +43,7 @@ mod tracing;
 mod widget;
 
 const ROBOTO_FONT: Font = Font::with_name("Roboto");
+const ROBOTO_MONO: Font = Font::with_name("Roboto Mono");
 
 fn start() -> anyhow::Result<()> {
     // Load this here so if it fails we fail to launch.
@@ -166,6 +167,12 @@ fn start() -> anyhow::Result<()> {
         .scale_factor(|app| app.scale)
         .font(include_bytes!(
             "../../assets/fonts/Roboto-VariableFont_wdth,wght.ttf"
+        ))
+        .font(include_bytes!(
+            "../../assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf"
+        ))
+        .font(include_bytes!(
+            "../../assets/fonts/RobotoMono-VariableFont_wght.ttf"
         ))
         .default_font(ROBOTO_FONT)
         .run_with(move || {

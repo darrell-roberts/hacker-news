@@ -1,6 +1,7 @@
 //! Renders rich text from a simplified html string. Allows creating spans
 //! for search matches so search strings can be highlighted.
 use crate::app::AppMsg;
+use crate::{ROBOTO_FONT, ROBOTO_MONO};
 use html_sanitizer::Anchor;
 use iced::font::{Style, Weight};
 use iced::widget::span;
@@ -29,21 +30,18 @@ pub fn render_rich_text<'a>(
                 spans.push(span("\n\n"))
             }
             html_sanitizer::Element::Code(text) => {
-                spans.extend(split_search(text, search, |span| {
-                    span.font(Font::MONOSPACE)
-                }));
+                spans.extend(split_search(text, search, |span| span.font(ROBOTO_MONO)));
             }
             // We can have one level nesting here.
             html_sanitizer::Element::Italic(nested) => {
                 for el in nested {
                     match el {
                         html_sanitizer::Element::Text(text) => spans.extend(
-                            SearchSpanIter::new(text, search)
-                                .map(|s| s.font(Font::default().italic())),
+                            SearchSpanIter::new(text, search).map(|s| s.font(ROBOTO_FONT.italic())),
                         ),
                         html_sanitizer::Element::Link(link) => spans.extend(anchor_spans(link)),
                         html_sanitizer::Element::Escaped(text) => {
-                            spans.push(span(text).font(Font::default().italic()))
+                            spans.push(span(text).font(ROBOTO_FONT.italic()))
                         }
                         html_sanitizer::Element::Paragraph => spans.push(span("\n\n")),
                         html_sanitizer::Element::Bold(nested) => {
@@ -51,13 +49,13 @@ pub fn render_rich_text<'a>(
                                 match el {
                                     html_sanitizer::Element::Text(text) => spans.extend(
                                         SearchSpanIter::new(text, search)
-                                            .map(|s| s.font(Font::default().bold().italic())),
+                                            .map(|s| s.font(ROBOTO_FONT.bold().italic())),
                                     ),
                                     html_sanitizer::Element::Link(link) => {
                                         spans.extend(anchor_spans(link))
                                     }
                                     html_sanitizer::Element::Escaped(text) => {
-                                        spans.push(span(text).font(Font::default().italic().bold()))
+                                        spans.push(span(text).font(ROBOTO_FONT.italic().bold()))
                                     }
                                     html_sanitizer::Element::Paragraph => spans.push(span("\n\n")),
                                     _ => (),
@@ -73,12 +71,11 @@ pub fn render_rich_text<'a>(
                 for el in inner {
                     match el {
                         html_sanitizer::Element::Text(text) => spans.extend(
-                            SearchSpanIter::new(text, search)
-                                .map(|s| s.font(Font::default().bold())),
+                            SearchSpanIter::new(text, search).map(|s| s.font(ROBOTO_FONT.bold())),
                         ),
                         html_sanitizer::Element::Link(link) => spans.extend(anchor_spans(link)),
                         html_sanitizer::Element::Escaped(text) => {
-                            spans.push(span(text).font(Font::default().bold()))
+                            spans.push(span(text).font(ROBOTO_FONT.bold()))
                         }
                         html_sanitizer::Element::Paragraph => spans.push(span("\n\n")),
                         html_sanitizer::Element::Italic(nested) => {
@@ -86,13 +83,13 @@ pub fn render_rich_text<'a>(
                                 match el {
                                     html_sanitizer::Element::Text(text) => spans.extend(
                                         SearchSpanIter::new(text, search)
-                                            .map(|s| s.font(Font::default().bold().italic())),
+                                            .map(|s| s.font(ROBOTO_FONT.bold().italic())),
                                     ),
                                     html_sanitizer::Element::Link(link) => {
                                         spans.extend(anchor_spans(link))
                                     }
                                     html_sanitizer::Element::Escaped(text) => {
-                                        spans.push(span(text).font(Font::default().italic().bold()))
+                                        spans.push(span(text).font(ROBOTO_FONT.italic().bold()))
                                     }
                                     html_sanitizer::Element::Paragraph => spans.push(span("\n\n")),
                                     _ => (),
