@@ -133,7 +133,7 @@ impl ArticleState {
     /// Render a single story.
     fn render_article<'a>(&'a self, theme: &Theme, story: &'a Story) -> iced::Element<'a, AppMsg> {
         let by = widget::rich_text([
-            widget::span(format!(" by {}", story.by))
+            widget::span(format!("by {}", story.by))
                 .link(AppMsg::Header(HeaderMsg::Search(format!(
                     "by:{}",
                     story.by
