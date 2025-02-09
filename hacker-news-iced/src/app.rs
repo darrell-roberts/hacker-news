@@ -386,12 +386,16 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                                         .label("oneline")
                                         .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
                                 )
-                                .push(widget::button("by time").on_press(AppMsg::FullSearch(
-                                    FullSearchMsg::StoryByTime {
-                                        story_id: cs.article.id,
-                                        beyond: None,
-                                    },
-                                )))
+                                .push(common::tooltip(
+                                    widget::button("by time").on_press(AppMsg::FullSearch(
+                                        FullSearchMsg::StoryByTime {
+                                            story_id: cs.article.id,
+                                            beyond: None,
+                                        },
+                                    )),
+                                    "Sorted by latest",
+                                    widget::tooltip::Position::Bottom,
+                                ))
                                 .push(common::tooltip(
                                     widget::button(if cs.nav_stack.len() > 1 { "^" } else { "X" })
                                         .on_press(AppMsg::Comments(CommentMsg::PopNavStack)),
