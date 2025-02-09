@@ -66,7 +66,8 @@ This copies the binary and other assets into your `~/.local`.
 
 
 ### Linux light mode theme
-![Screenshot from 2025-02-09 09-56-39](https://github.com/user-attachments/assets/b50bdc8c-6c99-424b-86b9-5923779227de)
+<img src="https://github.com/user-attachments/assets/b50bdc8c-6c99-424b-86b9-5923779227de" />
+
 
 
 
