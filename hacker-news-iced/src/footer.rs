@@ -1,4 +1,5 @@
-use crate::app::AppMsg;
+//! View for the footer.
+use crate::{app::AppMsg, ROBOTO_FONT};
 use chrono::{DateTime, Local, Utc};
 use chrono_tz::America::New_York;
 use hacker_news_api::ArticleType;
@@ -7,8 +8,8 @@ use iced::{
     alignment::Vertical,
     font::{Style, Weight},
     padding,
-    widget::{container, pick_list, progress_bar, text, Column, Row},
-    Background, Element, Font, Length, Task, Theme,
+    widget::{container, pick_list, progress_bar, stack, text, Column, Row},
+    Background, Color, Element, Font, Length, Task, Theme,
 };
 use log::error;
 use std::collections::HashMap;
@@ -49,7 +50,7 @@ impl FooterState {
         let light_font = || Font {
             style: Style::Italic,
             weight: Weight::Light,
-            ..Default::default()
+            ..ROBOTO_FONT
         };
 
         let column = Column::new()
@@ -65,15 +66,17 @@ impl FooterState {
                         .padding(iced::padding::top(5)),
                     )
                     .push_maybe(self.index_progress.as_ref().map(|progress| {
-                        container(
-                            Row::new()
-                                .push(text("Updating..."))
-                                .push(progress_bar(
-                                    0_f32..=progress.total_stories_to_index,
-                                    progress.total_stories_completed,
-                                ))
-                                .spacing(5),
-                        )
+                        container(stack([
+                            progress_bar(
+                                0_f32..=progress.total_stories_to_index,
+                                progress.total_stories_completed,
+                            )
+                            .into(),
+                            container(text("Updating...").color(Color::WHITE))
+                                .padding(5)
+                                .center(Length::Fill)
+                                .into(),
+                        ]))
                         .padding(padding::all(5).right(0))
                         .align_right(Length::Fill)
                     })),

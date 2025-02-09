@@ -2,11 +2,12 @@
 use crate::{
     app::AppMsg,
     articles::ArticleMsg,
-    common::{error_task, PaginatingView},
+    common::{self, error_task, PaginatingView},
     full_search::FullSearchMsg,
     header::HeaderMsg,
     parse_date,
     richtext::render_rich_text,
+    ROBOTO_FONT,
 };
 use hacker_news_search::{
     api::{Comment, Story},
@@ -141,11 +142,11 @@ impl CommentState {
                             .id(widget::text_input::Id::new("comment_search"))
                             .on_input(|input| AppMsg::Comments(CommentMsg::Search(input))),
                     )
-                    .push(widget::tooltip(
+                    .push(common::tooltip(
                         widget::button(widget::text("⟲").shaping(Shaping::Advanced))
                             .on_press(AppMsg::Comments(CommentMsg::CloseSearch)),
-                        widget::container(widget::text("Clear search")).padding(5),
-                        widget::tooltip::Position::Left,
+                        "Clear search",
+                        widget::tooltip::Position::FollowCursor,
                     ))
             }))
             .push_maybe((self.full_count > 10).then(|| self.pagination_element()))
@@ -215,14 +216,14 @@ impl CommentState {
                         .push(
                             widget::row![
                                 widget::rich_text([
-                                    widget::span(format!(" by {}", comment.by))
+                                    widget::span(format!("by {}", comment.by))
                                         .link(AppMsg::Header(HeaderMsg::Search(format!(
                                             "by:{}",
                                             comment.by
                                         ))))
                                         .font(Font {
                                             style: Style::Italic,
-                                            ..Default::default()
+                                            ..ROBOTO_FONT
                                         })
                                         .size(14),
                                     widget::span(" "),
@@ -230,7 +231,7 @@ impl CommentState {
                                         .font(Font {
                                             weight: Weight::Light,
                                             style: Style::Italic,
-                                            ..Default::default()
+                                            ..ROBOTO_FONT
                                         })
                                         .size(10),
                                 ]),
