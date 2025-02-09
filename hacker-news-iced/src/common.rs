@@ -1,4 +1,5 @@
 //! Common UI elements used by multiple views.
+use crate::{app::AppMsg, footer::FooterMsg};
 use iced::{
     alignment::Vertical,
     widget::{
@@ -9,8 +10,6 @@ use iced::{
     },
     Background, Element, Length, Task, Theme,
 };
-
-use crate::{app::AppMsg, footer::FooterMsg};
 
 /// Create a tooltip with a common hover tooltip message style.
 pub fn tooltip<'a, Message>(
