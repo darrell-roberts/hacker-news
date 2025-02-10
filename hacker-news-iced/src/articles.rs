@@ -12,7 +12,7 @@ use crate::{
 };
 use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
 use iced::{
-    advanced::image::{Bytes, Handle},
+    advanced::image::Handle,
     alignment::{Horizontal, Vertical},
     border::{self},
     font::{Style, Weight},
@@ -91,7 +91,7 @@ pub enum ArticleMsg {
     StoryClicked(Story),
 }
 
-static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
+static RUST_LOGO: &[u8] = include_bytes!("../../assets/rust-logo-32x32.png");
 
 impl ArticleState {
     /// Render the list of top level stories.
@@ -179,7 +179,7 @@ impl ArticleState {
                                                 has_rust.then(|| {
                                                     widget::container(
                                                         widget::image(Handle::from_bytes(
-                                                            RUST_LOGO.clone(),
+                                                            RUST_LOGO,
                                                         ))
                                                         .content_fit(iced::ContentFit::Contain),
                                                     )
@@ -268,12 +268,7 @@ impl ArticleState {
         .width(Length::Fill)
         .style(move |theme: &Theme| {
             let palette = theme.extended_palette();
-
-            let color = if self
-                .viewing_item
-                .map(|id| id == article_id)
-                .unwrap_or(false)
-            {
+            let color = if self.viewing_item == Some(article_id) {
                 palette.secondary.weak.color
             } else {
                 palette.primary.weak.color

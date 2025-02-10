@@ -5,8 +5,7 @@ use opentelemetry_sdk::{
     trace::{BatchConfigBuilder, RandomIdGenerator, Sampler, Tracer, TracerProvider},
     Resource,
 };
-use std::convert::Infallible;
-use std::{future::pending, sync::OnceLock};
+use std::{convert::Infallible, future::pending, sync::OnceLock};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{layer::SubscriberExt, Registry};
 
