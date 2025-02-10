@@ -1,7 +1,7 @@
 //! View and state for viewing top level stories.
 use crate::{
     app::AppMsg,
-    common::{self, error_task, tooltip},
+    common::{self, error_task, tooltip, FontExt as _},
     footer::FooterMsg,
     full_search::FullSearchMsg,
     header::HeaderMsg,
@@ -15,10 +15,9 @@ use iced::{
     advanced::image::Handle,
     alignment::{Horizontal, Vertical},
     border::{self},
-    font::{Style, Weight},
     padding,
     widget::{self, scrollable, text, Column, Row},
-    Background, Color, Element, Font, Length, Shadow, Task, Theme,
+    Background, Color, Element, Length, Shadow, Task, Theme,
 };
 use log::info;
 use std::{
@@ -138,19 +137,12 @@ impl ArticleState {
                     "by:{}",
                     story.by
                 ))))
-                .font(Font {
-                    style: Style::Italic,
-                    ..ROBOTO_FONT
-                })
+                .font(ROBOTO_FONT.italic())
                 .size(14)
                 .color_maybe(widget::text::primary(theme).color),
             widget::span(" "),
             widget::span(parse_date(story.time).unwrap_or_default())
-                .font(Font {
-                    weight: Weight::Light,
-                    style: Style::Italic,
-                    ..ROBOTO_FONT
-                })
+                .font(ROBOTO_FONT.weight_light().italic())
                 .size(10)
                 .color_maybe(widget::text::primary(theme).color),
         ]);
@@ -311,10 +303,7 @@ impl ArticleState {
                                     widget::button(
                                         widget::text(format!("{}", watch_change.new_comments))
                                             .color(Color::from_rgb8(255, 255, 153))
-                                            .font(Font {
-                                                weight: Weight::Bold,
-                                                ..ROBOTO_FONT
-                                            }),
+                                            .font(ROBOTO_FONT.bold()),
                                     )
                                     .style(widget::button::text)
                                     .on_press(

@@ -116,6 +116,8 @@ pub trait FontExt {
     fn bold(self) -> Self;
     /// Italic font.
     fn italic(self) -> Self;
+    /// Light weight.
+    fn weight_light(self) -> Self;
 }
 
 impl FontExt for Font {
@@ -129,6 +131,13 @@ impl FontExt for Font {
     fn italic(self) -> Self {
         Self {
             style: Style::Italic,
+            ..self
+        }
+    }
+
+    fn weight_light(self) -> Self {
+        Self {
+            weight: Weight::Light,
             ..self
         }
     }
