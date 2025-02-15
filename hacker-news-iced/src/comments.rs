@@ -192,7 +192,8 @@ impl CommentState {
                 })
                 .id(comment_scroll_id())
                 .height(Length::Fill),
-            );
+            )
+            .padding(iced::padding::top(5));
 
         container(content.width(Length::Fill)).into()
     }
