@@ -2,7 +2,7 @@ use crate::{
     app::AppMsg,
     articles::ArticleMsg,
     comments::CommentMsg,
-    common::{error_task, FontExt as _, PaginatingView},
+    common::{self, error_task, FontExt as _, PaginatingView},
     header::HeaderMsg,
     parse_date,
     richtext::render_rich_text,
@@ -209,23 +209,7 @@ impl FullSearchState {
                 self.paginate_task()
             }
             FullSearchMsg::ShowThread(comment_id) => {
-                let g = self.search_context.read().unwrap();
-                match g.parents(comment_id) {
-                    Ok(CommentStack { comments, story }) => {
-                        let story_id = story.id;
-                        Task::batch([
-                            Task::done(AppMsg::OpenComment {
-                                parent_id: story_id,
-                                article: story,
-                                comment_stack: comments,
-                            }),
-                            Task::done(AppMsg::Articles(ArticleMsg::Search(
-                                format!("{story_id}",),
-                            ))),
-                        ])
-                    }
-                    Err(err) => error_task(err),
-                }
+                common::show_thread(self.search_context.clone(), comment_id)
             }
             FullSearchMsg::JumpPage(page) => {
                 self.page = page;

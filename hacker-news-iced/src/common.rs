@@ -1,5 +1,6 @@
 //! Common UI elements used by multiple views.
 use crate::{app::AppMsg, footer::FooterMsg};
+use hacker_news_search::{api::CommentStack, SearchContext};
 use iced::{
     alignment::Vertical,
     font::{Style, Weight},
@@ -11,6 +12,7 @@ use iced::{
     },
     Background, Element, Font, Length, Task, Theme,
 };
+use std::sync::{Arc, RwLock};
 
 /// Create a tooltip with a common hover tooltip message style.
 pub fn tooltip<'a, Message>(
@@ -108,6 +110,22 @@ where
 /// Common error task to display errors in the footer.
 pub fn error_task(err: impl ToString) -> Task<AppMsg> {
     Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer)
+}
+
+/// Task to open comment with full parent thread.
+pub fn show_thread(search_context: Arc<RwLock<SearchContext>>, comment_id: u64) -> Task<AppMsg> {
+    let g = search_context.read().unwrap();
+    match g.parents(comment_id) {
+        Ok(CommentStack { comments, story }) => {
+            let story_id = story.id;
+            Task::done(AppMsg::OpenComment {
+                parent_id: story_id,
+                article: story,
+                comment_stack: comments,
+            })
+        }
+        Err(err) => error_task(err),
+    }
 }
 
 /// Font extension trait.

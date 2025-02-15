@@ -146,7 +146,6 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 nav_stack,
                 search: None,
                 oneline: false,
-                search_results: Vec::new(),
                 page: 1,
                 offset: 0,
                 full_count: 0,
@@ -375,22 +374,6 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                     pane_grid::TitleBar::new(comments_title().unwrap_or("".into()))
                         .controls(pane_grid::Controls::new(
                             widget::Row::new()
-                                .push(widget::text(format!("{}", cs.full_count)))
-                                .push(
-                                    widget::toggler(cs.oneline)
-                                        .label("oneline")
-                                        .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
-                                )
-                                .push(common::tooltip(
-                                    widget::button("by time").on_press(AppMsg::FullSearch(
-                                        FullSearchMsg::StoryByTime {
-                                            story_id: cs.article.id,
-                                            beyond: None,
-                                        },
-                                    )),
-                                    "Sorted by latest",
-                                    widget::tooltip::Position::Bottom,
-                                ))
                                 .push(common::tooltip(
                                     widget::button(if cs.nav_stack.len() > 1 { "^" } else { "X" })
                                         .on_press(AppMsg::Comments(CommentMsg::PopNavStack)),
