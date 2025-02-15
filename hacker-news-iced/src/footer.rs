@@ -1,15 +1,14 @@
 //! View for the footer.
-use crate::{app::AppMsg, ROBOTO_FONT};
+use crate::{app::AppMsg, common::FontExt as _, ROBOTO_FONT};
 use chrono::{DateTime, Local, Utc};
 use chrono_tz::America::New_York;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{IndexStats, RebuildProgress};
 use iced::{
     alignment::Vertical,
-    font::{Style, Weight},
     padding,
     widget::{container, pick_list, progress_bar, stack, text, Column, Row},
-    Background, Color, Element, Font, Length, Task, Theme,
+    Background, Color, Element, Length, Task, Theme,
 };
 use log::error;
 use std::collections::HashMap;
@@ -47,11 +46,7 @@ impl FooterState {
     pub fn view<'a>(&'a self, theme: &'a Theme) -> Element<'a, AppMsg> {
         let themes = Theme::ALL;
 
-        let light_font = || Font {
-            style: Style::Italic,
-            weight: Weight::Light,
-            ..ROBOTO_FONT
-        };
+        let light_font = || ROBOTO_FONT.weight_light().italic();
 
         let column = Column::new()
             .push(

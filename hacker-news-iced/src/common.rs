@@ -2,13 +2,14 @@
 use crate::{app::AppMsg, footer::FooterMsg};
 use iced::{
     alignment::Vertical,
+    font::{Style, Weight},
     widget::{
         self,
         text::{IntoFragment, Shaping},
         tooltip::Position,
         Tooltip,
     },
-    Background, Element, Length, Task, Theme,
+    Background, Element, Font, Length, Task, Theme,
 };
 
 /// Create a tooltip with a common hover tooltip message style.
@@ -107,4 +108,37 @@ where
 /// Common error task to display errors in the footer.
 pub fn error_task(err: impl ToString) -> Task<AppMsg> {
     Task::done(FooterMsg::Error(err.to_string())).map(AppMsg::Footer)
+}
+
+/// Font extension trait.
+pub trait FontExt {
+    /// Bold font.
+    fn bold(self) -> Self;
+    /// Italic font.
+    fn italic(self) -> Self;
+    /// Light weight.
+    fn weight_light(self) -> Self;
+}
+
+impl FontExt for Font {
+    fn bold(self) -> Self {
+        Self {
+            weight: Weight::Bold,
+            ..self
+        }
+    }
+
+    fn italic(self) -> Self {
+        Self {
+            style: Style::Italic,
+            ..self
+        }
+    }
+
+    fn weight_light(self) -> Self {
+        Self {
+            weight: Weight::Light,
+            ..self
+        }
+    }
 }
