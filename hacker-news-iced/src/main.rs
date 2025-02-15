@@ -175,6 +175,7 @@ fn start() -> anyhow::Result<()> {
             "../../assets/fonts/RobotoMono-VariableFont_wght.ttf"
         ))
         .default_font(ROBOTO_FONT)
+        .antialiasing(true)
         .run_with(move || {
             let article_type = app.header.article_type;
             let article_count = app.header.article_count;
