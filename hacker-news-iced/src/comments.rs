@@ -158,12 +158,12 @@ impl CommentState {
                             .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
                     )
                     .push(common::tooltip(
-                        widget::button("by time").on_press(AppMsg::FullSearch(
-                            FullSearchMsg::StoryByTime {
+                        widget::button(widget::text("⌛").shaping(Shaping::Advanced)).on_press(
+                            AppMsg::FullSearch(FullSearchMsg::StoryByTime {
                                 story_id: self.article.id,
                                 beyond: None,
-                            },
-                        )),
+                            }),
+                        ),
                         "Sorted by latest",
                         widget::tooltip::Position::Bottom,
                     ))
@@ -192,7 +192,8 @@ impl CommentState {
                 })
                 .id(comment_scroll_id())
                 .height(Length::Fill),
-            );
+            )
+            .padding(iced::padding::top(5));
 
         container(content.width(Length::Fill)).into()
     }
