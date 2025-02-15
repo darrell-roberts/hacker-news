@@ -20,7 +20,7 @@ use iced::{
     widget::{
         self, button, container, scrollable::AbsoluteOffset, text::Shaping, Column, Container,
     },
-    Border, Element, Font, Length, Task,
+    Border, Color, Element, Font, Length, Task,
 };
 use std::sync::{Arc, RwLock};
 
@@ -56,8 +56,6 @@ pub struct CommentState {
     pub page: usize,
     /// Total number of documents.
     pub full_count: usize,
-    /// Search results
-    pub search_results: Vec<Comment>,
     /// Parent id being viewed.
     pub parent_id: u64,
     /// Active comment
@@ -82,6 +80,7 @@ pub enum CommentMsg {
     Close(u64),
     ScrollOffset(AbsoluteOffset),
     Activate(u64),
+    ShowThread(u64),
 }
 
 impl CommentState {
@@ -135,20 +134,43 @@ impl CommentState {
             .map(Element::from);
 
         let content = Column::new()
-            .push_maybe(self.search.as_ref().map(|search| {
+            .push(
                 widget::Row::new()
                     .push(
-                        widget::text_input("Search...", search)
-                            .id(widget::text_input::Id::new("comment_search"))
-                            .on_input(|input| AppMsg::Comments(CommentMsg::Search(input))),
+                        widget::Row::new()
+                            .push(
+                                widget::text_input(
+                                    "Search within story...",
+                                    self.search.as_deref().unwrap_or_default(),
+                                )
+                                .id(widget::text_input::Id::new("comment_search"))
+                                .on_input(|input| AppMsg::Comments(CommentMsg::Search(input))),
+                            )
+                            .push(common::tooltip(
+                                widget::button(widget::text("⟲").shaping(Shaping::Advanced))
+                                    .on_press(AppMsg::Comments(CommentMsg::CloseSearch)),
+                                "Clear search",
+                                widget::tooltip::Position::FollowCursor,
+                            )),
+                    )
+                    .push(widget::text(format!("{}", self.full_count)))
+                    .push(
+                        widget::toggler(self.oneline)
+                            .label("oneline")
+                            .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
                     )
                     .push(common::tooltip(
-                        widget::button(widget::text("⟲").shaping(Shaping::Advanced))
-                            .on_press(AppMsg::Comments(CommentMsg::CloseSearch)),
-                        "Clear search",
-                        widget::tooltip::Position::FollowCursor,
+                        widget::button("by time").on_press(AppMsg::FullSearch(
+                            FullSearchMsg::StoryByTime {
+                                story_id: self.article.id,
+                                beyond: None,
+                            },
+                        )),
+                        "Sorted by latest",
+                        widget::tooltip::Position::Bottom,
                     ))
-            }))
+                    .spacing(5),
+            )
             .push_maybe((self.full_count > 10).then(|| self.pagination_element()))
             .push(
                 widget::scrollable(
@@ -206,6 +228,22 @@ impl CommentState {
                                 widget::button("X")
                                     .on_press(AppMsg::Comments(CommentMsg::Close(comment.id))),
                             )
+                            .align_right(Length::Fill)
+                        }))
+                        .push_maybe(self.search.is_some().then(|| {
+                            widget::container(widget::tooltip(
+                                widget::button(widget::text("🧵").shaping(Shaping::Advanced))
+                                    .style(widget::button::text)
+                                    .on_press(AppMsg::Comments(CommentMsg::ShowThread(comment.id))),
+                                widget::container(widget::text("Show thread"))
+                                    .padding(5)
+                                    .style(|_theme| {
+                                        widget::container::background(Color::BLACK)
+                                            .color(Color::WHITE)
+                                            .border(iced::border::rounded(8))
+                                    }),
+                                widget::tooltip::Position::Bottom,
+                            ))
                             .align_right(Length::Fill)
                         }))
                         .push(widget::rich_text(render_rich_text(
@@ -269,6 +307,7 @@ impl CommentState {
                 parent_comment,
                 scroll_to,
             } => {
+                self.search = None;
                 if let Some(parent) = parent_comment {
                     // We are viewing a nested comment
                     if self.parent_id != parent.id {
@@ -384,9 +423,9 @@ impl CommentState {
             }
             CommentMsg::CloseSearch => {
                 self.search = None;
-                self.search_results = Vec::new();
 
-                Task::done(CommentMsg::PopNavStack).map(AppMsg::Comments)
+                // Task::done(CommentMsg::PopNavStack).map(AppMsg::Comments)
+                Task::done(CommentMsg::JumpPage(1)).map(AppMsg::Comments)
             }
             CommentMsg::Oneline => {
                 self.oneline = !self.oneline;
@@ -464,6 +503,9 @@ impl CommentState {
                 self.active_comment_id = Some(comment_id);
                 Task::none()
             }
+            CommentMsg::ShowThread(comment_id) => {
+                common::show_thread(self.search_context.clone(), comment_id)
+            }
         }
     }
 
@@ -477,6 +519,10 @@ impl CommentState {
             })
             .map(AppMsg::Comments),
         }
+        .chain(widget::scrollable::scroll_to(
+            comment_scroll_id(),
+            Default::default(),
+        ))
     }
 
     fn update_nav_stack(&mut self) {
