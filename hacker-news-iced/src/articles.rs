@@ -1,7 +1,7 @@
 //! View and state for viewing top level stories.
 use crate::{
     app::AppMsg,
-    common::{self, error_task, tooltip},
+    common::{self, error_task, tooltip, FontExt as _},
     footer::FooterMsg,
     full_search::FullSearchMsg,
     header::HeaderMsg,
@@ -12,13 +12,12 @@ use crate::{
 };
 use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
 use iced::{
-    advanced::image::{Bytes, Handle},
+    advanced::image::Handle,
     alignment::{Horizontal, Vertical},
     border::{self},
-    font::{Style, Weight},
     padding,
     widget::{self, scrollable, text, Column, Row},
-    Background, Color, Element, Font, Length, Shadow, Task, Theme,
+    Background, Color, Element, Length, Shadow, Task, Theme,
 };
 use log::info;
 use std::{
@@ -91,7 +90,7 @@ pub enum ArticleMsg {
     StoryClicked(Story),
 }
 
-static RUST_LOGO: Bytes = Bytes::from_static(include_bytes!("../../assets/rust-logo-32x32.png"));
+static RUST_LOGO: &[u8] = include_bytes!("../../assets/rust-logo-32x32.png");
 
 impl ArticleState {
     /// Render the list of top level stories.
@@ -138,19 +137,12 @@ impl ArticleState {
                     "by:{}",
                     story.by
                 ))))
-                .font(Font {
-                    style: Style::Italic,
-                    ..ROBOTO_FONT
-                })
+                .font(ROBOTO_FONT.italic())
                 .size(14)
                 .color_maybe(widget::text::primary(theme).color),
             widget::span(" "),
             widget::span(parse_date(story.time).unwrap_or_default())
-                .font(Font {
-                    weight: Weight::Light,
-                    style: Style::Italic,
-                    ..ROBOTO_FONT
-                })
+                .font(ROBOTO_FONT.weight_light().italic())
                 .size(10)
                 .color_maybe(widget::text::primary(theme).color),
         ]);
@@ -179,7 +171,7 @@ impl ArticleState {
                                                 has_rust.then(|| {
                                                     widget::container(
                                                         widget::image(Handle::from_bytes(
-                                                            RUST_LOGO.clone(),
+                                                            RUST_LOGO,
                                                         ))
                                                         .content_fit(iced::ContentFit::Contain),
                                                     )
@@ -268,12 +260,7 @@ impl ArticleState {
         .width(Length::Fill)
         .style(move |theme: &Theme| {
             let palette = theme.extended_palette();
-
-            let color = if self
-                .viewing_item
-                .map(|id| id == article_id)
-                .unwrap_or(false)
-            {
+            let color = if self.viewing_item == Some(article_id) {
                 palette.secondary.weak.color
             } else {
                 palette.primary.weak.color
@@ -316,10 +303,7 @@ impl ArticleState {
                                     widget::button(
                                         widget::text(format!("{}", watch_change.new_comments))
                                             .color(Color::from_rgb8(255, 255, 153))
-                                            .font(Font {
-                                                weight: Weight::Bold,
-                                                ..ROBOTO_FONT
-                                            }),
+                                            .font(ROBOTO_FONT.bold()),
                                     )
                                     .style(widget::button::text)
                                     .on_press(

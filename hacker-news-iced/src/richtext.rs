@@ -1,12 +1,11 @@
 //! Renders rich text from a simplified html string. Allows creating spans
 //! for search matches so search strings can be highlighted.
-use crate::app::AppMsg;
-use crate::{ROBOTO_FONT, ROBOTO_MONO};
+use crate::{app::AppMsg, common::FontExt, ROBOTO_FONT, ROBOTO_MONO};
 use html_sanitizer::Anchor;
-use iced::font::{Style, Weight};
-use iced::widget::span;
-use iced::widget::text::Span;
-use iced::{Color, Font};
+use iced::{
+    widget::{span, text::Span},
+    Color,
+};
 use std::ops::Not;
 
 /// Render a simplified html string into `Span`s for a `RichText` widget.
@@ -121,27 +120,6 @@ fn anchor_spans(link: Anchor<'_>) -> impl Iterator<Item = Span<'_, AppMsg>> {
             }
         })
         .into_iter()
-}
-
-trait FontExt {
-    fn bold(self) -> Self;
-    fn italic(self) -> Self;
-}
-
-impl FontExt for Font {
-    fn bold(self) -> Self {
-        Self {
-            weight: Weight::Bold,
-            ..self
-        }
-    }
-
-    fn italic(self) -> Self {
-        Self {
-            style: Style::Italic,
-            ..self
-        }
-    }
 }
 
 /// Split an owned string into multiple owned spans.

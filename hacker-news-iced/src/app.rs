@@ -2,7 +2,7 @@
 use crate::{
     articles::{self, ArticleMsg, ArticleState},
     comments::{self, CommentMsg, CommentState, NavStack},
-    common::{self, error_task},
+    common::{self, error_task, FontExt as _},
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState, SearchCriteria},
@@ -17,12 +17,10 @@ use hacker_news_search::{
 };
 use iced::{
     // clipboard,
-    font::Weight,
     widget::{
         self, button, container, focus_next, focus_previous, pane_grid, scrollable::AbsoluteOffset,
         text::Shaping, Column,
     },
-    Font,
     Length,
     Size,
     Task,
@@ -301,10 +299,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
         let comments_title = || -> Option<iced::Element<AppMsg>> {
             let comment_state = app.comment_state.as_ref()?;
             let title_text = widget::text(&comment_state.article.title)
-                .font(Font {
-                    weight: Weight::Bold,
-                    ..ROBOTO_FONT
-                })
+                .font(ROBOTO_FONT.bold())
                 .shaping(Shaping::Advanced);
 
             let content: iced::Element<AppMsg> = match comment_state.article.url.as_deref() {
@@ -416,10 +411,9 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                 }
                 // Regular all comment search
                 _ if app.full_search_state.search.is_some() => pane_grid::TitleBar::new(
-                    widget::container(widget::text("Searched all comments").font(Font {
-                        weight: Weight::Bold,
-                        ..ROBOTO_FONT
-                    }))
+                    widget::container(
+                        widget::text("Searched all comments").font(ROBOTO_FONT.bold()),
+                    )
                     .padding(5),
                 )
                 .controls(pane_grid::Controls::new(widget::container(

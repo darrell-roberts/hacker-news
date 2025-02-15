@@ -2,7 +2,7 @@ use crate::{
     app::AppMsg,
     articles::ArticleMsg,
     comments::CommentMsg,
-    common::{self, error_task, PaginatingView},
+    common::{self, error_task, FontExt as _, PaginatingView},
     header::HeaderMsg,
     parse_date,
     richtext::render_rich_text,
@@ -13,11 +13,9 @@ use hacker_news_search::{
     SearchContext, SearchError,
 };
 use iced::{
-    border,
-    font::{Style, Weight},
-    padding,
+    border, padding,
     widget::{self, text::Shaping, tooltip::Position},
-    Color, Element, Font, Length, Task,
+    Color, Element, Length, Task,
 };
 use std::sync::{Arc, RwLock};
 
@@ -148,18 +146,11 @@ impl FullSearchState {
                                     "by:{}",
                                     comment.by
                                 ))))
-                                .font(Font {
-                                    style: Style::Italic,
-                                    ..ROBOTO_FONT
-                                })
+                                .font(ROBOTO_FONT.italic())
                                 .size(14),
                             widget::span(" "),
                             widget::span(parse_date(comment.time).unwrap_or_default())
-                                .font(Font {
-                                    weight: Weight::Light,
-                                    style: Style::Italic,
-                                    ..ROBOTO_FONT
-                                })
+                                .font(ROBOTO_FONT.weight_light().italic())
                                 .size(10),
                         ]))
                         .push(child_comments_button)

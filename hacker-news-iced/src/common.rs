@@ -3,13 +3,14 @@ use crate::{app::AppMsg, footer::FooterMsg};
 use hacker_news_search::{api::CommentStack, SearchContext};
 use iced::{
     alignment::Vertical,
+    font::{Style, Weight},
     widget::{
         self,
         text::{IntoFragment, Shaping},
         tooltip::Position,
         Tooltip,
     },
-    Background, Element, Length, Task, Theme,
+    Background, Element, Font, Length, Task, Theme,
 };
 use std::sync::{Arc, RwLock};
 
@@ -124,5 +125,38 @@ pub fn show_thread(search_context: Arc<RwLock<SearchContext>>, comment_id: u64) 
             })
         }
         Err(err) => error_task(err),
+    }
+}
+
+/// Font extension trait.
+pub trait FontExt {
+    /// Bold font.
+    fn bold(self) -> Self;
+    /// Italic font.
+    fn italic(self) -> Self;
+    /// Light weight.
+    fn weight_light(self) -> Self;
+}
+
+impl FontExt for Font {
+    fn bold(self) -> Self {
+        Self {
+            weight: Weight::Bold,
+            ..self
+        }
+    }
+
+    fn italic(self) -> Self {
+        Self {
+            style: Style::Italic,
+            ..self
+        }
+    }
+
+    fn weight_light(self) -> Self {
+        Self {
+            weight: Weight::Light,
+            ..self
+        }
     }
 }

@@ -1,3 +1,4 @@
+//! Header view
 use crate::{
     app::AppMsg,
     articles::ArticleMsg,
