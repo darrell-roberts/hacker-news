@@ -41,7 +41,7 @@ flexi_logger.workspace = true
 
 
 tracing = { version = "0.1", optional = true }
-opentelemetry = { version = "0.26", features = ["trace"], optional = true }
+opentelemetry = { version = "0.28", features = ["trace"], optional = true }
 opentelemetry-otlp = { version = "0.26", features = [
     "grpc-tonic",
     "trace",
