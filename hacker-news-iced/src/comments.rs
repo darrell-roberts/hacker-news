@@ -105,12 +105,15 @@ impl CommentState {
             .map(|(parent, index)| {
                 widget::Row::with_children((1..=index).map(|current| {
                     if current == 1 {
+                        // Nothing.
                         widget::container("").into()
                     } else if current == index {
+                        // Show connector
                         widget::canvas(LShape::new(30., 10.))
                             .width(Length::Fixed(30.))
                             .into()
                     } else {
+                        // Indent
                         widget::container("").width(Length::Fixed(30.)).into()
                     }
                 }))
@@ -150,10 +153,12 @@ impl CommentState {
                 Element::from(
                     widget::Row::with_children((1..=parent_comments.len()).map(|current| {
                         if current == total_parents {
+                            // Show connector
                             widget::canvas(LShape::new(30., 10.))
                                 .width(Length::Fixed(30.))
                                 .into()
                         } else {
+                            // Indent
                             widget::container("").width(Length::Fixed(30.)).into()
                         }
                     }))
