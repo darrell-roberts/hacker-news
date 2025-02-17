@@ -91,11 +91,36 @@ impl CommentState {
             .map(|text| widget::rich_text(render_rich_text(text, self.search.as_deref(), false)))
             .map(|rt| container(rt).padding([10, 10]).into());
 
+        let parent_comments = self
+            .nav_stack
+            .iter()
+            .filter_map(|stack| stack.comment.as_ref())
+            .enumerate()
+            .map(|(index, parent)| {
+                widget::Row::with_children((0..index).map(|_| widget::text(">").into()))
+                    .push(self.render_comment(parent, true).style(|theme| {
+                        let palette = theme.extended_palette();
+
+                        container::Style {
+                            border: Border {
+                                color: palette.secondary.weak.color,
+                                width: 1.,
+                                radius: 8.into(),
+                            },
+                            ..Default::default()
+                        }
+                    }))
+                    .spacing(10)
+                // .height(Length::Shrink)
+            })
+            .map(Element::from)
+            .collect::<Vec<_>>();
+
         let comment_rows = self
             .comments
             .iter()
             .map(|item| {
-                self.render_comment(item, false).style(|theme| {
+                let comment_area = self.render_comment(item, false).style(|theme| {
                     let palette = theme.extended_palette();
                     container::Style {
                         background: Some(if self.active_comment_id == Some(item.id) {
@@ -106,30 +131,24 @@ impl CommentState {
                         border: border::rounded(8),
                         ..Default::default()
                     }
-                })
+                });
+
+                Element::from(
+                    widget::Row::with_children((0..parent_comments.len()).map(|_| {
+                        widget::container(widget::text(">"))
+                            .style(|theme: &iced::Theme| {
+                                let palette = theme.extended_palette();
+                                widget::container::Style::default()
+                                    .background(palette.background.weak.color)
+                                    .border(iced::border::rounded(8))
+                            })
+                            .into()
+                    }))
+                    .push(comment_area)
+                    .spacing(10),
+                )
             })
-            .map(Element::from)
             .collect::<Vec<_>>();
-
-        let parent_comments = self
-            .nav_stack
-            .iter()
-            .filter_map(|stack| stack.comment.as_ref())
-            .map(|parent| {
-                self.render_comment(parent, true).style(|theme| {
-                    let palette = theme.extended_palette();
-
-                    container::Style {
-                        border: Border {
-                            color: palette.secondary.weak.color,
-                            width: 1.,
-                            radius: 8.into(),
-                        },
-                        ..Default::default()
-                    }
-                })
-            })
-            .map(Element::from);
 
         let content = Column::new()
             .push(
@@ -281,7 +300,7 @@ impl CommentState {
                             ]
                             .spacing(5),
                         )
-                        .padding([10, 10])
+                        .padding(10)
                         .spacing(15)
                         .width(Length::Fill),
                 )
