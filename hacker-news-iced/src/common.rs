@@ -213,6 +213,7 @@ impl<Message> widget::canvas::Program<Message> for LShape {
             Stroke::default()
                 .with_width(1.0)
                 .with_line_join(widget::canvas::LineJoin::Round)
+                .with_line_cap(widget::canvas::LineCap::Round)
                 .with_color(if dark { Color::WHITE } else { Color::BLACK }),
         );
 

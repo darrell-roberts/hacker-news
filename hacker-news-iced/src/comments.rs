@@ -107,7 +107,7 @@ impl CommentState {
                     if current == 1 {
                         widget::text("").into()
                     } else if current == index {
-                        widget::canvas(LShape::new(40., 10.))
+                        widget::canvas(LShape::new(30., 10.))
                             .width(Length::Fixed(30.))
                             .into()
                     } else {
@@ -150,7 +150,7 @@ impl CommentState {
                 Element::from(
                     widget::Row::with_children((1..=parent_comments.len()).map(|current| {
                         if current == total_parents {
-                            widget::canvas(LShape::new(40., 10.))
+                            widget::canvas(LShape::new(30., 10.))
                                 .width(Length::Fixed(30.))
                                 .into()
                         } else {
