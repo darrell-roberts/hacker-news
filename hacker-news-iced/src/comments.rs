@@ -105,7 +105,7 @@ impl CommentState {
             .map(|(parent, index)| {
                 widget::Row::with_children((1..=index).map(|current| {
                     if current == 1 {
-                        widget::text("").into()
+                        widget::container("").into()
                     } else if current == index {
                         widget::canvas(LShape::new(30., 10.))
                             .width(Length::Fixed(30.))
