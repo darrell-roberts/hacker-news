@@ -4,13 +4,15 @@ use hacker_news_search::{api::CommentStack, SearchContext};
 use iced::{
     alignment::Vertical,
     font::{Style, Weight},
+    mouse,
     widget::{
         self,
+        canvas::{Frame, Geometry, Path, Stroke},
         text::{IntoFragment, Shaping},
         tooltip::Position,
         Tooltip,
     },
-    Background, Element, Font, Length, Task, Theme,
+    Background, Color, Element, Font, Length, Point, Rectangle, Renderer, Task, Theme,
 };
 use std::sync::{Arc, RwLock};
 
@@ -158,5 +160,63 @@ impl FontExt for Font {
             weight: Weight::Light,
             ..self
         }
+    }
+}
+
+/// An L-Shape connector.
+pub struct LShape {
+    vertical_height: f32,
+    horizontal_length: f32,
+}
+
+impl LShape {
+    /// New L-Shape connector.
+    pub fn new(vertical_height: f32, horizontal_length: f32) -> Self {
+        Self {
+            vertical_height,
+            horizontal_length,
+        }
+    }
+}
+
+impl<Message> widget::canvas::Program<Message> for LShape {
+    type State = ();
+
+    fn draw(
+        &self,
+        _state: &Self::State,
+        renderer: &Renderer,
+        theme: &Theme,
+        bounds: Rectangle,
+        _cursor: mouse::Cursor,
+    ) -> Vec<Geometry> {
+        let mut frame = Frame::new(renderer, bounds.size());
+
+        // Create path for L shape
+        let path = Path::new(|builder| {
+            // Start at top
+            builder.move_to(Point::new(10.0, 0.0));
+            // Draw vertical line down
+            builder.line_to(Point::new(10.0, self.vertical_height));
+            // Draw horizontal line right
+            builder.line_to(Point::new(
+                10.0 + self.horizontal_length,
+                self.vertical_height,
+            ));
+        });
+
+        let dark = theme.extended_palette().is_dark;
+
+        // Draw the path
+        frame.stroke(
+            &path,
+            Stroke::default()
+                .with_width(1.0)
+                .with_line_join(widget::canvas::LineJoin::Round)
+                .with_line_cap(widget::canvas::LineCap::Round)
+                .with_color(if dark { Color::WHITE } else { Color::BLACK }),
+        );
+
+        vec![frame.into_geometry()]
     }
 }

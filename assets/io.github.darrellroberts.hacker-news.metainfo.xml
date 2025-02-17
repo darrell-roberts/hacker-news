@@ -33,7 +33,8 @@
     >io.github.darrellroberts.hacker-news.desktop</launchable>
 
   <releases>
-    <release version="0.1.12" type="stable" date="2025-02-09" />
+    <release version="0.1.13" type="stable" date="2025-02-17" />
+    <release version="0.1.12" type="stable" date="2025-02-15" />
     <release version="0.1.11" type="stable" date="2025-02-09" />
     <release version="0.1.10" type="stable" date="2025-02-08" />
     <release version="0.1.9" type="stable" date="2025-02-03" />
