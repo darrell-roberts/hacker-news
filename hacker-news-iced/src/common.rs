@@ -186,7 +186,7 @@ impl<Message> widget::canvas::Program<Message> for LShape {
         &self,
         _state: &Self::State,
         renderer: &Renderer,
-        _theme: &Theme,
+        theme: &Theme,
         bounds: Rectangle,
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
@@ -205,10 +205,15 @@ impl<Message> widget::canvas::Program<Message> for LShape {
             ));
         });
 
+        let dark = theme.extended_palette().is_dark;
+
         // Draw the path
         frame.stroke(
             &path,
-            Stroke::default().with_width(2.0).with_color(Color::BLACK),
+            Stroke::default()
+                .with_width(1.0)
+                .with_line_join(widget::canvas::LineJoin::Round)
+                .with_color(if dark { Color::WHITE } else { Color::BLACK }),
         );
 
         vec![frame.into_geometry()]
