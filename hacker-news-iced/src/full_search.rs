@@ -1,9 +1,8 @@
 /// Full search view
 use crate::{
     app::AppMsg,
-    articles::ArticleMsg,
     comments::CommentMsg,
-    common::{error_task, FontExt as _, PaginatingView},
+    common::{self, error_task, FontExt as _, PaginatingView},
     header::HeaderMsg,
     parse_date,
     richtext::render_rich_text,
@@ -43,7 +42,7 @@ pub enum FullSearchMsg {
     ShowThread(u64),
     JumpPage(usize),
     StoryByTime { story_id: u64, beyond: Option<u64> },
-    OpenComment { story_id: u64, comment_id: u64 },
+    OpenComment(u64),
 }
 
 impl FullSearchState {
@@ -86,10 +85,7 @@ impl FullSearchState {
                 widget::text(format!("💬{}", comment.kids.len())).shaping(Shaping::Advanced),
             )
             .padding(0)
-            .on_press(AppMsg::FullSearch(FullSearchMsg::OpenComment {
-                story_id: comment.story_id,
-                comment_id: comment.id,
-            }))
+            .on_press(AppMsg::FullSearch(FullSearchMsg::OpenComment(comment.id)))
             .style(widget::button::text)
             .into()
         };
@@ -210,23 +206,7 @@ impl FullSearchState {
                 self.paginate_task()
             }
             FullSearchMsg::ShowThread(comment_id) => {
-                let g = self.search_context.read().unwrap();
-                match g.parents(comment_id) {
-                    Ok(CommentStack { comments, story }) => {
-                        let story_id = story.id;
-                        Task::batch([
-                            Task::done(AppMsg::OpenComment {
-                                parent_id: story_id,
-                                article: story,
-                                comment_stack: comments,
-                            }),
-                            Task::done(AppMsg::Articles(ArticleMsg::Search(
-                                format!("{story_id}",),
-                            ))),
-                        ])
-                    }
-                    Err(err) => error_task(err),
-                }
+                common::show_thread(self.search_context.clone(), comment_id)
             }
             FullSearchMsg::JumpPage(page) => {
                 self.page = page;
@@ -254,10 +234,7 @@ impl FullSearchState {
                     Err(err) => error_task(err),
                 }
             }
-            FullSearchMsg::OpenComment {
-                story_id,
-                comment_id,
-            } => {
+            FullSearchMsg::OpenComment(comment_id) => {
                 let open_comments_task = || {
                     let g = self.search_context.read().unwrap();
                     let CommentStack { story, comments } = g.parents(comment_id)?;
@@ -279,10 +256,7 @@ impl FullSearchState {
                 };
 
                 match open_comments_task() {
-                    Ok(msg) => Task::batch([
-                        msg,
-                        Task::done(ArticleMsg::Search(format!("{story_id}"))).map(AppMsg::Articles),
-                    ]),
+                    Ok(msg) => msg,
                     Err(err) => error_task(err),
                 }
             }

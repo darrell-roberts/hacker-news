@@ -2,7 +2,7 @@
 use crate::{
     app::AppMsg,
     articles::ArticleMsg,
-    common::{self, error_task, FontExt as _, PaginatingView},
+    common::{self, error_task, FontExt as _, LShape, PaginatingView},
     full_search::FullSearchMsg,
     header::HeaderMsg,
     parse_date,
@@ -18,7 +18,7 @@ use iced::{
     widget::{
         self, button, container, scrollable::AbsoluteOffset, text::Shaping, Column, Container,
     },
-    Border, Element, Length, Task,
+    Border, Color, Element, Length, Task,
 };
 use std::sync::{Arc, RwLock};
 
@@ -54,8 +54,6 @@ pub struct CommentState {
     pub page: usize,
     /// Total number of documents.
     pub full_count: usize,
-    /// Search results
-    pub search_results: Vec<Comment>,
     /// Parent id being viewed.
     pub parent_id: u64,
     /// Active comment
@@ -80,6 +78,7 @@ pub enum CommentMsg {
     Close(u64),
     ScrollOffset(AbsoluteOffset),
     Activate(u64),
+    ShowThread(u64),
 }
 
 impl CommentState {
@@ -92,32 +91,33 @@ impl CommentState {
             .map(|text| widget::rich_text(render_rich_text(text, self.search.as_deref(), false)))
             .map(|rt| container(rt).padding([10, 10]).into());
 
-        let comment_rows = self
-            .comments
+        let total_parents = self
+            .nav_stack
             .iter()
-            .map(|item| {
-                self.render_comment(item, false).style(|theme| {
-                    let palette = theme.extended_palette();
-                    container::Style {
-                        background: Some(if self.active_comment_id == Some(item.id) {
-                            palette.background.strong.color.into()
-                        } else {
-                            palette.background.weak.color.into()
-                        }),
-                        border: border::rounded(8),
-                        ..Default::default()
-                    }
-                })
-            })
-            .map(Element::from)
-            .collect::<Vec<_>>();
+            .filter_map(|stack| stack.comment.as_ref())
+            .count();
 
         let parent_comments = self
             .nav_stack
             .iter()
             .filter_map(|stack| stack.comment.as_ref())
-            .map(|parent| {
-                self.render_comment(parent, true).style(|theme| {
+            .zip(1..)
+            .map(|(parent, index)| {
+                widget::Row::with_children((1..=index).map(|current| {
+                    if current == 1 {
+                        // Nothing.
+                        widget::container("").into()
+                    } else if current == index {
+                        // Show connector
+                        widget::canvas(LShape::new(30., 10.))
+                            .width(Length::Fixed(30.))
+                            .into()
+                    } else {
+                        // Indent
+                        widget::container("").width(Length::Fixed(30.)).into()
+                    }
+                }))
+                .push(self.render_comment(parent, true).style(|theme| {
                     let palette = theme.extended_palette();
 
                     container::Style {
@@ -128,25 +128,83 @@ impl CommentState {
                         },
                         ..Default::default()
                     }
-                })
+                }))
             })
-            .map(Element::from);
+            .map(Element::from)
+            .collect::<Vec<_>>();
+
+        let comment_rows = self
+            .comments
+            .iter()
+            .map(|item| {
+                let comment_area = self.render_comment(item, false).style(|theme| {
+                    let palette = theme.extended_palette();
+                    container::Style {
+                        background: Some(if self.active_comment_id == Some(item.id) {
+                            palette.background.strong.color.into()
+                        } else {
+                            palette.background.weak.color.into()
+                        }),
+                        border: border::rounded(8),
+                        ..Default::default()
+                    }
+                });
+
+                Element::from(
+                    widget::Row::with_children((1..=parent_comments.len()).map(|current| {
+                        if current == total_parents {
+                            // Show connector
+                            widget::canvas(LShape::new(30., 10.))
+                                .width(Length::Fixed(30.))
+                                .into()
+                        } else {
+                            // Indent
+                            widget::container("").width(Length::Fixed(30.)).into()
+                        }
+                    }))
+                    .push(comment_area),
+                )
+            })
+            .collect::<Vec<_>>();
 
         let content = Column::new()
-            .push_maybe(self.search.as_ref().map(|search| {
+            .push(
                 widget::Row::new()
                     .push(
-                        widget::text_input("Search...", search)
-                            .id(widget::text_input::Id::new("comment_search"))
-                            .on_input(|input| AppMsg::Comments(CommentMsg::Search(input))),
+                        widget::Row::new()
+                            .push(
+                                widget::text_input(
+                                    "Search within story...",
+                                    self.search.as_deref().unwrap_or_default(),
+                                )
+                                .id(widget::text_input::Id::new("comment_search"))
+                                .on_input(|input| AppMsg::Comments(CommentMsg::Search(input))),
+                            )
+                            .push(common::tooltip(
+                                widget::button(widget::text("⟲").shaping(Shaping::Advanced))
+                                    .on_press(AppMsg::Comments(CommentMsg::CloseSearch)),
+                                "Clear search",
+                                widget::tooltip::Position::FollowCursor,
+                            )),
+                    )
+                    .push(widget::text(format!("{}", self.full_count)))
+                    .push(
+                        widget::toggler(self.oneline)
+                            .label("oneline")
+                            .on_toggle(|_| AppMsg::Comments(CommentMsg::Oneline)),
                     )
                     .push(common::tooltip(
-                        widget::button(widget::text("⟲").shaping(Shaping::Advanced))
-                            .on_press(AppMsg::Comments(CommentMsg::CloseSearch)),
-                        "Clear search",
-                        widget::tooltip::Position::FollowCursor,
+                        widget::button(widget::text("⌛").shaping(Shaping::Advanced)).on_press(
+                            AppMsg::FullSearch(FullSearchMsg::StoryByTime {
+                                story_id: self.article.id,
+                                beyond: None,
+                            }),
+                        ),
+                        "Sorted by latest",
+                        widget::tooltip::Position::Bottom,
                     ))
-            }))
+                    .spacing(5),
+            )
             .push_maybe((self.full_count > 10).then(|| self.pagination_element()))
             .push(
                 widget::scrollable(
@@ -170,7 +228,8 @@ impl CommentState {
                 })
                 .id(comment_scroll_id())
                 .height(Length::Fill),
-            );
+            )
+            .padding(iced::padding::top(5));
 
         container(content.width(Length::Fill)).into()
     }
@@ -204,6 +263,22 @@ impl CommentState {
                                 widget::button("X")
                                     .on_press(AppMsg::Comments(CommentMsg::Close(comment.id))),
                             )
+                            .align_right(Length::Fill)
+                        }))
+                        .push_maybe(self.search.is_some().then(|| {
+                            widget::container(widget::tooltip(
+                                widget::button(widget::text("🧵").shaping(Shaping::Advanced))
+                                    .style(widget::button::text)
+                                    .on_press(AppMsg::Comments(CommentMsg::ShowThread(comment.id))),
+                                widget::container(widget::text("Show thread"))
+                                    .padding(5)
+                                    .style(|_theme| {
+                                        widget::container::background(Color::BLACK)
+                                            .color(Color::WHITE)
+                                            .border(iced::border::rounded(8))
+                                    }),
+                                widget::tooltip::Position::Bottom,
+                            ))
                             .align_right(Length::Fill)
                         }))
                         .push(widget::rich_text(render_rich_text(
@@ -242,7 +317,7 @@ impl CommentState {
                             ]
                             .spacing(5),
                         )
-                        .padding([10, 10])
+                        .padding(10)
                         .spacing(15)
                         .width(Length::Fill),
                 )
@@ -260,6 +335,7 @@ impl CommentState {
                 parent_comment,
                 scroll_to,
             } => {
+                self.search = None;
                 if let Some(parent) = parent_comment {
                     // We are viewing a nested comment
                     if self.parent_id != parent.id {
@@ -375,9 +451,9 @@ impl CommentState {
             }
             CommentMsg::CloseSearch => {
                 self.search = None;
-                self.search_results = Vec::new();
 
-                Task::done(CommentMsg::PopNavStack).map(AppMsg::Comments)
+                // Task::done(CommentMsg::PopNavStack).map(AppMsg::Comments)
+                Task::done(CommentMsg::JumpPage(1)).map(AppMsg::Comments)
             }
             CommentMsg::Oneline => {
                 self.oneline = !self.oneline;
@@ -455,6 +531,9 @@ impl CommentState {
                 self.active_comment_id = Some(comment_id);
                 Task::none()
             }
+            CommentMsg::ShowThread(comment_id) => {
+                common::show_thread(self.search_context.clone(), comment_id)
+            }
         }
     }
 
@@ -468,6 +547,10 @@ impl CommentState {
             })
             .map(AppMsg::Comments),
         }
+        .chain(widget::scrollable::scroll_to(
+            comment_scroll_id(),
+            Default::default(),
+        ))
     }
 
     fn update_nav_stack(&mut self) {

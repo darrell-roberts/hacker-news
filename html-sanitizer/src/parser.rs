@@ -1,4 +1,5 @@
 //! A simple html parser that targets anchor elements.
+use crate::{Anchor, Attribute, Element};
 use nom::{
     branch::alt,
     bytes::complete::{tag, tag_no_case, take_until, take_while1, take_while_m_n},
@@ -10,41 +11,6 @@ use nom::{
     AsChar, IResult, Parser,
 };
 use std::num::ParseIntError;
-
-/// An html attribute name value pair.
-#[derive(Debug, Clone)]
-pub struct Attribute<'a> {
-    pub name: &'a str,
-    pub value: String,
-}
-
-/// An html anchor tag.
-#[derive(Debug, Clone)]
-pub struct Anchor<'a> {
-    /// Anchor attributes.
-    pub attributes: Vec<Attribute<'a>>,
-    /// Child elements.
-    pub children: String,
-}
-
-/// A simple Html element.
-#[derive(Debug, Clone)]
-pub enum Element<'a> {
-    /// Regular text.
-    Text(&'a str),
-    /// A link.
-    Link(Anchor<'a>),
-    /// Html escaped character
-    Escaped(char),
-    /// Paragraph tag.
-    Paragraph,
-    /// Source code block.
-    Code(String),
-    /// Italic text.
-    Italic(Vec<Element<'a>>),
-    /// Bold text.
-    Bold(Vec<Element<'a>>),
-}
 
 pub fn parse_nodes<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element<'a>>, E>
 where
@@ -71,12 +37,7 @@ fn parse_bold<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
-    let parse = delimited(
-        tag("<b>"),
-        parse_nodes,
-        // take_until("</b>").and_then(parse_escaped_text),
-        tag("</b>"),
-    );
+    let parse = delimited(tag("<b>"), parse_nodes, tag("</b>"));
     context("parse_bold", map(parse, Element::Bold))(input)
 }
 
@@ -84,12 +45,7 @@ fn parse_italic<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
-    let parse = delimited(
-        tag("<i>"),
-        // take_until("</i>").and_then(parse_escaped_text),
-        parse_nodes,
-        tag("</i>"),
-    );
+    let parse = delimited(tag("<i>"), parse_nodes, tag("</i>"));
     context("parse_italic", map(parse, Element::Italic))(input)
 }
 
@@ -259,31 +215,6 @@ where
         ),
     )(input)
 }
-/*/
-/// Parse html encoded string into a logical [`Element`]s.
-pub fn parse_elements<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element<'a>>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
-    let parsers = alt((
-        parse_text,
-        parse_anchor,
-        parse_paragraph,
-        parse_escaped,
-        parse_code,
-        parse_italic,
-        parse_bold,
-        map(rest, Element::Text),
-    ));
-    let mut parser = context("parse_elements", many_till(parsers, eof));
-
-    let (rest, (mut result, _eof)) = parser(input)?;
-    if !rest.is_empty() {
-        result.push(Element::Text(rest));
-    }
-    Ok((rest, result))
-}
-*/
 
 #[cfg(test)]
 mod test {
