@@ -62,7 +62,8 @@ This copies the binary and other assets into your `~/.local`.
 
 # Screenshots
 ### MacOS dark mode theme
-<img width="1786" alt="Screenshot 2025-02-09 at 11 20 19 AM" src="https://github.com/user-attachments/assets/b1ec3cb0-dc0f-4f71-94ff-55e935c18dcb" />
+<img width="1708" alt="Screenshot 2025-02-18 at 8 37 51 AM" src="https://github.com/user-attachments/assets/0e9b62a5-bc72-45cd-8253-bacc216c8a75" />
+
 
 
 ### Linux light mode theme
