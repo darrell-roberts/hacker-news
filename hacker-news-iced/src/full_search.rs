@@ -1,3 +1,4 @@
+/// Full search view
 use crate::{
     app::AppMsg,
     comments::CommentMsg,
