@@ -260,7 +260,7 @@ impl CommentState {
                     widget::Column::new()
                         .push_maybe(is_parent.then(|| {
                             widget::container(
-                                widget::button("X")
+                                widget::button(widget::text("X").size(10))
                                     .on_press(AppMsg::Comments(CommentMsg::Close(comment.id))),
                             )
                             .align_right(Length::Fill)

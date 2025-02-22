@@ -191,6 +191,8 @@ impl<Message> widget::canvas::Program<Message> for LShape {
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
         let mut frame = Frame::new(renderer, bounds.size());
+        let dark = theme.extended_palette().is_dark;
+        let color = if dark { Color::WHITE } else { Color::BLACK };
 
         // Create path for L shape
         let path = Path::new(|builder| {
@@ -205,7 +207,17 @@ impl<Message> widget::canvas::Program<Message> for LShape {
             ));
         });
 
-        let dark = theme.extended_palette().is_dark;
+        // Create separate path for the triangle
+        let triangle_path = Path::new(|builder| {
+            let x = 10.0 + self.horizontal_length;
+            let y = self.vertical_height;
+            let size = 4.0; // Size of the triangle
+
+            builder.move_to(Point::new(x, y + size));
+            builder.line_to(Point::new(x, y - size));
+            builder.line_to(Point::new(x + size * 1.5, y));
+            builder.close();
+        });
 
         // Draw the path
         frame.stroke(
@@ -214,7 +226,14 @@ impl<Message> widget::canvas::Program<Message> for LShape {
                 .with_width(1.0)
                 .with_line_join(widget::canvas::LineJoin::Round)
                 .with_line_cap(widget::canvas::LineCap::Round)
-                .with_color(if dark { Color::WHITE } else { Color::BLACK }),
+                .with_color(color),
+        );
+
+        // Draw and fill the triangle
+        frame.fill(&triangle_path, color);
+        frame.stroke(
+            &triangle_path,
+            Stroke::default().with_width(1.0).with_color(color),
         );
 
         vec![frame.into_geometry()]
