@@ -196,21 +196,12 @@ impl<Message> widget::canvas::Program<Message> for LShape {
 
         // Create path for L shape
         let path = Path::new(|builder| {
-            // Start at top
             builder.move_to(Point::new(10.0, 0.0));
 
             builder.quadratic_curve_to(
                 Point::new(10.0, self.vertical_height), // Control point
                 Point::new(10.0 + self.horizontal_length, self.vertical_height), // End point
             );
-
-            // Draw vertical line down
-            // builder.line_to(Point::new(10.0, self.vertical_height));
-            // Draw horizontal line right
-            // builder.line_to(Point::new(
-            //     10.0 + self.horizontal_length,
-            //     self.vertical_height,
-            // ));
         });
 
         // Create separate path for the triangle

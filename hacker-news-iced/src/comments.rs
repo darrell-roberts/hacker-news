@@ -109,12 +109,12 @@ impl CommentState {
                         widget::container("").into()
                     } else if current == index {
                         // Show connector
-                        widget::canvas(LShape::new(30., 10.))
-                            .width(Length::Fixed(30.))
+                        widget::canvas(LShape::new(20., 10.))
+                            .width(Length::Fixed(20.))
                             .into()
                     } else {
                         // Indent
-                        widget::container("").width(Length::Fixed(30.)).into()
+                        widget::container("").width(Length::Fixed(20.)).into()
                     }
                 }))
                 .push(self.render_comment(parent, true).style(|theme| {
@@ -154,12 +154,12 @@ impl CommentState {
                     widget::Row::with_children((1..=parent_comments.len()).map(|current| {
                         if current == total_parents {
                             // Show connector
-                            widget::canvas(LShape::new(30., 10.))
-                                .width(Length::Fixed(30.))
+                            widget::canvas(LShape::new(20., 10.))
+                                .width(Length::Fixed(20.))
                                 .into()
                         } else {
                             // Indent
-                            widget::container("").width(Length::Fixed(30.)).into()
+                            widget::container("").width(Length::Fixed(20.)).into()
                         }
                     }))
                     .push(comment_area),
