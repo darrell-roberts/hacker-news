@@ -102,8 +102,7 @@ impl ArticleState {
                     .filter(|story| {
                         !self.filter_watching || self.watch_changes.contains_key(&story.id)
                     })
-                    .map(|article| self.render_article(theme, article))
-                    .map(Element::from),
+                    .map(|article| self.render_article(theme, article)),
             )
             .width(Length::Fill)
             .spacing(10)
