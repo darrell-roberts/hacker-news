@@ -198,25 +198,39 @@ impl<Message> widget::canvas::Program<Message> for LShape {
         let path = Path::new(|builder| {
             // Start at top
             builder.move_to(Point::new(10.0, 0.0));
+
+            builder.quadratic_curve_to(
+                Point::new(10.0, self.vertical_height), // Control point
+                Point::new(10.0 + self.horizontal_length, self.vertical_height), // End point
+            );
+
             // Draw vertical line down
-            builder.line_to(Point::new(10.0, self.vertical_height));
+            // builder.line_to(Point::new(10.0, self.vertical_height));
             // Draw horizontal line right
-            builder.line_to(Point::new(
-                10.0 + self.horizontal_length,
-                self.vertical_height,
-            ));
+            // builder.line_to(Point::new(
+            //     10.0 + self.horizontal_length,
+            //     self.vertical_height,
+            // ));
         });
 
         // Create separate path for the triangle
         let triangle_path = Path::new(|builder| {
-            let x = 10.0 + self.horizontal_length;
-            let y = self.vertical_height;
+            let x = 10.0; //+ self.horizontal_length;
+            let y = 6.0; //self.vertical_height;
             let size = 4.0; // Size of the triangle
 
-            builder.move_to(Point::new(x, y + size));
-            builder.line_to(Point::new(x, y - size));
-            builder.line_to(Point::new(x + size * 1.5, y));
+            builder.move_to(Point::new(x - size, y));
+            builder.line_to(Point::new(x + size, y));
+            builder.line_to(Point::new(x, y - size * 1.5));
             builder.close();
+        });
+
+        // Create a circle
+        let circle = Path::new(|builder| {
+            builder.circle(
+                Point::new(10.0 + self.horizontal_length, self.vertical_height),
+                1.0,
+            );
         });
 
         // Draw the path
@@ -235,6 +249,10 @@ impl<Message> widget::canvas::Program<Message> for LShape {
             &triangle_path,
             Stroke::default().with_width(1.0).with_color(color),
         );
+
+        // Draw and fill the circle
+        frame.fill(&circle, color);
+        frame.stroke(&circle, Stroke::default().with_width(1.0).with_color(color));
 
         vec![frame.into_geometry()]
     }
