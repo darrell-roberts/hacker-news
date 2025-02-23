@@ -163,10 +163,21 @@ impl ArticleState {
                                     widget::container(
                                         Row::new()
                                             .push_maybe({
-                                                let has_rust = story
-                                                    .title
-                                                    .split(' ')
-                                                    .any(|word| word == "Rust");
+                                                let has_rust = story.title.split(' ').any(|word| {
+                                                    word == "Rust"
+                                                        || (word.starts_with("Rust")
+                                                            && word.len() == 5
+                                                            && word
+                                                                .chars()
+                                                                .last()
+                                                                .map(|c| {
+                                                                    matches!(
+                                                                        c,
+                                                                        ',' | '.' | ':' | '?' | '!'
+                                                                    )
+                                                                })
+                                                                .unwrap_or(false))
+                                                });
                                                 has_rust.then(|| {
                                                     widget::container(
                                                         widget::image(Handle::from_bytes(
