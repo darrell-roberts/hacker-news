@@ -194,21 +194,21 @@ impl<Message> widget::canvas::Program<Message> for LShape {
         let dark = theme.extended_palette().is_dark;
         let color = if dark { Color::WHITE } else { Color::BLACK };
 
-        // Create path for L shape
+        // Curved line
         let path = Path::new(|builder| {
             builder.move_to(Point::new(10.0, 0.0));
 
             builder.quadratic_curve_to(
-                Point::new(10.0, self.vertical_height), // Control point
-                Point::new(10.0 + self.horizontal_length, self.vertical_height), // End point
+                Point::new(10.0, self.vertical_height),
+                Point::new(10.0 + self.horizontal_length, self.vertical_height),
             );
         });
 
-        // Create separate path for the triangle
-        let triangle_path = Path::new(|builder| {
-            let x = 10.0; //+ self.horizontal_length;
-            let y = 6.0; //self.vertical_height;
-            let size = 4.0; // Size of the triangle
+        // Triangle
+        let triangle = Path::new(|builder| {
+            let x = 10.0;
+            let y = 6.0;
+            let size = 4.0;
 
             builder.move_to(Point::new(x - size, y));
             builder.line_to(Point::new(x + size, y));
@@ -216,7 +216,7 @@ impl<Message> widget::canvas::Program<Message> for LShape {
             builder.close();
         });
 
-        // Create a circle
+        // Circle
         let circle = Path::new(|builder| {
             builder.circle(
                 Point::new(10.0 + self.horizontal_length, self.vertical_height),
@@ -224,7 +224,7 @@ impl<Message> widget::canvas::Program<Message> for LShape {
             );
         });
 
-        // Draw the path
+        // Draw the curved line
         frame.stroke(
             &path,
             Stroke::default()
@@ -235,9 +235,9 @@ impl<Message> widget::canvas::Program<Message> for LShape {
         );
 
         // Draw and fill the triangle
-        frame.fill(&triangle_path, color);
+        frame.fill(&triangle, color);
         frame.stroke(
-            &triangle_path,
+            &triangle,
             Stroke::default().with_width(1.0).with_color(color),
         );
 
