@@ -191,31 +191,59 @@ impl<Message> widget::canvas::Program<Message> for LShape {
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
         let mut frame = Frame::new(renderer, bounds.size());
+        let dark = theme.extended_palette().is_dark;
+        let color = if dark { Color::WHITE } else { Color::BLACK };
 
-        // Create path for L shape
+        // Curved line
         let path = Path::new(|builder| {
-            // Start at top
             builder.move_to(Point::new(10.0, 0.0));
-            // Draw vertical line down
-            builder.line_to(Point::new(10.0, self.vertical_height));
-            // Draw horizontal line right
-            builder.line_to(Point::new(
-                10.0 + self.horizontal_length,
-                self.vertical_height,
-            ));
+
+            builder.quadratic_curve_to(
+                Point::new(10.0, self.vertical_height),
+                Point::new(10.0 + self.horizontal_length, self.vertical_height),
+            );
         });
 
-        let dark = theme.extended_palette().is_dark;
+        // Triangle
+        let triangle = Path::new(|builder| {
+            let x = 10.0;
+            let y = 6.0;
+            let size = 4.0;
 
-        // Draw the path
+            builder.move_to(Point::new(x - size, y));
+            builder.line_to(Point::new(x + size, y));
+            builder.line_to(Point::new(x, y - size * 1.5));
+            builder.close();
+        });
+
+        // Circle
+        let circle = Path::new(|builder| {
+            builder.circle(
+                Point::new(10.0 + self.horizontal_length, self.vertical_height),
+                1.0,
+            );
+        });
+
+        // Draw the curved line
         frame.stroke(
             &path,
             Stroke::default()
                 .with_width(1.0)
                 .with_line_join(widget::canvas::LineJoin::Round)
                 .with_line_cap(widget::canvas::LineCap::Round)
-                .with_color(if dark { Color::WHITE } else { Color::BLACK }),
+                .with_color(color),
         );
+
+        // Draw and fill the triangle
+        frame.fill(&triangle, color);
+        frame.stroke(
+            &triangle,
+            Stroke::default().with_width(1.0).with_color(color),
+        );
+
+        // Draw and fill the circle
+        frame.fill(&circle, color);
+        frame.stroke(&circle, Stroke::default().with_width(1.0).with_color(color));
 
         vec![frame.into_geometry()]
     }

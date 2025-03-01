@@ -69,7 +69,7 @@ pub enum CommentMsg {
     },
     PopNavStack,
     Search(String),
-    OpenSearch,
+    // OpenSearch,
     CloseSearch,
     Oneline,
     Forward,
@@ -109,12 +109,12 @@ impl CommentState {
                         widget::container("").into()
                     } else if current == index {
                         // Show connector
-                        widget::canvas(LShape::new(30., 10.))
-                            .width(Length::Fixed(30.))
+                        widget::canvas(LShape::new(20., 10.))
+                            .width(Length::Fixed(20.))
                             .into()
                     } else {
                         // Indent
-                        widget::container("").width(Length::Fixed(30.)).into()
+                        widget::container("").width(Length::Fixed(20.)).into()
                     }
                 }))
                 .push(self.render_comment(parent, true).style(|theme| {
@@ -154,12 +154,12 @@ impl CommentState {
                     widget::Row::with_children((1..=parent_comments.len()).map(|current| {
                         if current == total_parents {
                             // Show connector
-                            widget::canvas(LShape::new(30., 10.))
-                                .width(Length::Fixed(30.))
+                            widget::canvas(LShape::new(20., 10.))
+                                .width(Length::Fixed(20.))
                                 .into()
                         } else {
                             // Indent
-                            widget::container("").width(Length::Fixed(30.)).into()
+                            widget::container("").width(Length::Fixed(20.)).into()
                         }
                     }))
                     .push(comment_area),
@@ -260,7 +260,7 @@ impl CommentState {
                     widget::Column::new()
                         .push_maybe(is_parent.then(|| {
                             widget::container(
-                                widget::button("X")
+                                widget::button(widget::text("X").size(10))
                                     .on_press(AppMsg::Comments(CommentMsg::Close(comment.id))),
                             )
                             .align_right(Length::Fill)
@@ -302,7 +302,7 @@ impl CommentState {
                                         .size(10),
                                 ]),
                                 child_comments_button,
-                                widget::container(
+                                widget::container(common::tooltip(
                                     widget::button(widget::text(format!("{}", comment.id)))
                                         .on_press(AppMsg::OpenLink {
                                             url: format!(
@@ -311,8 +311,10 @@ impl CommentState {
                                             ),
                                         })
                                         .style(widget::button::text)
-                                        .padding(0)
-                                )
+                                        .padding(0),
+                                    "Open in browser",
+                                    widget::tooltip::Position::Left
+                                ))
                                 .align_right(Length::Fill)
                             ]
                             .spacing(5),
@@ -436,19 +438,19 @@ impl CommentState {
                     }
                 }
             }
-            CommentMsg::OpenSearch => {
-                self.search = Some(String::new());
-                self.nav_stack.push(NavStack {
-                    comment: None,
-                    offset: 0,
-                    page: 1,
-                    scroll_offset: None,
-                });
-                self.offset = 0;
-                self.page = 1;
-                self.comments = Vec::new();
-                widget::text_input::focus(widget::text_input::Id::new("comment_search"))
-            }
+            // CommentMsg::OpenSearch => {
+            //     self.search = Some(String::new());
+            //     self.nav_stack.push(NavStack {
+            //         comment: None,
+            //         offset: 0,
+            //         page: 1,
+            //         scroll_offset: None,
+            //     });
+            //     self.offset = 0;
+            //     self.page = 1;
+            //     self.comments = Vec::new();
+            //     widget::text_input::focus(widget::text_input::Id::new("comment_search"))
+            // }
             CommentMsg::CloseSearch => {
                 self.search = None;
 
