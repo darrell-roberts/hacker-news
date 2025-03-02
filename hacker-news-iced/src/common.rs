@@ -248,3 +248,14 @@ impl<Message> widget::canvas::Program<Message> for LShape {
         vec![frame.into_geometry()]
     }
 }
+
+/// Create an LShape thread array pointer.
+pub fn thread_pointer<'a, Message>() -> Element<'a, Message>
+where
+    Message: 'a,
+{
+    widget::canvas(LShape::new(20., 10.))
+        .width(Length::Fixed(20.))
+        .height(Length::Fixed(25.))
+        .into()
+}
