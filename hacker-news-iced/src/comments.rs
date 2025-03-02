@@ -2,7 +2,7 @@
 use crate::{
     app::AppMsg,
     articles::ArticleMsg,
-    common::{self, error_task, FontExt as _, LShape, PaginatingView},
+    common::{self, error_task, FontExt as _, PaginatingView},
     full_search::FullSearchMsg,
     header::HeaderMsg,
     parse_date,
@@ -109,10 +109,7 @@ impl CommentState {
                         widget::container("").into()
                     } else if current == index {
                         // Show connector
-                        widget::canvas(LShape::new(20., 10.))
-                            .width(Length::Fixed(20.))
-                            .height(Length::Fixed(25.))
-                            .into()
+                        common::thread_pointer()
                     } else {
                         // Indent
                         widget::container("").width(Length::Fixed(20.)).into()
@@ -155,10 +152,7 @@ impl CommentState {
                     widget::Row::with_children((1..=parent_comments.len()).map(|current| {
                         if current == total_parents {
                             // Show connector
-                            widget::canvas(LShape::new(20., 10.))
-                                .width(Length::Fixed(20.))
-                                .height(Length::Fixed(25.))
-                                .into()
+                            common::thread_pointer()
                         } else {
                             // Indent
                             widget::container("").width(Length::Fixed(20.)).into()
