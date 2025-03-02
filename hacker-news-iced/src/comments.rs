@@ -111,6 +111,7 @@ impl CommentState {
                         // Show connector
                         widget::canvas(LShape::new(20., 10.))
                             .width(Length::Fixed(20.))
+                            .height(Length::Fixed(25.))
                             .into()
                     } else {
                         // Indent
@@ -156,6 +157,7 @@ impl CommentState {
                             // Show connector
                             widget::canvas(LShape::new(20., 10.))
                                 .width(Length::Fixed(20.))
+                                .height(Length::Fixed(25.))
                                 .into()
                         } else {
                             // Indent
