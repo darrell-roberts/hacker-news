@@ -138,7 +138,7 @@ impl FullSearchState {
                 .push(
                     widget::Row::new()
                         .push(widget::rich_text([
-                            widget::span(format!(" by {}", comment.by))
+                            widget::span(format!("by {}", comment.by))
                                 .link(AppMsg::Header(HeaderMsg::Search(format!(
                                     "by:{}",
                                     comment.by
