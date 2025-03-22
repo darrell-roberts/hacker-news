@@ -336,51 +336,54 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::Back => {
             // If we are restoring a full search, put back the search query
             // in the header.
-            if let Some(last) = app.history.pop() {
-                let task = match &last {
-                    Content::Comment(comment_state) => {
-                        app.header.full_search = None;
-                        let viewing_story_id = comment_state.article.id;
-                        match comment_state
-                            .nav_stack
-                            .last()
-                            .and_then(|stack| stack.scroll_offset.as_ref())
-                        {
-                            Some(offset) => {
-                                widget::scrollable::scroll_to(comment_scroll_id(), *offset).chain(
-                                    Task::done(ArticleMsg::ViewingItem(viewing_story_id))
-                                        .map(AppMsg::Articles),
-                                )
+            match app.history.pop() {
+                Some(last) => {
+                    let task = match &last {
+                        Content::Comment(comment_state) => {
+                            app.header.full_search = None;
+                            let viewing_story_id = comment_state.article.id;
+                            match comment_state
+                                .nav_stack
+                                .last()
+                                .and_then(|stack| stack.scroll_offset.as_ref())
+                            {
+                                Some(offset) => {
+                                    widget::scrollable::scroll_to(comment_scroll_id(), *offset)
+                                        .chain(
+                                            Task::done(ArticleMsg::ViewingItem(viewing_story_id))
+                                                .map(AppMsg::Articles),
+                                        )
+                                }
+                                None => Task::done(ArticleMsg::ViewingItem(viewing_story_id))
+                                    .map(AppMsg::Articles),
                             }
-                            None => Task::done(ArticleMsg::ViewingItem(viewing_story_id))
-                                .map(AppMsg::Articles),
                         }
-                    }
-                    Content::Search(full_search_state) => match &full_search_state.search {
-                        Some(SearchCriteria::Query(s)) => {
-                            app.header.full_search = Some(s.clone());
+                        Content::Search(full_search_state) => match &full_search_state.search {
+                            Some(SearchCriteria::Query(s)) => {
+                                app.header.full_search = Some(s.clone());
+                                app.article_state.viewing_item = None;
+                                Task::none()
+                            }
+                            Some(SearchCriteria::StoryId { story_id, .. }) => {
+                                Task::done(ArticleMsg::ViewingItem(*story_id)).map(AppMsg::Articles)
+                            }
+                            None => {
+                                app.article_state.viewing_item = None;
+                                Task::none()
+                            }
+                        },
+                        Content::Empty => {
+                            app.header.full_search = None;
                             app.article_state.viewing_item = None;
                             Task::none()
                         }
-                        Some(SearchCriteria::StoryId { story_id, .. }) => {
-                            Task::done(ArticleMsg::ViewingItem(*story_id)).map(AppMsg::Articles)
-                        }
-                        None => {
-                            app.article_state.viewing_item = None;
-                            Task::none()
-                        }
-                    },
-                    Content::Empty => {
-                        app.header.full_search = None;
-                        app.article_state.viewing_item = None;
-                        Task::none()
-                    }
-                };
+                    };
 
-                app.content = last;
-                return task;
+                    app.content = last;
+                    task
+                }
+                None => Task::none(),
             }
-            Task::none()
         }
     }
 }
