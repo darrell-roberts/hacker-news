@@ -122,11 +122,8 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         } => {
             // Opening first set of comments from an article.
             let item_id = article.id;
-
             let from_full_search = !comment_stack.is_empty();
-
             comment_stack.reverse();
-
             let comments = comment_stack.pop().map(|c| vec![c]).unwrap_or_default();
 
             let mut nav_stack = vec![NavStack {
@@ -161,7 +158,16 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     active_comment_id: None,
                 }),
             );
-            app.history.push(last_content);
+
+            // Check we are not clicking on the same article again.
+            let same_content = match &last_content {
+                Content::Comment(comment_state) => comment_state.article.id == item_id,
+                _ => false,
+            };
+
+            if !same_content {
+                app.history.push(last_content);
+            }
 
             if from_full_search {
                 Task::none()
@@ -283,6 +289,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 FullSearchMsg::Search(_) | FullSearchMsg::StoryByTime { .. }
             ) =>
             {
+                app.article_state.viewing_item = None;
                 // Create a new search content and re-dispatch message.
                 let full_search = FullSearchState {
                     search: None,
@@ -329,25 +336,39 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 let task = match &last {
                     Content::Comment(comment_state) => {
                         app.header.full_search = None;
+                        let viewing_story_id = comment_state.article.id;
                         match comment_state
                             .nav_stack
                             .last()
                             .and_then(|stack| stack.scroll_offset.as_ref())
                         {
                             Some(offset) => {
-                                widget::scrollable::scroll_to(comment_scroll_id(), *offset)
+                                widget::scrollable::scroll_to(comment_scroll_id(), *offset).chain(
+                                    Task::done(ArticleMsg::ViewingItem(viewing_story_id))
+                                        .map(AppMsg::Articles),
+                                )
                             }
-                            None => Task::none(),
+                            None => Task::done(ArticleMsg::ViewingItem(viewing_story_id))
+                                .map(AppMsg::Articles),
                         }
                     }
-                    Content::Search(full_search_state) => {
-                        if let Some(SearchCriteria::Query(s)) = &full_search_state.search {
+                    Content::Search(full_search_state) => match &full_search_state.search {
+                        Some(SearchCriteria::Query(s)) => {
                             app.header.full_search = Some(s.clone());
+                            app.article_state.viewing_item = None;
+                            Task::none()
                         }
-                        Task::none()
-                    }
+                        Some(SearchCriteria::StoryId { story_id, .. }) => {
+                            Task::done(ArticleMsg::ViewingItem(*story_id)).map(AppMsg::Articles)
+                        }
+                        None => {
+                            app.article_state.viewing_item = None;
+                            Task::none()
+                        }
+                    },
                     Content::Empty => {
                         app.header.full_search = None;
+                        app.article_state.viewing_item = None;
                         Task::none()
                     }
                 };
