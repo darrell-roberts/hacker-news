@@ -289,7 +289,11 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 FullSearchMsg::Search(_) | FullSearchMsg::StoryByTime { .. }
             ) =>
             {
-                app.article_state.viewing_item = None;
+                app.article_state.viewing_item = match msg {
+                    FullSearchMsg::StoryByTime { story_id, .. } => Some(story_id),
+                    _ => None,
+                };
+
                 // Create a new search content and re-dispatch message.
                 let full_search = FullSearchState {
                     search: None,
