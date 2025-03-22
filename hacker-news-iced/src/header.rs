@@ -41,6 +41,8 @@ pub enum HeaderMsg {
     Search(String),
     IndexFailed(String),
     ClearSearch,
+    // Forward,
+    Back,
 }
 
 impl HeaderState {
@@ -170,6 +172,12 @@ impl HeaderState {
                             "Clear visited",
                             widget::tooltip::Position::Bottom,
                         ))
+                        .push(tooltip(
+                            widget::button("<").on_press(HeaderMsg::Back),
+                            "Go back",
+                            widget::tooltip::Position::Bottom,
+                        ))
+                        // .push(widget::button(">").on_press(HeaderMsg::Forward))
                         .spacing(5),
                 )
                 .padding([5, 5]),
@@ -283,6 +291,7 @@ impl HeaderState {
                 self.full_search = None;
                 Task::done(AppMsg::FullSearch(FullSearchMsg::CloseSearch))
             }
+            HeaderMsg::Back => Task::done(AppMsg::Back),
         }
     }
 }
