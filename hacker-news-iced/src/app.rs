@@ -364,14 +364,22 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
 pub fn view(app: &App) -> iced::Element<AppMsg> {
     let body = widget::pane_grid(&app.panes, |_pane, state, _is_maximized| {
         let comments_title = || -> Option<iced::Element<AppMsg>> {
-            let Content::Comment(comment_state) = &app.content else {
-                return None;
-            };
-            let title_text = widget::text(&comment_state.article.title)
+            let story = match &app.content {
+                Content::Comment(comment_state) => Some(&comment_state.article),
+                Content::Search(_) => app.article_state.viewing_item.as_ref().and_then(|id| {
+                    app.article_state
+                        .articles
+                        .iter()
+                        .find(|story| story.id == *id)
+                }),
+                Content::Empty => None,
+            }?;
+
+            let title_text = widget::text(&story.title)
                 .font(ROBOTO_FONT.bold())
                 .shaping(Shaping::Advanced);
 
-            let content: iced::Element<AppMsg> = match comment_state.article.url.as_deref() {
+            let content: iced::Element<AppMsg> = match story.url.as_deref() {
                 Some(url) => hoverable(
                     widget::button(title_text)
                         .on_press(AppMsg::OpenLink {
@@ -433,6 +441,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                 ))
                 .always_show_controls(),
             PaneState::Content => match &app.content {
+                // Viewing comments for a story in original order.
                 Content::Comment(comment_state) => {
                     pane_grid::TitleBar::new(comments_title().unwrap_or("".into()))
                         .controls(pane_grid::Controls::new(
@@ -455,6 +464,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         ))
                         .always_show_controls()
                 }
+                // Viewing comments for a story ordered by time.
                 Content::Search(full_search_state)
                     if matches!(
                         full_search_state.search,
@@ -473,6 +483,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         )))
                         .always_show_controls()
                 }
+                // Search results for search in all story comments.
                 Content::Search(full_search_state) => pane_grid::TitleBar::new(
                     widget::container(
                         widget::text("Searched all comments").font(ROBOTO_FONT.bold()),
