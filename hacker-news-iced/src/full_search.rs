@@ -192,7 +192,7 @@ impl FullSearchState {
                 self.offset = 0;
                 self.page = 1;
                 self.full_count = 0;
-                Task::none()
+                Task::done(AppMsg::Back)
             }
             FullSearchMsg::Forward => {
                 self.offset += 10;
@@ -308,6 +308,6 @@ impl PaginatingView<AppMsg> for FullSearchState {
     }
 }
 
-fn full_search_scroll_id() -> widget::scrollable::Id {
+pub fn full_search_scroll_id() -> widget::scrollable::Id {
     widget::scrollable::Id::new("full_search")
 }
