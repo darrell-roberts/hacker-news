@@ -363,6 +363,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     match last.into_content(app.search_context.clone()) {
                         Ok(content) => {
                             app.article_state.viewing_item = content.active_story();
+                            app.header.full_search = content.search_text();
                             app.content = content;
                         }
                         Err(err) => {

@@ -40,6 +40,17 @@ impl Content {
             Content::Empty => None,
         }
     }
+
+    /// Get the search text.
+    pub fn search_text(&self) -> Option<String> {
+        match self {
+            Content::Search(full_search_state) => match &full_search_state.search {
+                SearchCriteria::Query(search) => Some(search.to_owned()),
+                SearchCriteria::StoryId { .. } => None,
+            },
+            _ => None,
+        }
+    }
 }
 
 impl Display for Content {
