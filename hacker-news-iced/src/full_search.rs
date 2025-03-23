@@ -28,6 +28,21 @@ pub struct FullSearchState {
     pub full_count: usize,
 }
 
+impl FullSearchState {
+    /// Create a new full search state.
+    pub fn new(search_context: Arc<RwLock<SearchContext>>, search: SearchCriteria) -> Self {
+        Self {
+            search,
+            search_results: Vec::new(),
+            search_context,
+            offset: 0,
+            page: 1,
+            full_count: 0,
+        }
+    }
+}
+
+#[derive(Clone)]
 pub enum SearchCriteria {
     Query(String),
     StoryId { story_id: u64, beyond: Option<u64> },

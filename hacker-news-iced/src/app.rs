@@ -7,7 +7,7 @@ use crate::{
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState, SearchCriteria},
     header::{self, HeaderMsg, HeaderState},
-    nav_history::{Content, HistoryElement},
+    nav_history::{Content, History, HistoryElement},
     widget::hoverable,
     ROBOTO_FONT,
 };
@@ -289,7 +289,33 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::FullSearch(msg) => match &mut app.content {
             // We are switching to the search content from comments.
             // We'll create the initial search state here.
-            Content::Search(full_search_state) => full_search_state.update(msg),
+            Content::Search(full_search_state) => {
+                // Check if we are going from either text search or time sort.
+                let same_search = match &full_search_state.search {
+                    SearchCriteria::Query(_) => matches!(&msg, FullSearchMsg::Search(_)),
+                    SearchCriteria::StoryId { .. } => {
+                        matches!(&msg, FullSearchMsg::StoryByTime { .. })
+                    }
+                };
+
+                // Are we creating a new search state?
+                let change_search = matches!(
+                    &msg,
+                    FullSearchMsg::Search(_) | FullSearchMsg::StoryByTime { .. }
+                );
+
+                if !same_search && change_search {
+                    let search_criteria = full_search_state.search.clone();
+                    let last_state = mem::replace(
+                        full_search_state,
+                        FullSearchState::new(app.search_context.clone(), search_criteria),
+                    );
+                    app.history
+                        .push(HistoryElement::Search(last_state.to_history()));
+                }
+
+                full_search_state.update(msg)
+            }
             content
                 if matches!(
                     msg,
