@@ -1,13 +1,13 @@
 //! Application top level state and view.
 use crate::{
     articles::{self, ArticleMsg, ArticleState},
-    comments::{self, comment_scroll_id, CommentMsg, CommentState, NavStack},
+    comments::{self, CommentMsg, CommentState, NavStack},
     common::{self, error_task, FontExt as _},
     config::{save_config, Config},
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState, SearchCriteria},
     header::{self, HeaderMsg, HeaderState},
-    nav_history::Content,
+    nav_history::{Content, HistoryElement},
     widget::hoverable,
     ROBOTO_FONT,
 };
@@ -54,7 +54,7 @@ pub struct App {
     /// Pane with focus
     pub focused_pane: Option<widget::pane_grid::Pane>,
     /// Navigation history.
-    pub history: Vec<Content>,
+    pub history: Vec<HistoryElement>,
     /// Main content.
     pub content: Content,
 }
@@ -137,31 +137,30 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 }));
             };
 
-            let last_content = mem::replace(
-                &mut app.content,
-                Content::Comment(CommentState {
-                    search_context: app.search_context.clone(),
-                    article,
-                    comments,
-                    nav_stack,
-                    search: None,
-                    oneline: false,
-                    page: 1,
-                    offset: 0,
-                    full_count: 0,
-                    parent_id: 0,
-                    active_comment_id: None,
-                }),
-            );
-
-            // Check we are not clicking on the same article again.
-            let same_content = match &last_content {
+            let same_content = match &app.content {
                 Content::Comment(comment_state) => comment_state.article.id == item_id,
                 _ => false,
             };
 
             if !same_content {
-                app.history.push(last_content);
+                let last_content = mem::replace(
+                    &mut app.content,
+                    Content::Comment(CommentState {
+                        search_context: app.search_context.clone(),
+                        article,
+                        comments,
+                        nav_stack,
+                        search: None,
+                        oneline: false,
+                        page: 1,
+                        offset: 0,
+                        full_count: 0,
+                        parent_id: 0,
+                        active_comment_id: None,
+                    }),
+                );
+                let history_item = last_content.into_history_element();
+                app.history.push(history_item);
             }
 
             if from_full_search {
@@ -181,8 +180,8 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::CommentsClosed => {
             // Only clear the content if we are closing from comments.
             if matches!(app.content, Content::Comment(_)) {
-                app.history
-                    .push(mem::replace(&mut app.content, Content::Empty));
+                let last_content = mem::replace(&mut app.content, Content::Empty);
+                app.history.push(last_content.into_history_element());
                 app.article_state.viewing_item = None;
             }
 
@@ -309,8 +308,8 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     page: 1,
                     full_count: 0,
                 };
-                app.history
-                    .push(mem::replace(&mut app.content, Content::Search(full_search)));
+                let last_content = mem::replace(&mut app.content, Content::Search(full_search));
+                app.history.push(last_content.into_history_element());
                 Task::done(msg).map(AppMsg::FullSearch)
             }
             _ => Task::none(),
@@ -344,45 +343,16 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             // in the header.
             match app.history.pop() {
                 Some(last) => {
-                    let task = match &last {
-                        Content::Comment(comment_state) => {
-                            app.header.full_search = None;
-                            let viewing_story_id = comment_state.article.id;
-                            match comment_state
-                                .nav_stack
-                                .last()
-                                .and_then(|stack| stack.scroll_offset.as_ref())
-                            {
-                                Some(offset) => {
-                                    widget::scrollable::scroll_to(comment_scroll_id(), *offset)
-                                        .chain(
-                                            Task::done(ArticleMsg::ViewingItem(viewing_story_id))
-                                                .map(AppMsg::Articles),
-                                        )
-                                }
-                                None => Task::done(ArticleMsg::ViewingItem(viewing_story_id))
-                                    .map(AppMsg::Articles),
-                            }
+                    match last.into_content(app.search_context.clone()) {
+                        Ok(content) => {
+                            app.article_state.viewing_item = content.active_story();
+                            app.content = content;
                         }
-                        Content::Search(full_search_state) => match &full_search_state.search {
-                            SearchCriteria::Query(s) => {
-                                app.header.full_search = Some(s.clone());
-                                app.article_state.viewing_item = None;
-                                Task::none()
-                            }
-                            SearchCriteria::StoryId { story_id, .. } => {
-                                Task::done(ArticleMsg::ViewingItem(*story_id)).map(AppMsg::Articles)
-                            }
-                        },
-                        Content::Empty => {
-                            app.header.full_search = None;
-                            app.article_state.viewing_item = None;
-                            Task::none()
+                        Err(err) => {
+                            error!("Failed to restore history: {err}");
                         }
-                    };
-
-                    app.content = last;
-                    task
+                    }
+                    Task::none()
                 }
                 None => Task::none(),
             }
