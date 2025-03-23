@@ -595,6 +595,6 @@ impl PaginatingView<AppMsg> for CommentState {
 }
 
 /// Id for the comment view scroller.
-pub fn comment_scroll_id() -> widget::scrollable::Id {
+fn comment_scroll_id() -> widget::scrollable::Id {
     widget::scrollable::Id::new("comments")
 }

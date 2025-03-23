@@ -302,6 +302,6 @@ impl PaginatingView<AppMsg> for FullSearchState {
     }
 }
 
-pub fn full_search_scroll_id() -> widget::scrollable::Id {
+fn full_search_scroll_id() -> widget::scrollable::Id {
     widget::scrollable::Id::new("full_search")
 }
