@@ -290,10 +290,11 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             // We are switching to the search content from comments.
             // We'll create the initial search state here.
             Content::Search(full_search_state) => full_search_state.update(msg),
-            _ if matches!(
-                msg,
-                FullSearchMsg::Search(_) | FullSearchMsg::StoryByTime { .. }
-            ) =>
+            content
+                if matches!(
+                    msg,
+                    FullSearchMsg::Search(_) | FullSearchMsg::StoryByTime { .. }
+                ) =>
             {
                 app.article_state.viewing_item = match msg {
                     FullSearchMsg::StoryByTime { story_id, .. } => Some(story_id),
@@ -318,12 +319,12 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     page: 1,
                     full_count: 0,
                 };
-                let should_add_history = match &app.content {
+                let should_add_history = match &content {
                     // We are opening the first story comments. Only one empty state is added to the root.
                     Content::Empty => app.history.is_empty(),
                     _ => true,
                 };
-                let last_content = mem::replace(&mut app.content, Content::Search(full_search));
+                let last_content = mem::replace(content, Content::Search(full_search));
                 if should_add_history {
                     app.history.push(last_content.into_history_element());
                 }
