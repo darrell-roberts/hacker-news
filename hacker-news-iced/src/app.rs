@@ -126,12 +126,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             comment_stack.reverse();
             let comments = comment_stack.pop().map(|c| vec![c]).unwrap_or_default();
 
-            let mut nav_stack = vec![NavStack {
-                comment: None,
-                offset: 0,
-                page: 1,
-                scroll_offset: None,
-            }];
+            let mut nav_stack = vec![NavStack::root()];
 
             if !comment_stack.is_empty() {
                 nav_stack.extend(comment_stack.into_iter().map(|comment| NavStack {
@@ -283,6 +278,8 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             save_task(app)
         }
         AppMsg::FullSearch(msg) => match &mut app.content {
+            // We are switching to the search content from comments.
+            // We'll create the initial search state here.
             Content::Search(full_search_state) => full_search_state.update(msg),
             _ if matches!(
                 msg,
@@ -294,9 +291,18 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     _ => None,
                 };
 
+                let search = match &msg {
+                    FullSearchMsg::Search(s) => SearchCriteria::Query(s.to_owned()),
+                    FullSearchMsg::StoryByTime { story_id, beyond } => SearchCriteria::StoryId {
+                        story_id: *story_id,
+                        beyond: beyond.to_owned(),
+                    },
+                    _ => unreachable!("msg guard for search above"),
+                };
+
                 // Create a new search content and re-dispatch message.
                 let full_search = FullSearchState {
-                    search: None,
+                    search,
                     search_results: Vec::new(),
                     search_context: app.search_context.clone(),
                     offset: 0,
@@ -359,17 +365,13 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                             }
                         }
                         Content::Search(full_search_state) => match &full_search_state.search {
-                            Some(SearchCriteria::Query(s)) => {
+                            SearchCriteria::Query(s) => {
                                 app.header.full_search = Some(s.clone());
                                 app.article_state.viewing_item = None;
                                 Task::none()
                             }
-                            Some(SearchCriteria::StoryId { story_id, .. }) => {
+                            SearchCriteria::StoryId { story_id, .. } => {
                                 Task::done(ArticleMsg::ViewingItem(*story_id)).map(AppMsg::Articles)
-                            }
-                            None => {
-                                app.article_state.viewing_item = None;
-                                Task::none()
                             }
                         },
                         Content::Empty => {
@@ -494,10 +496,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                 }
                 // Viewing comments for a story ordered by time.
                 Content::Search(full_search_state)
-                    if matches!(
-                        full_search_state.search,
-                        Some(SearchCriteria::StoryId { .. })
-                    ) =>
+                    if matches!(full_search_state.search, SearchCriteria::StoryId { .. }) =>
                 {
                     pane_grid::TitleBar::new(comments_title().unwrap_or("".into()))
                         .controls(pane_grid::Controls::new(widget::container(
