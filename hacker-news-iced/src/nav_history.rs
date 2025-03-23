@@ -91,6 +91,7 @@ pub enum HistoryElement {
 }
 
 impl HistoryElement {
+    /// Convert self into [`Content`].
     pub fn into_content(
         self,
         search_context: Arc<RwLock<SearchContext>>,
@@ -119,6 +120,7 @@ impl From<SearchHistory> for HistoryElement {
     }
 }
 
+/// History for the comment state.
 pub struct CommentHistory {
     story_id: u64,
     search: Option<String>,
@@ -191,6 +193,7 @@ impl History for CommentState {
     }
 }
 
+/// History for the search state.
 pub struct SearchHistory {
     search: SearchCriteria,
     offset: usize,
