@@ -345,6 +345,7 @@ impl ArticleState {
     pub fn update(&mut self, message: ArticleMsg) -> Task<AppMsg> {
         match message {
             ArticleMsg::Receive(articles) => {
+                log::debug!("Received {} articles", articles.len());
                 self.articles = articles;
                 widget::scrollable::scroll_to::<AppMsg>(
                     widget::scrollable::Id::new("articles"),

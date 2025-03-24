@@ -109,7 +109,13 @@ impl HistoryElement {
                     FullSearchState::from_history(search_context, search_history)?;
                 (index, Content::Search(search_state))
             }
-            HistoryElement::Empty => (ArticleType::Top, Content::Empty),
+            HistoryElement::Empty => {
+                search_context
+                    .write()
+                    .unwrap()
+                    .activate_index(ArticleType::Top)?;
+                (ArticleType::Top, Content::Empty)
+            }
         })
     }
 }
@@ -147,7 +153,10 @@ impl History for CommentState {
     ) -> anyhow::Result<(ArticleType, Self)> {
         let ctx = search_context.clone();
         let mut sc = ctx.write().unwrap();
-        sc.activate_index(item.category)?;
+        if sc.active_category() != item.category {
+            log::debug!("Switching active index to {}", item.category);
+            sc.activate_index(item.category)?;
+        }
         let (mut comments, total_comments) = sc
             .comments(item.parent_id, 10, item.offset)
             .with_context(|| {
@@ -230,8 +239,10 @@ impl History for FullSearchState {
     ) -> anyhow::Result<(ArticleType, Self)> {
         let ctx = search_context.clone();
         let mut sc = ctx.write().unwrap();
-        sc.activate_index(item.category)?;
-
+        if sc.active_category() != item.category {
+            log::debug!("Switching active index to {}", item.category);
+            sc.activate_index(item.category)?;
+        }
         let (search_results, full_count) = match &item.search {
             SearchCriteria::Query(s) => sc.search_all_comments(s, 10, item.offset)?,
             SearchCriteria::StoryId { story_id, beyond } => {

@@ -393,11 +393,16 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             match app.history.pop() {
                 Some(last) => match last.into_content(app.search_context.clone()) {
                     Ok((index, content)) => {
+                        log::debug!("restoring history for {content} using index {index}");
                         app.article_state.viewing_item = content.active_story();
                         app.header.full_search = content.search_text();
                         app.content = content;
 
                         if index != app.header.article_type {
+                            log::debug!(
+                                "{index} is different from current state {}",
+                                app.header.article_type
+                            );
                             app.header.article_type = index;
 
                             Task::batch([
