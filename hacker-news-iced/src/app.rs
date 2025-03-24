@@ -396,9 +396,18 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                         app.article_state.viewing_item = content.active_story();
                         app.header.full_search = content.search_text();
                         app.content = content;
-                        app.header.article_type = index;
 
-                        Task::done(FooterMsg::CurrentIndex(index)).map(AppMsg::Footer)
+                        if index != app.header.article_type {
+                            app.header.article_type = index;
+
+                            Task::batch([
+                                Task::done(ArticleMsg::TopStories(app.header.article_count))
+                                    .map(AppMsg::Articles),
+                                Task::done(FooterMsg::CurrentIndex(index)).map(AppMsg::Footer),
+                            ])
+                        } else {
+                            Task::none()
+                        }
                     }
                     Err(err) => common::error_task(err),
                 },
