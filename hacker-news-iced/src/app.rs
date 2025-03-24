@@ -361,6 +361,11 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::SaveConfig => save_task(app),
         // AppMsg::Clipboard(s) => clipboard::write(s),
         AppMsg::SwitchIndex { category, count } => {
+            let update_history = !matches!(app.content, Content::Empty);
+            let last_content = mem::replace(&mut app.content, Content::Empty);
+            if update_history {
+                app.history.push(last_content.into_history_element());
+            }
             let mut g = app.search_context.write().unwrap();
             match g.activate_index(category) {
                 Ok(_) => Task::batch([
@@ -369,11 +374,11 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 ]),
                 Err(err) => error_task(err),
             }
-            .chain(Task::batch([
-                Task::done(AppMsg::CloseSearch),
-                Task::done(AppMsg::CommentsClosed),
-                Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch),
-            ]))
+            // .chain(Task::batch([
+            //     // Task::done(AppMsg::CloseSearch),
+            //     // Task::done(AppMsg::CommentsClosed),
+            //     Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch),
+            // ]))
             .chain(Task::done(AppMsg::SaveConfig))
         }
         AppMsg::NextInput => focus_next(),
@@ -386,19 +391,17 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             // If we are restoring a full search, put back the search query
             // in the header.
             match app.history.pop() {
-                Some(last) => {
-                    match last.into_content(app.search_context.clone()) {
-                        Ok(content) => {
-                            app.article_state.viewing_item = content.active_story();
-                            app.header.full_search = content.search_text();
-                            app.content = content;
-                        }
-                        Err(err) => {
-                            error!("Failed to restore history: {err}");
-                        }
+                Some(last) => match last.into_content(app.search_context.clone()) {
+                    Ok((index, content)) => {
+                        app.article_state.viewing_item = content.active_story();
+                        app.header.full_search = content.search_text();
+                        app.content = content;
+                        app.header.article_type = index;
+
+                        Task::done(FooterMsg::CurrentIndex(index)).map(AppMsg::Footer)
                     }
-                    Task::none()
-                }
+                    Err(err) => common::error_task(err),
+                },
                 None => Task::none(),
             }
         }
