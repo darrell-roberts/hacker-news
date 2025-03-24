@@ -141,7 +141,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 // We are not opening the same comments for the same story again.
                 Content::Comment(comment_state) => comment_state.article.id != item_id,
                 // We are opening the first story comments. Only one empty state is added to the root.
-                Content::Empty => app.history.is_empty(),
+                Content::Empty(_) => app.history.is_empty(),
                 _ => true,
             };
 
@@ -185,10 +185,11 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             // Only clear the content if we are closing from comments.
             if matches!(app.content, Content::Comment(_)) {
                 let should_add_history = match &app.content {
-                    Content::Empty => app.history.is_empty(),
+                    Content::Empty(_) => app.history.is_empty(),
                     _ => true,
                 };
-                let last_content = mem::replace(&mut app.content, Content::Empty);
+                let last_content =
+                    mem::replace(&mut app.content, Content::Empty(app.header.article_type));
                 if should_add_history {
                     app.history.push(last_content.into_history_element());
                 }
@@ -251,7 +252,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             let scroll_id = widget::scrollable::Id::new(match &app.content {
                 Content::Comment(_) => "comments",
                 Content::Search(_) => "full_search",
-                Content::Empty => "articles",
+                Content::Empty(_) => "articles",
             });
             match scroll_by {
                 ScrollBy::PageUp => {
@@ -347,7 +348,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 };
                 let should_add_history = match &content {
                     // We are opening the first story comments. Only one empty state is added to the root.
-                    Content::Empty => app.history.is_empty(),
+                    Content::Empty(_) => app.history.is_empty(),
                     _ => true,
                 };
                 let last_content = mem::replace(content, Content::Search(full_search));
@@ -361,8 +362,9 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         AppMsg::SaveConfig => save_task(app),
         // AppMsg::Clipboard(s) => clipboard::write(s),
         AppMsg::SwitchIndex { category, count } => {
-            let update_history = !matches!(app.content, Content::Empty);
-            let last_content = mem::replace(&mut app.content, Content::Empty);
+            let update_history = !matches!(app.content, Content::Empty(_));
+            let last_content =
+                mem::replace(&mut app.content, Content::Empty(app.header.article_type));
             if update_history {
                 app.history.push(last_content.into_history_element());
             }
@@ -434,7 +436,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         .iter()
                         .find(|story| story.id == *id)
                 }),
-                Content::Empty => None,
+                Content::Empty(_) => None,
             }?;
 
             let title_text = widget::text(&story.title)
@@ -464,7 +466,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
             PaneState::Content => match &app.content {
                 Content::Comment(comment_state) => comment_state.view(),
                 Content::Search(full_search_state) => full_search_state.view(),
-                Content::Empty => widget::text("").into(),
+                Content::Empty(_) => widget::text("").into(),
             },
         })
         .title_bar(match state {
@@ -556,7 +558,7 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         .spacing(5),
                 )))
                 .always_show_controls(),
-                Content::Empty => pane_grid::TitleBar::new(""),
+                Content::Empty(_) => pane_grid::TitleBar::new(""),
             },
         })
     })

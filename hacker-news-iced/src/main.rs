@@ -127,7 +127,7 @@ fn start() -> anyhow::Result<()> {
                     b: Box::new(Configuration::Pane(PaneState::Content)),
                 }),
                 focused_pane: None,
-                content: Content::Empty,
+                content: Content::Empty(ArticleType::Top),
                 history: Vec::new(),
             }
         });

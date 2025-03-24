@@ -108,7 +108,7 @@ impl Config {
                 b: Box::new(Configuration::Pane(PaneState::Content)),
             }),
             focused_pane: None,
-            content: Content::Empty,
+            content: Content::Empty(config.article_type),
             history: Vec::new(),
         }
     }

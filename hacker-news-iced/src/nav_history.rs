@@ -18,7 +18,7 @@ pub enum Content {
     /// Comment search
     Search(FullSearchState),
     /// Empty
-    Empty,
+    Empty(ArticleType),
 }
 
 impl Content {
@@ -27,7 +27,7 @@ impl Content {
         match self {
             Content::Comment(comment_state) => comment_state.to_history().into(),
             Content::Search(full_search_state) => full_search_state.to_history().into(),
-            Content::Empty => HistoryElement::Empty,
+            Content::Empty(index) => HistoryElement::Empty(index),
         }
     }
 
@@ -39,7 +39,7 @@ impl Content {
                 SearchCriteria::Query(_) => None,
                 SearchCriteria::StoryId { story_id, .. } => Some(*story_id),
             },
-            Content::Empty => None,
+            Content::Empty(_) => None,
         }
     }
 
@@ -60,7 +60,7 @@ impl Display for Content {
         match self {
             Content::Comment(_) => f.write_str("Comments"),
             Content::Search(_) => f.write_str("Search"),
-            Content::Empty => f.write_str("Empty"),
+            Content::Empty(index) => write!(f, "Empty for {index}"),
         }
     }
 }
@@ -89,7 +89,7 @@ pub enum HistoryElement {
     /// History for the search state
     Search(SearchHistory),
     /// History for no state
-    Empty,
+    Empty(ArticleType),
 }
 
 impl HistoryElement {
@@ -109,12 +109,9 @@ impl HistoryElement {
                     FullSearchState::from_history(search_context, search_history)?;
                 (index, Content::Search(search_state))
             }
-            HistoryElement::Empty => {
-                search_context
-                    .write()
-                    .unwrap()
-                    .activate_index(ArticleType::Top)?;
-                (ArticleType::Top, Content::Empty)
+            HistoryElement::Empty(index) => {
+                search_context.write().unwrap().activate_index(index)?;
+                (index, Content::Empty(index))
             }
         })
     }
