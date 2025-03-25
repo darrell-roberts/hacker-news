@@ -7,6 +7,7 @@ use crate::{
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState, SearchCriteria},
     header::{self, HeaderMsg, HeaderState},
+    nav_history::{Content, History, HistoryElement},
     widget::hoverable,
     ROBOTO_FONT,
 };
@@ -27,7 +28,10 @@ use iced::{
     Theme,
 };
 use log::error;
-use std::sync::{Arc, RwLock};
+use std::{
+    mem,
+    sync::{Arc, RwLock},
+};
 
 /// Application state.
 pub struct App {
@@ -39,10 +43,6 @@ pub struct App {
     pub header: HeaderState,
     /// Article state.
     pub article_state: ArticleState,
-    /// Comment state.
-    pub comment_state: Option<CommentState>,
-    /// Full search state.
-    pub full_search_state: FullSearchState,
     /// Footer
     pub footer: FooterState,
     /// Window size
@@ -53,12 +53,16 @@ pub struct App {
     pub search_context: Arc<RwLock<SearchContext>>,
     /// Pane with focus
     pub focused_pane: Option<widget::pane_grid::Pane>,
+    /// Navigation history.
+    pub history: Vec<HistoryElement>,
+    /// Main content.
+    pub content: Content,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub enum PaneState {
     Articles,
-    Comments,
+    Content,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -105,6 +109,8 @@ pub enum AppMsg {
     NextInput,
     PrevInput,
     FocusPane(widget::pane_grid::Pane),
+    // Forward,
+    Back,
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -116,19 +122,11 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
         } => {
             // Opening first set of comments from an article.
             let item_id = article.id;
-
             let from_full_search = !comment_stack.is_empty();
-
             comment_stack.reverse();
-
             let comments = comment_stack.pop().map(|c| vec![c]).unwrap_or_default();
 
-            let mut nav_stack = vec![NavStack {
-                comment: None,
-                offset: 0,
-                page: 1,
-                scroll_offset: None,
-            }];
+            let mut nav_stack = vec![NavStack::root()];
 
             if !comment_stack.is_empty() {
                 nav_stack.extend(comment_stack.into_iter().map(|comment| NavStack {
@@ -139,19 +137,35 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 }));
             };
 
-            app.comment_state = Some(CommentState {
-                search_context: app.search_context.clone(),
-                article,
-                comments,
-                nav_stack,
-                search: None,
-                oneline: false,
-                page: 1,
-                offset: 0,
-                full_count: 0,
-                parent_id: 0,
-                active_comment_id: None,
-            });
+            let should_add_history = match &app.content {
+                // We are not opening the same comments for the same story again.
+                Content::Comment(comment_state) => comment_state.article.id != item_id,
+                // We are opening the first story comments. Only one empty state is added to the root.
+                Content::Empty(_) => app.history.is_empty(),
+                _ => true,
+            };
+
+            let last_content = mem::replace(
+                &mut app.content,
+                Content::Comment(CommentState {
+                    search_context: app.search_context.clone(),
+                    article,
+                    comments,
+                    nav_stack,
+                    search: None,
+                    oneline: false,
+                    page: 1,
+                    offset: 0,
+                    full_count: 0,
+                    parent_id: 0,
+                    active_comment_id: None,
+                }),
+            );
+
+            if should_add_history {
+                let history_item = last_content.into_history_element();
+                app.history.push(history_item);
+            }
 
             if from_full_search {
                 Task::none()
@@ -168,8 +182,20 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             .chain(Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch))
         }
         AppMsg::CommentsClosed => {
-            app.comment_state = None;
-            app.article_state.viewing_item = None;
+            // Only clear the content if we are closing from comments.
+            if matches!(app.content, Content::Comment(_)) {
+                let should_add_history = match &app.content {
+                    Content::Empty(_) => app.history.is_empty(),
+                    _ => true,
+                };
+                let last_content =
+                    mem::replace(&mut app.content, Content::Empty(app.header.article_type));
+                if should_add_history {
+                    app.history.push(last_content.into_history_element());
+                }
+                app.article_state.viewing_item = None;
+            }
+
             Task::none()
         }
         AppMsg::OpenLink { url } => {
@@ -212,11 +238,10 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             ])
         }
         AppMsg::Articles(msg) => app.article_state.update(msg),
-        AppMsg::Comments(msg) => app
-            .comment_state
-            .as_mut()
-            .map(|s| s.update(msg))
-            .unwrap_or_else(Task::none),
+        AppMsg::Comments(msg) => match &mut app.content {
+            Content::Comment(comment_state) => comment_state.update(msg),
+            _ => Task::none(),
+        },
         AppMsg::Footer(msg) => app.footer.update(msg),
         AppMsg::Header(msg) => app.header.update(msg),
         AppMsg::WindowResize(size) => {
@@ -224,14 +249,11 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             save_task(&*app)
         }
         AppMsg::ScrollBy(scroll_by) => {
-            let scroll_id =
-                widget::scrollable::Id::new(if app.full_search_state.search.is_some() {
-                    "full_search"
-                } else if app.comment_state.is_some() {
-                    "comments"
-                } else {
-                    "articles"
-                });
+            let scroll_id = widget::scrollable::Id::new(match &app.content {
+                Content::Comment(_) => "comments",
+                Content::Search(_) => "full_search",
+                Content::Empty(_) => "articles",
+            });
             match scroll_by {
                 ScrollBy::PageUp => {
                     widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -500. })
@@ -265,10 +287,87 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             app.article_state.visited.clear();
             save_task(app)
         }
-        AppMsg::FullSearch(msg) => app.full_search_state.update(msg),
+        AppMsg::FullSearch(msg) => match &mut app.content {
+            // We are switching to the search content from comments.
+            // We'll create the initial search state here.
+            Content::Search(full_search_state) => {
+                // Check if we are going from either text search or time sort.
+                let same_search = match &full_search_state.search {
+                    SearchCriteria::Query(_) => matches!(&msg, FullSearchMsg::Search(_)),
+                    SearchCriteria::StoryId { .. } => {
+                        matches!(&msg, FullSearchMsg::StoryByTime { .. })
+                    }
+                };
+
+                // Are we creating a new search state?
+                let change_search = matches!(
+                    &msg,
+                    FullSearchMsg::Search(_) | FullSearchMsg::StoryByTime { .. }
+                );
+
+                if !same_search && change_search {
+                    let search_criteria = full_search_state.search.clone();
+                    let last_state = mem::replace(
+                        full_search_state,
+                        FullSearchState::new(app.search_context.clone(), search_criteria),
+                    );
+                    app.history
+                        .push(HistoryElement::Search(last_state.to_history()));
+                }
+
+                full_search_state.update(msg)
+            }
+            content
+                if matches!(
+                    msg,
+                    FullSearchMsg::Search(_) | FullSearchMsg::StoryByTime { .. }
+                ) =>
+            {
+                app.article_state.viewing_item = match msg {
+                    FullSearchMsg::StoryByTime { story_id, .. } => Some(story_id),
+                    _ => None,
+                };
+
+                let search = match &msg {
+                    FullSearchMsg::Search(s) => SearchCriteria::Query(s.to_owned()),
+                    FullSearchMsg::StoryByTime { story_id, beyond } => SearchCriteria::StoryId {
+                        story_id: *story_id,
+                        beyond: beyond.to_owned(),
+                    },
+                    _ => unreachable!("msg guard for search above"),
+                };
+
+                // Create a new search content and re-dispatch message.
+                let full_search = FullSearchState {
+                    search,
+                    search_results: Vec::new(),
+                    search_context: app.search_context.clone(),
+                    offset: 0,
+                    page: 1,
+                    full_count: 0,
+                };
+                let should_add_history = match &content {
+                    // We are opening the first story comments. Only one empty state is added to the root.
+                    Content::Empty(_) => app.history.is_empty(),
+                    _ => true,
+                };
+                let last_content = mem::replace(content, Content::Search(full_search));
+                if should_add_history {
+                    app.history.push(last_content.into_history_element());
+                }
+                Task::done(msg).map(AppMsg::FullSearch)
+            }
+            _ => Task::none(),
+        },
         AppMsg::SaveConfig => save_task(app),
         // AppMsg::Clipboard(s) => clipboard::write(s),
         AppMsg::SwitchIndex { category, count } => {
+            let update_history = !matches!(app.content, Content::Empty(_));
+            let last_content =
+                mem::replace(&mut app.content, Content::Empty(app.header.article_type));
+            if update_history {
+                app.history.push(last_content.into_history_element());
+            }
             let mut g = app.search_context.write().unwrap();
             match g.activate_index(category) {
                 Ok(_) => Task::batch([
@@ -277,11 +376,11 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 ]),
                 Err(err) => error_task(err),
             }
-            .chain(Task::batch([
-                Task::done(AppMsg::CloseSearch),
-                Task::done(AppMsg::CommentsClosed),
-                Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch),
-            ]))
+            // .chain(Task::batch([
+            //     // Task::done(AppMsg::CloseSearch),
+            //     // Task::done(AppMsg::CommentsClosed),
+            //     Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch),
+            // ]))
             .chain(Task::done(AppMsg::SaveConfig))
         }
         AppMsg::NextInput => focus_next(),
@@ -290,6 +389,38 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             app.focused_pane = Some(pane);
             Task::none()
         }
+        AppMsg::Back => {
+            // If we are restoring a full search, put back the search query
+            // in the header.
+            match app.history.pop() {
+                Some(last) => match last.into_content(app.search_context.clone()) {
+                    Ok((index, content)) => {
+                        log::debug!("restoring history for {content} using index {index}");
+                        app.article_state.viewing_item = content.active_story();
+                        app.header.full_search = content.search_text();
+                        app.content = content;
+
+                        if index != app.header.article_type {
+                            log::debug!(
+                                "{index} is different from current state {}",
+                                app.header.article_type
+                            );
+                            app.header.article_type = index;
+
+                            Task::batch([
+                                Task::done(ArticleMsg::TopStories(app.header.article_count))
+                                    .map(AppMsg::Articles),
+                                Task::done(FooterMsg::CurrentIndex(index)).map(AppMsg::Footer),
+                            ])
+                        } else {
+                            Task::none()
+                        }
+                    }
+                    Err(err) => common::error_task(err),
+                },
+                None => Task::none(),
+            }
+        }
     }
 }
 
@@ -297,12 +428,22 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
 pub fn view(app: &App) -> iced::Element<AppMsg> {
     let body = widget::pane_grid(&app.panes, |_pane, state, _is_maximized| {
         let comments_title = || -> Option<iced::Element<AppMsg>> {
-            let comment_state = app.comment_state.as_ref()?;
-            let title_text = widget::text(&comment_state.article.title)
+            let story = match &app.content {
+                Content::Comment(comment_state) => Some(&comment_state.article),
+                Content::Search(_) => app.article_state.viewing_item.as_ref().and_then(|id| {
+                    app.article_state
+                        .articles
+                        .iter()
+                        .find(|story| story.id == *id)
+                }),
+                Content::Empty(_) => None,
+            }?;
+
+            let title_text = widget::text(&story.title)
                 .font(ROBOTO_FONT.bold())
                 .shaping(Shaping::Advanced);
 
-            let content: iced::Element<AppMsg> = match comment_state.article.url.as_deref() {
+            let content: iced::Element<AppMsg> = match story.url.as_deref() {
                 Some(url) => hoverable(
                     widget::button(title_text)
                         .on_press(AppMsg::OpenLink {
@@ -322,16 +463,11 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
 
         pane_grid::Content::new(match state {
             PaneState::Articles => app.article_state.view(&app.theme),
-            PaneState::Comments => {
-                if app.full_search_state.search.is_some() {
-                    app.full_search_state.view()
-                } else {
-                    app.comment_state
-                        .as_ref()
-                        .map(|s| s.view())
-                        .unwrap_or_else(|| widget::text("").into())
-                }
-            }
+            PaneState::Content => match &app.content {
+                Content::Comment(comment_state) => comment_state.view(),
+                Content::Search(full_search_state) => full_search_state.view(),
+                Content::Empty(_) => widget::text("").into(),
+            },
         })
         .title_bar(match state {
             PaneState::Articles => pane_grid::TitleBar::new("")
@@ -368,16 +504,20 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         ),
                 ))
                 .always_show_controls(),
-            PaneState::Comments => match app.comment_state.as_ref() {
-                // Comment search for selected story
-                Some(cs) if app.full_search_state.search.is_none() => {
+            PaneState::Content => match &app.content {
+                // Viewing comments for a story in original order.
+                Content::Comment(comment_state) => {
                     pane_grid::TitleBar::new(comments_title().unwrap_or("".into()))
                         .controls(pane_grid::Controls::new(
                             widget::Row::new()
                                 .push(common::tooltip(
-                                    widget::button(if cs.nav_stack.len() > 1 { "^" } else { "X" })
-                                        .on_press(AppMsg::Comments(CommentMsg::PopNavStack)),
-                                    if cs.nav_stack.len() > 1 {
+                                    widget::button(if comment_state.nav_stack.len() > 1 {
+                                        "^"
+                                    } else {
+                                        "X"
+                                    })
+                                    .on_press(AppMsg::Comments(CommentMsg::PopNavStack)),
+                                    if comment_state.nav_stack.len() > 1 {
                                         "Previous comment"
                                     } else {
                                         "Close"
@@ -388,19 +528,14 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         ))
                         .always_show_controls()
                 }
-                // Search comments for story ordered by time
-                _ if matches!(
-                    app.full_search_state.search,
-                    Some(SearchCriteria::StoryId { .. })
-                ) =>
+                // Viewing comments for a story ordered by time.
+                Content::Search(full_search_state)
+                    if matches!(full_search_state.search, SearchCriteria::StoryId { .. }) =>
                 {
                     pane_grid::TitleBar::new(comments_title().unwrap_or("".into()))
                         .controls(pane_grid::Controls::new(widget::container(
                             widget::Row::new()
-                                .push(widget::text(format!(
-                                    "{}",
-                                    app.full_search_state.full_count
-                                )))
+                                .push(widget::text(format!("{}", full_search_state.full_count)))
                                 .push(
                                     widget::button("X")
                                         .on_press(AppMsg::Header(HeaderMsg::ClearSearch)),
@@ -409,8 +544,8 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                         )))
                         .always_show_controls()
                 }
-                // Regular all comment search
-                _ if app.full_search_state.search.is_some() => pane_grid::TitleBar::new(
+                // Search results for search in all story comments.
+                Content::Search(full_search_state) => pane_grid::TitleBar::new(
                     widget::container(
                         widget::text("Searched all comments").font(ROBOTO_FONT.bold()),
                     )
@@ -418,15 +553,12 @@ pub fn view(app: &App) -> iced::Element<AppMsg> {
                 )
                 .controls(pane_grid::Controls::new(widget::container(
                     widget::Row::new()
-                        .push(widget::text(format!(
-                            "{}",
-                            app.full_search_state.full_count
-                        )))
+                        .push(widget::text(format!("{}", full_search_state.full_count)))
                         .push(widget::button("X").on_press(AppMsg::Header(HeaderMsg::ClearSearch)))
                         .spacing(5),
                 )))
                 .always_show_controls(),
-                _ => pane_grid::TitleBar::new(""),
+                Content::Empty(_) => pane_grid::TitleBar::new(""),
             },
         })
     })

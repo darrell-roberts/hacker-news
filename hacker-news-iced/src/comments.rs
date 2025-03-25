@@ -35,6 +35,18 @@ pub struct NavStack {
     pub scroll_offset: Option<AbsoluteOffset>,
 }
 
+impl NavStack {
+    /// Create a root stack node.
+    pub fn root() -> Self {
+        Self {
+            comment: None,
+            offset: 0,
+            page: 1,
+            scroll_offset: None,
+        }
+    }
+}
+
 /// Comment state
 pub struct CommentState {
     pub search_context: Arc<RwLock<SearchContext>>,

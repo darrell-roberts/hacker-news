@@ -3,8 +3,8 @@ use crate::{
     app::{App, PaneState},
     articles::ArticleState,
     footer::FooterState,
-    full_search::FullSearchState,
     header::HeaderState,
+    nav_history::Content,
     theme,
 };
 use anyhow::Context;
@@ -100,23 +100,16 @@ impl Config {
                 indexing_stories: Vec::new(),
                 filter_watching: false,
             },
-            comment_state: None,
             size: Size::new(config.window_size.0, config.window_size.1),
             panes: pane_grid::State::with_configuration(pane_grid::Configuration::Split {
                 axis: pane_grid::Axis::Vertical,
                 ratio: 0.3,
                 a: Box::new(Configuration::Pane(PaneState::Articles)),
-                b: Box::new(Configuration::Pane(PaneState::Comments)),
+                b: Box::new(Configuration::Pane(PaneState::Content)),
             }),
-            full_search_state: FullSearchState {
-                search_context: search_context.clone(),
-                search: None,
-                search_results: Vec::new(),
-                offset: 0,
-                page: 1,
-                full_count: 0,
-            },
             focused_pane: None,
+            content: Content::Empty(config.article_type),
+            history: Vec::new(),
         }
     }
 }

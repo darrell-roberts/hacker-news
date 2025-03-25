@@ -127,8 +127,14 @@ impl SearchContext {
         ))
     }
 
+    /// Get the active index category.
     pub fn active_category(&self) -> ArticleType {
         self.active_index
+    }
+
+    /// Get the total number of documents in the active index.
+    pub fn doc_count(&self) -> u64 {
+        self.reader.searcher().num_docs()
     }
 
     pub fn writer_context(&self) -> Result<WriteContext<'static>, SearchError> {

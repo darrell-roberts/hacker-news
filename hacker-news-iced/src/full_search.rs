@@ -20,7 +20,7 @@ use iced::{
 use std::sync::{Arc, RwLock};
 
 pub struct FullSearchState {
-    pub search: Option<SearchCriteria>,
+    pub search: SearchCriteria,
     pub search_results: Vec<Comment>,
     pub search_context: Arc<RwLock<SearchContext>>,
     pub offset: usize,
@@ -28,6 +28,21 @@ pub struct FullSearchState {
     pub full_count: usize,
 }
 
+impl FullSearchState {
+    /// Create a new full search state.
+    pub fn new(search_context: Arc<RwLock<SearchContext>>, search: SearchCriteria) -> Self {
+        Self {
+            search,
+            search_results: Vec::new(),
+            search_context,
+            offset: 0,
+            page: 1,
+            full_count: 0,
+        }
+    }
+}
+
+#[derive(Clone)]
 pub enum SearchCriteria {
     Query(String),
     StoryId { story_id: u64, beyond: Option<u64> },
@@ -124,14 +139,11 @@ impl FullSearchState {
                         ),
                 )
                 .push({
-                    let s = self
-                        .search
-                        .iter()
-                        .filter_map(|s| match s {
-                            SearchCriteria::Query(s) => Some(s.as_str()),
-                            SearchCriteria::StoryId { .. } => None,
-                        })
-                        .next();
+                    let s = match &self.search {
+                        SearchCriteria::Query(s) => Some(s.as_str()),
+                        SearchCriteria::StoryId { .. } => None,
+                    };
+
                     widget::container(widget::rich_text(render_rich_text(&comment.body, s, false)))
                         .width(Length::FillPortion(6).enclose(Length::Fixed(50.)))
                 })
@@ -165,15 +177,16 @@ impl FullSearchState {
                 if search.is_empty() {
                     return Task::done(FullSearchMsg::CloseSearch).map(AppMsg::FullSearch);
                 } else {
-                    if !self.search.iter().any(|s| match s {
+                    // Reset page and offset if the search changes.
+                    if !match &self.search {
                         SearchCriteria::Query(s) => s == &search,
                         SearchCriteria::StoryId { .. } => false,
-                    }) {
+                    } {
                         self.page = 1;
                         self.offset = 0;
                     }
 
-                    self.search = Some(SearchCriteria::Query(search.clone()));
+                    self.search = SearchCriteria::Query(search.clone());
                     let g = self.search_context.read().unwrap();
                     match g.search_all_comments(&search, 10, self.offset) {
                         Ok((comments, count)) => {
@@ -188,11 +201,10 @@ impl FullSearchState {
                 Task::done(AppMsg::CommentsClosed)
             }
             FullSearchMsg::CloseSearch => {
-                self.search = None;
                 self.offset = 0;
                 self.page = 1;
                 self.full_count = 0;
-                Task::none()
+                Task::done(AppMsg::Back)
             }
             FullSearchMsg::Forward => {
                 self.offset += 10;
@@ -219,7 +231,7 @@ impl FullSearchState {
                 self.paginate_task()
             }
             FullSearchMsg::StoryByTime { story_id, beyond } => {
-                self.search = Some(SearchCriteria::StoryId { story_id, beyond });
+                self.search = SearchCriteria::StoryId { story_id, beyond };
                 match self.search_context.read().unwrap().story_comments_by_date(
                     story_id,
                     beyond,
@@ -264,20 +276,17 @@ impl FullSearchState {
     }
 
     fn paginate_task(&self) -> Task<AppMsg> {
-        match self.search.as_ref() {
-            Some(s) => match s {
-                SearchCriteria::Query(s) => {
-                    Task::done(FullSearchMsg::Search(s.to_owned())).map(AppMsg::FullSearch)
-                }
-                SearchCriteria::StoryId { story_id, beyond } => {
-                    Task::done(FullSearchMsg::StoryByTime {
-                        story_id: *story_id,
-                        beyond: beyond.to_owned(),
-                    })
-                    .map(AppMsg::FullSearch)
-                }
-            },
-            None => Task::none(),
+        match &self.search {
+            SearchCriteria::Query(s) => {
+                Task::done(FullSearchMsg::Search(s.to_owned())).map(AppMsg::FullSearch)
+            }
+            SearchCriteria::StoryId { story_id, beyond } => {
+                Task::done(FullSearchMsg::StoryByTime {
+                    story_id: *story_id,
+                    beyond: beyond.to_owned(),
+                })
+                .map(AppMsg::FullSearch)
+            }
         }
         .chain(widget::scrollable::scroll_to(
             full_search_scroll_id(),

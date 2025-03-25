@@ -5,7 +5,6 @@ use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
 use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 use footer::FooterState;
-use full_search::FullSearchState;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{api_client, SearchContext};
 use header::{HeaderMsg, HeaderState};
@@ -23,6 +22,7 @@ use iced::{
 #[cfg(target_family = "unix")]
 use libc::{getrlimit, rlimit, setrlimit, RLIMIT_NOFILE};
 use log::{error, info};
+use nav_history::Content;
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, RwLock},
@@ -37,6 +37,7 @@ mod config;
 mod footer;
 mod full_search;
 mod header;
+mod nav_history;
 mod richtext;
 #[cfg(feature = "trace")]
 mod tracing;
@@ -118,23 +119,16 @@ fn start() -> anyhow::Result<()> {
                     indexing_stories: Vec::new(),
                     filter_watching: false,
                 },
-                comment_state: None,
                 size: Size::new(800., 600.),
                 panes: pane_grid::State::with_configuration(pane_grid::Configuration::Split {
                     axis: pane_grid::Axis::Vertical,
                     ratio: 0.3,
                     a: Box::new(Configuration::Pane(PaneState::Articles)),
-                    b: Box::new(Configuration::Pane(PaneState::Comments)),
+                    b: Box::new(Configuration::Pane(PaneState::Content)),
                 }),
-                full_search_state: FullSearchState {
-                    search_context: search_context.clone(),
-                    search: None,
-                    search_results: Vec::new(),
-                    offset: 0,
-                    page: 1,
-                    full_count: 0,
-                },
                 focused_pane: None,
+                content: Content::Empty(ArticleType::Top),
+                history: Vec::new(),
             }
         });
 
