@@ -1,3 +1,4 @@
+//! Search document storage and retrieval.
 use hacker_news_api::ArticleType;
 use log::info;
 use std::{collections::HashMap, fs::create_dir_all, path::Path};

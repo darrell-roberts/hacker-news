@@ -16,23 +16,17 @@ impl SearchContext {
             .query_parser()?
             .parse_query("type: IN [story, job, poll]")?;
         let searcher = self.searcher();
-
         let top_docs = TopDocs::with_limit(limit)
             // Pagination
             .and_offset(offset)
             // Ordering
             .order_by_u64_field(ITEM_RANK, Order::Asc);
 
-        let stories = searcher
+        searcher
             .search(&query, &top_docs)?
             .into_iter()
-            .map(|(_, doc_address)| {
-                let doc = searcher.doc::<TantivyDocument>(doc_address)?;
-                self.to_story(doc)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(stories)
+            .map(|(_, doc_address)| self.to_story(searcher.doc(doc_address)?))
+            .collect::<Result<Vec<_>, _>>()
     }
 
     /// Search all stories with term and offset pagination.
@@ -62,16 +56,11 @@ impl SearchContext {
         let searcher = self.searcher();
         let top_docs = TopDocs::with_limit(75).and_offset(offset);
 
-        let stories = searcher
+        searcher
             .search(&query, &top_docs)?
             .into_iter()
-            .map(|(_, doc_address)| {
-                let doc = searcher.doc::<TantivyDocument>(doc_address)?;
-                self.to_story(doc)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(stories)
+            .map(|(_, doc_address)| self.to_story(searcher.doc(doc_address)?))
+            .collect::<Result<Vec<_>, _>>()
     }
 
     /// Lookup a single story.
@@ -93,6 +82,6 @@ impl SearchContext {
             .next()
             .ok_or_else(|| SearchError::MissingDoc)?;
 
-        Ok(searcher.doc::<TantivyDocument>(doc_address)?)
+        Ok(searcher.doc(doc_address)?)
     }
 }
