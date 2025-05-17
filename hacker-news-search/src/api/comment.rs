@@ -1,7 +1,7 @@
 //! Search API for user comments.
 use super::{Comment, Story};
 use crate::{SearchContext, SearchError, ITEM_ID, ITEM_RANK, ITEM_STORY_ID, ITEM_TIME, ITEM_TYPE};
-use std::time::SystemTime;
+use std::{ops::Bound, time::SystemTime};
 use tantivy::{
     collector::{Count, MultiCollector, TopDocs},
     query::{BooleanQuery, Occur, Query, RangeQuery, TermQuery},
@@ -59,12 +59,16 @@ impl SearchContext {
             IndexRecordOption::Basic,
         ));
 
+        let item_item_field = self.schema.get_field(ITEM_TIME)?;
         let by_time = beyond.map(|since| {
             let now = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap()
                 .as_secs();
-            Box::new(RangeQuery::new_u64(ITEM_TIME.into(), since..now))
+            Box::new(RangeQuery::new(
+                Bound::Included(Term::from_field_u64(item_item_field, since)),
+                Bound::Included(Term::from_field_u64(item_item_field, now)),
+            ))
         });
 
         let query: Box<dyn Query> = match by_time {

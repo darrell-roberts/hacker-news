@@ -4,7 +4,10 @@ use crate::{
     ITEM_URL,
 };
 use std::collections::HashMap;
-use tantivy::{schema::OwnedValue, Document, TantivyDocument};
+use tantivy::{
+    schema::{document::CompactDocValue, Value},
+    Document, TantivyDocument,
+};
 
 mod comment;
 mod story;
@@ -135,7 +138,7 @@ impl SearchContext {
     fn extract_fields<'a>(
         &'a self,
         doc: &'a TantivyDocument,
-    ) -> HashMap<&'a str, Vec<&'a OwnedValue>> {
+    ) -> HashMap<&'a str, Vec<CompactDocValue<'a>>> {
         doc.get_sorted_field_values()
             .into_iter()
             .flat_map(|(field, field_values)| {
@@ -146,29 +149,18 @@ impl SearchContext {
     }
 }
 
-fn str_value(mut owned_value: Vec<&OwnedValue>) -> Option<String> {
-    let single_value = owned_value.pop()?;
-    match single_value {
-        OwnedValue::Str(s) => Some(s.to_owned()),
-        _ => None,
-    }
+fn str_value(mut owned_value: Vec<CompactDocValue<'_>>) -> Option<String> {
+    owned_value.pop()?.as_str().map(ToOwned::to_owned)
 }
 
-fn u64_value(mut owned_value: Vec<&OwnedValue>) -> Option<u64> {
-    let single_value = owned_value.pop()?;
-    match single_value {
-        OwnedValue::U64(n) => Some(*n),
-        _ => None,
-    }
+fn u64_value(mut owned_value: Vec<CompactDocValue<'_>>) -> Option<u64> {
+    owned_value.pop()?.as_u64()
 }
 
-fn u64_values(owned_value: Vec<&OwnedValue>) -> Vec<u64> {
+fn u64_values(owned_value: Vec<CompactDocValue<'_>>) -> Vec<u64> {
     owned_value
         .into_iter()
-        .filter_map(|value| match value {
-            OwnedValue::U64(n) => Some(*n),
-            _ => None,
-        })
+        .filter_map(|value| value.as_u64())
         .collect()
 }
 

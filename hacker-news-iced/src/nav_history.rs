@@ -14,7 +14,7 @@ use std::{
 /// Type of content to render in the content pane.
 pub enum Content {
     /// User comments
-    Comment(CommentState),
+    Comment(Box<CommentState>),
     /// Comment search
     Search(FullSearchState),
     /// Empty
@@ -102,7 +102,7 @@ impl HistoryElement {
             HistoryElement::Comment(comment_history) => {
                 let (index, comment_state) =
                     CommentState::from_history(search_context, comment_history)?;
-                (index, Content::Comment(comment_state))
+                (index, Content::Comment(Box::new(comment_state)))
             }
             HistoryElement::Search(search_history) => {
                 let (index, search_state) =

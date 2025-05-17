@@ -9,7 +9,7 @@ license.workspace = true
 [dependencies]
 anyhow.workspace = true
 log.workspace = true
-nom = "7"
+nom = "8"
 
 [dev-dependencies]
 cool_asserts = "2"
