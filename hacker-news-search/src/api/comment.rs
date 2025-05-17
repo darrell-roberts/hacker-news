@@ -6,7 +6,7 @@ use tantivy::{
     collector::{Count, MultiCollector, TopDocs},
     query::{BooleanQuery, Occur, Query, RangeQuery, TermQuery},
     schema::IndexRecordOption,
-    Order, Searcher, TantivyDocument, Term,
+    Order, Searcher, Term,
 };
 
 impl SearchContext {
@@ -37,10 +37,7 @@ impl SearchContext {
 
         let comments = docs
             .into_iter()
-            .map(|(_, doc_address)| {
-                let doc = searcher.doc::<TantivyDocument>(doc_address)?;
-                self.to_comment(doc)
-            })
+            .map(|(_, doc_address)| self.to_comment(searcher.doc(doc_address)?))
             .collect::<Result<Vec<_>, _>>()?;
         Ok((comments, count))
     }
@@ -93,10 +90,7 @@ impl SearchContext {
         let count = count_handle.extract(&mut multi_fruit);
         let comments = docs
             .into_iter()
-            .map(|(_, doc_address)| {
-                let doc = searcher.doc::<TantivyDocument>(doc_address)?;
-                self.to_comment(doc)
-            })
+            .map(|(_, doc_address)| self.to_comment(searcher.doc(doc_address)?))
             .collect::<Result<Vec<_>, _>>()?;
         Ok((comments, count))
     }
@@ -114,8 +108,9 @@ impl SearchContext {
             .into_iter()
             .next()
             .and_then(|(_, doc_address)| {
-                let doc = searcher.doc::<TantivyDocument>(doc_address).ok()?;
-                self.to_comment(doc).ok().map(|doc| doc.time)
+                self.to_comment(searcher.doc(doc_address).ok()?)
+                    .ok()
+                    .map(|doc| doc.time)
             }))
     }
 
@@ -185,10 +180,7 @@ impl SearchContext {
 
         let comments = docs
             .into_iter()
-            .map(|(_, doc_address)| {
-                let doc = searcher.doc::<TantivyDocument>(doc_address)?;
-                self.to_comment(doc)
-            })
+            .map(|(_, doc_address)| self.to_comment(searcher.doc(doc_address)?))
             .collect::<Result<Vec<_>, _>>()?;
 
         Ok((comments, count))
@@ -236,9 +228,7 @@ impl SearchContext {
             .next()
             .ok_or_else(|| SearchError::MissingDoc)?;
 
-        searcher
-            .doc::<TantivyDocument>(doc_address)
-            .map(|doc| self.to_comment(doc))?
+        searcher.doc(doc_address).map(|doc| self.to_comment(doc))?
     }
 }
 
