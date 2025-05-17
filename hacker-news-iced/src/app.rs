@@ -147,7 +147,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
 
             let last_content = mem::replace(
                 &mut app.content,
-                Content::Comment(CommentState {
+                Content::Comment(Box::new(CommentState {
                     search_context: app.search_context.clone(),
                     article,
                     comments,
@@ -159,7 +159,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     full_count: 0,
                     parent_id: 0,
                     active_comment_id: None,
-                }),
+                })),
             );
 
             if should_add_history {

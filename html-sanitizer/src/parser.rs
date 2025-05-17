@@ -16,7 +16,7 @@ pub fn parse_nodes<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element<'a>>, 
 where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
-    many0(alt((parse_tag, parse_text)))(input)
+    many0(alt((parse_tag, parse_text))).parse(input)
 }
 
 fn parse_tag<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
@@ -30,7 +30,8 @@ where
         parse_paragraph,
         parse_code,
         parse_escaped,
-    ))(input)
+    ))
+    .parse(input)
 }
 
 fn parse_bold<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
@@ -38,7 +39,7 @@ where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
     let parse = delimited(tag("<b>"), parse_nodes, tag("</b>"));
-    context("parse_bold", map(parse, Element::Bold))(input)
+    context("parse_bold", map(parse, Element::Bold)).parse(input)
 }
 
 fn parse_italic<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
@@ -46,7 +47,7 @@ where
     E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
 {
     let parse = delimited(tag("<i>"), parse_nodes, tag("</i>"));
-    context("parse_italic", map(parse, Element::Italic))(input)
+    context("parse_italic", map(parse, Element::Italic)).parse(input)
 }
 
 fn parse_escaped_text<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
@@ -56,7 +57,8 @@ where
     map(
         many0(alt((parse_escaped_character, parse_escaped_tag, anychar))),
         |v| v.into_iter().collect(),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn parse_code<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
@@ -79,7 +81,8 @@ where
     context(
         "parse_paragraph",
         value(Element::Paragraph, tag_no_case("<p>")),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn is_hex_digit(c: char) -> bool {
@@ -95,7 +98,8 @@ where
         map_res(take_while_m_n(2, 2, is_hex_digit), |s: &str| {
             u32::from_str_radix(s, 16)
         }),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn parse_escaped_character<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
@@ -106,9 +110,7 @@ where
         "escaped_tag",
         delimited(tag("&#x"), cut(parse_hex), tag(";")),
     );
-    let mut parse = context("parse_escaped", map_opt(hex_parse, char::from_u32));
-
-    parse(input)
+    context("parse_escaped", map_opt(hex_parse, char::from_u32)).parse(input)
 }
 
 fn parse_escaped<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
@@ -118,7 +120,8 @@ where
     map(
         alt((parse_escaped_character, parse_escaped_tag)),
         Element::Escaped,
-    )(input)
+    )
+    .parse(input)
 }
 
 fn parse_escaped_tag<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
@@ -136,7 +139,7 @@ where
     let deg = value('°', tag("&deg;"));
     let euro = value('€', tag("&euro;"));
 
-    alt((quote, gt, lt, ampersand, apos, copy, reg, trade, deg, euro))(input)
+    alt((quote, gt, lt, ampersand, apos, copy, reg, trade, deg, euro)).parse(input)
 }
 
 fn parse_text<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
@@ -144,7 +147,7 @@ where
     E: ParseError<&'a str> + ContextError<&'a str>,
 {
     let parse = take_while1(|c| c != '<' && c != '&');
-    context("parse_text", map(parse, |s: &str| Element::Text(s)))(input)
+    context("parse_text", map(parse, |s: &str| Element::Text(s))).parse(input)
 }
 
 /// Parse an html attribute name value pair.
@@ -161,7 +164,8 @@ where
             ),
             |(name, value)| Attribute { name, value },
         ),
-    )(input)
+    )
+    .parse(input)
 }
 
 /// Parse a quoted string.
@@ -172,7 +176,8 @@ where
     context(
         "parse_quote",
         delimited(char('"'), take_until("\""), char('"')),
-    )(input)
+    )
+    .parse(input)
 }
 
 /// Parse child elements of an anchor.
@@ -184,7 +189,7 @@ where
         alt((take_until("</a>"), take_until("</A>"))).and_then(parse_escaped_text),
         alt((tag("</a>"), tag("</A>"))),
     );
-    context("parse_anchor_children", parser)(input)
+    context("parse_anchor_children", parser).parse(input)
 }
 
 fn parse_attr<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Attribute<'a>>, E>
@@ -194,7 +199,8 @@ where
     context(
         "parse_attr",
         delimited(tag_no_case("<a"), many0(parse_attribute), tag(">")),
-    )(input)
+    )
+    .parse(input)
 }
 
 /// Parse an anchor element.
@@ -213,7 +219,8 @@ where
                 })
             },
         ),
-    )(input)
+    )
+    .parse(input)
 }
 
 #[cfg(test)]
@@ -222,17 +229,13 @@ mod test {
         parse_anchor, parse_code, parse_escaped, parse_nodes, parse_paragraph, parse_quote, Element,
     };
     use cool_asserts::assert_matches;
-    use nom::{
-        error::{convert_error, VerboseError},
-        Err,
-    };
+    use nom::{error::Error, Err};
 
     #[test]
     fn parse_url() {
         let anchor = r#"<a href="http://www.google.com">Google</a><br/>"#;
 
-        let (rest, Element::Link(anchor)) = parse_anchor::<VerboseError<&str>>(anchor).unwrap()
-        else {
+        let (rest, Element::Link(anchor)) = parse_anchor::<Error<&str>>(anchor).unwrap() else {
             panic!("Wrong type");
         };
 
@@ -246,8 +249,7 @@ mod test {
     fn parse_url_upper() {
         let anchor = r#"<A href="http://www.google.com">Google</A><br/>"#;
 
-        let (rest, Element::Link(anchor)) = parse_anchor::<VerboseError<&str>>(anchor).unwrap()
-        else {
+        let (rest, Element::Link(anchor)) = parse_anchor::<Error<&str>>(anchor).unwrap() else {
             panic!("Wrong type");
         };
 
@@ -261,8 +263,7 @@ mod test {
     fn parse_alt_url() {
         let anchor = r#"<a target="_blank" href="http://www.google.com">Google</a><br/>"#;
 
-        let (rest, Element::Link(anchor)) = parse_anchor::<VerboseError<&str>>(anchor).unwrap()
-        else {
+        let (rest, Element::Link(anchor)) = parse_anchor::<Error<&str>>(anchor).unwrap() else {
             panic!("Wrong type");
         };
 
@@ -276,7 +277,7 @@ mod test {
     fn quote() {
         let q = r#""hello""#;
 
-        let (rest, v) = parse_quote::<VerboseError<&str>>(q).unwrap();
+        let (rest, v) = parse_quote::<Error<&str>>(q).unwrap();
 
         assert_eq!(v, "hello");
         assert!(rest.is_empty());
@@ -286,7 +287,7 @@ mod test {
     fn test_escaped_slash() {
         let s = "&#x2F;some more stuff";
 
-        let (rest, el) = parse_escaped::<VerboseError<&str>>(s).unwrap();
+        let (rest, el) = parse_escaped::<Error<&str>>(s).unwrap();
 
         assert!(matches!(el, Element::Escaped('/')));
         assert_eq!(rest, "some more stuff");
@@ -296,7 +297,7 @@ mod test {
     fn test_parse_paragraph() {
         let s = "<P>some more stuff";
 
-        let (rest, el) = parse_paragraph::<VerboseError<&str>>(s).unwrap();
+        let (rest, el) = parse_paragraph::<Error<&str>>(s).unwrap();
 
         assert!(matches!(el, Element::Paragraph));
         assert_eq!(rest, "some more stuff");
@@ -307,7 +308,7 @@ mod test {
         let s = r#"123h&#x2F; <P>&#x2F;&#x23;<P>Hello<P>
             <a href="some url">some link</a>"#;
 
-        let el = parse_nodes::<VerboseError<&str>>(s);
+        let el = parse_nodes::<Error<&str>>(s);
 
         match el {
             Ok((rest, elements)) => {
@@ -316,7 +317,7 @@ mod test {
                 dbg!(&elements);
             }
             Err(Err::Error(err)) | Err(Err::Failure(err)) => {
-                eprintln!("error: {}", convert_error(s, err));
+                eprintln!("error: {err}");
                 panic!("failed");
             }
             Err(err) => {
@@ -334,14 +335,14 @@ mod test {
             }
         </code></pre>"#;
 
-        let el = parse_code::<VerboseError<&str>>(s);
+        let el = parse_code::<Error<&str>>(s);
         match el {
             Ok((rest, element)) => {
                 assert!(rest.is_empty());
                 assert!(matches!(element, Element::Code(_)));
             }
             Err(Err::Error(err)) | Err(Err::Failure(err)) => {
-                eprintln!("error: {}", convert_error(s, err));
+                eprintln!("error: {err}");
                 panic!("failed");
             }
             Err(err) => {
@@ -354,7 +355,7 @@ mod test {
     #[test]
     fn test_nested() {
         let s = r#"<b>This bold <i>italic&reg;</i>.</b>And some Code<pre><code>println!("")</code></pre> and more text"#;
-        let (rest, nodes) = parse_nodes::<VerboseError<&str>>(s).unwrap();
+        let (rest, nodes) = parse_nodes::<Error<&str>>(s).unwrap();
 
         assert_eq!(rest, "");
         assert_matches!(

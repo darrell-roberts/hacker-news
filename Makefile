@@ -94,6 +94,11 @@ else
 	@echo "Unsupported platform for install: " $(PLATFORM)
 endif
 
+uninstall-linux:
+	rm -f ~/.local/share/applications/io.github.darrellroberts.hacker-news.desktop
+	fd io.github.darrellroberts.hacker-news ~/.local/share/icons | xargs rm -f
+	rm -f ~/.local/bin/hacker-news-iced
+
 # Starts the jaeger all-in-one docker container.
 trace:
 	docker compose up --detach --remove-orphans --wait
@@ -103,4 +108,4 @@ trace:
 trace-down:
 	docker compose down
 
-.PHONY: all clean-dist check build bundle-mac install-local-linux install trace trace-down linux-flatpak
+.PHONY: all clean-dist check build bundle-mac install-local-linux install trace trace-down linux-flatpak uninstall-linux
