@@ -52,10 +52,10 @@ impl SearchContext {
     ) -> Result<(Vec<Comment>, usize), SearchError> {
         let searcher = self.searcher();
 
-        let by_story = Box::new(TermQuery::new(
+        let by_story = TermQuery::new(
             Term::from_field_u64(self.fields.story_id, story_id),
             IndexRecordOption::Basic,
-        ));
+        );
 
         let item_item_field = self.fields.time;
         let by_time = beyond.map(|since| {
@@ -63,18 +63,18 @@ impl SearchContext {
                 .duration_since(SystemTime::UNIX_EPOCH)
                 .unwrap()
                 .as_secs();
-            Box::new(RangeQuery::new(
+            RangeQuery::new(
                 Bound::Included(Term::from_field_u64(item_item_field, since)),
                 Bound::Included(Term::from_field_u64(item_item_field, now)),
-            ))
+            )
         });
 
-        let query: Box<dyn Query> = match by_time {
-            Some(q) => Box::new(BooleanQuery::new(vec![
-                (Occur::Must, q),
-                (Occur::Must, by_story),
-            ])),
-            None => by_story,
+        let query: &dyn Query = match by_time {
+            Some(q) => &BooleanQuery::new(vec![
+                (Occur::Must, Box::new(q)),
+                (Occur::Must, Box::new(by_story)),
+            ]),
+            None => &by_story,
         };
 
         let mut multi_collector = MultiCollector::new();
@@ -86,7 +86,7 @@ impl SearchContext {
         let docs_handle = multi_collector.add_collector(top_docs);
         let count_handle = multi_collector.add_collector(Count);
 
-        let mut multi_fruit = searcher.search(&query, &multi_collector)?;
+        let mut multi_fruit = searcher.search(query, &multi_collector)?;
         let docs = docs_handle.extract(&mut multi_fruit);
         let count = count_handle.extract(&mut multi_fruit);
         let comments = docs
