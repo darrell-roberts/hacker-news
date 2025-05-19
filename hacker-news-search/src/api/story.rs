@@ -1,8 +1,7 @@
 //! Search API for top stories.
-use std::sync::OnceLock;
-
 use super::Story;
 use crate::{SearchContext, SearchError, ITEM_RANK};
+use std::sync::OnceLock;
 use tantivy::{
     collector::TopDocs,
     query::{Query, TermQuery},
