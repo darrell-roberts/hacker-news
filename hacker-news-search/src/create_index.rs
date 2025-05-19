@@ -562,11 +562,7 @@ pub fn document_stats(
     let searcher = if ctx.active_index == category {
         ctx.searcher()
     } else {
-        ctx.indices
-            .get(category.as_str())
-            .unwrap()
-            .reader()?
-            .searcher()
+        ctx.indices.get_index(category).reader()?.searcher()
     };
 
     let type_field = ctx.schema.get_field(ITEM_TYPE)?;
