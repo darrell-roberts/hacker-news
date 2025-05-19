@@ -190,18 +190,24 @@ impl SearchContext {
 fn document_schema() -> (Schema, HackerNewsFields) {
     let mut schema_builder = Schema::builder();
 
-    let text_field_indexing = TextFieldIndexing::default()
+    let body_field_indexing = TextFieldIndexing::default()
         .set_tokenizer("en_stem")
         .set_index_option(IndexRecordOption::WithFreqsAndPositions);
-    let text_field_options = TextOptions::default()
-        .set_indexing_options(text_field_indexing)
+    let body_field_options = TextOptions::default()
+        .set_indexing_options(body_field_indexing)
+        .set_stored();
+
+    let title_field_indexing =
+        TextFieldIndexing::default().set_index_option(IndexRecordOption::WithFreqsAndPositions);
+    let title_field_options = TextOptions::default()
+        .set_indexing_options(title_field_indexing)
         .set_stored();
 
     let fields = HackerNewsFields {
         id: schema_builder.add_u64_field(ITEM_ID, STORED | INDEXED | FAST),
         parent_id: schema_builder.add_u64_field(ITEM_PARENT_ID, STORED | INDEXED | FAST),
-        title: schema_builder.add_text_field(ITEM_TITLE, text_field_options.clone()),
-        body: schema_builder.add_text_field(ITEM_BODY, text_field_options),
+        title: schema_builder.add_text_field(ITEM_TITLE, title_field_options.clone()),
+        body: schema_builder.add_text_field(ITEM_BODY, body_field_options),
         url: schema_builder.add_text_field(ITEM_URL, STRING | STORED),
         by: schema_builder.add_text_field(ITEM_BY, STRING | STORED),
         ty: schema_builder.add_text_field(ITEM_TYPE, TEXT | STORED),

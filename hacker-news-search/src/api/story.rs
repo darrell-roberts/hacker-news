@@ -4,22 +4,30 @@ use crate::{SearchContext, SearchError, ITEM_RANK};
 use std::sync::OnceLock;
 use tantivy::{
     collector::TopDocs,
-    query::{Query, TermQuery},
-    schema::IndexRecordOption,
+    query::{BooleanQuery, Occur, Query, TermQuery},
+    schema::{Field, IndexRecordOption},
     Order, TantivyDocument, Term,
 };
 
-static TOP_STORIES_QUERY: OnceLock<Box<dyn Query>> = OnceLock::new();
+static STORY_OR_JOB_OR_POLL: OnceLock<BooleanQuery> = OnceLock::new();
+
+fn story_job_poll(type_field: Field) -> BooleanQuery {
+    let mk_query = |ty: &str| -> (Occur, Box<dyn Query>) {
+        (
+            Occur::Should,
+            Box::new(TermQuery::new(
+                Term::from_field_text(type_field, ty),
+                IndexRecordOption::Basic,
+            )),
+        )
+    };
+    BooleanQuery::new([mk_query("story"), mk_query("job"), mk_query("poll")].into())
+}
 
 impl SearchContext {
     /// Lookup top stories applying limit and  offset pagination.
     pub fn top_stories(&self, limit: usize, offset: usize) -> Result<Vec<Story>, SearchError> {
-        // TODO: Remove unwrap when https://doc.rust-lang.org/std/sync/struct.OnceLock.html#method.get_or_try_init stabilizes
-        let query = TOP_STORIES_QUERY.get_or_init(|| {
-            self.query_parser()
-                .parse_query("type: IN [story, job, poll]")
-                .unwrap()
-        });
+        let query = STORY_OR_JOB_OR_POLL.get_or_init(|| story_job_poll(self.fields.ty));
         let searcher = self.searcher();
         let top_docs = TopDocs::with_limit(limit)
             // Pagination
@@ -43,20 +51,27 @@ impl SearchContext {
     ) -> Result<Vec<Story>, SearchError> {
         let story_id_query = search
             .parse::<u64>()
-            .map(|id| -> Box<dyn Query> {
-                Box::new(TermQuery::new(
+            .map(|id| {
+                TermQuery::new(
                     Term::from_field_u64(self.fields.id, id),
                     IndexRecordOption::Basic,
-                ))
+                )
             })
             .ok();
 
-        let query = {
-            match story_id_query {
+        let query: &dyn Query = {
+            match story_id_query.as_ref() {
                 Some(q) => q,
-                None => self
-                    .query_parser()
-                    .parse_query(&format!("type: IN [story, job, poll] AND title:{search}"))?,
+                None => &BooleanQuery::new(vec![
+                    (
+                        Occur::Must,
+                        Box::new(TermQuery::new(
+                            Term::from_field_text(self.fields.title, &search.to_lowercase()),
+                            IndexRecordOption::WithFreqs,
+                        )),
+                    ),
+                    (Occur::Must, Box::new(story_job_poll(self.fields.ty))),
+                ]),
             }
         };
 
@@ -64,7 +79,7 @@ impl SearchContext {
         let top_docs = TopDocs::with_limit(limit).and_offset(offset);
 
         searcher
-            .search(&query, &top_docs)?
+            .search(query, &top_docs)?
             .into_iter()
             .map(|(_, doc_address)| self.to_story(searcher.doc(doc_address)?))
             .collect::<Result<Vec<_>, _>>()
