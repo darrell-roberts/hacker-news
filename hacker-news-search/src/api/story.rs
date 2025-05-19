@@ -1,7 +1,8 @@
 //! Search API for top stories.
+use std::sync::OnceLock;
+
 use super::Story;
 use crate::{SearchContext, SearchError, ITEM_RANK};
-use anyhow::Context;
 use tantivy::{
     collector::TopDocs,
     query::{Query, TermQuery},
@@ -9,12 +10,17 @@ use tantivy::{
     Order, TantivyDocument, Term,
 };
 
+static TOP_STORIES_QUERY: OnceLock<Box<dyn Query>> = OnceLock::new();
+
 impl SearchContext {
     /// Lookup top stories applying limit and  offset pagination.
     pub fn top_stories(&self, limit: usize, offset: usize) -> Result<Vec<Story>, SearchError> {
-        let query = self
-            .query_parser()?
-            .parse_query("type: IN [story, job, poll]")?;
+        let query = TOP_STORIES_QUERY.get_or_init(|| {
+            self.query_parser()
+                .unwrap()
+                .parse_query("type: IN [story, job, poll]")
+                .unwrap()
+        });
         let searcher = self.searcher();
         let top_docs = TopDocs::with_limit(limit)
             // Pagination
@@ -23,7 +29,7 @@ impl SearchContext {
             .order_by_u64_field(ITEM_RANK, Order::Asc);
 
         searcher
-            .search(&query, &top_docs)?
+            .search(query, &top_docs)?
             .into_iter()
             .map(|(_, doc_address)| self.to_story(searcher.doc(doc_address)?))
             .collect::<Result<Vec<_>, _>>()
@@ -38,7 +44,6 @@ impl SearchContext {
     ) -> Result<Vec<Story>, SearchError> {
         let story_id_query = search
             .parse::<u64>()
-            .context("Not an id")
             .map(|id| -> Box<dyn Query> {
                 Box::new(TermQuery::new(
                     Term::from_field_u64(self.fields.id, id),
@@ -47,7 +52,7 @@ impl SearchContext {
             })
             .ok();
 
-        let query: Box<dyn Query> = {
+        let query = {
             match story_id_query {
                 Some(q) => q,
                 None => self

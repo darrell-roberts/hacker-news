@@ -17,9 +17,10 @@ impl SearchContext {
         limit: usize,
         offset: usize,
     ) -> Result<(Vec<Comment>, usize), SearchError> {
-        let query = self
-            .query_parser()?
-            .parse_query(&format!("parent_id:{parent_id}"))?;
+        let query = TermQuery::new(
+            Term::from_field_u64(self.fields.parent_id, parent_id),
+            IndexRecordOption::Basic,
+        );
 
         let searcher = self.searcher();
         let mut multi_collector = MultiCollector::new();
@@ -217,10 +218,10 @@ impl SearchContext {
     /// Get a single comment.
     fn comment(&self, searcher: &Searcher, comment_id: u64) -> Result<Comment, SearchError> {
         let top_docs = TopDocs::with_limit(1);
-        let parent_query: Box<dyn Query> = Box::new(TermQuery::new(
+        let parent_query = TermQuery::new(
             Term::from_field_u64(self.fields.id, comment_id),
             IndexRecordOption::Basic,
-        ));
+        );
 
         let (_score, doc_address) = searcher
             .search(&parent_query, &top_docs)?
