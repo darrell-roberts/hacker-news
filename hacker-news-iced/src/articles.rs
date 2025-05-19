@@ -360,7 +360,7 @@ impl ArticleState {
                 } else {
                     self.search = Some(input.clone());
                     let g = self.search_context.read().unwrap();
-                    match g.search_stories(&input, 0) {
+                    match g.search_stories(&input, self.article_limit, 0) {
                         Ok(stories) => {
                             self.articles = stories;
                             Task::none()

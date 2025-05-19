@@ -30,14 +30,18 @@ impl SearchContext {
     }
 
     /// Search all stories with term and offset pagination.
-    pub fn search_stories(&self, search: &str, offset: usize) -> Result<Vec<Story>, SearchError> {
+    pub fn search_stories(
+        &self,
+        search: &str,
+        limit: usize,
+        offset: usize,
+    ) -> Result<Vec<Story>, SearchError> {
         let story_id_query = search
             .parse::<u64>()
             .context("Not an id")
-            .map(|id| (id, self.fields.id))
-            .map(|(id, field)| -> Box<dyn Query> {
+            .map(|id| -> Box<dyn Query> {
                 Box::new(TermQuery::new(
-                    Term::from_field_u64(field, id),
+                    Term::from_field_u64(self.fields.id, id),
                     IndexRecordOption::Basic,
                 ))
             })
@@ -53,7 +57,7 @@ impl SearchContext {
         };
 
         let searcher = self.searcher();
-        let top_docs = TopDocs::with_limit(75).and_offset(offset);
+        let top_docs = TopDocs::with_limit(limit).and_offset(offset);
 
         searcher
             .search(&query, &top_docs)?
