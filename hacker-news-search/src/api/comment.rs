@@ -128,7 +128,7 @@ impl SearchContext {
             IndexRecordOption::Basic,
         ));
 
-        let parsed_query = self.query_parser()?.parse_query(search)?;
+        let parsed_query = self.query_parser().parse_query(search)?;
 
         let combined_query =
             BooleanQuery::new(vec![(Occur::Must, story_term), (Occur::Must, parsed_query)]);
@@ -143,7 +143,7 @@ impl SearchContext {
         limit: usize,
         offset: usize,
     ) -> Result<(Vec<Comment>, usize), SearchError> {
-        let parsed_query = self.query_parser()?.parse_query(search)?;
+        let parsed_query = self.query_parser().parse_query(search)?;
 
         let type_query = TermQuery::new(
             Term::from_field_text(self.fields.ty, "comment"),

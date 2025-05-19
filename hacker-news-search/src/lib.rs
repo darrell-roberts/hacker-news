@@ -1,7 +1,7 @@
 //! Search document storage and retrieval.
 use hacker_news_api::ArticleType;
 use log::info;
-use std::{collections::HashMap, fs::create_dir_all, path::Path};
+use std::{fs::create_dir_all, path::Path};
 use tantivy::{
     directory::{error::OpenDirectoryError, MmapDirectory},
     query::{QueryParser, QueryParserError},
@@ -34,6 +34,30 @@ pub struct HackerNewsFields {
     story_id: Field,
     kids: Field,
     score: Field,
+}
+
+/// The indexes for each category
+pub struct HackerNewsIndices {
+    top: Index,
+    ask: Index,
+    best: Index,
+    job: Index,
+    new: Index,
+    show: Index,
+}
+
+impl HackerNewsIndices {
+    /// Get the index for the article type.
+    pub fn get_index(&self, article_type: ArticleType) -> &Index {
+        match article_type {
+            ArticleType::New => &self.new,
+            ArticleType::Best => &self.best,
+            ArticleType::Top => &self.top,
+            ArticleType::Ask => &self.ask,
+            ArticleType::Show => &self.show,
+            ArticleType::Job => &self.job,
+        }
+    }
 }
 
 pub const ITEM_ID: &str = "id";
@@ -78,27 +102,14 @@ pub enum SearchError {
 pub struct SearchContext {
     reader: IndexReader,
     schema: Schema,
-    indices: HashMap<&'static str, Index>,
+    indices: HackerNewsIndices,
     active_index: ArticleType,
     fields: HackerNewsFields,
 }
 
-fn indices_map(
-    base_path: &Path,
-    schema: &Schema,
-) -> Result<HashMap<&'static str, Index>, SearchError> {
-    let keys = [
-        ArticleType::Top.as_str(),
-        ArticleType::Ask.as_str(),
-        ArticleType::Best.as_str(),
-        ArticleType::Job.as_str(),
-        ArticleType::New.as_str(),
-        ArticleType::Show.as_str(),
-    ];
-
-    let mut map = HashMap::new();
-
-    for key in keys {
+fn create_indices(base_path: &Path, schema: &Schema) -> Result<HackerNewsIndices, SearchError> {
+    let create_index = |article_type: ArticleType| -> Result<Index, SearchError> {
+        let key = article_type.as_str();
         let full_path = base_path.join(key);
         if !full_path.exists() {
             info!("Creating directory {full_path:?} for index {key}");
@@ -107,17 +118,24 @@ fn indices_map(
 
         let index =
             Index::open_or_create(MmapDirectory::open(base_path.join(key))?, schema.clone())?;
-        map.insert(key, index);
-    }
+        Ok(index)
+    };
 
-    Ok(map)
+    Ok(HackerNewsIndices {
+        top: create_index(ArticleType::Top)?,
+        ask: create_index(ArticleType::Ask)?,
+        best: create_index(ArticleType::Best)?,
+        job: create_index(ArticleType::Job)?,
+        new: create_index(ArticleType::New)?,
+        show: create_index(ArticleType::Show)?,
+    })
 }
 
 impl SearchContext {
     pub fn new(index_path: &Path, active_index: ArticleType) -> Result<Self, SearchError> {
         let (schema, fields) = document_schema();
-        let indices = indices_map(index_path, &schema)?;
-        let reader = indices.get(active_index.as_str()).unwrap().reader()?;
+        let indices = create_indices(index_path, &schema)?;
+        let reader = indices.get_index(active_index).reader()?;
 
         Ok(SearchContext {
             reader,
@@ -130,7 +148,7 @@ impl SearchContext {
 
     pub fn activate_index(&mut self, active_index: ArticleType) -> Result<(), SearchError> {
         self.active_index = active_index;
-        self.reader = self.indices.get(&active_index.as_str()).unwrap().reader()?;
+        self.reader = self.indices.get_index(active_index).reader()?;
         Ok(())
     }
 
@@ -138,14 +156,11 @@ impl SearchContext {
         self.reader.searcher()
     }
 
-    pub fn query_parser(&self) -> Result<QueryParser, SearchError> {
-        let title = self.schema.get_field(ITEM_TITLE)?;
-        let body = self.schema.get_field(ITEM_BODY)?;
+    pub fn query_parser(&self) -> QueryParser {
+        let title = self.fields.title;
+        let body = self.fields.body;
 
-        Ok(QueryParser::for_index(
-            self.indices.get(self.active_index.as_str()).unwrap(),
-            vec![title, body],
-        ))
+        QueryParser::for_index(self.indices.get_index(self.active_index), vec![title, body])
     }
 
     /// Get the active index category.
@@ -159,7 +174,7 @@ impl SearchContext {
     }
 
     pub fn writer_context(&self) -> Result<WriteContext<'static>, SearchError> {
-        let index = self.indices.get(self.active_index.as_str()).unwrap();
+        let index = self.indices.get_index(self.active_index);
         WriteContext::new(
             self.fields,
             index.writer(50_000_000)?,

@@ -14,9 +14,9 @@ static TOP_STORIES_QUERY: OnceLock<Box<dyn Query>> = OnceLock::new();
 impl SearchContext {
     /// Lookup top stories applying limit and  offset pagination.
     pub fn top_stories(&self, limit: usize, offset: usize) -> Result<Vec<Story>, SearchError> {
+        // TODO: Remove unwrap when https://doc.rust-lang.org/std/sync/struct.OnceLock.html#method.get_or_try_init stabilizes
         let query = TOP_STORIES_QUERY.get_or_init(|| {
             self.query_parser()
-                .unwrap()
                 .parse_query("type: IN [story, job, poll]")
                 .unwrap()
         });
@@ -55,7 +55,7 @@ impl SearchContext {
             match story_id_query {
                 Some(q) => q,
                 None => self
-                    .query_parser()?
+                    .query_parser()
                     .parse_query(&format!("type: IN [story, job, poll] AND title:{search}"))?,
             }
         };
