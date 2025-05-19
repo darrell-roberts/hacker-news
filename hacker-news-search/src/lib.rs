@@ -6,8 +6,8 @@ use tantivy::{
     directory::{error::OpenDirectoryError, MmapDirectory},
     query::{QueryParser, QueryParserError},
     schema::{
-        IndexRecordOption, Schema, TextFieldIndexing, TextOptions, FAST, INDEXED, STORED, STRING,
-        TEXT,
+        Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, FAST, INDEXED, STORED,
+        STRING, TEXT,
     },
     Index, IndexReader, Searcher, TantivyError,
 };
@@ -17,6 +17,24 @@ pub mod api;
 pub mod create_index;
 
 pub use create_index::*;
+
+#[derive(Clone, Copy, Debug)]
+pub struct HackerNewsFields {
+    id: Field,
+    parent_id: Field,
+    title: Field,
+    body: Field,
+    url: Field,
+    by: Field,
+    ty: Field,
+    rank: Field,
+    descendant_count: Field,
+    category: Field,
+    time: Field,
+    story_id: Field,
+    kids: Field,
+    score: Field,
+}
 
 pub const ITEM_ID: &str = "id";
 pub const ITEM_PARENT_ID: &str = "parent_id";
@@ -62,6 +80,7 @@ pub struct SearchContext {
     schema: Schema,
     indices: HashMap<&'static str, Index>,
     active_index: ArticleType,
+    fields: HackerNewsFields,
 }
 
 fn indices_map(
@@ -96,7 +115,7 @@ fn indices_map(
 
 impl SearchContext {
     pub fn new(index_path: &Path, active_index: ArticleType) -> Result<Self, SearchError> {
-        let schema = document_schema();
+        let (schema, fields) = document_schema();
         let indices = indices_map(index_path, &schema)?;
         let reader = indices.get(active_index.as_str()).unwrap().reader()?;
 
@@ -105,6 +124,7 @@ impl SearchContext {
             active_index,
             indices,
             schema,
+            fields,
         })
     }
 
@@ -141,7 +161,7 @@ impl SearchContext {
     pub fn writer_context(&self) -> Result<WriteContext<'static>, SearchError> {
         let index = self.indices.get(self.active_index.as_str()).unwrap();
         WriteContext::new(
-            Fields::new(self)?,
+            self.fields,
             index.writer(50_000_000)?,
             self.active_index.as_str(),
         )
@@ -152,7 +172,7 @@ impl SearchContext {
     }
 }
 
-fn document_schema() -> Schema {
+fn document_schema() -> (Schema, HackerNewsFields) {
     let mut schema_builder = Schema::builder();
 
     let text_field_indexing = TextFieldIndexing::default()
@@ -162,20 +182,22 @@ fn document_schema() -> Schema {
         .set_indexing_options(text_field_indexing)
         .set_stored();
 
-    schema_builder.add_u64_field(ITEM_RANK, STORED | INDEXED | FAST);
-    schema_builder.add_u64_field(ITEM_ID, STORED | INDEXED | FAST);
-    schema_builder.add_u64_field(ITEM_PARENT_ID, STORED | INDEXED | FAST);
-    schema_builder.add_text_field(ITEM_TITLE, text_field_options.clone());
-    schema_builder.add_text_field(ITEM_BODY, text_field_options);
-    schema_builder.add_text_field(ITEM_URL, STRING | STORED);
-    schema_builder.add_text_field(ITEM_BY, STRING | STORED);
-    schema_builder.add_text_field(ITEM_TYPE, TEXT | STORED);
-    schema_builder.add_u64_field(ITEM_DESCENDANT_COUNT, STORED | INDEXED);
-    schema_builder.add_text_field(ITEM_CATEGORY, STRING);
-    schema_builder.add_u64_field(ITEM_TIME, STORED | INDEXED | FAST);
-    schema_builder.add_u64_field(ITEM_STORY_ID, FAST | INDEXED | STORED);
-    schema_builder.add_u64_field(ITEM_KIDS, FAST | INDEXED | STORED);
-    schema_builder.add_u64_field(ITEM_SCORE, INDEXED | STORED);
+    let fields = HackerNewsFields {
+        id: schema_builder.add_u64_field(ITEM_ID, STORED | INDEXED | FAST),
+        parent_id: schema_builder.add_u64_field(ITEM_PARENT_ID, STORED | INDEXED | FAST),
+        title: schema_builder.add_text_field(ITEM_TITLE, text_field_options.clone()),
+        body: schema_builder.add_text_field(ITEM_BODY, text_field_options),
+        url: schema_builder.add_text_field(ITEM_URL, STRING | STORED),
+        by: schema_builder.add_text_field(ITEM_BY, STRING | STORED),
+        ty: schema_builder.add_text_field(ITEM_TYPE, TEXT | STORED),
+        rank: schema_builder.add_u64_field(ITEM_RANK, STORED | INDEXED | FAST),
+        descendant_count: schema_builder.add_u64_field(ITEM_DESCENDANT_COUNT, STORED | INDEXED),
+        category: schema_builder.add_text_field(ITEM_CATEGORY, STRING),
+        time: schema_builder.add_u64_field(ITEM_TIME, STORED | INDEXED | FAST),
+        story_id: schema_builder.add_u64_field(ITEM_STORY_ID, FAST | INDEXED | STORED),
+        kids: schema_builder.add_u64_field(ITEM_KIDS, FAST | INDEXED | STORED),
+        score: schema_builder.add_u64_field(ITEM_SCORE, INDEXED | STORED),
+    };
 
-    schema_builder.build()
+    (schema_builder.build(), fields)
 }

@@ -75,6 +75,8 @@ fn start() -> anyhow::Result<()> {
         "hacker-news-index",
     )?;
 
+    info!("Reading index dir {index_dir:?}");
+
     let search_context = Arc::new(RwLock::new(SearchContext::new(
         &index_dir,
         ArticleType::Top,

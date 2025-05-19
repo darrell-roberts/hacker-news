@@ -1,6 +1,6 @@
 //! Search API for top stories.
 use super::Story;
-use crate::{SearchContext, SearchError, ITEM_ID, ITEM_RANK};
+use crate::{SearchContext, SearchError, ITEM_RANK};
 use anyhow::Context;
 use tantivy::{
     collector::TopDocs,
@@ -34,12 +34,7 @@ impl SearchContext {
         let story_id_query = search
             .parse::<u64>()
             .context("Not an id")
-            .and_then(|id| {
-                self.schema
-                    .get_field(ITEM_ID)
-                    .map(|field| (id, field))
-                    .context("No field")
-            })
+            .map(|id| (id, self.fields.id))
             .map(|(id, field)| -> Box<dyn Query> {
                 Box::new(TermQuery::new(
                     Term::from_field_u64(field, id),
@@ -48,10 +43,14 @@ impl SearchContext {
             })
             .ok();
 
-        let query: Box<dyn Query> = story_id_query.unwrap_or(
-            self.query_parser()?
-                .parse_query(&format!("type: IN [story, job, poll] AND title:{search}"))?,
-        );
+        let query: Box<dyn Query> = {
+            match story_id_query {
+                Some(q) => q,
+                None => self
+                    .query_parser()?
+                    .parse_query(&format!("type: IN [story, job, poll] AND title:{search}"))?,
+            }
+        };
 
         let searcher = self.searcher();
         let top_docs = TopDocs::with_limit(75).and_offset(offset);
@@ -72,7 +71,7 @@ impl SearchContext {
         let searcher = self.searcher();
         let top_docs = TopDocs::with_limit(1);
         let story_query: Box<dyn Query> = Box::new(TermQuery::new(
-            Term::from_field_u64(self.schema.get_field(ITEM_ID)?, story_id),
+            Term::from_field_u64(self.fields.id, story_id),
             IndexRecordOption::Basic,
         ));
 

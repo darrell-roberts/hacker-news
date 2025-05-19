@@ -1,6 +1,6 @@
 //! Search API for user comments.
 use super::{Comment, Story};
-use crate::{SearchContext, SearchError, ITEM_ID, ITEM_RANK, ITEM_STORY_ID, ITEM_TIME, ITEM_TYPE};
+use crate::{SearchContext, SearchError, ITEM_RANK, ITEM_TIME};
 use std::{ops::Bound, time::SystemTime};
 use tantivy::{
     collector::{Count, MultiCollector, TopDocs},
@@ -52,11 +52,11 @@ impl SearchContext {
         let searcher = self.searcher();
 
         let by_story = Box::new(TermQuery::new(
-            Term::from_field_u64(self.schema.get_field(ITEM_STORY_ID)?, story_id),
+            Term::from_field_u64(self.fields.story_id, story_id),
             IndexRecordOption::Basic,
         ));
 
-        let item_item_field = self.schema.get_field(ITEM_TIME)?;
+        let item_item_field = self.fields.time;
         let by_time = beyond.map(|since| {
             let now = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
@@ -97,7 +97,7 @@ impl SearchContext {
 
     pub fn last_comment_age(&self, story_id: u64) -> Result<Option<u64>, SearchError> {
         let by_story = TermQuery::new(
-            Term::from_field_u64(self.schema.get_field(ITEM_STORY_ID)?, story_id),
+            Term::from_field_u64(self.fields.story_id, story_id),
             IndexRecordOption::Basic,
         );
         let top_docs = TopDocs::with_limit(1).order_by_u64_field(ITEM_TIME, Order::Desc);
@@ -123,7 +123,7 @@ impl SearchContext {
         offset: usize,
     ) -> Result<(Vec<Comment>, usize), SearchError> {
         let story_term = Box::new(TermQuery::new(
-            Term::from_field_u64(self.schema.get_field(ITEM_STORY_ID)?, story_id),
+            Term::from_field_u64(self.fields.story_id, story_id),
             IndexRecordOption::Basic,
         ));
 
@@ -145,7 +145,7 @@ impl SearchContext {
         let parsed_query = self.query_parser()?.parse_query(search)?;
 
         let type_query = TermQuery::new(
-            Term::from_field_text(self.schema.get_field(ITEM_TYPE)?, "comment"),
+            Term::from_field_text(self.fields.ty, "comment"),
             IndexRecordOption::Basic,
         );
 
@@ -218,7 +218,7 @@ impl SearchContext {
     fn comment(&self, searcher: &Searcher, comment_id: u64) -> Result<Comment, SearchError> {
         let top_docs = TopDocs::with_limit(1);
         let parent_query: Box<dyn Query> = Box::new(TermQuery::new(
-            Term::from_field_u64(self.schema.get_field(ITEM_ID)?, comment_id),
+            Term::from_field_u64(self.fields.id, comment_id),
             IndexRecordOption::Basic,
         ));
 

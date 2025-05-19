@@ -1,8 +1,6 @@
 use crate::{
     api::{Comment, Story},
-    SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_CATEGORY, ITEM_DESCENDANT_COUNT, ITEM_ID,
-    ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE,
-    ITEM_TYPE, ITEM_URL,
+    HackerNewsFields, SearchContext, SearchError, ITEM_TYPE,
 };
 use futures::{channel::mpsc, SinkExt};
 use futures_core::Stream;
@@ -20,7 +18,7 @@ use std::{
     sync::{Arc, OnceLock, RwLock},
     time::{Duration, Instant, SystemTime},
 };
-use tantivy::{schema::Field, IndexWriter, TantivyDocument, Term};
+use tantivy::{IndexWriter, TantivyDocument, Term};
 use tokio::{
     sync::mpsc::{channel, Receiver, Sender},
     task::AbortHandle,
@@ -66,53 +64,15 @@ enum ItemRef {
     Comment(CommentRef),
 }
 
-pub struct Fields {
-    id: Field,
-    parent: Field,
-    title: Field,
-    body: Field,
-    url: Field,
-    by: Field,
-    ty: Field,
-    rank: Field,
-    descendant_count: Field,
-    category: Field,
-    time: Field,
-    parent_story: Field,
-    kids: Field,
-    score: Field,
-}
-
-impl Fields {
-    pub fn new(ctx: &SearchContext) -> Result<Self, SearchError> {
-        Ok(Self {
-            id: ctx.schema.get_field(ITEM_ID)?,
-            parent: ctx.schema.get_field(ITEM_PARENT_ID)?,
-            title: ctx.schema.get_field(ITEM_TITLE)?,
-            body: ctx.schema.get_field(ITEM_BODY)?,
-            url: ctx.schema.get_field(ITEM_URL)?,
-            by: ctx.schema.get_field(ITEM_BY)?,
-            ty: ctx.schema.get_field(ITEM_TYPE)?,
-            rank: ctx.schema.get_field(ITEM_RANK)?,
-            descendant_count: ctx.schema.get_field(ITEM_DESCENDANT_COUNT)?,
-            category: ctx.schema.get_field(ITEM_CATEGORY)?,
-            time: ctx.schema.get_field(ITEM_TIME)?,
-            parent_story: ctx.schema.get_field(ITEM_STORY_ID)?,
-            kids: ctx.schema.get_field(ITEM_KIDS)?,
-            score: ctx.schema.get_field(ITEM_SCORE)?,
-        })
-    }
-}
-
 pub struct WriteContext<'a> {
     writer: IndexWriter,
     story_category: &'a str,
-    fields: Fields,
+    fields: HackerNewsFields,
 }
 
 impl<'a> WriteContext<'a> {
     pub fn new(
-        fields: Fields,
+        fields: HackerNewsFields,
         writer: IndexWriter,
         story_category: &'a str,
     ) -> Result<Self, SearchError> {
@@ -146,7 +106,7 @@ impl<'a> WriteContext<'a> {
         doc.add_u64(self.fields.rank, rank);
         doc.add_u64(self.fields.id, item.id);
         if let Some(id) = item.parent {
-            doc.add_u64(self.fields.parent, id);
+            doc.add_u64(self.fields.parent_id, id);
         }
         if let Some(t) = item.title.as_deref() {
             doc.add_text(self.fields.title, t);
@@ -165,7 +125,7 @@ impl<'a> WriteContext<'a> {
         }
 
         if let Some(id) = story_id {
-            doc.add_u64(self.fields.parent_story, id);
+            doc.add_u64(self.fields.story_id, id);
         }
 
         if item.ty == "story" {
@@ -188,7 +148,7 @@ impl<'a> WriteContext<'a> {
         self.writer
             .delete_term(Term::from_field_u64(self.fields.id, story.id));
         self.writer
-            .delete_term(Term::from_field_u64(self.fields.parent_story, story.id));
+            .delete_term(Term::from_field_u64(self.fields.story_id, story.id));
     }
 
     /// Delete all documents from the active index.
