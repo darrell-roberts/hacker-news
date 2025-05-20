@@ -54,7 +54,7 @@ pub struct ArticleState {
     pub search_context: Arc<RwLock<SearchContext>>,
     /// Viewing articles
     pub articles: Vec<Story>,
-    /// Visisted item ids.
+    /// Visited item ids.
     pub visited: HashSet<u64>,
     /// Search
     pub search: Option<String>,

@@ -5,27 +5,20 @@ use nom::{
     bytes::complete::{tag, tag_no_case, take_until, take_while1, take_while_m_n},
     character::complete::{alpha1, anychar, char, space1},
     combinator::{cut, map, map_opt, map_res, value},
-    error::{context, ContextError, FromExternalError, ParseError},
+    error::context,
     multi::many0,
     sequence::{delimited, pair, preceded, separated_pair, terminated},
     AsChar, IResult, Parser,
 };
-use std::num::ParseIntError;
 
 #[cfg(test)]
 mod parser_tests;
 
-pub fn parse_nodes<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Element<'a>>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+pub fn parse_nodes(input: &str) -> IResult<&str, Vec<Element<'_>>> {
     many0(alt((parse_tag, parse_text))).parse(input)
 }
 
-fn parse_tag<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_tag(input: &str) -> IResult<&str, Element<'_>> {
     alt((
         parse_bold,
         parse_italic,
@@ -37,26 +30,17 @@ where
     .parse(input)
 }
 
-fn parse_bold<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_bold(input: &str) -> IResult<&str, Element<'_>> {
     let parse = delimited(tag("<b>"), parse_nodes, tag("</b>"));
     context("parse_bold", map(parse, Element::Bold)).parse(input)
 }
 
-fn parse_italic<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_italic(input: &str) -> IResult<&str, Element<'_>> {
     let parse = delimited(tag("<i>"), parse_nodes, tag("</i>"));
     context("parse_italic", map(parse, Element::Italic)).parse(input)
 }
 
-fn parse_escaped_text<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_escaped_text(input: &str) -> IResult<&str, String> {
     map(
         many0(alt((parse_escaped_character, parse_escaped_tag, anychar))),
         |v| v.into_iter().collect(),
@@ -64,10 +48,7 @@ where
     .parse(input)
 }
 
-fn parse_code<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_code(input: &str) -> IResult<&str, Element<'_>> {
     let parse = delimited(
         tag_no_case("<pre><code>"),
         take_until("</code></pre>").and_then(parse_escaped_text),
@@ -77,10 +58,7 @@ where
     map(parse, Element::Code).parse(input)
 }
 
-fn parse_paragraph<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str>,
-{
+fn parse_paragraph(input: &str) -> IResult<&str, Element<'_>> {
     context(
         "parse_paragraph",
         value(Element::Paragraph, tag_no_case("<p>")),
@@ -92,10 +70,7 @@ fn is_hex_digit(c: char) -> bool {
     c.is_hex_digit()
 }
 
-fn parse_hex<'a, E>(input: &'a str) -> IResult<&'a str, u32, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_hex(input: &str) -> IResult<&str, u32> {
     context(
         "parse_hex",
         map_res(take_while_m_n(2, 2, is_hex_digit), |s: &str| {
@@ -105,10 +80,7 @@ where
     .parse(input)
 }
 
-fn parse_escaped_character<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_escaped_character(input: &str) -> IResult<&str, char> {
     let hex_parse = context(
         "escaped_tag",
         delimited(tag("&#x"), cut(parse_hex), tag(";")),
@@ -116,10 +88,7 @@ where
     context("parse_escaped", map_opt(hex_parse, char::from_u32)).parse(input)
 }
 
-fn parse_escaped<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_escaped(input: &str) -> IResult<&str, Element<'_>> {
     map(
         alt((parse_escaped_character, parse_escaped_tag)),
         Element::Escaped,
@@ -127,10 +96,7 @@ where
     .parse(input)
 }
 
-fn parse_escaped_tag<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str>,
-{
+fn parse_escaped_tag(input: &str) -> IResult<&str, char> {
     let quote = value('\"', tag("&quot;"));
     let gt = value('>', tag("&gt;"));
     let lt = value('<', tag("&lt;"));
@@ -145,19 +111,13 @@ where
     alt((quote, gt, lt, ampersand, apos, copy, reg, trade, deg, euro)).parse(input)
 }
 
-fn parse_text<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str>,
-{
+fn parse_text(input: &str) -> IResult<&str, Element<'_>> {
     let parse = take_while1(|c| c != '<' && c != '&');
     context("parse_text", map(parse, |s: &str| Element::Text(s))).parse(input)
 }
 
 /// Parse an html attribute name value pair.
-fn parse_attribute<'a, E>(input: &'a str) -> IResult<&'a str, Attribute<'a>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_attribute(input: &str) -> IResult<&str, Attribute<'_>> {
     context(
         "parse_attribute",
         map(
@@ -172,10 +132,7 @@ where
 }
 
 /// Parse a quoted string.
-fn parse_quote<'a, E>(input: &'a str) -> IResult<&'a str, &'a str, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str>,
-{
+fn parse_quote(input: &str) -> IResult<&str, &str> {
     context(
         "parse_quote",
         delimited(char('"'), take_until("\""), char('"')),
@@ -184,10 +141,7 @@ where
 }
 
 /// Parse child elements of an anchor.
-fn parse_anchor_children<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_anchor_children(input: &str) -> IResult<&str, String> {
     let parser = terminated(
         alt((take_until("</a>"), take_until("</A>"))).and_then(parse_escaped_text),
         alt((tag("</a>"), tag("</A>"))),
@@ -195,10 +149,7 @@ where
     context("parse_anchor_children", parser).parse(input)
 }
 
-fn parse_attr<'a, E>(input: &'a str) -> IResult<&'a str, Vec<Attribute<'a>>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_attr(input: &str) -> IResult<&str, Vec<Attribute<'_>>> {
     context(
         "parse_attr",
         delimited(tag_no_case("<a"), many0(parse_attribute), tag(">")),
@@ -207,10 +158,7 @@ where
 }
 
 /// Parse an anchor element.
-fn parse_anchor<'a, E>(input: &'a str) -> IResult<&'a str, Element<'a>, E>
-where
-    E: ParseError<&'a str> + ContextError<&'a str> + FromExternalError<&'a str, ParseIntError>,
-{
+fn parse_anchor(input: &str) -> IResult<&str, Element<'_>> {
     context(
         "parse_anchor",
         map(

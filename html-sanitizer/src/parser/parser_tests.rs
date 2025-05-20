@@ -2,13 +2,13 @@ use super::{
     parse_anchor, parse_code, parse_escaped, parse_nodes, parse_paragraph, parse_quote, Element,
 };
 use cool_asserts::assert_matches;
-use nom::{error::Error, Err};
+use nom::Err;
 
 #[test]
 fn parse_url() {
     let anchor = r#"<a href="http://www.google.com">Google</a><br/>"#;
 
-    let (rest, Element::Link(anchor)) = parse_anchor::<Error<&str>>(anchor).unwrap() else {
+    let (rest, Element::Link(anchor)) = parse_anchor(anchor).unwrap() else {
         panic!("Wrong type");
     };
 
@@ -22,7 +22,7 @@ fn parse_url() {
 fn parse_url_upper() {
     let anchor = r#"<A href="http://www.google.com">Google</A><br/>"#;
 
-    let (rest, Element::Link(anchor)) = parse_anchor::<Error<&str>>(anchor).unwrap() else {
+    let (rest, Element::Link(anchor)) = parse_anchor(anchor).unwrap() else {
         panic!("Wrong type");
     };
 
@@ -36,7 +36,7 @@ fn parse_url_upper() {
 fn parse_alt_url() {
     let anchor = r#"<a target="_blank" href="http://www.google.com">Google</a><br/>"#;
 
-    let (rest, Element::Link(anchor)) = parse_anchor::<Error<&str>>(anchor).unwrap() else {
+    let (rest, Element::Link(anchor)) = parse_anchor(anchor).unwrap() else {
         panic!("Wrong type");
     };
 
@@ -50,7 +50,7 @@ fn parse_alt_url() {
 fn quote() {
     let q = r#""hello""#;
 
-    let (rest, v) = parse_quote::<Error<&str>>(q).unwrap();
+    let (rest, v) = parse_quote(q).unwrap();
 
     assert_eq!(v, "hello");
     assert!(rest.is_empty());
@@ -60,7 +60,7 @@ fn quote() {
 fn test_escaped_slash() {
     let s = "&#x2F;some more stuff";
 
-    let (rest, el) = parse_escaped::<Error<&str>>(s).unwrap();
+    let (rest, el) = parse_escaped(s).unwrap();
 
     assert!(matches!(el, Element::Escaped('/')));
     assert_eq!(rest, "some more stuff");
@@ -70,7 +70,7 @@ fn test_escaped_slash() {
 fn test_parse_paragraph() {
     let s = "<P>some more stuff";
 
-    let (rest, el) = parse_paragraph::<Error<&str>>(s).unwrap();
+    let (rest, el) = parse_paragraph(s).unwrap();
 
     assert!(matches!(el, Element::Paragraph));
     assert_eq!(rest, "some more stuff");
@@ -81,7 +81,7 @@ fn test_elements() {
     let s = r#"123h&#x2F; <P>&#x2F;&#x23;<P>Hello<P>
             <a href="some url">some link</a>"#;
 
-    let el = parse_nodes::<Error<&str>>(s);
+    let el = parse_nodes(s);
 
     match el {
         Ok((rest, elements)) => {
@@ -108,7 +108,7 @@ fn test_code() {
             }
         </code></pre>"#;
 
-    let el = parse_code::<Error<&str>>(s);
+    let el = parse_code(s);
     match el {
         Ok((rest, element)) => {
             assert!(rest.is_empty());
@@ -128,7 +128,7 @@ fn test_code() {
 #[test]
 fn test_nested() {
     let s = r#"<b>This bold <i>italic&reg;</i>.</b>And some Code<pre><code>println!("")</code></pre> and more text"#;
-    let (rest, nodes) = parse_nodes::<Error<&str>>(s).unwrap();
+    let (rest, nodes) = parse_nodes(s).unwrap();
 
     assert_eq!(rest, "");
     assert_matches!(

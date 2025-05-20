@@ -46,7 +46,7 @@ pub enum Element<'a> {
 
 /// Parse the input str into elements.
 pub fn parse_elements(input: &str) -> Vec<Element> {
-    parser::parse_nodes::<'_, nom::error::Error<&str>>(input)
+    parser::parse_nodes(input)
         .inspect(|(rest, _)| {
             if !rest.is_empty() {
                 warn!("Unparsed text left over: \"{rest}\"")

@@ -36,7 +36,7 @@ pub struct HackerNewsFields {
     score: Field,
 }
 
-/// The indexes for each category
+/// The indices for each category
 pub struct HackerNewsIndices {
     top: Index,
     ask: Index,
