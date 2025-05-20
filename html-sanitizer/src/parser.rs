@@ -31,13 +31,13 @@ fn parse_tag(input: &str) -> IResult<&str, Element<'_>> {
 }
 
 fn parse_bold(input: &str) -> IResult<&str, Element<'_>> {
-    let parse = delimited(tag("<b>"), parse_nodes, tag("</b>"));
-    context("parse_bold", map(parse, Element::Bold)).parse(input)
+    let bold = delimited(tag("<b>"), parse_nodes, tag("</b>"));
+    context("parse_bold", map(bold, Element::Bold)).parse(input)
 }
 
 fn parse_italic(input: &str) -> IResult<&str, Element<'_>> {
-    let parse = delimited(tag("<i>"), parse_nodes, tag("</i>"));
-    context("parse_italic", map(parse, Element::Italic)).parse(input)
+    let italic = delimited(tag("<i>"), parse_nodes, tag("</i>"));
+    context("parse_italic", map(italic, Element::Italic)).parse(input)
 }
 
 fn parse_escaped_text(input: &str) -> IResult<&str, String> {
@@ -49,13 +49,13 @@ fn parse_escaped_text(input: &str) -> IResult<&str, String> {
 }
 
 fn parse_code(input: &str) -> IResult<&str, Element<'_>> {
-    let parse = delimited(
+    let code = delimited(
         tag_no_case("<pre><code>"),
         take_until("</code></pre>").and_then(parse_escaped_text),
         tag_no_case("</code></pre>"),
     );
 
-    map(parse, Element::Code).parse(input)
+    map(code, Element::Code).parse(input)
 }
 
 fn parse_paragraph(input: &str) -> IResult<&str, Element<'_>> {
@@ -112,8 +112,8 @@ fn parse_escaped_tag(input: &str) -> IResult<&str, char> {
 }
 
 fn parse_text(input: &str) -> IResult<&str, Element<'_>> {
-    let parse = take_while1(|c| c != '<' && c != '&');
-    context("parse_text", map(parse, |s: &str| Element::Text(s))).parse(input)
+    let text = take_while1(|c| c != '<' && c != '&');
+    context("parse_text", map(text, |s: &str| Element::Text(s))).parse(input)
 }
 
 /// Parse an html attribute name value pair.
@@ -142,11 +142,11 @@ fn parse_quote(input: &str) -> IResult<&str, &str> {
 
 /// Parse child elements of an anchor.
 fn parse_anchor_children(input: &str) -> IResult<&str, String> {
-    let parser = terminated(
+    let anchor = terminated(
         alt((take_until("</a>"), take_until("</A>"))).and_then(parse_escaped_text),
         alt((tag("</a>"), tag("</A>"))),
     );
-    context("parse_anchor_children", parser).parse(input)
+    context("parse_anchor_children", anchor).parse(input)
 }
 
 fn parse_attr(input: &str) -> IResult<&str, Vec<Attribute<'_>>> {

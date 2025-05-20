@@ -1,3 +1,4 @@
+//! Create index.
 use crate::{
     api::{Comment, Story},
     HackerNewsFields, SearchContext, SearchError, ITEM_TYPE,
