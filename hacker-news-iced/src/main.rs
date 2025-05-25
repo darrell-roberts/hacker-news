@@ -98,7 +98,7 @@ fn start() -> anyhow::Result<()> {
                 #[cfg(not(target_os = "linux"))]
                 scale: 1.,
                 #[cfg(target_os = "linux")]
-                scale: linux::initial_font_scale().unwrap_or(1.),
+                scale: linux::initial_font_scale(),
                 header: HeaderState {
                     search_context: search_context.clone(),
                     article_count: 75,
@@ -112,7 +112,7 @@ fn start() -> anyhow::Result<()> {
                     #[cfg(not(target_os = "linux"))]
                     scale: 1.,
                     #[cfg(target_os = "linux")]
-                    scale: linux::initial_font_scale().unwrap_or(1.),
+                    scale: linux::initial_font_scale(),
                     current_index_stats: None,
                     index_stats: HashMap::new(),
                     index_progress: None,
@@ -143,9 +143,10 @@ fn start() -> anyhow::Result<()> {
         });
 
     #[cfg(target_os = "linux")]
-    if let Some(scale) = linux::initial_font_scale() {
-        info!("Setting scale to {scale} from system font scale");
-        app.scale = scale;
+    {
+        app.scale = linux::initial_font_scale();
+        info!("Setting scale to {} from system font scale", app.scale);
+        app.theme = linux::initial_theme();
     }
 
     iced::application("Hacker News", update, view)
