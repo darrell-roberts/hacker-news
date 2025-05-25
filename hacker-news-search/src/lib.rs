@@ -99,6 +99,9 @@ pub enum SearchError {
     Join(#[from] tokio::task::JoinError),
 }
 
+/// Search result with SearchError.
+type SearchResult<T> = Result<T, SearchError>;
+
 pub struct SearchContext {
     reader: IndexReader,
     schema: Schema,
@@ -107,8 +110,8 @@ pub struct SearchContext {
     fields: HackerNewsFields,
 }
 
-fn create_indices(base_path: &Path, schema: &Schema) -> Result<HackerNewsIndices, SearchError> {
-    let create_index = |article_type: ArticleType| -> Result<Index, SearchError> {
+fn create_indices(base_path: &Path, schema: &Schema) -> SearchResult<HackerNewsIndices> {
+    let create_index = |article_type: ArticleType| -> SearchResult<Index> {
         let key = article_type.as_str();
         let full_path = base_path.join(key);
         if !full_path.exists() {
@@ -132,7 +135,7 @@ fn create_indices(base_path: &Path, schema: &Schema) -> Result<HackerNewsIndices
 }
 
 impl SearchContext {
-    pub fn new(index_path: &Path, active_index: ArticleType) -> Result<Self, SearchError> {
+    pub fn new(index_path: &Path, active_index: ArticleType) -> SearchResult<Self> {
         let (schema, fields) = document_schema();
         let indices = create_indices(index_path, &schema)?;
         let reader = indices.get_index(active_index).reader()?;
@@ -146,7 +149,7 @@ impl SearchContext {
         })
     }
 
-    pub fn activate_index(&mut self, active_index: ArticleType) -> Result<(), SearchError> {
+    pub fn activate_index(&mut self, active_index: ArticleType) -> SearchResult<()> {
         self.active_index = active_index;
         self.reader = self.indices.get_index(active_index).reader()?;
         Ok(())
@@ -173,7 +176,7 @@ impl SearchContext {
         self.reader.searcher().num_docs()
     }
 
-    pub fn writer_context(&self) -> Result<WriteContext<'static>, SearchError> {
+    pub fn writer_context(&self) -> SearchResult<WriteContext<'static>> {
         let index = self.indices.get_index(self.active_index);
         WriteContext::new(
             self.fields,
@@ -182,7 +185,7 @@ impl SearchContext {
         )
     }
 
-    pub fn refresh_reader(&self) -> Result<(), SearchError> {
+    pub fn refresh_reader(&self) -> SearchResult<()> {
         Ok(self.reader.reload()?)
     }
 }

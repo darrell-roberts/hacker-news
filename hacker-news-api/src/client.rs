@@ -13,11 +13,7 @@ use crate::{
     ArticleType,
 };
 use anyhow::{Context, Result};
-use futures::{
-    future,
-    stream::{FuturesOrdered, FuturesUnordered},
-    Stream, TryFutureExt, TryStreamExt,
-};
+use futures::{future, stream::FuturesOrdered, TryFutureExt, TryStream, TryStreamExt};
 use log::{error, info};
 use reqwest::{header, IntoUrl};
 use serde::Deserialize;
@@ -97,7 +93,7 @@ impl ApiClient {
             .await?;
 
         ids.truncate(limit);
-        self.items(&ids).await
+        self.items(&ids).try_collect().await
     }
 
     #[cfg_attr(feature = "trace", instrument(skip_all))]
@@ -128,7 +124,7 @@ impl ApiClient {
 
     /// Get multiple ids by item id.
     #[cfg_attr(feature = "trace", instrument(skip_all))]
-    pub async fn items(&self, ids: &[u64]) -> Result<Vec<Item>> {
+    pub fn items(&self, ids: &[u64]) -> impl TryStream<Ok = Item, Error = anyhow::Error> {
         // The firebase api only provides the option to get each item one by
         // one.
         ids.iter()
@@ -141,36 +137,8 @@ impl ApiClient {
             })
             .collect::<FuturesOrdered<_>>()
             .try_filter(|item| future::ready(!(item.dead || item.deleted)))
-            .try_collect::<Vec<_>>()
-            .await
             .map_err(anyhow::Error::new)
-    }
-
-    /// Spawn a task that makes a call to each item endpoint and returns a stream
-    /// of results.
-    #[cfg_attr(feature = "trace", instrument(skip_all))]
-    pub fn items_stream(&self, ids: &[u64]) -> JoinHandle<impl Stream<Item = Result<(u64, Item)>>> {
-        // The firebase api only provides the option to get each item one by
-        // one.
-        let futures = ids
-            .iter()
-            .copied()
-            .zip(1_u64..)
-            .map(|(id, rank)| {
-                self.client
-                    .get(format!("{}/item/{id}.json", Self::API_END_POINT))
-                    .send()
-                    .and_then(|resp| resp.json::<Item>())
-                    .map_ok(move |item| (rank, item))
-                    .map_err(anyhow::Error::new)
-            })
-            .collect::<FuturesUnordered<_>>();
-
-        tokio::spawn(async {
-            futures
-                .into_stream()
-                .try_filter(|item| future::ready(!(item.1.dead || item.1.deleted)))
-        })
+            .into_stream()
     }
 
     /// Get user by user handle.
@@ -187,7 +155,9 @@ impl ApiClient {
     fn event_source<EventData>(
         &self,
         url: impl IntoUrl,
-    ) -> impl Future<Output = reqwest::Result<impl Stream<Item = Result<Option<EventData>>>>>
+    ) -> impl Future<
+        Output = reqwest::Result<impl TryStream<Ok = Option<EventData>, Error = anyhow::Error>>,
+    >
     where
         EventData: for<'a> Deserialize<'a>,
     {

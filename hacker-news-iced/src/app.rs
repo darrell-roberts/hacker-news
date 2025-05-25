@@ -111,6 +111,7 @@ pub enum AppMsg {
     FocusPane(widget::pane_grid::Pane),
     // Forward,
     Back,
+    SystemFontScale(f64),
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -420,6 +421,13 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 },
                 None => Task::none(),
             }
+        }
+        AppMsg::SystemFontScale(scale) => {
+            app.scale = scale;
+            Task::batch([
+                Task::done(FooterMsg::Scale(app.scale)).map(AppMsg::Footer),
+                save_task(app),
+            ])
         }
     }
 }
