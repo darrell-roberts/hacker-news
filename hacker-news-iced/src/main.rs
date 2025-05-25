@@ -164,7 +164,7 @@ fn start() -> anyhow::Result<()> {
                 close_requests().map(|_event| AppMsg::WindowClose),
                 resize_events().map(|(_id, size)| AppMsg::WindowResize(size)),
                 story_handle_watcher,
-                Subscription::run(linux::listen_font_scale),
+                Subscription::run(linux::listen_system_changes),
             ])
         })
         .window(window::Settings {

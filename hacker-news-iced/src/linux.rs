@@ -5,7 +5,7 @@ use iced::{futures::Stream, Theme};
 use log::{error, info};
 
 /// Listen to dconf font scale changes.
-pub fn listen_font_scale() -> impl Stream<Item = AppMsg> {
+pub fn listen_system_changes() -> impl Stream<Item = AppMsg> {
     use futures::channel::mpsc;
     // Create a futures channel for communication between threads
     let (tx, rx) = mpsc::unbounded::<AppMsg>();
@@ -14,6 +14,7 @@ pub fn listen_font_scale() -> impl Stream<Item = AppMsg> {
     std::thread::spawn(move || {
         let scale_tx = tx.clone();
         let settings = Settings::new("org.gnome.desktop.interface");
+
         let _handler = settings.connect_changed(
             Some("text-scaling-factor"),
             move |settings, scale_factor| {
@@ -42,7 +43,6 @@ pub fn listen_font_scale() -> impl Stream<Item = AppMsg> {
         main_loop.run();
     });
 
-    // Convert the receiver to a stream that sends AppMsg
     rx
 }
 
