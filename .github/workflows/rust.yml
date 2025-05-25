@@ -2,23 +2,24 @@ name: Rust
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   pull_request:
-    branches: [ "master" ]
+    branches: ["master"]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --bin hacker-news-iced
-    - name: Run clippy
-      run: cargo clippy
-    - name: Run tests
-      run: cargo test
+      - uses: actions/checkout@v4
+      - name: Setup glib
+        run: sudo apt install libglib2.0-dev
+      - name: Build
+        run: cargo build --bin hacker-news-iced
+      - name: Run clippy
+        run: cargo clippy
+      - name: Run tests
+        run: cargo test
