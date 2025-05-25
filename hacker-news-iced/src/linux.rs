@@ -1,16 +1,14 @@
 //! Linux specific settings.
 use crate::app::AppMsg;
+use futures::channel::mpsc;
 use gio::{prelude::*, Settings};
 use iced::{futures::Stream, Theme};
 use log::{error, info};
 
-/// Listen to dconf font scale changes.
-pub fn listen_system_changes() -> impl Stream<Item = AppMsg> {
-    use futures::channel::mpsc;
-    // Create a futures channel for communication between threads
+/// Listen to GSettings/dconf changes.
+pub fn listen_to_system_changes() -> impl Stream<Item = AppMsg> {
     let (tx, rx) = mpsc::unbounded::<AppMsg>();
 
-    // Spawn a thread to handle gio Settings (since it's not Send)
     std::thread::spawn(move || {
         let scale_tx = tx.clone();
         let settings = Settings::new("org.gnome.desktop.interface");
@@ -21,7 +19,6 @@ pub fn listen_system_changes() -> impl Stream<Item = AppMsg> {
                 let scale = settings.get::<f64>(scale_factor);
                 info!("System font scale changed to: {scale}");
 
-                // Use futures channel which works well between sync and async
                 if let Err(err) = scale_tx.unbounded_send(AppMsg::SystemFontScale(scale)) {
                     error!("Failed to send font scale change: {err}");
                 }
@@ -48,8 +45,7 @@ pub fn listen_system_changes() -> impl Stream<Item = AppMsg> {
 
 /// Read the initial dconf font scale
 pub fn initial_font_scale() -> f64 {
-    let settings = Settings::new("org.gnome.desktop.interface");
-    settings.get::<f64>("text-scaling-factor")
+    Settings::new("org.gnome.desktop.interface").get::<f64>("text-scaling-factor")
 }
 
 pub fn initial_theme() -> Theme {
