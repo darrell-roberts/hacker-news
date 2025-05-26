@@ -68,6 +68,16 @@ gio = "0.20"
 glib = "0.20"
 futures = "0.3"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.5.2"
+objc2-foundation = { version = "0.2.0", default-features = false, features = [
+    "std",
+    "NSObject",
+    "NSString",
+    "NSDictionary",
+    "NSUserDefaults",
+] }
+
 [package.metadata.deb]
 maintainer = "Darrell Roberts"
 copyright = "2024, Darrell Roberts"

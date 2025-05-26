@@ -1933,6 +1933,8 @@ dependencies = [
  "iced",
  "libc",
  "log",
+ "objc2",
+ "objc2-foundation",
  "open",
  "opentelemetry",
  "opentelemetry-otlp",

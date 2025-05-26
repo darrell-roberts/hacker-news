@@ -39,6 +39,8 @@ mod full_search;
 mod header;
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(target_os = "macos")]
+pub mod macos;
 mod nav_history;
 mod richtext;
 #[cfg(feature = "trace")]
@@ -149,6 +151,11 @@ fn start() -> anyhow::Result<()> {
         app.theme = linux::initial_theme();
     }
 
+    #[cfg(target_os = "macos")]
+    {
+        app.theme = macos::initial_theme().unwrap_or(Theme::Light);
+    }
+
     iced::application("Hacker News", update, view)
         .theme(|app| app.theme.clone())
         .subscription(|app| {
@@ -164,6 +171,7 @@ fn start() -> anyhow::Result<()> {
                 close_requests().map(|_event| AppMsg::WindowClose),
                 resize_events().map(|(_id, size)| AppMsg::WindowResize(size)),
                 story_handle_watcher,
+                #[cfg(target_os = "linux")]
                 Subscription::run(linux::listen_to_system_changes),
             ])
         })
