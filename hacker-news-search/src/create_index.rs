@@ -1,20 +1,16 @@
 //! Create index.
 use crate::{
     api::{Comment, Story},
-    HackerNewsFields, SearchContext, SearchError, ITEM_TYPE,
+    HackerNewsFields, SearchContext, SearchError, SearchResult, ITEM_TYPE,
 };
-use futures::{channel::mpsc, SinkExt};
-use futures_core::Stream;
-use futures_util::{
-    future,
-    stream::{self, FuturesUnordered},
-    StreamExt, TryFutureExt, TryStreamExt,
-};
+use futures::{channel::mpsc, SinkExt, Stream, StreamExt, TryFutureExt, TryStreamExt};
+use futures_util::stream::FuturesUnordered;
 use hacker_news_api::{ApiClient, ArticleType, Item, ItemEventData};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::{
     convert::identity,
+    future::ready,
     mem,
     sync::{Arc, OnceLock, RwLock},
     time::{Duration, Instant, SystemTime},
@@ -76,7 +72,7 @@ impl<'a> WriteContext<'a> {
         fields: HackerNewsFields,
         writer: IndexWriter,
         story_category: &'a str,
-    ) -> Result<Self, SearchError> {
+    ) -> SearchResult<Self> {
         Ok(Self {
             writer,
             story_category,
@@ -84,12 +80,12 @@ impl<'a> WriteContext<'a> {
         })
     }
 
-    fn write_story(&self, item: StoryRef) -> Result<(), SearchError> {
+    fn write_story(&self, item: StoryRef) -> SearchResult<()> {
         let StoryRef { story: item, rank } = item;
         self.write_doc(&item, rank, None)
     }
 
-    fn write_comment(&self, comment: CommentRef) -> Result<(), SearchError> {
+    fn write_comment(&self, comment: CommentRef) -> SearchResult<()> {
         let CommentRef {
             story_id,
             comment,
@@ -101,7 +97,7 @@ impl<'a> WriteContext<'a> {
             })
     }
 
-    fn write_doc(&self, item: &Item, rank: u64, story_id: Option<u64>) -> Result<(), SearchError> {
+    fn write_doc(&self, item: &Item, rank: u64, story_id: Option<u64>) -> SearchResult<()> {
         let mut doc = TantivyDocument::new();
 
         doc.add_u64(self.fields.rank, rank);
@@ -153,42 +149,35 @@ impl<'a> WriteContext<'a> {
     }
 
     /// Delete all documents from the active index.
-    fn delete_all_docs(&mut self) -> Result<u64, SearchError> {
+    fn delete_all_docs(&mut self) -> SearchResult<u64> {
         Ok(self.writer.delete_all_documents()?)
     }
 
     /// Commit changes to the index.
-    fn commit(&mut self) -> Result<u64, SearchError> {
+    fn commit(&mut self) -> SearchResult<u64> {
         let ts = self.writer.commit()?;
         Ok(ts)
     }
 }
-
 /// Yield a stream of comments for the given comment_ids.
 #[cfg_attr(feature = "trace", instrument(skip_all))]
-async fn comments_iter(
+fn comment_stream(
     client: &ApiClient,
     story_id: u64,
     comment_ids: &[u64],
 ) -> impl Stream<Item = CommentRef> {
-    let batch = client.items_stream(comment_ids).await;
-    match batch {
-        Ok(s) => s
-            .map_ok(move |(rank, item)| CommentRef {
-                story_id,
-                comment: item,
-                rank,
-            })
-            .inspect_err(move |err| {
-                error!("Failed to fetch comment for story_id {story_id}: {err}");
-            })
-            .filter_map(|r| future::ready(r.ok()))
-            .left_stream(),
-        Err(err) => {
-            error!("Failed to join comments batch task: {err}");
-            stream::empty().right_stream()
-        }
-    }
+    client
+        .items(comment_ids)
+        .inspect_err(|err| {
+            error!("Failed to fetch comment: {err}");
+        })
+        .filter_map(|item| ready(item.ok()))
+        .enumerate()
+        .map(move |(index, item)| CommentRef {
+            story_id,
+            comment: item,
+            rank: index as u64,
+        })
 }
 
 /// Recurse through all child comments and send each one to the index
@@ -200,14 +189,15 @@ async fn send_comments(
     comment_ids: Vec<u64>,
     tx: Sender<ItemRef>,
 ) {
-    let mut comment_stack = comments_iter(client, story_id, &comment_ids)
-        .await
+    let mut comment_stack = comment_stream(client, story_id, &comment_ids)
         .collect::<Vec<_>>()
         .await;
 
     while let Some(comment) = comment_stack.pop() {
-        let stream = comments_iter(client, story_id, &comment.comment.kids).await;
-        comment_stack.extend(stream.collect::<Vec<_>>().await);
+        let children = comment_stream(client, story_id, &comment.comment.kids)
+            .collect::<Vec<_>>()
+            .await;
+        comment_stack.extend(children);
 
         if tx.is_closed() {
             error!("Index writer channel is closed");
@@ -256,7 +246,7 @@ async fn collect(
     tx: Sender<ItemRef>,
     category_type: ArticleType,
     mut progress_tx: mpsc::Sender<RebuildProgress>,
-) -> Result<(), SearchError> {
+) -> SearchResult<()> {
     let client = api_client();
     let stories = client.articles(75, category_type).await?;
     if let Err(err) = progress_tx.try_send(RebuildProgress::Started(stories.len())) {
@@ -304,7 +294,7 @@ async fn collect(
 async fn write_items(
     mut rx: Receiver<ItemRef>,
     writer_context: &mut WriteContext<'_>,
-) -> Result<(), SearchError> {
+) -> SearchResult<()> {
     while let Some(item) = rx.recv().await {
         match item {
             ItemRef::Story(s) => writer_context.write_story(s)?,
@@ -319,7 +309,7 @@ pub async fn rebuild_index(
     ctx: Arc<RwLock<SearchContext>>,
     category_type: ArticleType,
     progress_tx: mpsc::Sender<RebuildProgress>,
-) -> Result<IndexStats, SearchError> {
+) -> SearchResult<IndexStats> {
     let start_time = Instant::now();
     info!("Creating index for {category_type}");
 
@@ -356,7 +346,7 @@ pub enum RebuildProgress {
 pub async fn update_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
-) -> Result<Option<Story>, SearchError> {
+) -> SearchResult<Option<Story>> {
     let api = api_client();
     let latest = api.item(story.id).await?;
     let story_id = story.id;
@@ -385,7 +375,7 @@ async fn rebuild_story(
     mut writer_context: WriteContext<'_>,
     story: &Story,
     latest: Item,
-) -> Result<(), SearchError> {
+) -> SearchResult<()> {
     writer_context.delete_story(story);
     let (tx, rx) = channel::<ItemRef>(100);
 
@@ -406,7 +396,7 @@ async fn handle_story_events(
     story: Story,
     mut ui_tx: mpsc::Sender<Story>,
     mut rx: Receiver<ItemEventData>,
-) -> Result<(), SearchError> {
+) -> SearchResult<()> {
     let story_id = story.id;
     let mut current_story = story;
 
@@ -462,7 +452,7 @@ async fn handle_comment_events(
     comment: Comment,
     mut ui_tx: mpsc::Sender<Comment>,
     mut rx: Receiver<ItemEventData>,
-) -> Result<(), SearchError> {
+) -> SearchResult<()> {
     while let Some(item_event) = rx.recv().await {
         let mut comment = comment.clone();
         let (tx_comment, rx_comment) = channel(10);
@@ -499,7 +489,7 @@ pub struct WatchState<const N: usize, EventData> {
 pub fn watch_story(
     ctx: Arc<RwLock<SearchContext>>,
     story: Story,
-) -> Result<WatchState<2, Story>, SearchError> {
+) -> SearchResult<WatchState<2, Story>> {
     let client = api_client();
     let (tx, rx) = channel(10);
     let (ui_tx, ui_rx) = mpsc::channel::<Story>(10);
@@ -530,7 +520,7 @@ pub fn watch_story(
 pub fn watch_comment(
     ctx: Arc<RwLock<SearchContext>>,
     comment: Comment,
-) -> Result<WatchState<2, Comment>, SearchError> {
+) -> SearchResult<WatchState<2, Comment>> {
     let client = api_client();
     let (tx, rx) = channel(10);
     let (ui_tx, ui_rx) = mpsc::channel::<Comment>(10);
@@ -559,7 +549,7 @@ pub fn document_stats(
     ctx: &SearchContext,
     build_time: Duration,
     category: ArticleType,
-) -> Result<IndexStats, SearchError> {
+) -> SearchResult<IndexStats> {
     let searcher = if ctx.active_index == category {
         ctx.searcher()
     } else {

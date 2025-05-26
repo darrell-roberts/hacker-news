@@ -37,6 +37,8 @@ mod config;
 mod footer;
 mod full_search;
 mod header;
+#[cfg(target_os = "linux")]
+mod linux;
 mod nav_history;
 mod richtext;
 #[cfg(feature = "trace")]
@@ -82,7 +84,7 @@ fn start() -> anyhow::Result<()> {
         ArticleType::Top,
     )?));
 
-    let app = config::load_config()
+    let mut app = config::load_config()
         .map(|config| config.into_app(search_context.clone()))
         .unwrap_or_else(|err| {
             error!("Could not load config: {err}");
@@ -93,7 +95,10 @@ fn start() -> anyhow::Result<()> {
                 theme: Theme::GruvboxDark,
                 #[cfg(not(target_os = "linux"))]
                 theme: Theme::GruvboxLight,
+                #[cfg(not(target_os = "linux"))]
                 scale: 1.,
+                #[cfg(target_os = "linux")]
+                scale: linux::initial_font_scale(),
                 header: HeaderState {
                     search_context: search_context.clone(),
                     article_count: 75,
@@ -104,7 +109,10 @@ fn start() -> anyhow::Result<()> {
                 footer: FooterState {
                     status_line: String::new(),
                     last_update: None,
+                    #[cfg(not(target_os = "linux"))]
                     scale: 1.,
+                    #[cfg(target_os = "linux")]
+                    scale: linux::initial_font_scale(),
                     current_index_stats: None,
                     index_stats: HashMap::new(),
                     index_progress: None,
@@ -134,6 +142,13 @@ fn start() -> anyhow::Result<()> {
             }
         });
 
+    #[cfg(target_os = "linux")]
+    {
+        app.scale = linux::initial_font_scale();
+        info!("Setting scale to {} from system font scale", app.scale);
+        app.theme = linux::initial_theme();
+    }
+
     iced::application("Hacker News", update, view)
         .theme(|app| app.theme.clone())
         .subscription(|app| {
@@ -149,6 +164,7 @@ fn start() -> anyhow::Result<()> {
                 close_requests().map(|_event| AppMsg::WindowClose),
                 resize_events().map(|(_id, size)| AppMsg::WindowResize(size)),
                 story_handle_watcher,
+                Subscription::run(linux::listen_to_system_changes),
             ])
         })
         .window(window::Settings {

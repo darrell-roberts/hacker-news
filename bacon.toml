@@ -17,10 +17,7 @@ need_stdout = false
 
 # Run clippy on the default target
 [jobs.clippy]
-command = [
-    "cargo", "clippy",
-    "--color", "always",
-]
+command = ["cargo", "clippy", "--color", "always"]
 need_stdout = false
 
 # Run clippy on all targets
@@ -37,11 +34,7 @@ need_stdout = false
 #    ]
 # need_stdout = false
 [jobs.clippy-all]
-command = [
-    "cargo", "clippy",
-    "--all-targets",
-    "--color", "always",
-]
+command = ["cargo", "clippy", "--all-targets", "--color", "always"]
 need_stdout = false
 
 # This job lets you run
@@ -50,16 +43,26 @@ need_stdout = false
 # - the tests of a package: bacon test -- -- -p config
 [jobs.test]
 command = [
-    "cargo", "test", "--color", "always",
-    "--", "--color", "always", # see https://github.com/Canop/bacon/issues/124
+  "cargo",
+  "test",
+  "--color",
+  "always",
+  "--",
+  "--color",
+  "always",  # see https://github.com/Canop/bacon/issues/124
 ]
 need_stdout = true
 
 [jobs.nextest]
 command = [
-    "cargo", "nextest", "run",
-    "--color", "always",
-    "--hide-progress-bar", "--failure-output", "final"
+  "cargo",
+  "nextest",
+  "run",
+  "--color",
+  "always",
+  "--hide-progress-bar",
+  "--failure-output",
+  "final",
 ]
 need_stdout = true
 analyzer = "nextest"
@@ -73,7 +76,7 @@ need_stdout = false
 [jobs.doc-open]
 command = ["cargo", "doc", "--color", "always", "--no-deps", "--open"]
 need_stdout = false
-on_success = "back" # so that we don't open the browser at each change
+on_success = "back"                                                    # so that we don't open the browser at each change
 
 # You can run your application and have the result displayed in bacon,
 # if it makes sense for this crate.
@@ -81,9 +84,11 @@ on_success = "back" # so that we don't open the browser at each change
 # properly parsed.
 [jobs.run]
 command = [
-    "cargo", "run",
-    "--color", "always",
-    # put launch parameters for your program behind a `--` separator
+  "cargo",
+  "run",
+  "--color",
+  "always",
+  # put launch parameters for your program behind a `--` separator
 ]
 need_stdout = true
 allow_warnings = true
@@ -99,9 +104,11 @@ background = true
 # a binding `r = job:run-long` at the end of this file .
 [jobs.run-long]
 command = [
-    "cargo", "run",
-    "--color", "always",
-    # put launch parameters for your program behind a `--` separator
+  "cargo",
+  "run",
+  "--color",
+  "always",
+  # put launch parameters for your program behind a `--` separator
 ]
 need_stdout = true
 allow_warnings = true

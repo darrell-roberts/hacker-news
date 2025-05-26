@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-    "hacker-news-api",
-    "html-sanitizer",
-    "hacker-news-iced",
-    "hacker-news-search",
+  "hacker-news-api",
+  "html-sanitizer",
+  "hacker-news-iced",
+  "hacker-news-search",
 ]
 
 [workspace.package]

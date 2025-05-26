@@ -1,7 +1,7 @@
 use crate::{
-    SearchContext, SearchError, ITEM_BODY, ITEM_BY, ITEM_DESCENDANT_COUNT, ITEM_ID, ITEM_KIDS,
-    ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE, ITEM_TYPE,
-    ITEM_URL,
+    SearchContext, SearchError, SearchResult, ITEM_BODY, ITEM_BY, ITEM_DESCENDANT_COUNT, ITEM_ID,
+    ITEM_KIDS, ITEM_PARENT_ID, ITEM_RANK, ITEM_SCORE, ITEM_STORY_ID, ITEM_TIME, ITEM_TITLE,
+    ITEM_TYPE, ITEM_URL,
 };
 use std::collections::HashMap;
 use tantivy::{
@@ -61,7 +61,7 @@ pub struct Comment {
 }
 
 impl SearchContext {
-    fn to_story(&self, doc: TantivyDocument) -> Result<Story, SearchError> {
+    fn to_story(&self, doc: TantivyDocument) -> SearchResult<Story> {
         let mut fields = self.extract_fields(&doc);
 
         Ok(Story {
@@ -99,7 +99,7 @@ impl SearchContext {
         })
     }
 
-    fn to_comment(&self, doc: TantivyDocument) -> Result<Comment, SearchError> {
+    fn to_comment(&self, doc: TantivyDocument) -> SearchResult<Comment> {
         let mut fields = self.extract_fields(&doc);
 
         Ok(Comment {
