@@ -56,7 +56,7 @@ pub fn initial_theme() -> Theme {
 fn theme(color_scheme: &str) -> Theme {
     match color_scheme {
         "default" | "prefer-light" => Theme::Light,
-        "prefer-dark" => Theme::Dark,
+        "prefer-dark" => Theme::SolarizedDark,
         _ => Theme::Light,
     }
 }
