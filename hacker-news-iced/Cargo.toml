@@ -9,24 +9,24 @@ description = "Hacker News Desktop Reader"
 
 [features]
 trace = [
-    "opentelemetry",
-    "opentelemetry-otlp",
-    "opentelemetry_sdk",
-    "tracing-opentelemetry",
-    "opentelemetry-semantic-conventions",
-    "tracing-subscriber",
-    "hacker-news-search/trace",
-    "tracing",
+  "opentelemetry",
+  "opentelemetry-otlp",
+  "opentelemetry_sdk",
+  "tracing-opentelemetry",
+  "opentelemetry-semantic-conventions",
+  "tracing-subscriber",
+  "hacker-news-search/trace",
+  "tracing",
 ]
 
 [dependencies]
 iced = { version = "0.13", features = [
-    "lazy",
-    "tokio",
-    "advanced",
-    "auto-detect-theme",
-    "image",
-    "canvas",
+  "lazy",
+  "tokio",
+  "advanced",
+  "auto-detect-theme",
+  "image",
+  "canvas",
 ] }
 
 anyhow.workspace = true
@@ -42,13 +42,13 @@ tokio.workspace = true
 
 opentelemetry = { version = "0.26", features = ["trace"], optional = true }
 opentelemetry-otlp = { version = "0.26", features = [
-    "grpc-tonic",
-    "trace",
+  "grpc-tonic",
+  "trace",
 ], optional = true }
 opentelemetry-semantic-conventions = { version = "0.26", optional = true }
 opentelemetry_sdk = { version = "0.26", features = [
-    "rt-tokio",
-    "trace",
+  "rt-tokio",
+  "trace",
 ], optional = true }
 tracing = { version = "0.1", optional = true }
 tracing-opentelemetry = { version = "0.27", optional = true }
@@ -69,13 +69,13 @@ glib = "0.20"
 futures = "0.3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.5.2"
-objc2-foundation = { version = "0.2.0", default-features = false, features = [
-    "std",
-    "NSObject",
-    "NSString",
-    "NSDictionary",
-    "NSUserDefaults",
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSObject",
+  "NSString",
+  "NSDictionary",
+  "NSUserDefaults",
 ] }
 
 [package.metadata.deb]
@@ -86,29 +86,29 @@ extended-description = """Hacker News Desktop Reader"""
 section = "utility"
 priority = "optional"
 assets = [
-    [
-        "target/release/hacker-news-iced",
-        "usr/bin/",
-        "755",
-    ],
-    [
-        "../assets/io.github.darrellroberts.hacker-news.desktop",
-        "usr/share/applications/",
-        "644",
-    ],
-    [
-        "../dist/icons/hicolor/32x32/apps/io.github.darrellroberts.hacker-news.png",
-        "usr/share/icons/hicolor/32x32/apps/",
-        "644",
-    ],
-    [
-        "../dist/icons/hicolor/128x128/apps/io.github.darrellroberts.hacker-news.png",
-        "usr/share/icons/hicolor/128x128/apps/",
-        "644",
-    ],
-    [
-        "../dist/icons/hicolor/256x256@2/apps/io.github.darrellroberts.hacker-news.png",
-        "usr/share/icons/hicolor/256x256@2/apps/",
-        "644",
-    ],
+  [
+    "target/release/hacker-news-iced",
+    "usr/bin/",
+    "755",
+  ],
+  [
+    "../assets/io.github.darrellroberts.hacker-news.desktop",
+    "usr/share/applications/",
+    "644",
+  ],
+  [
+    "../dist/icons/hicolor/32x32/apps/io.github.darrellroberts.hacker-news.png",
+    "usr/share/icons/hicolor/32x32/apps/",
+    "644",
+  ],
+  [
+    "../dist/icons/hicolor/128x128/apps/io.github.darrellroberts.hacker-news.png",
+    "usr/share/icons/hicolor/128x128/apps/",
+    "644",
+  ],
+  [
+    "../dist/icons/hicolor/256x256@2/apps/io.github.darrellroberts.hacker-news.png",
+    "usr/share/icons/hicolor/256x256@2/apps/",
+    "644",
+  ],
 ]

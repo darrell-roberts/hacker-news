@@ -17,7 +17,7 @@ pub fn initial_theme() -> anyhow::Result<Theme> {
             return Ok(Theme::Light);
         };
 
-        let style = Retained::cast::<NSString>(style);
+        let style = Retained::cast_unchecked::<NSString>(style);
         info!("Macos interface style: {style}");
         let dark_mode = style.isEqualToString(ns_string!("Dark"));
 
