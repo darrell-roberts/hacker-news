@@ -41,7 +41,7 @@ serde.workspace = true
 tokio.workspace = true
 
 opentelemetry = { version = "0.26", features = ["trace"], optional = true }
-opentelemetry-otlp = { version = "0.26", features = [
+opentelemetry-otlp = { version = "0.30", features = [
   "grpc-tonic",
   "trace",
 ], optional = true }
