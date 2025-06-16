@@ -14,11 +14,14 @@ use nom::{
 #[cfg(test)]
 mod parser_tests;
 
-pub fn parse_nodes(input: &str) -> IResult<&str, Vec<Element<'_>>> {
+/// A parse result with a &str input.
+type ParseResult<'a, O> = IResult<&'a str, O>;
+
+pub fn parse_nodes(input: &str) -> ParseResult<Vec<Element<'_>>> {
     many0(alt((parse_tag, parse_text))).parse(input)
 }
 
-fn parse_tag(input: &str) -> IResult<&str, Element<'_>> {
+fn parse_tag(input: &str) -> ParseResult<Element<'_>> {
     alt((
         parse_bold,
         parse_italic,
@@ -30,17 +33,17 @@ fn parse_tag(input: &str) -> IResult<&str, Element<'_>> {
     .parse(input)
 }
 
-fn parse_bold(input: &str) -> IResult<&str, Element<'_>> {
+fn parse_bold(input: &str) -> ParseResult<Element<'_>> {
     let bold = delimited(tag("<b>"), parse_nodes, tag("</b>"));
     context("parse_bold", map(bold, Element::Bold)).parse(input)
 }
 
-fn parse_italic(input: &str) -> IResult<&str, Element<'_>> {
+fn parse_italic(input: &str) -> ParseResult<Element<'_>> {
     let italic = delimited(tag("<i>"), parse_nodes, tag("</i>"));
     context("parse_italic", map(italic, Element::Italic)).parse(input)
 }
 
-fn parse_escaped_text(input: &str) -> IResult<&str, String> {
+fn parse_escaped_text(input: &str) -> ParseResult<String> {
     map(
         many0(alt((parse_escaped_character, parse_escaped_tag, anychar))),
         |v| v.into_iter().collect(),
@@ -48,7 +51,7 @@ fn parse_escaped_text(input: &str) -> IResult<&str, String> {
     .parse(input)
 }
 
-fn parse_code(input: &str) -> IResult<&str, Element<'_>> {
+fn parse_code(input: &str) -> ParseResult<Element<'_>> {
     let code = delimited(
         tag_no_case("<pre><code>"),
         take_until("</code></pre>").and_then(parse_escaped_text),
@@ -58,7 +61,7 @@ fn parse_code(input: &str) -> IResult<&str, Element<'_>> {
     map(code, Element::Code).parse(input)
 }
 
-fn parse_paragraph(input: &str) -> IResult<&str, Element<'_>> {
+fn parse_paragraph(input: &str) -> ParseResult<Element<'_>> {
     context(
         "parse_paragraph",
         value(Element::Paragraph, tag_no_case("<p>")),
@@ -70,7 +73,7 @@ fn is_hex_digit(c: char) -> bool {
     c.is_hex_digit()
 }
 
-fn parse_hex(input: &str) -> IResult<&str, u32> {
+fn parse_hex(input: &str) -> ParseResult<u32> {
     context(
         "parse_hex",
         map_res(take_while_m_n(2, 2, is_hex_digit), |s: &str| {
@@ -80,7 +83,7 @@ fn parse_hex(input: &str) -> IResult<&str, u32> {
     .parse(input)
 }
 
-fn parse_escaped_character(input: &str) -> IResult<&str, char> {
+fn parse_escaped_character(input: &str) -> ParseResult<char> {
     let hex_parse = context(
         "escaped_tag",
         delimited(tag("&#x"), cut(parse_hex), tag(";")),
@@ -88,7 +91,7 @@ fn parse_escaped_character(input: &str) -> IResult<&str, char> {
     context("parse_escaped", map_opt(hex_parse, char::from_u32)).parse(input)
 }
 
-fn parse_escaped(input: &str) -> IResult<&str, Element<'_>> {
+fn parse_escaped(input: &str) -> ParseResult<Element<'_>> {
     map(
         alt((parse_escaped_character, parse_escaped_tag)),
         Element::Escaped,
@@ -96,7 +99,7 @@ fn parse_escaped(input: &str) -> IResult<&str, Element<'_>> {
     .parse(input)
 }
 
-fn parse_escaped_tag(input: &str) -> IResult<&str, char> {
+fn parse_escaped_tag(input: &str) -> ParseResult<char> {
     let quote = value('\"', tag("&quot;"));
     let gt = value('>', tag("&gt;"));
     let lt = value('<', tag("&lt;"));
@@ -111,13 +114,13 @@ fn parse_escaped_tag(input: &str) -> IResult<&str, char> {
     alt((quote, gt, lt, ampersand, apos, copy, reg, trade, deg, euro)).parse(input)
 }
 
-fn parse_text(input: &str) -> IResult<&str, Element<'_>> {
+fn parse_text(input: &str) -> ParseResult<Element<'_>> {
     let text = take_while1(|c| c != '<' && c != '&');
     context("parse_text", map(text, |s: &str| Element::Text(s))).parse(input)
 }
 
 /// Parse an html attribute name value pair.
-fn parse_attribute(input: &str) -> IResult<&str, Attribute<'_>> {
+fn parse_attribute(input: &str) -> ParseResult<Attribute<'_>> {
     context(
         "parse_attribute",
         map(
@@ -132,7 +135,7 @@ fn parse_attribute(input: &str) -> IResult<&str, Attribute<'_>> {
 }
 
 /// Parse a quoted string.
-fn parse_quote(input: &str) -> IResult<&str, &str> {
+fn parse_quote(input: &str) -> ParseResult<&str> {
     context(
         "parse_quote",
         delimited(char('"'), take_until("\""), char('"')),
@@ -141,7 +144,7 @@ fn parse_quote(input: &str) -> IResult<&str, &str> {
 }
 
 /// Parse child elements of an anchor.
-fn parse_anchor_children(input: &str) -> IResult<&str, String> {
+fn parse_anchor_children(input: &str) -> ParseResult<String> {
     let anchor = terminated(
         alt((take_until("</a>"), take_until("</A>"))).and_then(parse_escaped_text),
         alt((tag("</a>"), tag("</A>"))),
@@ -149,7 +152,7 @@ fn parse_anchor_children(input: &str) -> IResult<&str, String> {
     context("parse_anchor_children", anchor).parse(input)
 }
 
-fn parse_attr(input: &str) -> IResult<&str, Vec<Attribute<'_>>> {
+fn parse_attr(input: &str) -> ParseResult<Vec<Attribute<'_>>> {
     context(
         "parse_attr",
         delimited(tag_no_case("<a"), many0(parse_attribute), tag(">")),
@@ -158,7 +161,7 @@ fn parse_attr(input: &str) -> IResult<&str, Vec<Attribute<'_>>> {
 }
 
 /// Parse an anchor element.
-fn parse_anchor(input: &str) -> IResult<&str, Element<'_>> {
+fn parse_anchor(input: &str) -> ParseResult<Element<'_>> {
     context(
         "parse_anchor",
         map(
