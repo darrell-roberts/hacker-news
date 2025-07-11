@@ -147,6 +147,7 @@ fn start() -> anyhow::Result<()> {
     #[cfg(target_os = "linux")]
     {
         app.scale = linux::initial_font_scale();
+        app.footer.scale = app.scale;
         info!("Setting scale to {} from system font scale", app.scale);
         app.theme = linux::initial_theme();
     }
