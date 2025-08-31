@@ -61,7 +61,7 @@ pub enum FullSearchMsg {
 }
 
 impl FullSearchState {
-    pub fn view(&self) -> iced::Element<AppMsg> {
+    pub fn view(&self) -> iced::Element<'_, AppMsg> {
         let comment_rows = self
             .search_results
             .iter()
