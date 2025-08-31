@@ -433,7 +433,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
 }
 
 /// Render the main view.
-pub fn view(app: &App) -> iced::Element<AppMsg> {
+pub fn view(app: &App) -> iced::Element<'_, AppMsg> {
     let body = widget::pane_grid(&app.panes, |_pane, state, _is_maximized| {
         let comments_title = || -> Option<iced::Element<AppMsg>> {
             let story = match &app.content {

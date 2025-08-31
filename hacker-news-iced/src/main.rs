@@ -298,7 +298,10 @@ fn check_nofiles_limit() {
         }
     }
 
-    info!("Current open file limits: {rlim:?}");
+    info!(
+        "Current open file limits: current {}, max {}",
+        rlim.rlim_cur, rlim.rlim_max
+    );
 
     if rlim.rlim_cur < DESIRED_LIMIT {
         rlim.rlim_cur = DESIRED_LIMIT;

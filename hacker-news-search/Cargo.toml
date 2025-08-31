@@ -17,7 +17,7 @@ hacker-news-api.workspace = true
 html-sanitizer.workspace = true
 log.workspace = true
 serde.workspace = true
-tantivy = "0.24"
+tantivy = "0.25"
 thiserror = "2"
 tokio.workspace = true
 
