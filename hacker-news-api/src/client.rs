@@ -70,6 +70,7 @@ impl ApiClient {
                 .tcp_keepalive(Duration::from_secs(60))
                 .pool_max_idle_per_host(10)
                 .use_rustls_tls()
+                .no_proxy()
                 .build()
                 .context("Failed to create api client")?,
         })
