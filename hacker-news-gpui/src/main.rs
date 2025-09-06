@@ -40,7 +40,6 @@ struct MainWindow {
     header: Entity<Header>,
     content: Entity<Content>,
     footer: Entity<Footer>,
-    // _quit_subscription: Subscription,
 }
 
 impl MainWindow {
@@ -48,8 +47,6 @@ impl MainWindow {
         let header = Header::new(window, app);
         let content = Content::new(window, app);
         let footer = Footer::new(window, app, &content);
-
-        // let subscription = cx.on_action(, listener)
 
         app.new(|_ctx| Self {
             header,
@@ -81,7 +78,7 @@ fn main() {
         app.set_global(AppState {
             viewing_article_type: ArticleType::Top,
             viewing_article_total: 50,
-            status_line: String::from("Loading..."),
+            status_line: String::new(),
         });
 
         // Add menu items

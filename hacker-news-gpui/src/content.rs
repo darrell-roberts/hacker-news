@@ -50,7 +50,7 @@ impl Content {
 }
 
 async fn fetch_articles(view: WeakEntity<Content>, cx: &mut AsyncApp) -> anyhow::Result<()> {
-    let client = cx.read_global::<ApiClientState, _>(|client, _app| client.0.clone())?;
+    let client = cx.read_global(|client: &ApiClientState, _app| client.0.clone())?;
     let view = view
         .upgrade()
         .context("Could not upgrade view weak reference")?;
