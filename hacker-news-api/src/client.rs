@@ -13,6 +13,7 @@ use crate::{
     ArticleType,
 };
 use anyhow::{Context, Result};
+use bytes::Bytes;
 use futures::{future, stream::FuturesOrdered, TryFutureExt, TryStream, TryStreamExt};
 use log::{error, info};
 use reqwest::{header, IntoUrl};
@@ -169,7 +170,7 @@ impl ApiClient {
             .map_ok(|response| {
                 response
                     .bytes_stream()
-                    .map_ok(|bytes| parse_event(&bytes))
+                    .map_ok(parse_event)
                     .map_err(anyhow::Error::new)
             })
     }
@@ -205,7 +206,7 @@ impl ApiClient {
 }
 
 /// Parse an event from the event-source.
-fn parse_event<EventData>(bytes: &[u8]) -> Option<EventData>
+fn parse_event<EventData>(bytes: Bytes) -> Option<EventData>
 where
     EventData: for<'a> Deserialize<'a>,
 {
