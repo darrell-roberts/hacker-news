@@ -2,7 +2,7 @@
 use content::Content;
 use footer::Footer;
 use gpui::{
-    actions, div, point, prelude::*, px, rgb, size, App, Application, Entity, Global, Menu,
+    actions, black, div, point, prelude::*, px, rgb, size, App, Application, Entity, Global, Menu,
     MenuItem, SharedString, Window, WindowDecorations, WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType};
@@ -66,9 +66,9 @@ impl Render for MainWindow {
             .flex_col()
             .w_full()
             .h_full()
-            .bg(rgb(0xFFFFFF))
+            .bg(black())
             .border_5()
-            .border_color(rgb(0xEEEEEE))
+            // .border_color(rgb(0xEEEEEE))
             .child(self.header.clone())
             .child(self.content.clone())
             .child(self.footer.clone())

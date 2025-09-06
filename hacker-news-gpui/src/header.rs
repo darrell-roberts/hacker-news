@@ -1,9 +1,9 @@
 //! Header view.
 use crate::AppState;
 use gpui::{
-    div, prelude::FluentBuilder, px, rgb, App, AppContext as _, BorrowAppContext, Entity,
-    InteractiveElement, IntoElement, MouseButton, ParentElement, Render, Styled, Subscription,
-    Window,
+    black, div, prelude::FluentBuilder, px, rgb, yellow, App, AppContext as _, BorrowAppContext,
+    Entity, InteractiveElement, IntoElement, MouseButton, ParentElement, Render, Styled,
+    Subscription, Window,
 };
 use hacker_news_api::ArticleType;
 
@@ -28,9 +28,9 @@ impl Render for Header {
         let mk_article_type = |article_type: ArticleType| {
             div()
                 .when(article_type == g.viewing_article_type, |div| {
-                    div.text_bg(rgb(0x323232))
+                    div.text_bg(yellow())
                         .border_1()
-                        .text_color(rgb(0xFFFFFF))
+                        .text_color(black())
                         .rounded(px(0.8))
                 })
                 .child(article_type.as_str().to_owned())
@@ -52,9 +52,9 @@ impl Render for Header {
         let col3 = [25, 50, 75, 100, 500].into_iter().map(|article_count| {
             div()
                 .when(article_count == g.viewing_article_total, |div| {
-                    div.text_bg(rgb(0x323232))
+                    div.text_bg(yellow())
                         .border_1()
-                        .text_color(rgb(0xFFFFFF))
+                        .text_color(black())
                         .rounded(px(0.8))
                 })
                 .child(format!("{article_count}"))
@@ -70,6 +70,7 @@ impl Render for Header {
             .flex_row()
             .font_family("Roboto, sans-serif")
             .text_size(px(24.0))
+            .text_color(yellow())
             .gap_x(px(10.0))
             .w_full()
             .children(col1)
