@@ -1,14 +1,16 @@
 //! Article view.
-use gpui::{div, prelude::*, px, rems, rgb, App, Entity, MouseButton, Window};
+use std::rc::Rc;
+
+use gpui::{div, prelude::*, px, rems, rgb, white, App, Entity, MouseButton, Window};
 use hacker_news_api::Item;
 
 // An article view is rendered for each article item.
 pub struct ArticleView {
-    item: Item,
+    item: Rc<Item>,
 }
 
 impl ArticleView {
-    pub fn new(app: &mut App, item: Item) -> Entity<Self> {
+    pub fn new(app: &mut App, item: Rc<Item>) -> Entity<Self> {
         app.new(|_| Self { item })
     }
 }
@@ -46,7 +48,9 @@ impl Render for ArticleView {
             .child(div().child(title).on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|view, _event, _window, cx| {
+                    println!("Title clicked");
                     if let Some(url) = view.item.url.as_deref() {
+                        println!("Opening url {url}");
                         cx.open_url(url);
                     }
                 }),
@@ -59,6 +63,7 @@ impl Render for ArticleView {
             .flex_row()
             .font_family("Roboto, sans-serif")
             .text_size(px(14.0))
+            .text_color(white())
             .w_full()
             .gap_x(px(5.0))
             .child(points_col)
