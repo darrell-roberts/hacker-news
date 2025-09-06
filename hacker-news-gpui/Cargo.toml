@@ -4,55 +4,12 @@ version = "0.1.0"
 license.workspace = true
 edition.workspace = true
 
-[[bin]]
-name = "hacker-news-dashboard"
-path = "src/main.rs"
-
 [dependencies]
-anyhow.workspace = true
-async-compat = "0.2"
-chrono.workspace = true
-flexi_logger.workspace = true
-futures = "0.3"
 gpui = { git = "https://github.com/zed-industries/zed" }
+async-compat = "0.2"
 hacker-news-api.workspace = true
 html-sanitizer.workspace = true
 log.workspace = true
-tokio = "1"
-platform-settings = { path = "../platform-settings" }
-
-[package.metadata.deb]
-name = "hacker-news-dashboard"
-maintainer = "Darrell Roberts"
-copyright = "2024, Darrell Roberts"
-license-file = "../LICENSE"
-extended-description = """Hacker News Desktop Dashboard"""
-section = "utility"
-priority = "optional"
-assets = [
-    [
-        "target/release/hacker-news-dashboard",
-        "usr/bin/",
-        "755",
-    ],
-    [
-        "assets/io.github.darrellroberts.hacker-news-dashboard.desktop",
-        "usr/share/applications/",
-        "644",
-    ],
-    [
-        "dist/icons/hicolor/32x32/apps/io.github.darrellroberts.hacker-news-dashboard.png",
-        "usr/share/icons/hicolor/32x32/apps/",
-        "644",
-    ],
-    [
-        "dist/icons/hicolor/128x128/apps/io.github.darrellroberts.hacker-news-dashboard.png",
-        "usr/share/icons/hicolor/128x128/apps/",
-        "644",
-    ],
-    [
-        "dist/icons/hicolor/256x256@2/apps/io.github.darrellroberts.hacker-news-dashboard.png",
-        "usr/share/icons/hicolor/256x256@2/apps/",
-        "644",
-    ],
-]
+anyhow.workspace = true
+chrono.workspace = true
+jiff = "0.2"

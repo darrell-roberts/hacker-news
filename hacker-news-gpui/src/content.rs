@@ -1,144 +1,100 @@
 //! Main content view
-use crate::{article::ArticleView, ApiClientState, ArticleSelection};
+use crate::{article::ArticleView, ApiClientState, AppState};
+use anyhow::Context as _;
 use async_compat::Compat;
-use futures::{channel, SinkExt, StreamExt, TryStreamExt as _};
-use gpui::{div, prelude::*, px, App, AppContext, Entity, EventEmitter, ListState, Window};
-use hacker_news_api::{subscribe_top_stories, Item};
-use log::error;
-use std::collections::HashMap;
+use gpui::{
+    div, list, prelude::*, px, App, AppContext, AsyncApp, Entity, ListState, Subscription,
+    WeakEntity, Window,
+};
+use hacker_news_api::Item;
 
 // Main content view.
 pub struct Content {
-    articles: Vec<Entity<ArticleView>>,
+    articles: Vec<Item>,
     list_state: ListState,
-    article_ranks: HashMap<u64, usize>,
-    viewing_comment: bool,
+    _state_subscription: Subscription,
 }
-
-pub enum ContentEvent {
-    TotalArticles(usize),
-    ViewingComments(bool),
-}
-
-impl EventEmitter<ContentEvent> for Content {}
 
 impl Content {
     /// Create a new content view.
     pub fn new(_cx: &mut Window, app: &mut App) -> Entity<Self> {
-        let entity = app.new(|cx: &mut Context<Self>| {
-            cx.subscribe_self(|content, event, _cx| match event {
-                ContentEvent::TotalArticles(_) => (),
-                ContentEvent::ViewingComments(b) => {
-                    content.viewing_comment = *b;
-                }
-            })
-            .detach();
-
+        app.new(|cx: &mut Context<Self>| {
             let list_state = ListState::new(0, gpui::ListAlignment::Top, px(5.0));
+            Self::fetch_articles(cx);
 
             Self {
-                articles: Default::default(),
+                articles: Vec::new(),
                 list_state,
-                article_ranks: Default::default(),
-                viewing_comment: false,
+                _state_subscription: cx.observe_global::<AppState>(|view, cx| {
+                    view.articles = Vec::new();
+                    Self::fetch_articles(cx)
+                }),
             }
-        });
+        })
+    }
 
-        let entity_copy = entity.clone();
-        let (mut tx, mut rx) = channel::mpsc::channel::<Vec<Item>>(10);
-
-        app.spawn(async move |app| {
-            while let Some(items) = rx.next().await {
-                let viewing_comment = entity_copy
-                    .read_with(app, |content: &Content, _app| content.viewing_comment)
-                    .unwrap_or_default();
-
-                if viewing_comment {
-                    continue;
-                }
-
-                let ranking_map = items
-                    .iter()
-                    .enumerate()
-                    .map(|(index, item)| (item.id, index))
-                    .collect::<HashMap<_, _>>();
-
-                let views = items
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, article)| {
-                        let order_change = app
-                            .read_entity(&entity_copy, |content, _app| {
-                                match content.article_ranks.get(&article.id) {
-                                    Some(rank) => (*rank as i64) - (index as i64),
-                                    None => 0,
-                                }
-                            })
-                            .unwrap();
-
-                        ArticleView::new(app, entity_copy.clone(), article, order_change, index + 1)
-                    })
-                    .collect::<Result<Vec<_>, _>>();
-
-                match views {
-                    Ok(views) => {
-                        let result = app.update_entity(&entity_copy, |content, cx| {
-                            content.articles = views;
-                            content.list_state.reset(content.articles.len());
-                            content.article_ranks = ranking_map;
-                            cx.emit(ContentEvent::TotalArticles(content.articles.len()));
-                            cx.notify();
-                        });
-                        if let Err(err) = result {
-                            error!("Failed to updated articles: {err}");
-                        }
-                    }
-                    Err(err) => {
-                        error!("Could not create article view. App shutting down? {err}");
-                    }
-                }
+    fn fetch_articles(cx: &mut Context<Self>) {
+        cx.spawn(async |view: WeakEntity<Content>, cx: &mut AsyncApp| {
+            if let Err(err) = fetch_articles(view, cx).await {
+                eprintln!("Failed to fetch articles: {err}");
             }
         })
         .detach();
-
-        let view_total =
-            app.read_global(|selection: &ArticleSelection, _app| selection.viewing_article_total);
-
-        let client = app.read_global(|client: &ApiClientState, _app| client.0.clone());
-
-        app.background_executor()
-            .spawn(Compat::new(async move {
-                let (mut rx, handle) = subscribe_top_stories();
-
-                while let Some(event) = rx.recv().await {
-                    let article_ids = event.data.into_iter().take(view_total).collect::<Vec<_>>();
-                    let articles = client.items(&article_ids).try_collect::<Vec<_>>().await;
-                    match articles {
-                        Ok(articles) => {
-                            tx.send(articles).await.unwrap();
-                        }
-                        Err(err) => {
-                            error!("Failed to collect updated items: {err}");
-                        }
-                    }
-                }
-
-                if let Err(err) = handle.await {
-                    error!("Subscription close failed {err}");
-                };
-            }))
-            .detach();
-
-        entity
     }
 }
 
+async fn fetch_articles(view: WeakEntity<Content>, cx: &mut AsyncApp) -> anyhow::Result<()> {
+    let client = cx.read_global::<ApiClientState, _>(|client, _app| client.0.clone())?;
+    let view = view
+        .upgrade()
+        .context("Could not upgrade view weak reference")?;
+
+    let (a_type, total) =
+        cx.read_global::<AppState, _>(|r, _cx| (r.viewing_article_type, r.viewing_article_total))?;
+
+    // Run in compat since client uses tokio
+    let new_articles = Compat::new(client.articles(total, a_type))
+        .await
+        .context("Failed to fetch")?;
+    cx.update_entity(&view, move |view, cx| {
+        view.articles = new_articles;
+        view.list_state.reset(view.articles.len());
+        cx.notify();
+    })
+}
+
 impl Render for Content {
-    fn render(&mut self, _window: &mut Window, _cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        div().id("articles").overflow_scroll().p_1().m_1().children(
-            self.articles
-                .iter()
-                .map(|article| div().m_1().child(article.clone())),
-        )
+    fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
+        let entity = cx.weak_entity();
+        let articles = || {
+            div().flex_grow().px_2().child(
+                list(self.list_state.clone(), move |index, _window, app| {
+                    if let Some(view) = entity.upgrade() {
+                        let view = view.read(app);
+                        match view.articles.get(index) {
+                            Some(article) => {
+                                ArticleView::new(app, article.clone()).into_any_element()
+                            }
+                            None => div().into_any(),
+                        }
+                    } else {
+                        div().into_any()
+                    }
+                })
+                .size_full(),
+            )
+        };
+
+        let loading = || div().child("Loading...");
+
+        div()
+            .flex()
+            .flex_col()
+            .size_full()
+            .child(if self.articles.is_empty() {
+                loading()
+            } else {
+                articles()
+            })
     }
 }
