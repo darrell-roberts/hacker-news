@@ -1,23 +1,36 @@
-use crate::AppState;
-use gpui::{
-    div, px, App, AppContext as _, Entity, ParentElement, Render, Styled, Subscription, Window,
-};
+use crate::{content::Content, AppState};
+use gpui::{div, px, white, App, AppContext as _, Entity, ParentElement, Render, Styled, Window};
 use jiff::Zoned;
 
 pub struct Footer {
-    _state_subscription: Subscription,
     status_line: String,
 }
 
 impl Footer {
-    pub fn new(_cx: &mut Window, app: &mut App) -> Entity<Self> {
-        app.new(|cx| Self {
-            _state_subscription: cx.observe_global::<AppState>(move |footer: &mut Footer, cx| {
+    pub fn new(_cx: &mut Window, app: &mut App, content: &Entity<Content>) -> Entity<Self> {
+        app.new(|cx| {
+            cx.observe_global::<AppState>(move |footer: &mut Footer, cx| {
                 println!("updating status line");
-                footer.status_line = format!("Updated: {}", Zoned::now().strftime("%D %T"));
+                footer.status_line = "Fetching...".into();
                 cx.notify()
-            }),
-            status_line: String::from("Loading..."),
+            })
+            .detach();
+
+            cx.subscribe(
+                content,
+                |footer: &mut Footer, _content, total_articles, _cx| {
+                    footer.status_line = format!(
+                        "Updated: {}, total {}",
+                        Zoned::now().strftime("%D %T"),
+                        total_articles.0
+                    );
+                },
+            )
+            .detach();
+
+            Self {
+                status_line: String::from("Loading..."),
+            }
         })
     }
 }
@@ -28,6 +41,9 @@ impl Render for Footer {
         _window: &mut Window,
         _cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
-        div().h(px(50.)).child(self.status_line.clone())
+        div()
+            .text_color(white())
+            .h(px(50.))
+            .child(self.status_line.clone())
     }
 }

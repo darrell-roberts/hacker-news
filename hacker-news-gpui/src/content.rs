@@ -5,7 +5,7 @@ use crate::{article::ArticleView, ApiClientState, AppState};
 use anyhow::Context as _;
 use async_compat::Compat;
 use gpui::{
-    div, list, prelude::*, px, App, AppContext, AsyncApp, Entity, ListState, Subscription,
+    div, list, prelude::*, px, App, AppContext, AsyncApp, Entity, EventEmitter, ListState,
     WeakEntity, Window,
 };
 use hacker_news_api::Item;
@@ -14,8 +14,11 @@ use hacker_news_api::Item;
 pub struct Content {
     articles: Vec<Rc<Item>>,
     list_state: ListState,
-    _state_subscription: Subscription,
 }
+
+pub struct TotalArticles(pub usize);
+
+impl EventEmitter<TotalArticles> for Content {}
 
 impl Content {
     /// Create a new content view.
@@ -23,14 +26,15 @@ impl Content {
         app.new(|cx: &mut Context<Self>| {
             let list_state = ListState::new(0, gpui::ListAlignment::Top, px(5.0));
             Self::fetch_articles(cx);
-
+            cx.observe_global::<AppState>(|view, cx| {
+                println!("global observer on Entity<Content> fired");
+                view.articles = Vec::new();
+                Self::fetch_articles(cx)
+            })
+            .detach();
             Self {
                 articles: Vec::new(),
                 list_state,
-                _state_subscription: cx.observe_global::<AppState>(|view, cx| {
-                    view.articles = Vec::new();
-                    Self::fetch_articles(cx)
-                }),
             }
         })
     }
@@ -62,6 +66,7 @@ async fn fetch_articles(view: WeakEntity<Content>, cx: &mut AsyncApp) -> anyhow:
         view.articles = new_articles.into_iter().map(Rc::new).collect();
         view.list_state.reset(view.articles.len());
         cx.notify();
+        cx.emit(TotalArticles(view.articles.len()));
     })
 }
 

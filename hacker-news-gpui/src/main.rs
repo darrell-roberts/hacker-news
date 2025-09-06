@@ -2,7 +2,7 @@
 use content::Content;
 use footer::Footer;
 use gpui::{
-    actions, black, div, point, prelude::*, px, rgb, size, App, Application, Entity, Global, Menu,
+    actions, black, div, point, prelude::*, px, size, App, Application, Entity, Global, Menu,
     MenuItem, SharedString, Window, WindowDecorations, WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType};
@@ -47,7 +47,7 @@ impl MainWindow {
     fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
         let header = Header::new(window, app);
         let content = Content::new(window, app);
-        let footer = Footer::new(window, app);
+        let footer = Footer::new(window, app, &content);
 
         // let subscription = cx.on_action(, listener)
 
@@ -68,7 +68,6 @@ impl Render for MainWindow {
             .h_full()
             .bg(black())
             .border_5()
-            // .border_color(rgb(0xEEEEEE))
             .child(self.header.clone())
             .child(self.content.clone())
             .child(self.footer.clone())
@@ -90,6 +89,11 @@ fn main() {
             name: SharedString::from("set_menus"),
             items: vec![MenuItem::action("Quit", Quit)],
         }]);
+
+        app.on_window_closed(|app| {
+            app.quit();
+        })
+        .detach();
 
         app.open_window(
             WindowOptions {
