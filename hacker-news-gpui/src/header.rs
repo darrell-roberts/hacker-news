@@ -1,5 +1,5 @@
 //! Header view.
-use crate::AppState;
+use crate::ArticleSelection;
 use gpui::{
     black, div, prelude::FluentBuilder, px, yellow, App, AppContext as _, BorrowAppContext, Entity,
     InteractiveElement, IntoElement, MouseButton, ParentElement, Render, Styled, Window,
@@ -18,7 +18,7 @@ impl Header {
 
 impl Render for Header {
     fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        let app_state = cx.global::<AppState>();
+        let app_state = cx.global::<ArticleSelection>();
 
         let mk_article_type = |article_type: ArticleType| {
             div()
@@ -30,7 +30,7 @@ impl Render for Header {
                 })
                 .child(article_type.as_str().to_owned())
                 .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                    cx.update_global(|state: &mut AppState, _cx| {
+                    cx.update_global(|state: &mut ArticleSelection, _cx| {
                         state.viewing_article_type = article_type;
                     });
                 })
@@ -54,7 +54,7 @@ impl Render for Header {
                 })
                 .child(format!("{article_count}"))
                 .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                    cx.update_global(|state: &mut AppState, _cx| {
+                    cx.update_global(|state: &mut ArticleSelection, _cx| {
                         state.viewing_article_total = article_count;
                     })
                 })
