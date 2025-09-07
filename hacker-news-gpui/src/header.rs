@@ -80,11 +80,6 @@ impl Render for Header {
                             },
                         ),
                     )
-                // .on_mouse_down(MouseButton::Left, move |_event, _window, cx| {
-                //     cx.update_global(|state: &mut ArticleSelection, _cx| {
-                //         state.viewing_article_total = article_count;
-                //     })
-                // })
             });
 
         div()

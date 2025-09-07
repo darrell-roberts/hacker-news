@@ -66,7 +66,7 @@ async fn fetch_articles(view: WeakEntity<Content>, cx: &mut AsyncApp) -> anyhow:
     cx.update_entity(&view, move |view, cx| {
         view.articles = new_articles
             .into_iter()
-            .map(|article| ArticleView::new(cx, &article))
+            .map(|article| ArticleView::new(cx, article))
             .collect();
 
         view.list_state.reset(view.articles.len());

@@ -18,13 +18,13 @@ pub struct ArticleView {
 }
 
 impl ArticleView {
-    pub fn new(app: &mut App, item: &Item) -> Entity<Self> {
+    pub fn new(app: &mut App, item: Item) -> Entity<Self> {
         app.new(|_| Self {
-            title: item.title.clone().unwrap_or_default().into(),
+            title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
             score: format!("🔼{}", item.score).into(),
             comments: format!("💬{}", item.kids.len()).into(),
-            url: item.url.as_ref().map(Into::into),
+            url: item.url.map(Into::into),
         })
     }
 }
