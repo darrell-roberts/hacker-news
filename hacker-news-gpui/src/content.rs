@@ -1,5 +1,4 @@
 //! Main content view
-use std::rc::Rc;
 
 use crate::{article::ArticleView, ApiClientState, AppState};
 use anyhow::Context as _;
@@ -8,11 +7,10 @@ use gpui::{
     div, list, prelude::*, px, App, AppContext, AsyncApp, Entity, EventEmitter, ListState,
     WeakEntity, Window,
 };
-use hacker_news_api::Item;
 
 // Main content view.
 pub struct Content {
-    articles: Rc<Vec<Item>>,
+    articles: Vec<Entity<ArticleView>>,
     list_state: ListState,
 }
 
@@ -66,7 +64,11 @@ async fn fetch_articles(view: WeakEntity<Content>, cx: &mut AsyncApp) -> anyhow:
         .context("Failed to fetch")?;
 
     cx.update_entity(&view, move |view, cx| {
-        view.articles = Rc::new(new_articles);
+        view.articles = new_articles
+            .into_iter()
+            .map(|article| ArticleView::new(cx, &article))
+            .collect();
+
         view.list_state.reset(view.articles.len());
         cx.notify();
         cx.emit(TotalArticles(view.articles.len()));
@@ -84,7 +86,7 @@ impl Render for Content {
                         Some(content) => {
                             let view = content.read(app);
                             let articles = view.articles.clone();
-                            ArticleView::new(app, &articles[index]).into_any_element()
+                            articles[index].clone().into_any_element()
                         }
                         None => div().into_any(),
                     },
