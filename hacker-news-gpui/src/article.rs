@@ -1,8 +1,8 @@
 //! Article view.
 
 use gpui::{
-    div, prelude::*, px, rems, rgb, white, App, Entity, InteractiveText, SharedString, StyledText,
-    Window,
+    black, div, prelude::*, px, rems, rgb, solid_background, white, App, Entity, Fill, FontWeight,
+    InteractiveText, SharedString, StyledText, Window,
 };
 use hacker_news_api::Item;
 
@@ -62,17 +62,25 @@ impl Render for ArticleView {
             .flex_row()
             .flex_grow()
             .child(
-                InteractiveText::new("title", StyledText::new(self.title.clone()))
-                    .on_click([0..self.title.len()].into(), move |_index, _window, app| {
-                        if let Some(url) = url.as_deref() {
-                            app.open_url(url.as_ref());
-                        }
-                    })
-                    .on_hover(move |_index, _event, _window, app| {
-                        if let Some(entity) = weak_entity.upgrade() {
-                            let view = entity.read(app);
-                            app.set_global::<UrlHover>(UrlHover(view.url.clone()));
-                        }
+                div()
+                    .child(
+                        InteractiveText::new("title", StyledText::new(self.title.clone()))
+                            .on_click([0..self.title.len()].into(), move |_index, _window, app| {
+                                if let Some(url) = url.as_deref() {
+                                    app.open_url(url.as_ref());
+                                }
+                            })
+                            .on_hover(move |_index, _event, _window, app| {
+                                if let Some(entity) = weak_entity.upgrade() {
+                                    let view = entity.read(app);
+                                    app.set_global::<UrlHover>(UrlHover(view.url.clone()));
+                                }
+                            }),
+                    )
+                    .hover(|s| {
+                        s.font_weight(FontWeight::BOLD)
+                            .text_color(black())
+                            .bg(Fill::Color(solid_background(rgb(0x00134d))))
                     }),
             )
             .child(author)
