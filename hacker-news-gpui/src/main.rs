@@ -28,12 +28,12 @@ impl Deref for ApiClientState {
 
 impl Global for ApiClientState {}
 
-pub struct AppState {
+pub struct ArticleSelection {
     pub viewing_article_type: ArticleType,
     pub viewing_article_total: usize,
 }
 
-impl Global for AppState {}
+impl Global for ArticleSelection {}
 
 pub struct UrlHover(pub Option<SharedString>);
 
@@ -78,7 +78,7 @@ fn main() {
     Application::new().run(|app| {
         let client = Arc::new(hacker_news_api::ApiClient::new().unwrap());
         app.set_global(ApiClientState(client));
-        app.set_global(AppState {
+        app.set_global(ArticleSelection {
             viewing_article_type: ArticleType::Top,
             viewing_article_total: 50,
         });

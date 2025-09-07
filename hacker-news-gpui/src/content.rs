@@ -1,6 +1,6 @@
 //! Main content view
 
-use crate::{article::ArticleView, ApiClientState, AppState};
+use crate::{article::ArticleView, ApiClientState, ArticleSelection};
 use anyhow::Context as _;
 use async_compat::Compat;
 use gpui::{
@@ -25,8 +25,7 @@ impl Content {
             let list_state = ListState::new(0, gpui::ListAlignment::Top, px(5.0));
             Self::fetch_articles(cx);
 
-            cx.observe_global::<AppState>(|view, cx| {
-                println!("global observer on Entity<Content> fired");
+            cx.observe_global::<ArticleSelection>(|view, cx| {
                 view.articles = Default::default();
                 Self::fetch_articles(cx)
             })
@@ -55,8 +54,9 @@ async fn fetch_articles(view: WeakEntity<Content>, cx: &mut AsyncApp) -> anyhow:
         .upgrade()
         .context("Could not upgrade view weak reference")?;
 
-    let (article_type, total) =
-        cx.read_global(|r: &AppState, _cx| (r.viewing_article_type, r.viewing_article_total))?;
+    let (article_type, total) = cx.read_global(|r: &ArticleSelection, _cx| {
+        (r.viewing_article_type, r.viewing_article_total)
+    })?;
 
     // Run in compat since client uses tokio
     let new_articles = Compat::new(client.articles(total, article_type))

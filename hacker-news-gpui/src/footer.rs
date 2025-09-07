@@ -1,4 +1,4 @@
-use crate::{content::Content, AppState, UrlHover};
+use crate::{content::Content, ArticleSelection, UrlHover};
 use gpui::{
     div, prelude::FluentBuilder, px, white, App, AppContext as _, Entity, ParentElement, Render,
     SharedString, Styled, Window,
@@ -13,8 +13,7 @@ pub struct Footer {
 impl Footer {
     pub fn new(_cx: &mut Window, app: &mut App, content: &Entity<Content>) -> Entity<Self> {
         app.new(|cx| {
-            cx.observe_global::<AppState>(move |footer: &mut Footer, cx| {
-                println!("updating status line");
+            cx.observe_global::<ArticleSelection>(move |footer: &mut Footer, cx| {
                 footer.status_line = "Fetching...".into();
                 cx.notify()
             })
