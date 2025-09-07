@@ -1,10 +1,12 @@
 //! Article view.
 
 use gpui::{
-    div, prelude::*, px, rems, rgb, white, App, Entity, EventEmitter, InteractiveText,
-    SharedString, StyledText, Window,
+    div, prelude::*, px, rems, rgb, white, App, Entity, InteractiveText, SharedString, StyledText,
+    Window,
 };
 use hacker_news_api::Item;
+
+use crate::UrlHover;
 
 // An article view is rendered for each article item.
 pub struct ArticleView {
@@ -26,10 +28,6 @@ impl ArticleView {
         })
     }
 }
-
-// pub struct HoverUrl(pub SharedString);
-
-// impl EventEmitter<HoverUrl> for ArticleView {}
 
 impl Render for ArticleView {
     fn render(
@@ -66,34 +64,17 @@ impl Render for ArticleView {
             .child(
                 InteractiveText::new("title", StyledText::new(self.title.clone()))
                     .on_click([0..self.title.len()].into(), move |_index, _window, app| {
-                        println!("Title clicked");
                         if let Some(url) = url.as_deref() {
-                            println!("Opening url {url:?}");
                             app.open_url(url.as_ref());
                         }
                     })
-                    .on_hover(move |index, _event, _window, app| {
+                    .on_hover(move |_index, _event, _window, app| {
                         if let Some(entity) = weak_entity.upgrade() {
                             let view = entity.read(app);
-                            println!("Hover on {index:?} {:?}", view.url);
-                            // if let Some(url) = view.url.clone() {
-                            //     entity.update(app, |view, cx| {
-                            //         cx.emit(HoverUrl(url.clone()));
-                            //     })
-                            // }
+                            app.set_global::<UrlHover>(UrlHover(view.url.clone()));
                         }
                     }),
             )
-            // .child(div().child(self.title.clone()).on_mouse_down(
-            //     MouseButton::Left,
-            //     cx.listener(move |_view, _event, _window, cx| {
-            //         println!("Title clicked");
-            //         if let Some(url) = url.as_deref() {
-            //             println!("Opening url {url:?}");
-            //             cx.open_url(url.as_ref());
-            //         }
-            //     }),
-            // ))
             .child(author)
             .gap_x(px(5.0));
 

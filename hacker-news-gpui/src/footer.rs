@@ -1,12 +1,13 @@
-use crate::{content::Content, AppState};
+use crate::{content::Content, AppState, UrlHover};
 use gpui::{
-    div, px, white, App, AppContext as _, Entity, ParentElement, Render, SharedString, Styled,
-    Window,
+    div, prelude::FluentBuilder, px, white, App, AppContext as _, Entity, ParentElement, Render,
+    SharedString, Styled, Window,
 };
 use jiff::Zoned;
 
 pub struct Footer {
     status_line: SharedString,
+    url: Option<SharedString>,
 }
 
 impl Footer {
@@ -32,8 +33,14 @@ impl Footer {
             )
             .detach();
 
+            cx.observe_global::<UrlHover>(|footer: &mut Footer, cx| {
+                footer.url = cx.global::<UrlHover>().0.clone();
+            })
+            .detach();
+
             Self {
                 status_line: Default::default(),
+                url: None,
             }
         })
     }
@@ -49,5 +56,6 @@ impl Render for Footer {
             .text_color(white())
             .h(px(50.))
             .child(self.status_line.clone())
+            .when_some(self.url.as_ref(), |div, url| div.child(url.clone()))
     }
 }

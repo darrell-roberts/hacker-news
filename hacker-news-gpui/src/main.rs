@@ -35,6 +35,10 @@ pub struct AppState {
 
 impl Global for AppState {}
 
+pub struct UrlHover(pub Option<SharedString>);
+
+impl Global for UrlHover {}
+
 struct MainWindow {
     header: Entity<Header>,
     content: Entity<Content>,
@@ -78,6 +82,7 @@ fn main() {
             viewing_article_type: ArticleType::Top,
             viewing_article_total: 50,
         });
+        app.set_global(UrlHover(None));
 
         // Add menu items
         app.set_menus(vec![Menu {
