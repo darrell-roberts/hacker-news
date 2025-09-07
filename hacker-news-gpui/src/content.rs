@@ -12,7 +12,7 @@ use hacker_news_api::Item;
 
 // Main content view.
 pub struct Content {
-    articles: Vec<Rc<Item>>,
+    articles: Rc<Vec<Item>>,
     list_state: ListState,
 }
 
@@ -26,14 +26,16 @@ impl Content {
         app.new(|cx: &mut Context<Self>| {
             let list_state = ListState::new(0, gpui::ListAlignment::Top, px(5.0));
             Self::fetch_articles(cx);
+
             cx.observe_global::<AppState>(|view, cx| {
                 println!("global observer on Entity<Content> fired");
-                view.articles = Vec::new();
+                view.articles = Default::default();
                 Self::fetch_articles(cx)
             })
             .detach();
+
             Self {
-                articles: Vec::new(),
+                articles: Default::default(),
                 list_state,
             }
         })
@@ -55,15 +57,16 @@ async fn fetch_articles(view: WeakEntity<Content>, cx: &mut AsyncApp) -> anyhow:
         .upgrade()
         .context("Could not upgrade view weak reference")?;
 
-    let (a_type, total) =
+    let (article_type, total) =
         cx.read_global(|r: &AppState, _cx| (r.viewing_article_type, r.viewing_article_total))?;
 
     // Run in compat since client uses tokio
-    let new_articles = Compat::new(client.articles(total, a_type))
+    let new_articles = Compat::new(client.articles(total, article_type))
         .await
         .context("Failed to fetch")?;
+
     cx.update_entity(&view, move |view, cx| {
-        view.articles = new_articles.into_iter().map(Rc::new).collect();
+        view.articles = Rc::new(new_articles);
         view.list_state.reset(view.articles.len());
         cx.notify();
         cx.emit(TotalArticles(view.articles.len()));
@@ -75,19 +78,17 @@ impl Render for Content {
         let entity = cx.weak_entity();
         let articles = || {
             div().flex_grow().px_2().child(
-                list(self.list_state.clone(), move |index, _window, app| {
-                    if let Some(view) = entity.upgrade() {
-                        let view = view.read(app);
-                        match view.articles.get(index) {
-                            Some(article) => {
-                                ArticleView::new(app, article.clone()).into_any_element()
-                            }
-                            None => div().into_any(),
+                list(
+                    self.list_state.clone(),
+                    move |index, _window, app| match entity.upgrade() {
+                        Some(content) => {
+                            let view = content.read(app);
+                            let articles = view.articles.clone();
+                            ArticleView::new(app, &articles[index]).into_any_element()
                         }
-                    } else {
-                        div().into_any()
-                    }
-                })
+                        None => div().into_any(),
+                    },
+                )
                 .size_full(),
             )
         };

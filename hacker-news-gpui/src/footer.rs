@@ -1,9 +1,12 @@
 use crate::{content::Content, AppState};
-use gpui::{div, px, white, App, AppContext as _, Entity, ParentElement, Render, Styled, Window};
+use gpui::{
+    div, px, white, App, AppContext as _, Entity, ParentElement, Render, SharedString, Styled,
+    Window,
+};
 use jiff::Zoned;
 
 pub struct Footer {
-    status_line: String,
+    status_line: SharedString,
 }
 
 impl Footer {
@@ -23,13 +26,14 @@ impl Footer {
                         "Updated: {}, total {}",
                         Zoned::now().strftime("%D %T"),
                         total_articles.0
-                    );
+                    )
+                    .into();
                 },
             )
             .detach();
 
             Self {
-                status_line: String::from("Loading..."),
+                status_line: Default::default(),
             }
         })
     }
