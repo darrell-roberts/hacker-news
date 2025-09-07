@@ -31,7 +31,6 @@ impl Global for ApiClientState {}
 pub struct AppState {
     pub viewing_article_type: ArticleType,
     pub viewing_article_total: usize,
-    pub status_line: String,
 }
 
 impl Global for AppState {}
@@ -78,7 +77,6 @@ fn main() {
         app.set_global(AppState {
             viewing_article_type: ArticleType::Top,
             viewing_article_total: 50,
-            status_line: String::new(),
         });
 
         // Add menu items

@@ -12,21 +12,17 @@ pub struct Header;
 impl Header {
     /// Create a new header view.
     pub fn new(_cx: &mut Window, app: &mut App) -> Entity<Self> {
-        app.new(|cx| {
-            cx.observe_global::<AppState>(move |_state, cx| cx.notify())
-                .detach();
-            Self {}
-        })
+        app.new(|_cx| Self {})
     }
 }
 
 impl Render for Header {
     fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        let g = cx.global::<AppState>();
+        let app_state = cx.global::<AppState>();
 
         let mk_article_type = |article_type: ArticleType| {
             div()
-                .when(article_type == g.viewing_article_type, |div| {
+                .when(article_type == app_state.viewing_article_type, |div| {
                     div.text_bg(yellow())
                         .border_1()
                         .text_color(black())
@@ -50,7 +46,7 @@ impl Render for Header {
 
         let col3 = [25, 50, 75, 100, 500].into_iter().map(|article_count| {
             div()
-                .when(article_count == g.viewing_article_total, |div| {
+                .when(article_count == app_state.viewing_article_total, |div| {
                     div.text_bg(yellow())
                         .border_1()
                         .text_color(black())
