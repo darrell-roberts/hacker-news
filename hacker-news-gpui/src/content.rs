@@ -25,6 +25,8 @@ impl Content {
             let list_state = ListState::new(0, gpui::ListAlignment::Top, px(5.0));
             Self::fetch_articles(cx);
 
+            // When we change the type or number of articles in the header
+            // we will fetch with the new viewing options.
             cx.observe_global::<ArticleSelection>(|view, cx| {
                 view.articles = Default::default();
                 Self::fetch_articles(cx)
@@ -58,7 +60,7 @@ async fn fetch_articles(view: WeakEntity<Content>, cx: &mut AsyncApp) -> anyhow:
         (r.viewing_article_type, r.viewing_article_total)
     })?;
 
-    // Run in compat since client uses tokio
+    // Run in compat since my client uses tokio
     let new_articles = Compat::new(client.articles(total, article_type))
         .await
         .context("Failed to fetch")?;
@@ -78,7 +80,7 @@ async fn fetch_articles(view: WeakEntity<Content>, cx: &mut AsyncApp) -> anyhow:
 impl Render for Content {
     fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
         let entity = cx.weak_entity();
-        let articles = || {
+        let render_articles = || {
             div().flex_grow().px_2().child(
                 list(
                     self.list_state.clone(),
@@ -104,7 +106,7 @@ impl Render for Content {
             .child(if self.articles.is_empty() {
                 loading()
             } else {
-                articles()
+                render_articles()
             })
     }
 }
