@@ -1,5 +1,7 @@
 //! Main content view
 
+use std::{cmp::Ordering, collections::HashMap};
+
 use crate::{article::ArticleView, ApiClientState};
 use async_compat::Compat;
 use futures::{channel, SinkExt, StreamExt, TryStreamExt as _};
@@ -10,6 +12,7 @@ use hacker_news_api::{subscribe_top_stories, Item};
 pub struct Content {
     articles: Vec<Entity<ArticleView>>,
     list_state: ListState,
+    article_ranks: HashMap<u64, usize>,
 }
 
 pub struct TotalArticles(pub usize);
@@ -34,6 +37,7 @@ impl Content {
             Self {
                 articles: Default::default(),
                 list_state,
+                article_ranks: Default::default(),
             }
         });
 
@@ -45,13 +49,32 @@ impl Content {
         app.spawn(async move |app| {
             while let Some(items) = rx.next().await {
                 if let Some(entity) = weak_entity.upgrade() {
+                    let ranking_map = items
+                        .iter()
+                        .enumerate()
+                        .map(|(index, item)| (item.id, index))
+                        .collect::<HashMap<_, _>>();
+
                     let views = items
                         .into_iter()
-                        .map(|article| ArticleView::new(app, article))
+                        .enumerate()
+                        .map(|(index, article)| {
+                            let order_change = app
+                                .read_entity(&entity, |content, _app| {
+                                    match content.article_ranks.get(&article.id) {
+                                        Some(rank) => rank.cmp(&index),
+                                        None => Ordering::Greater,
+                                    }
+                                })
+                                .unwrap();
+                            ArticleView::new(app, article, order_change)
+                        })
                         .collect();
+
                     let result = app.update_entity(&entity, |content, cx| {
                         content.articles = views;
                         content.list_state.reset(content.articles.len());
+                        content.article_ranks = ranking_map;
                         cx.emit(TotalArticles(content.articles.len()));
                         cx.notify();
                     });
