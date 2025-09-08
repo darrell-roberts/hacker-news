@@ -15,6 +15,7 @@ pub struct ArticleView {
     score: SharedString,
     comments: SharedString,
     url: Option<SharedString>,
+    order_change: SharedString,
 }
 
 impl ArticleView {
@@ -26,18 +27,15 @@ impl ArticleView {
         app.new(|_| Self {
             title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
-            score: format!(
-                "{:2}{:>5}",
-                match order_change {
-                    Ordering::Less => "-",
-                    Ordering::Equal => "",
-                    Ordering::Greater => "+",
-                },
-                item.score,
-            )
-            .into(),
+            score: format!("{}", item.score,).into(),
             comments: format!("💬{}", item.kids.len()).into(),
             url: item.url.map(Into::into),
+            order_change: match order_change {
+                Ordering::Less => "-",
+                Ordering::Equal => "",
+                Ordering::Greater => "+",
+            }
+            .into(),
         })
     }
 }
@@ -48,15 +46,21 @@ impl Render for ArticleView {
         _window: &mut Window,
         cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
+        let rank_change_col = div()
+            .flex()
+            .w(rems(1.0))
+            .justify_start()
+            .child(self.order_change.clone());
+
         let points_col = div()
             .flex()
-            .w(rems(4.5))
-            .justify_start()
+            .w(rems(3.))
+            .justify_end()
             .child(self.score.clone());
 
         let comments_col = div()
             .flex()
-            .w(rems(4.))
+            .w(rems(3.))
             .justify_start()
             .child(self.comments.clone());
 
@@ -107,10 +111,11 @@ impl Render for ArticleView {
             .flex()
             .flex_row()
             .font_family("Roboto, sans-serif")
-            .text_size(px(14.0))
+            .text_size(px(15.0))
             .text_color(white())
             .w_full()
             .gap_x(px(5.0))
+            .child(rank_change_col)
             .child(points_col)
             .child(comments_col)
             .child(title_col)
