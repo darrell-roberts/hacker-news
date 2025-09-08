@@ -5,7 +5,7 @@ use gpui::{
     actions, black, div, point, prelude::*, px, size, App, Application, Entity, Global, Menu,
     MenuItem, SharedString, Window, WindowDecorations, WindowOptions,
 };
-use hacker_news_api::{ApiClient, ArticleType};
+use hacker_news_api::{ApiClient, ArticleType, Item};
 use header::Header;
 use std::{ops::Deref, sync::Arc};
 
@@ -38,6 +38,10 @@ impl Global for ArticleSelection {}
 pub struct UrlHover(pub Option<SharedString>);
 
 impl Global for UrlHover {}
+
+pub struct ArticleState(pub Vec<Item>);
+
+impl Global for ArticleState {}
 
 struct MainWindow {
     header: Entity<Header>,

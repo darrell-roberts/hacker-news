@@ -13,3 +13,5 @@ log.workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 jiff = "0.2"
+tokio = "1"
+futures = "0.3"
