@@ -1,12 +1,10 @@
 //! Article view.
-
+use crate::UrlHover;
 use gpui::{
     black, div, prelude::*, px, rems, rgb, solid_background, white, App, Entity, Fill, FontWeight,
-    InteractiveText, SharedString, StyledText, Window,
+    SharedString, Window,
 };
 use hacker_news_api::Item;
-
-use crate::UrlHover;
 
 // An article view is rendered for each article item.
 pub struct ArticleView {
@@ -64,21 +62,25 @@ impl Render for ArticleView {
             .child(
                 div()
                     .child(
-                        InteractiveText::new("title", StyledText::new(self.title.clone()))
-                            .on_click([0..self.title.len()].into(), move |_index, _window, app| {
+                        div()
+                            .id("title")
+                            .child(self.title.clone())
+                            .cursor_pointer()
+                            .on_click(move |_, _, app| {
                                 if let Some(url) = url.as_deref() {
                                     app.open_url(url.as_ref());
                                 }
                             })
-                            .on_hover(move |_index, _event, _window, app| {
+                            .on_hover(move |_hover, _window, app| {
                                 if let Some(entity) = weak_entity.upgrade() {
                                     let view = entity.read(app);
                                     app.set_global::<UrlHover>(UrlHover(view.url.clone()));
                                 }
                             }),
                     )
-                    .hover(|s| {
-                        s.font_weight(FontWeight::BOLD)
+                    .hover(|style| {
+                        style
+                            .font_weight(FontWeight::BOLD)
                             .text_color(black())
                             .bg(Fill::Color(solid_background(rgb(0x00134d))))
                     }),
