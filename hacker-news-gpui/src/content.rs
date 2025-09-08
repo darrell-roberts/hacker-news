@@ -1,6 +1,6 @@
 //! Main content view
 
-use std::{cmp::Ordering, collections::HashMap};
+use std::collections::HashMap;
 
 use crate::{article::ArticleView, ApiClientState, ArticleSelection};
 use async_compat::Compat;
@@ -62,8 +62,8 @@ impl Content {
                             let order_change = app
                                 .read_entity(&entity, |content, _app| {
                                     match content.article_ranks.get(&article.id) {
-                                        Some(rank) => rank.cmp(&index),
-                                        None => Ordering::Greater,
+                                        Some(rank) => (*rank as i64) - (index as i64),
+                                        None => 0,
                                     }
                                 })
                                 .unwrap();
