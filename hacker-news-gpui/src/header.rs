@@ -2,7 +2,8 @@
 use crate::ArticleSelection;
 use gpui::{
     black, div, prelude::FluentBuilder, px, yellow, App, AppContext as _, BorrowAppContext, Entity,
-    InteractiveText, IntoElement, ParentElement, Render, SharedString, Styled, StyledText, Window,
+    InteractiveElement, IntoElement, ParentElement, Render, SharedString,
+    StatefulInteractiveElement as _, Styled, Window,
 };
 use hacker_news_api::ArticleType;
 
@@ -25,7 +26,6 @@ impl Render for Header {
         let article_selection = cx.global::<ArticleSelection>();
 
         let mk_article_type = |article_type: ArticleType| {
-            let label_len = article_type.as_str().len();
             div()
                 .when(
                     article_type == article_selection.viewing_article_type,
@@ -37,8 +37,11 @@ impl Render for Header {
                     },
                 )
                 .child(
-                    InteractiveText::new("article_type", StyledText::new(article_type.as_str()))
-                        .on_click([0..label_len].into(), move |_index, _window, app| {
+                    div()
+                        .id(article_type.as_str())
+                        .child(article_type.as_str())
+                        .cursor_pointer()
+                        .on_click(move |_event, _window, app| {
                             app.update_global(|state: &mut ArticleSelection, _cx| {
                                 state.viewing_article_type = article_type;
                             });
@@ -59,7 +62,6 @@ impl Render for Header {
             .clone()
             .into_iter()
             .map(|(article_count, label)| {
-                let label_len = label.len();
                 div()
                     .when(
                         article_count == article_selection.viewing_article_total,
@@ -70,16 +72,14 @@ impl Render for Header {
                                 .rounded(px(0.8))
                         },
                     )
-                    .child(
-                        InteractiveText::new("count", StyledText::new(label)).on_click(
-                            [0..label_len].into(),
-                            move |_index, _window, app| {
-                                app.update_global(|state: &mut ArticleSelection, _cx| {
-                                    state.viewing_article_total = article_count;
-                                })
-                            },
-                        ),
-                    )
+                    .id(label.clone())
+                    .child(label)
+                    .cursor_pointer()
+                    .on_click(move |_event, _window, app| {
+                        app.update_global(|state: &mut ArticleSelection, _cx| {
+                            state.viewing_article_total = article_count;
+                        })
+                    })
             });
 
         div()
@@ -90,6 +90,7 @@ impl Render for Header {
             .text_color(yellow())
             .gap_x(px(10.0))
             .w_full()
+            .justify_center()
             .children(col1)
             .child(div().border_4())
             .children(col2)
