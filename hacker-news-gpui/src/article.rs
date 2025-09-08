@@ -1,4 +1,6 @@
 //! Article view.
+use std::cmp::Ordering;
+
 use crate::UrlHover;
 use gpui::{
     black, div, prelude::*, px, rems, rgb, solid_background, white, AppContext, AsyncApp, Entity,
@@ -16,11 +18,20 @@ pub struct ArticleView {
 }
 
 impl ArticleView {
-    pub fn new(app: &mut AsyncApp, item: Item) -> Entity<Self> {
+    pub fn new(app: &mut AsyncApp, item: Item, order_change: Ordering) -> Entity<Self> {
         app.new(|_| Self {
             title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
-            score: format!("🔼{}", item.score).into(),
+            score: format!(
+                "{:2}{:>5}",
+                match order_change {
+                    Ordering::Less => "-",
+                    Ordering::Equal => "",
+                    Ordering::Greater => "+",
+                },
+                item.score,
+            )
+            .into(),
             comments: format!("💬{}", item.kids.len()).into(),
             url: item.url.map(Into::into),
         })
