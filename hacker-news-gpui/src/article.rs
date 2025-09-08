@@ -18,7 +18,11 @@ pub struct ArticleView {
 }
 
 impl ArticleView {
-    pub fn new(app: &mut AsyncApp, item: Item, order_change: Ordering) -> Entity<Self> {
+    pub fn new(
+        app: &mut AsyncApp,
+        item: Item,
+        order_change: Ordering,
+    ) -> anyhow::Result<Entity<Self>> {
         app.new(|_| Self {
             title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
@@ -35,7 +39,6 @@ impl ArticleView {
             comments: format!("💬{}", item.kids.len()).into(),
             url: item.url.map(Into::into),
         })
-        .unwrap()
     }
 }
 

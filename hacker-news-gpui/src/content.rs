@@ -69,17 +69,24 @@ impl Content {
                                 .unwrap();
                             ArticleView::new(app, article, order_change)
                         })
-                        .collect();
+                        .collect::<Result<Vec<_>, _>>();
 
-                    let result = app.update_entity(&entity, |content, cx| {
-                        content.articles = views;
-                        content.list_state.reset(content.articles.len());
-                        content.article_ranks = ranking_map;
-                        cx.emit(TotalArticles(content.articles.len()));
-                        cx.notify();
-                    });
-                    if let Err(err) = result {
-                        eprintln!("Failed to updated articles: {err}");
+                    match views {
+                        Ok(views) => {
+                            let result = app.update_entity(&entity, |content, cx| {
+                                content.articles = views;
+                                content.list_state.reset(content.articles.len());
+                                content.article_ranks = ranking_map;
+                                cx.emit(TotalArticles(content.articles.len()));
+                                cx.notify();
+                            });
+                            if let Err(err) = result {
+                                eprintln!("Failed to updated articles: {err}");
+                            }
+                        }
+                        Err(err) => {
+                            eprintln!("Could not create article view. App shutting down? {err}");
+                        }
                     }
                 }
             }
