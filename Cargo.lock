@@ -2953,11 +2953,13 @@ dependencies = [
  "anyhow",
  "async-compat",
  "chrono",
+ "futures",
  "gpui",
  "hacker-news-api",
  "html-sanitizer",
  "jiff",
  "log",
+ "tokio",
 ]
 
 [[package]]

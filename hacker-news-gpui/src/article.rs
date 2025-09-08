@@ -1,8 +1,8 @@
 //! Article view.
 use crate::UrlHover;
 use gpui::{
-    black, div, prelude::*, px, rems, rgb, solid_background, white, App, Entity, Fill, FontWeight,
-    SharedString, Window,
+    black, div, prelude::*, px, rems, rgb, solid_background, white, AppContext, AsyncApp, Entity,
+    Fill, FontWeight, SharedString, Window,
 };
 use hacker_news_api::Item;
 
@@ -16,7 +16,7 @@ pub struct ArticleView {
 }
 
 impl ArticleView {
-    pub fn new(app: &mut App, item: Item) -> Entity<Self> {
+    pub fn new(app: &mut AsyncApp, item: Item) -> Entity<Self> {
         app.new(|_| Self {
             title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
@@ -24,6 +24,7 @@ impl ArticleView {
             comments: format!("💬{}", item.kids.len()).into(),
             url: item.url.map(Into::into),
         })
+        .unwrap()
     }
 }
 
