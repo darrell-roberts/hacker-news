@@ -2,7 +2,7 @@
 
 use std::{cmp::Ordering, collections::HashMap};
 
-use crate::{article::ArticleView, ApiClientState};
+use crate::{article::ArticleView, ApiClientState, ArticleSelection};
 use async_compat::Compat;
 use futures::{channel, SinkExt, StreamExt, TryStreamExt as _};
 use gpui::{div, list, prelude::*, px, App, AppContext, Entity, EventEmitter, ListState, Window};
@@ -44,7 +44,7 @@ impl Content {
         let weak_entity = entity.downgrade();
         let client = app.read_global(|client: &ApiClientState, _app| client.0.clone());
 
-        let (mut tx, mut rx) = channel::mpsc::channel::<Vec<Item>>(100);
+        let (mut tx, mut rx) = channel::mpsc::channel::<Vec<Item>>(10);
 
         app.spawn(async move |app| {
             while let Some(items) = rx.next().await {
@@ -93,13 +93,16 @@ impl Content {
         })
         .detach();
 
+        let view_total =
+            app.read_global(|selection: &ArticleSelection, _app| selection.viewing_article_total);
+
         app.background_executor()
             .spawn(Compat::new(async move {
                 let (mut rx, handle) = subscribe_top_stories();
 
                 while let Some(event) = rx.recv().await {
-                    let top_50 = event.data.into_iter().take(50).collect::<Vec<_>>();
-                    let articles = client.items(&top_50).try_collect::<Vec<_>>().await;
+                    let article_ids = event.data.into_iter().take(view_total).collect::<Vec<_>>();
+                    let articles = client.items(&article_ids).try_collect::<Vec<_>>().await;
                     match articles {
                         Ok(articles) => {
                             tx.send(articles).await.unwrap();
