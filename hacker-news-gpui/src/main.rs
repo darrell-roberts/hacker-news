@@ -2,18 +2,17 @@
 use content::Content;
 use footer::Footer;
 use gpui::{
-    actions, black, div, point, prelude::*, px, rgb, size, App, Application, Entity, Global, Menu,
+    actions, div, point, prelude::*, px, rgb, size, App, Application, Entity, Global, Menu,
     MenuItem, SharedString, Window, WindowDecorations, WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
-use header::Header;
 use std::{ops::Deref, sync::Arc};
 
 mod article;
 mod comment;
 mod content;
 mod footer;
-mod header;
+// mod header;
 
 #[derive(Clone)]
 pub struct ApiClientState(Arc<ApiClient>);
@@ -102,7 +101,7 @@ fn main() {
         app.open_window(
             WindowOptions {
                 titlebar: Some(gpui::TitlebarOptions {
-                    title: Some("Hacker News".into()),
+                    title: Some("Hacker News Live".into()),
                     traffic_light_position: Some(point(px(9.), px(9.))),
                     ..Default::default()
                 }),
