@@ -2,7 +2,7 @@
 use content::Content;
 use footer::Footer;
 use gpui::{
-    actions, black, div, point, prelude::*, px, size, App, Application, Entity, Global, Menu,
+    actions, black, div, point, prelude::*, px, rgb, size, App, Application, Entity, Global, Menu,
     MenuItem, SharedString, Window, WindowDecorations, WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
@@ -44,19 +44,19 @@ pub struct ArticleState(pub Vec<Item>);
 impl Global for ArticleState {}
 
 struct MainWindow {
-    header: Entity<Header>,
+    // header: Entity<Header>,
     content: Entity<Content>,
     footer: Entity<Footer>,
 }
 
 impl MainWindow {
     fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
-        let header = Header::new(window, app);
+        // let header = Header::new(window, app);
         let content = Content::new(window, app);
         let footer = Footer::new(window, app, &content);
 
         app.new(|_ctx| Self {
-            header,
+            // header,
             content,
             footer,
         })
@@ -70,9 +70,9 @@ impl Render for MainWindow {
             .flex_col()
             .w_full()
             .h_full()
-            .bg(black())
+            .bg(rgb(0x666699))
             .border_5()
-            .child(self.header.clone())
+            // .child(self.header.clone())
             .child(self.content.clone())
             .child(self.footer.clone())
     }

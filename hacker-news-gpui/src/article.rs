@@ -1,5 +1,6 @@
 //! Article view.
 use crate::UrlHover;
+use chrono::{DateTime, Utc};
 use gpui::{
     black, div, prelude::*, px, rems, rgb, solid_background, white, AppContext, AsyncApp, Entity,
     Fill, FontWeight, SharedString, Window,
@@ -15,6 +16,7 @@ pub struct ArticleView {
     url: Option<SharedString>,
     order_change_label: SharedString,
     order_change: i64,
+    age: SharedString,
 }
 
 impl ArticleView {
@@ -34,6 +36,7 @@ impl ArticleView {
             }
             .into(),
             order_change,
+            age: parse_date(item.time).unwrap_or_default().into(),
         })
     }
 }
@@ -66,8 +69,14 @@ impl Render for ArticleView {
             .italic()
             .font_family(SharedString::new_static(".SystemUIFont"))
             .text_size(px(12.0))
-            .justify_end()
+            // .justify_end()
             .child(self.author.clone());
+
+        let age = div()
+            .italic()
+            .font_family(SharedString::new_static(".SystemUIFont"))
+            .text_size(px(12.0))
+            .child(self.age.clone());
 
         let url = self.url.clone();
 
@@ -105,6 +114,7 @@ impl Render for ArticleView {
                     }),
             )
             .child(author)
+            .child(age)
             .gap_x(px(5.0));
 
         div()
@@ -124,4 +134,25 @@ impl Render for ArticleView {
             .px_1()
             .border_color(rgb(0xEEEEEE))
     }
+}
+
+/// Extract the duration from a UNIX time and convert duration into a human
+/// friendly sentence.
+fn parse_date(time: u64) -> Option<String> {
+    let duration =
+        DateTime::<Utc>::from_timestamp(time.try_into().ok()?, 0).map(|then| Utc::now() - then)?;
+
+    let hours = duration.num_hours();
+    let minutes = duration.num_minutes();
+    let days = duration.num_days();
+
+    match (days, hours, minutes) {
+        (0, 0, 1) => "1 minute ago".to_string(),
+        (0, 0, m) => format!("{m} minutes ago"),
+        (0, 1, _) => "1 hour ago".to_string(),
+        (0, h, _) => format!("{h} hours ago"),
+        (1, _, _) => "1 day ago".to_string(),
+        (d, _, _) => format!("{d} days ago"),
+    }
+    .into()
 }
