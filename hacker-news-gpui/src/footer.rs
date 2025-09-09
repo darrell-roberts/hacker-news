@@ -1,5 +1,5 @@
 use crate::{content::Content, ArticleSelection, UrlHover};
-use chrono::Utc;
+use chrono::Local;
 use gpui::{
     div, prelude::FluentBuilder, px, white, App, AppContext as _, Entity, ParentElement, Render,
     SharedString, Styled, Window,
@@ -24,7 +24,7 @@ impl Footer {
                 |footer: &mut Footer, _content, total_articles, _cx| {
                     footer.status_line = format!(
                         "Updated: {}, total {}",
-                        Utc::now().format("%D %T"),
+                        Local::now().format("%D %T"),
                         total_articles.0
                     )
                     .into();
