@@ -1,9 +1,9 @@
 use crate::{content::Content, ArticleSelection, UrlHover};
+use chrono::Utc;
 use gpui::{
     div, prelude::FluentBuilder, px, white, App, AppContext as _, Entity, ParentElement, Render,
     SharedString, Styled, Window,
 };
-use jiff::Zoned;
 
 pub struct Footer {
     status_line: SharedString,
@@ -24,7 +24,7 @@ impl Footer {
                 |footer: &mut Footer, _content, total_articles, _cx| {
                     footer.status_line = format!(
                         "Updated: {}, total {}",
-                        Zoned::now().strftime("%D %T"),
+                        Utc::now().format("%D %T"),
                         total_articles.0
                     )
                     .into();
