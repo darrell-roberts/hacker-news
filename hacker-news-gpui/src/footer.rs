@@ -1,8 +1,8 @@
 use crate::{content::Content, ArticleSelection, UrlHover};
 use chrono::Local;
 use gpui::{
-    div, prelude::FluentBuilder, px, white, App, AppContext as _, Entity, ParentElement, Render,
-    SharedString, Styled, Window,
+    div, prelude::*, px, rems, white, App, Entity, ParentElement, Render, SharedString, Styled,
+    Window,
 };
 
 pub struct Footer {
@@ -53,8 +53,9 @@ impl Render for Footer {
     ) -> impl gpui::IntoElement {
         div()
             .text_color(white())
-            .h(px(50.))
-            .child(self.status_line.clone())
+            .text_size(rems(0.75))
+            // .h(px(55.))
             .when_some(self.url.as_ref(), |div, url| div.child(url.clone()))
+            .child(self.status_line.clone())
     }
 }
