@@ -3,4 +3,4 @@
 A simple live view of the top 50 articles from Hacker News. This subscribes to the firebase http event stream and
 updates accordingly. When an article moves up or down a visual + or - is shown.
 
-![Screenshot](hacker-news-gpui/screen_capture.png)
+[<img src="https://github.com/darrell-roberts/hacker-news/blob/d4792d1e4d7ee1733be3c2d4c00909732add3cc2/hacker-news-gpui/screen_capture.png" width="800">](https://github.com/darrell-roberts/hacker-news/blob/d4792d1e4d7ee1733be3c2d4c00909732add3cc2/hacker-news-gpui/screen_capture.png)
