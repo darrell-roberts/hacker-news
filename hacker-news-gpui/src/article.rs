@@ -2,8 +2,8 @@
 use crate::UrlHover;
 use chrono::{DateTime, Utc};
 use gpui::{
-    black, div, img, prelude::*, px, rems, rgb, solid_background, white, AppContext, AsyncApp,
-    Entity, Fill, FontWeight, SharedString, Window,
+    black, div, img, prelude::*, px, rems, rgb, solid_background, AppContext, AsyncApp, Entity,
+    Fill, FontWeight, SharedString, Window,
 };
 use hacker_news_api::Item;
 
@@ -98,7 +98,7 @@ impl Render for ArticleView {
                         style
                             .font_weight(FontWeight::BOLD)
                             .text_color(black())
-                            .bg(Fill::Color(solid_background(rgb(0x00134d))))
+                            .bg(Fill::Color(solid_background(rgb(0xd1dbe0))))
                     }),
             )
             .child(
@@ -120,9 +120,11 @@ impl Render for ArticleView {
             .flex_row()
             .font_family("Roboto, sans-serif")
             .text_size(px(15.0))
-            .text_color(white())
-            .when(self.order_change > 2, |div| div.text_color(rgb(0x66ff1a)))
-            .when(self.order_change < -2, |div| div.text_color(rgb(0xff99c2)))
+            .text_color(rgb(0x424242))
+            // 56 132 29
+            .when(self.order_change > 2, |div| div.text_color(rgb(0x38841d)))
+            // 200 50 28
+            .when(self.order_change < -2, |div| div.text_color(rgb(0xc8321c)))
             .w_full()
             .gap_x(px(5.0))
             .child(rank_change_col)
@@ -130,7 +132,7 @@ impl Render for ArticleView {
             .child(comments_col)
             .child(title_col)
             .px_1()
-            .border_color(rgb(0xEEEEEE))
+            .border_color(rgb(0xeeeeee))
     }
 }
 
