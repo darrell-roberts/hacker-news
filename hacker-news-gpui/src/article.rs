@@ -11,7 +11,7 @@ use hacker_news_api::Item;
 pub struct ArticleView {
     title: SharedString,
     author: SharedString,
-    score: SharedString,
+    // score: SharedString,
     comments: SharedString,
     url: Option<SharedString>,
     order_change_label: SharedString,
@@ -26,7 +26,7 @@ impl ArticleView {
         app.new(|_| Self {
             title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
-            score: format!("{}", item.score,).into(),
+            // score: format!("{}", item.score,).into(),
             comments: format!("{}", item.kids.len()).into(),
             url: item.url.map(Into::into),
             order_change_label: if order_change == 0 {
@@ -51,20 +51,21 @@ impl Render for ArticleView {
     ) -> impl gpui::IntoElement {
         let rank_change_col = div()
             .flex()
-            .w(rems(1.5))
+            .w(rems(1.0))
             .justify_end()
             .child(self.order_change_label.clone());
 
-        let points_col = div()
-            .flex()
-            .w(rems(3.))
-            .justify_end()
-            .child(self.score.clone());
+        // let points_col = div()
+        //     .flex()
+        //     .w(rems(3.))
+        //     .justify_end()
+        //     .child(self.score.clone());
 
         let comments_col = div()
             .flex()
             .w(rems(3.))
-            .child(div().child(img(COMMENT_SVG)).child(self.comments.clone()));
+            .justify_end()
+            .child(div().child(self.comments.clone()).child(img(COMMENT_SVG)));
 
         let url = self.url.clone();
 
@@ -128,7 +129,7 @@ impl Render for ArticleView {
             .w_full()
             .gap_x(px(5.0))
             .child(rank_change_col)
-            .child(points_col)
+            // .child(points_col)
             .child(comments_col)
             .child(title_col)
             .px_1()
