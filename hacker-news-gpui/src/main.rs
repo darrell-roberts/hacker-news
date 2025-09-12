@@ -69,7 +69,7 @@ impl Render for MainWindow {
             .flex_col()
             .w_full()
             .h_full()
-            .bg(rgb(0x666699))
+            .bg(rgb(0xEEEEEE))
             .border_5()
             // .child(self.header.clone())
             .child(self.content.clone())
