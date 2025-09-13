@@ -21,18 +21,16 @@ pub struct ArticleView {
     comment_image: ImageSource,
 }
 
-static COMMENT_SVG: &[u8] = include_bytes!("../../assets/comment.svg");
+/// An embedded SVG comment image.
 static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
     Arc::new(Image::from_bytes(
         gpui::ImageFormat::Svg,
-        COMMENT_SVG.into(),
+        include_bytes!("../../assets/comment.svg").into(),
     ))
 });
 
 impl ArticleView {
     pub fn new(app: &mut AsyncApp, item: Item, order_change: i64) -> anyhow::Result<Entity<Self>> {
-        let comment_image = ImageSource::Image(Arc::clone(&COMMENT_IMAGE));
-
         app.new(|_| Self {
             title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
@@ -49,7 +47,7 @@ impl ArticleView {
             .into(),
             order_change,
             age: parse_date(item.time).unwrap_or_default().into(),
-            comment_image,
+            comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
         })
     }
 }

@@ -81,10 +81,10 @@ fn main() {
     flexi_logger::Logger::try_with_env()
         .unwrap()
         .start()
-        .unwrap();
+        .expect("Application logger");
 
     Application::new().run(|app| {
-        let client = Arc::new(hacker_news_api::ApiClient::new().unwrap());
+        let client = Arc::new(hacker_news_api::ApiClient::new().expect("No API Client"));
         app.set_global(ApiClientState(client));
         app.set_global(ArticleSelection {
             viewing_article_type: ArticleType::Top,
