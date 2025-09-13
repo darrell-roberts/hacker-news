@@ -3,7 +3,7 @@ use content::Content;
 use footer::Footer;
 use gpui::{
     actions, div, point, prelude::*, px, rgb, size, App, Application, Entity, Global, Menu,
-    MenuItem, SharedString, Window, WindowDecorations, WindowOptions,
+    MenuItem, SharedString, Window, WindowDecorations, WindowKind, WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use std::{ops::Deref, sync::Arc};
@@ -78,6 +78,11 @@ impl Render for MainWindow {
 }
 
 fn main() {
+    flexi_logger::Logger::try_with_env()
+        .unwrap()
+        .start()
+        .unwrap();
+
     Application::new().run(|app| {
         let client = Arc::new(hacker_news_api::ApiClient::new().unwrap());
         app.set_global(ApiClientState(client));
@@ -109,6 +114,9 @@ fn main() {
                 window_min_size: Some(size(px(800.), px(600.))),
                 is_movable: true,
                 window_bounds: None,
+                show: true,
+                focus: true,
+                kind: WindowKind::Normal,
                 ..Default::default()
             },
             MainWindow::new,

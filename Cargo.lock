@@ -2953,6 +2953,7 @@ dependencies = [
  "anyhow",
  "async-compat",
  "chrono",
+ "flexi_logger",
  "futures",
  "gpui",
  "hacker-news-api",

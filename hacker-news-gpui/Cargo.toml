@@ -9,12 +9,14 @@ name = "hacker-news-dashboard"
 path = "src/main.rs"
 
 [dependencies]
-gpui = { git = "https://github.com/zed-industries/zed" }
+anyhow.workspace = true
 async-compat = "0.2"
+chrono.workspace = true
+futures = "0.3"
+gpui = { git = "https://github.com/zed-industries/zed" }
 hacker-news-api.workspace = true
 html-sanitizer.workspace = true
 log.workspace = true
-anyhow.workspace = true
-chrono.workspace = true
 tokio = "1"
-futures = "0.3"
+
+flexi_logger.workspace = true

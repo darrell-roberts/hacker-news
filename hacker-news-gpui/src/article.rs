@@ -3,9 +3,10 @@ use crate::UrlHover;
 use chrono::{DateTime, Utc};
 use gpui::{
     black, div, img, prelude::*, px, rems, rgb, solid_background, AppContext, AsyncApp, Entity,
-    Fill, FontWeight, SharedString, Window,
+    Fill, FontWeight, Image, ImageSource, SharedString, Window,
 };
 use hacker_news_api::Item;
+use std::sync::{Arc, LazyLock};
 
 // An article view is rendered for each article item.
 pub struct ArticleView {
@@ -17,12 +18,21 @@ pub struct ArticleView {
     order_change_label: SharedString,
     order_change: i64,
     age: SharedString,
+    comment_image: ImageSource,
 }
 
-static COMMENT_SVG: &str = include_str!("../../assets/comment.svg");
+static COMMENT_SVG: &[u8] = include_bytes!("../../assets/comment.svg");
+static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
+    Arc::new(Image::from_bytes(
+        gpui::ImageFormat::Svg,
+        COMMENT_SVG.into(),
+    ))
+});
 
 impl ArticleView {
     pub fn new(app: &mut AsyncApp, item: Item, order_change: i64) -> anyhow::Result<Entity<Self>> {
+        let comment_image = ImageSource::Image(Arc::clone(&COMMENT_IMAGE));
+
         app.new(|_| Self {
             title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
@@ -39,6 +49,7 @@ impl ArticleView {
             .into(),
             order_change,
             age: parse_date(item.time).unwrap_or_default().into(),
+            comment_image,
         })
     }
 }
@@ -64,11 +75,13 @@ impl Render for ArticleView {
         //     .justify_end()
         //     .child(self.score.clone());
 
-        let comments_col = div()
-            .flex()
-            .w(rems(3.))
-            .justify_end()
-            .child(div().child(self.comments.clone()).child(img(COMMENT_SVG)));
+        let comments_col = div().flex().w(rems(3.)).justify_end().child(
+            div()
+                .flex()
+                .flex_row()
+                .child(self.comments.clone())
+                .child(img(self.comment_image.clone())),
+        );
 
         let url = self.url.clone();
 
