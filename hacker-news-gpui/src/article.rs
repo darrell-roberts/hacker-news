@@ -51,8 +51,11 @@ impl Render for ArticleView {
     ) -> impl gpui::IntoElement {
         let rank_change_col = div()
             .flex()
-            .w(rems(1.0))
+            .italic()
+            .text_size(rems(0.75))
+            .w(rems(0.75))
             .justify_end()
+            .items_center()
             .child(self.order_change_label.clone());
 
         // let points_col = div()
