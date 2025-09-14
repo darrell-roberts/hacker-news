@@ -1,7 +1,7 @@
 [Desktop Entry]
 Categories=News
 Comment=Hacker News Reader
-Exec=hacker-news-iced
+Exec=hacker-news-reader
 Icon=io.github.darrellroberts.hacker-news
 Name=Hacker News
 Terminal=false
