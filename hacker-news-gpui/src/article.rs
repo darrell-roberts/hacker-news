@@ -2,7 +2,7 @@
 use crate::{theme::Theme, UrlHover};
 use chrono::{DateTime, Utc};
 use gpui::{
-    black, div, img, prelude::*, px, rems, solid_background, AppContext, AsyncApp, Entity, Fill,
+    div, img, prelude::*, px, rems, solid_background, AppContext, AsyncApp, Entity, Fill,
     FontWeight, Image, ImageSource, SharedString, StyleRefinement, Window,
 };
 use hacker_news_api::Item;
@@ -148,7 +148,7 @@ impl Render for ArticleView {
             .text_size(px(15.0))
             .text_color(theme.text_color())
             .border_1()
-            .border_color(black())
+            .border_color(theme.text_color())
             .rounded_md()
             .bg(theme.bg())
             .when(self.order_change > 2, |div| {

@@ -1,36 +1,32 @@
 //! Macos system access.
-
-use crate::{SettingChange, Theme};
-use futures::{stream, Stream};
+use anyhow::Context;
+use iced::Theme;
 use log::info;
 use objc2::rc::Retained;
 use objc2_foundation::{ns_string, NSString, NSUserDefaults};
 
-pub fn initial_theme() -> Theme {
+pub fn initial_theme() -> anyhow::Result<Theme> {
     unsafe {
         let style = NSUserDefaults::standardUserDefaults()
             .persistentDomainForName(ns_string!("Apple Global Domain"))
-            .and_then(|d| d.objectForKey(ns_string!("AppleInterfaceStyle")));
+            .context("Failed to lookup global domain")?
+            .objectForKey(ns_string!("AppleInterfaceStyle"));
 
         let Some(style) = style else {
             info!("No style found. Using light theme.");
-            return Theme::Light;
+            return Ok(Theme::Light);
         };
 
         let style = Retained::cast_unchecked::<NSString>(style);
         info!("Macos interface style: {style}");
         let dark_mode = style.isEqualToString(ns_string!("Dark"));
 
-        if dark_mode {
-            Theme::Dark
+        Ok(if dark_mode {
+            Theme::SolarizedDark
         } else {
             Theme::Light
-        }
+        })
     }
-}
-
-pub fn listen_to_system_changes() -> impl Stream<Item = SettingChange> {
-    stream::empty()
 }
 
 // pub fn subscribe_to_theme_changes(callback: impl Fn(Theme) + 'static) {
@@ -46,19 +42,20 @@ pub fn listen_to_system_changes() -> impl Stream<Item = SettingChange> {
 //             _notification: *mut objc2::runtime::AnyObject,
 //         ) {
 //             // Query the current theme and invoke the callback
-//             let theme = initial_theme();
-//             // SAFETY: The callback is stored in a thread-safe Arc and can be safely cloned.
-//             let callback = unsafe {
-//                 let ptr = _self as *const objc2::runtime::AnyObject
-//                     as *const std::sync::Arc<dyn Fn(Theme)>;
-//                 (*ptr).clone()
-//             };
-//             callback(theme);
+//             if let Ok(theme) = initial_theme() {
+//                 // SAFETY: The callback is stored in a thread-safe Arc and can be safely cloned.
+//                 let callback = unsafe {
+//                     let ptr = _self as *const objc2::runtime::AnyObject
+//                         as *const std::sync::Arc<dyn Fn(Theme)>;
+//                     (*ptr).clone()
+//                 };
+//                 callback(theme);
+//             }
 //         }
 
 //         let superclass = class!(NSObject);
 //         let mut builder =
-//             objc2::runtime::ClassBuilder::new(c"ThemeChangeObserver", superclass).unwrap();
+//             objc2::runtime::ClassBuilder::new("ThemeChangeObserver", superclass).unwrap();
 
 //         builder.add_method(
 //             sel!(themeChanged:),

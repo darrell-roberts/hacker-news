@@ -1,7 +1,7 @@
-use crate::{content::Content, ArticleSelection, UrlHover};
+use crate::{content::Content, theme::Theme, ArticleSelection, UrlHover};
 use chrono::Local;
 use gpui::{
-    div, prelude::*, rems, rgb, App, Entity, ParentElement, Render, SharedString, Styled, Window,
+    div, prelude::*, rems, App, Entity, ParentElement, Render, SharedString, Styled, Window,
 };
 
 pub struct Footer {
@@ -48,11 +48,12 @@ impl Render for Footer {
     fn render(
         &mut self,
         _window: &mut Window,
-        _cx: &mut gpui::Context<Self>,
+        cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
+        let theme = cx.global::<Theme>();
         div()
             // .text_color(rgb(0x424242))
-            .text_color(rgb(0xeeeeee))
+            .text_color(theme.text_color())
             .text_size(rems(0.75))
             // .h(px(55.))
             .when_some(self.url.as_ref(), |div, url| div.child(url.clone()))
