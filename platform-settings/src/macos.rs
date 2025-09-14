@@ -1,6 +1,6 @@
 //! Macos system access.
+use crate::Theme;
 use anyhow::Context;
-use iced::Theme;
 use log::info;
 use objc2::rc::Retained;
 use objc2_foundation::{ns_string, NSString, NSUserDefaults};
@@ -21,11 +21,7 @@ pub fn initial_theme() -> anyhow::Result<Theme> {
         info!("Macos interface style: {style}");
         let dark_mode = style.isEqualToString(ns_string!("Dark"));
 
-        Ok(if dark_mode {
-            Theme::SolarizedDark
-        } else {
-            Theme::Light
-        })
+        Ok(if dark_mode { Theme::Dark } else { Theme::Light })
     }
 }
 

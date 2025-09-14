@@ -1,19 +1,12 @@
 //! Linux specific settings.
-use crate::Theme;
+use crate::{SettingChange, Theme};
 use futures::{channel::mpsc, Stream};
 use gio::{prelude::*, Settings};
 use log::{error, info};
 
-/// Change to a linux theme or font scale.
-#[derive(Debug, Copy, Clone)]
-pub enum LinuxSetting {
-    Theme(Theme),
-    FontScale(f64),
-}
-
 /// Listen to GSettings/dconf changes.
-pub fn listen_to_system_changes() -> impl Stream<Item = LinuxSetting> {
-    let (tx, rx) = mpsc::unbounded::<LinuxSetting>();
+pub fn listen_to_system_changes() -> impl Stream<Item = SettingChange> {
+    let (tx, rx) = mpsc::unbounded::<SettingChange>();
 
     std::thread::spawn(move || {
         let scale_tx = tx.clone();
@@ -25,7 +18,7 @@ pub fn listen_to_system_changes() -> impl Stream<Item = LinuxSetting> {
                 let scale = settings.get::<f64>(scale_factor);
                 info!("System font scale changed to: {scale}");
 
-                if let Err(err) = scale_tx.unbounded_send(LinuxSetting::FontScale(scale)) {
+                if let Err(err) = scale_tx.unbounded_send(SettingChange::FontScale(scale)) {
                     error!("Failed to send font scale change: {err}");
                 }
             },
@@ -36,7 +29,7 @@ pub fn listen_to_system_changes() -> impl Stream<Item = LinuxSetting> {
                 let color_scheme = settings.get::<String>(color_scheme);
                 let theme = theme(&color_scheme);
 
-                if let Err(err) = tx.unbounded_send(LinuxSetting::Theme(theme)) {
+                if let Err(err) = tx.unbounded_send(SettingChange::Theme(theme)) {
                     error!("Failed to send theme change: {err}");
                 }
             });
