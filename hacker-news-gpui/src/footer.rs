@@ -54,7 +54,6 @@ impl Render for Footer {
         div()
             .text_color(theme.text_color())
             .text_size(rems(0.75))
-            // .when_some(self.url.as_ref(), |div, url| div.child(url.clone()))
             .child(self.url.clone().unwrap_or_default())
             .child(self.status_line.clone())
     }

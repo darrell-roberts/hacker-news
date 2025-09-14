@@ -105,6 +105,7 @@ impl Render for ArticleView {
             .flex_grow()
             .child(
                 div()
+                    .rounded_md()
                     .child(
                         div()
                             .id("title")
