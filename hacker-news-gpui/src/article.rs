@@ -25,7 +25,7 @@ pub struct ArticleView {
 static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
     Arc::new(Image::from_bytes(
         gpui::ImageFormat::Svg,
-        include_bytes!("../../assets/comment.svg").into(),
+        include_bytes!("../assets/comment.svg").into(),
     ))
 });
 

@@ -146,7 +146,7 @@ fn main() {
                 show: true,
                 focus: true,
                 kind: WindowKind::Normal,
-                app_id: Some("io.github.darrellroberts.hacker-news".into()),
+                app_id: Some("io.github.darrellroberts.hacker-news-dashboard".into()),
                 ..Default::default()
             },
             MainWindow::new,
