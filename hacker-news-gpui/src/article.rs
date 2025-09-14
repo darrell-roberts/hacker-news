@@ -141,14 +141,11 @@ impl Render for ArticleView {
             .gap_x(px(5.0));
 
         div()
-            .m_5()
             .flex()
             .flex_row()
             .font_family("Roboto, sans-serif")
             .text_size(px(15.0))
             .text_color(theme.text_color())
-            .border_1()
-            .border_color(theme.text_color())
             .rounded_md()
             .bg(theme.bg())
             .when(self.order_change > 2, |div| {
@@ -157,10 +154,11 @@ impl Render for ArticleView {
             .when(self.order_change < -2, |div| {
                 div.text_color(theme.text_decreasing())
             })
-            .w_full()
-            .child(rank_change_col)
-            .child(comments_col)
-            .child(title_col)
+            .child(div().m_1().child(div().flex().flex_row().children([
+                rank_change_col,
+                comments_col,
+                title_col,
+            ])))
     }
 }
 
