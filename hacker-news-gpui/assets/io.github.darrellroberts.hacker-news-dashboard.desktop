@@ -1,0 +1,8 @@
+[Desktop Entry]
+Categories=News
+Comment=Hacker News Reader
+Exec=hacker-news-dashboard
+Icon=io.github.darrellroberts.hacker-news
+Name=Hacker News Dashboard
+Terminal=false
+Type=Application
