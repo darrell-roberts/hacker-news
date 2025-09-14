@@ -12,11 +12,10 @@ path = "src/main.rs"
 anyhow.workspace = true
 async-compat = "0.2"
 chrono.workspace = true
+flexi_logger.workspace = true
 futures = "0.3"
 gpui = { git = "https://github.com/zed-industries/zed" }
 hacker-news-api.workspace = true
 html-sanitizer.workspace = true
 log.workspace = true
 tokio = "1"
-
-flexi_logger.workspace = true

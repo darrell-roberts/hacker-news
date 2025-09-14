@@ -2,16 +2,20 @@
 use content::Content;
 use footer::Footer;
 use gpui::{
-    actions, div, point, prelude::*, px, rgb, size, App, Application, Entity, Global, Menu,
-    MenuItem, SharedString, Window, WindowDecorations, WindowKind, WindowOptions,
+    actions, div, point, prelude::*, px, size, App, Application, Entity, Global, Menu, MenuItem,
+    SharedString, Window, WindowDecorations, WindowKind, WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
+use log::info;
 use std::{ops::Deref, sync::Arc};
 
+use crate::theme::Theme;
+
 mod article;
-mod comment;
+// mod comment;
 mod content;
 mod footer;
+mod theme;
 // mod header;
 
 #[derive(Clone)]
@@ -63,15 +67,16 @@ impl MainWindow {
 }
 
 impl Render for MainWindow {
-    fn render(&mut self, _window: &mut Window, _cx: &mut gpui::Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
+        let theme = cx.global::<Theme>();
+
         div()
             .flex()
             .flex_col()
             .w_full()
             .h_full()
-            .bg(rgb(0xEEEEEE))
+            .bg(theme.bg())
             .border_5()
-            // .child(self.header.clone())
             .child(self.content.clone())
             .child(self.footer.clone())
     }
@@ -91,6 +96,7 @@ fn main() {
             viewing_article_total: 50,
         });
         app.set_global(UrlHover(None));
+        app.set_global(Theme::Dark);
 
         // Add menu items
         app.set_menus(vec![Menu {
@@ -108,7 +114,7 @@ fn main() {
                 titlebar: Some(gpui::TitlebarOptions {
                     title: Some("Hacker News Live".into()),
                     traffic_light_position: Some(point(px(9.), px(9.))),
-                    ..Default::default()
+                    appears_transparent: false,
                 }),
                 window_decorations: Some(WindowDecorations::Server),
                 window_min_size: Some(size(px(800.), px(600.))),
@@ -121,7 +127,7 @@ fn main() {
             },
             MainWindow::new,
         )
-        .unwrap();
+        .expect("Could not open window");
     });
 }
 
@@ -130,6 +136,6 @@ actions!(set_menus, [Quit]);
 
 // Define the quit function that is registered with the AppContext
 fn _quit(_: &Quit, cx: &mut App) {
-    println!("Gracefully quitting the application . . .");
+    info!("Gracefully quitting the application . . .");
     cx.quit();
 }

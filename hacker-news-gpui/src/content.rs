@@ -1,12 +1,11 @@
 //! Main content view
-
-use std::collections::HashMap;
-
 use crate::{article::ArticleView, ApiClientState, ArticleSelection};
 use async_compat::Compat;
 use futures::{channel, SinkExt, StreamExt, TryStreamExt as _};
 use gpui::{div, list, prelude::*, px, App, AppContext, Entity, EventEmitter, ListState, Window};
 use hacker_news_api::{subscribe_top_stories, Item};
+use log::error;
+use std::collections::HashMap;
 
 // Main content view.
 pub struct Content {
@@ -24,15 +23,6 @@ impl Content {
     pub fn new(_cx: &mut Window, app: &mut App) -> Entity<Self> {
         let entity = app.new(|_cx: &mut Context<Self>| {
             let list_state = ListState::new(0, gpui::ListAlignment::Top, px(5.0));
-            // Self::fetch_articles(cx);
-
-            // When we change the type or number of articles in the header
-            // we will fetch with the new viewing options.
-            // cx.observe_global::<ArticleSelection>(|view, cx| {
-            //     view.articles = Default::default();
-            //     Self::fetch_articles(cx)
-            // })
-            // .detach();
 
             Self {
                 articles: Default::default(),
@@ -81,11 +71,11 @@ impl Content {
                                 cx.notify();
                             });
                             if let Err(err) = result {
-                                eprintln!("Failed to updated articles: {err}");
+                                error!("Failed to updated articles: {err}");
                             }
                         }
                         Err(err) => {
-                            eprintln!("Could not create article view. App shutting down? {err}");
+                            error!("Could not create article view. App shutting down? {err}");
                         }
                     }
                 }
@@ -108,62 +98,26 @@ impl Content {
                             tx.send(articles).await.unwrap();
                         }
                         Err(err) => {
-                            eprintln!("Failed to collect updated items: {err}");
+                            error!("Failed to collect updated items: {err}");
                         }
                     }
                 }
 
                 if let Err(err) = handle.await {
-                    eprintln!("Subscription close failed {err}");
+                    error!("Subscription close failed {err}");
                 };
             }))
             .detach();
 
         entity
     }
-
-    // fn fetch_articles(cx: &mut Context<Self>) {
-    //     cx.spawn(async |view: WeakEntity<Content>, cx: &mut AsyncApp| {
-    //         if let Err(err) = fetch_articles(view, cx).await {
-    //             eprintln!("Failed to fetch articles: {err}");
-    //         }
-    //     })
-    //     .detach();
-    // }
 }
-
-// async fn fetch_articles(view: WeakEntity<Content>, cx: &mut AsyncApp) -> anyhow::Result<()> {
-//     let client = cx.read_global(|client: &ApiClientState, _app| client.0.clone())?;
-//     let view = view
-//         .upgrade()
-//         .context("Could not upgrade view weak reference")?;
-
-//     let (article_type, total) = cx.read_global(|r: &ArticleSelection, _cx| {
-//         (r.viewing_article_type, r.viewing_article_total)
-//     })?;
-
-//     // Run in compat since my client uses tokio
-//     let new_articles = Compat::new(client.articles(total, article_type))
-//         .await
-//         .context("Failed to fetch")?;
-
-//     cx.update_entity(&view, move |view, cx| {
-//         view.articles = new_articles
-//             .into_iter()
-//             .map(|article| ArticleView::new(cx, article))
-//             .collect();
-
-//         view.list_state.reset(view.articles.len());
-//         cx.notify();
-//         cx.emit(TotalArticles(view.articles.len()));
-//     })
-// }
 
 impl Render for Content {
     fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
         let entity = cx.weak_entity();
         let render_articles = || {
-            div().flex_grow().px_2().child(
+            div().flex_grow().child(
                 list(
                     self.list_state.clone(),
                     move |index, _window, app| match entity.upgrade() {
