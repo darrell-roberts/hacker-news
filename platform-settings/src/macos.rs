@@ -1,28 +1,35 @@
 //! Macos system access.
-use crate::Theme;
-use anyhow::Context;
+use crate::{SettingChange, Theme};
+use futures::{stream, Stream};
 use log::info;
 use objc2::rc::Retained;
 use objc2_foundation::{ns_string, NSString, NSUserDefaults};
 
-pub fn initial_theme() -> anyhow::Result<Theme> {
+pub fn initial_theme() -> Theme {
     unsafe {
         let style = NSUserDefaults::standardUserDefaults()
             .persistentDomainForName(ns_string!("Apple Global Domain"))
-            .context("Failed to lookup global domain")?
-            .objectForKey(ns_string!("AppleInterfaceStyle"));
+            .and_then(|d| d.objectForKey(ns_string!("AppleInterfaceStyle")));
 
         let Some(style) = style else {
             info!("No style found. Using light theme.");
-            return Ok(Theme::Light);
+            return Theme::Light;
         };
 
         let style = Retained::cast_unchecked::<NSString>(style);
         info!("Macos interface style: {style}");
         let dark_mode = style.isEqualToString(ns_string!("Dark"));
 
-        Ok(if dark_mode { Theme::Dark } else { Theme::Light })
+        if dark_mode {
+            Theme::Dark
+        } else {
+            Theme::Light
+        }
     }
+}
+
+pub fn listen_to_system_changes() -> impl Stream<Item = SettingChange> {
+    stream::empty()
 }
 
 // pub fn subscribe_to_theme_changes(callback: impl Fn(Theme) + 'static) {
