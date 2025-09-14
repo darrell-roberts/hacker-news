@@ -7,6 +7,7 @@ mod light {
     pub const TEXT_LIGHT_BAR: u32 = 0xd1dbe0;
     pub const TEXT_INCREASING: u32 = 0x38841d;
     pub const TEXT_DECREASING: u32 = 0xc8321c;
+    pub const STATUS_BAR_BACKGROUND: u32 = 0xdeddda;
 }
 
 mod dark {
@@ -15,6 +16,7 @@ mod dark {
     pub const TEXT_LIGHT_BAR: u32 = 0x77767b;
     pub const TEXT_INCREASING: u32 = 0x57e389;
     pub const TEXT_DECREASING: u32 = 0xed333b;
+    pub const STATUS_BAR_BACKGROUND: u32 = 0xc0bfbc;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -56,6 +58,13 @@ impl Theme {
         rgb(match self {
             Theme::Dark => dark::TEXT_DECREASING,
             Theme::Light => light::TEXT_DECREASING,
+        })
+    }
+
+    pub fn status_bar_background(&self) -> gpui::Rgba {
+        rgb(match self {
+            Theme::Dark => dark::STATUS_BAR_BACKGROUND,
+            Theme::Light => light::STATUS_BAR_BACKGROUND,
         })
     }
 }

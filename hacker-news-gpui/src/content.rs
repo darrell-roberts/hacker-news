@@ -32,7 +32,6 @@ impl Content {
         });
 
         let weak_entity = entity.downgrade();
-        let client = app.read_global(|client: &ApiClientState, _app| client.0.clone());
 
         let (mut tx, mut rx) = channel::mpsc::channel::<Vec<Item>>(10);
 
@@ -86,6 +85,8 @@ impl Content {
         let view_total =
             app.read_global(|selection: &ArticleSelection, _app| selection.viewing_article_total);
 
+        let client = app.read_global(|client: &ApiClientState, _app| client.0.clone());
+
         app.background_executor()
             .spawn(Compat::new(async move {
                 let (mut rx, handle) = subscribe_top_stories();
@@ -136,6 +137,7 @@ impl Render for Content {
         let loading = || div().child("Loading...");
 
         div()
+            .p_1()
             .flex()
             .flex_col()
             .size_full()
