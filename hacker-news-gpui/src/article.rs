@@ -12,7 +12,7 @@ use std::sync::{Arc, LazyLock};
 pub struct ArticleView {
     title: SharedString,
     author: SharedString,
-    comments: SharedString,
+    comments: Option<SharedString>,
     url: Option<SharedString>,
     order_change_label: SharedString,
     order_change: i64,
@@ -35,7 +35,11 @@ impl ArticleView {
             id: item.id,
             title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
-            comments: format!("{}", item.kids.len()).into(),
+            comments: item
+                .descendants
+                .filter(|&n| n > 0)
+                .map(|n| format!("{n}"))
+                .map(Into::into),
             url: item.url.map(Into::into),
             order_change_label: if order_change == 0 {
                 Default::default()
@@ -81,19 +85,21 @@ impl Render for ArticleView {
                 .bg(Fill::Color(solid_background(theme.text_light_bar())))
         };
 
-        let comments_col = div().flex().w(rems(3.)).justify_end().child(
-            div()
-                .id("comments")
-                .cursor_pointer()
-                .rounded_md()
-                .on_click(move |_, _, app| {
-                    app.open_url(&format!("https://news.ycombinator.com/item?id={id}"));
-                })
-                .hover(hover_element)
-                .flex()
-                .flex_row()
-                .child(self.comments.clone())
-                .child(img(self.comment_image.clone())),
+        let comments_col = div().w(rems(3.)).justify_end().id("comments").when_some(
+            self.comments.as_ref(),
+            |div, comments| {
+                div.flex()
+                    .cursor_pointer()
+                    .rounded_md()
+                    .on_click(move |_, _, app| {
+                        app.open_url(&format!("https://news.ycombinator.com/item?id={id}"));
+                    })
+                    .hover(hover_element)
+                    .flex()
+                    .flex_row()
+                    .child(comments.clone())
+                    .child(img(self.comment_image.clone()))
+            },
         );
 
         let url = self.url.clone();
@@ -157,7 +163,7 @@ impl Render for ArticleView {
             })
             .child(div().m_1().child(div().flex().flex_row().children([
                 rank_change_col,
-                comments_col,
+                div().child(comments_col),
                 title_col,
             ])))
     }

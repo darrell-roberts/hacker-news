@@ -76,7 +76,6 @@ impl Render for MainWindow {
             .w_full()
             .h_full()
             .bg(theme.bg())
-            .border_5()
             .child(self.content.clone())
             .child(self.footer.clone())
     }
