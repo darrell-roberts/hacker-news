@@ -1,9 +1,9 @@
 //! Article view.
-use crate::UrlHover;
+use crate::{theme::Theme, UrlHover};
 use chrono::{DateTime, Utc};
 use gpui::{
     black, div, img, prelude::*, px, rems, rgb, solid_background, AppContext, AsyncApp, Entity,
-    Fill, FontWeight, Image, ImageSource, SharedString, Window,
+    Fill, FontWeight, Image, ImageSource, SharedString, StyleRefinement, Window,
 };
 use hacker_news_api::Item;
 use std::sync::{Arc, LazyLock};
@@ -12,13 +12,13 @@ use std::sync::{Arc, LazyLock};
 pub struct ArticleView {
     title: SharedString,
     author: SharedString,
-    // score: SharedString,
     comments: SharedString,
     url: Option<SharedString>,
     order_change_label: SharedString,
     order_change: i64,
     age: SharedString,
     comment_image: ImageSource,
+    id: u64,
 }
 
 /// An embedded SVG comment image.
@@ -32,19 +32,16 @@ static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
 impl ArticleView {
     pub fn new(app: &mut AsyncApp, item: Item, order_change: i64) -> anyhow::Result<Entity<Self>> {
         app.new(|_| Self {
+            id: item.id,
             title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
-            // score: format!("{}", item.score,).into(),
             comments: format!("{}", item.kids.len()).into(),
             url: item.url.map(Into::into),
             order_change_label: if order_change == 0 {
-                String::new()
-            } else if order_change.is_positive() {
-                format!("+{order_change}")
+                Default::default()
             } else {
-                format!("{order_change}")
-            }
-            .into(),
+                format!("{order_change}").into()
+            },
             order_change,
             age: parse_date(item.time).unwrap_or_default().into(),
             comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
@@ -58,23 +55,41 @@ impl Render for ArticleView {
         _window: &mut Window,
         cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
+        let theme = cx.global::<Theme>();
+
         let rank_change_col = div()
             .flex()
             .italic()
             .text_size(rems(0.75))
             .w(rems(0.75))
+            .when(
+                self.order_change.is_positive() && self.order_change > 0,
+                |div| div.text_color(theme.text_increasing()),
+            )
+            .when(self.order_change.is_negative(), |div| {
+                div.text_color(theme.text_decreasing())
+            })
             .justify_end()
             .items_center()
             .child(self.order_change_label.clone());
 
-        // let points_col = div()
-        //     .flex()
-        //     .w(rems(3.))
-        //     .justify_end()
-        //     .child(self.score.clone());
+        let id = self.id;
+        let hover_element = |style: StyleRefinement| {
+            style
+                .font_weight(FontWeight::BOLD)
+                .text_color(theme.text_color())
+                .bg(Fill::Color(solid_background(theme.text_light_bar())))
+        };
 
         let comments_col = div().flex().w(rems(3.)).justify_end().child(
             div()
+                .id("comments")
+                .cursor_pointer()
+                .rounded_md()
+                .on_click(move |_, _, app| {
+                    app.open_url(&format!("https://news.ycombinator.com/item?id={id}"));
+                })
+                .hover(hover_element)
                 .flex()
                 .flex_row()
                 .child(self.comments.clone())
@@ -109,12 +124,7 @@ impl Render for ArticleView {
                                 }
                             }),
                     )
-                    .hover(|style| {
-                        style
-                            .font_weight(FontWeight::BOLD)
-                            .text_color(black())
-                            .bg(Fill::Color(solid_background(rgb(0xd1dbe0))))
-                    }),
+                    .hover(hover_element),
             )
             .child(
                 div()
@@ -131,23 +141,26 @@ impl Render for ArticleView {
             .gap_x(px(5.0));
 
         div()
+            .m_5()
             .flex()
             .flex_row()
             .font_family("Roboto, sans-serif")
             .text_size(px(15.0))
-            .text_color(rgb(0x424242))
-            // 56 132 29
-            .when(self.order_change > 2, |div| div.text_color(rgb(0x38841d)))
-            // 200 50 28
-            .when(self.order_change < -2, |div| div.text_color(rgb(0xc8321c)))
+            .text_color(theme.text_color())
+            .border_1()
+            .border_color(black())
+            .rounded_md()
+            .bg(theme.bg())
+            .when(self.order_change > 2, |div| {
+                div.text_color(theme.text_increasing())
+            })
+            .when(self.order_change < -2, |div| {
+                div.text_color(theme.text_decreasing())
+            })
             .w_full()
-            .gap_x(px(5.0))
             .child(rank_change_col)
-            // .child(points_col)
             .child(comments_col)
             .child(title_col)
-            .px_1()
-            .border_color(rgb(0xeeeeee))
     }
 }
 
