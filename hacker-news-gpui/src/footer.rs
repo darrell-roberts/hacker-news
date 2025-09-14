@@ -52,11 +52,10 @@ impl Render for Footer {
     ) -> impl gpui::IntoElement {
         let theme = cx.global::<Theme>();
         div()
-            // .text_color(rgb(0x424242))
             .text_color(theme.text_color())
             .text_size(rems(0.75))
-            // .h(px(55.))
-            .when_some(self.url.as_ref(), |div, url| div.child(url.clone()))
+            // .when_some(self.url.as_ref(), |div, url| div.child(url.clone()))
+            .child(self.url.clone().unwrap_or_default())
             .child(self.status_line.clone())
     }
 }
