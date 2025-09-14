@@ -19,3 +19,4 @@ hacker-news-api.workspace = true
 html-sanitizer.workspace = true
 log.workspace = true
 tokio = "1"
+platform-settings = { path = "../platform-settings" }

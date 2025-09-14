@@ -1,15 +1,15 @@
 //! Simple hacker news view.
+use crate::theme::Theme;
 use content::Content;
 use footer::Footer;
+use futures::StreamExt;
 use gpui::{
     actions, div, point, prelude::*, px, size, App, Application, Entity, Global, Menu, MenuItem,
     SharedString, Window, WindowDecorations, WindowKind, WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
-use log::info;
+use log::{debug, error, info};
 use std::{ops::Deref, sync::Arc};
-
-use crate::theme::Theme;
 
 mod article;
 // mod comment;
@@ -96,7 +96,9 @@ fn main() {
             viewing_article_total: 50,
         });
         app.set_global(UrlHover(None));
-        app.set_global(Theme::Dark);
+
+        let theme: Theme = platform_settings::initial_theme().into();
+        app.set_global(theme);
 
         // Add menu items
         app.set_menus(vec![Menu {
@@ -106,6 +108,27 @@ fn main() {
 
         app.on_window_closed(|app| {
             app.quit();
+        })
+        .detach();
+
+        app.spawn(async |app| {
+            info!("Subscribing to linux settings changes");
+            let mut changes = platform_settings::listen_to_system_changes();
+            while let Some(change) = changes.next().await {
+                debug!("Received linux setting change: {change:?}");
+                match change {
+                    platform_settings::LinuxSetting::Theme(linux_theme) => {
+                        if let Err(err) = app.update_global(|theme: &mut Theme, app| {
+                            *theme = linux_theme.into();
+                            app.refresh_windows();
+                        }) {
+                            error!("Failed to update theme: {err}");
+                        };
+                    }
+                    platform_settings::LinuxSetting::FontScale(_) => todo!(),
+                }
+            }
+            info!("Linux settings changes stream closed");
         })
         .detach();
 
