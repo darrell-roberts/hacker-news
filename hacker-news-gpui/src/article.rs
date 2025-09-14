@@ -2,8 +2,8 @@
 use crate::{theme::Theme, UrlHover};
 use chrono::{DateTime, Utc};
 use gpui::{
-    black, div, img, prelude::*, px, rems, rgb, solid_background, AppContext, AsyncApp, Entity,
-    Fill, FontWeight, Image, ImageSource, SharedString, StyleRefinement, Window,
+    black, div, img, prelude::*, px, rems, solid_background, AppContext, AsyncApp, Entity, Fill,
+    FontWeight, Image, ImageSource, SharedString, StyleRefinement, Window,
 };
 use hacker_news_api::Item;
 use std::sync::{Arc, LazyLock};
