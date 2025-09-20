@@ -19,6 +19,7 @@ pub struct ArticleView {
     age: SharedString,
     comment_image: ImageSource,
     id: u64,
+    rank: SharedString,
 }
 
 /// An embedded SVG comment image.
@@ -30,7 +31,12 @@ static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
 });
 
 impl ArticleView {
-    pub fn new(app: &mut AsyncApp, item: Item, order_change: i64) -> anyhow::Result<Entity<Self>> {
+    pub fn new(
+        app: &mut AsyncApp,
+        item: Item,
+        order_change: i64,
+        rank: usize,
+    ) -> anyhow::Result<Entity<Self>> {
         app.new(|_| Self {
             id: item.id,
             title: item.title.unwrap_or_default().into(),
@@ -49,6 +55,7 @@ impl ArticleView {
             order_change,
             age: parse_date(item.time).unwrap_or_default().into(),
             comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
+            rank: format!("{rank}").into(),
         })
     }
 }
@@ -139,7 +146,7 @@ impl Render for ArticleView {
                     .flex_row()
                     .italic()
                     .items_center()
-                    .font_family(SharedString::new_static(".SystemUIFont"))
+                    // .font_family(SharedString::new_static(".SystemUIFont"))
                     .text_size(px(12.0))
                     .child(self.author.clone())
                     .child(self.age.clone())
@@ -150,22 +157,35 @@ impl Render for ArticleView {
         div()
             .flex()
             .flex_row()
-            .font_family("Roboto, sans-serif")
+            // .font_family("Roboto, sans-serif")
             .text_size(px(15.0))
             .text_color(theme.text_color())
             .rounded_md()
-            .bg(theme.bg())
+            .bg(theme.surface())
+            .border_1()
+            .border_color(theme.text_color())
             .when(self.order_change > 2, |div| {
                 div.text_color(theme.text_increasing())
             })
             .when(self.order_change < -2, |div| {
                 div.text_color(theme.text_decreasing())
             })
-            .child(div().m_1().child(div().flex().flex_row().children([
-                rank_change_col,
-                div().child(comments_col),
-                title_col,
-            ])))
+            .child(
+                div().m_1().child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .children([
+                            rank_change_col,
+                            div()
+                                .text_align(gpui::TextAlign::Right)
+                                .child(self.rank.clone()),
+                            div().child(comments_col),
+                            title_col,
+                        ])
+                        .gap_1(),
+                ),
+            )
     }
 }
 

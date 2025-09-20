@@ -2,7 +2,7 @@
 use crate::{article::ArticleView, ApiClientState, ArticleSelection};
 use async_compat::Compat;
 use futures::{channel, SinkExt, StreamExt, TryStreamExt as _};
-use gpui::{div, list, prelude::*, px, App, AppContext, Entity, EventEmitter, ListState, Window};
+use gpui::{div, prelude::*, px, App, AppContext, Entity, EventEmitter, ListState, Window};
 use hacker_news_api::{subscribe_top_stories, Item};
 use log::error;
 use std::collections::HashMap;
@@ -56,7 +56,7 @@ impl Content {
                                     }
                                 })
                                 .unwrap();
-                            ArticleView::new(app, article, order_change)
+                            ArticleView::new(app, article, order_change, index + 1)
                         })
                         .collect::<Result<Vec<_>, _>>();
 
@@ -115,36 +115,11 @@ impl Content {
 }
 
 impl Render for Content {
-    fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        let entity = cx.weak_entity();
-        let render_articles = || {
-            div().flex_grow().child(
-                list(
-                    self.list_state.clone(),
-                    move |index, _window, app| match entity.upgrade() {
-                        Some(content) => {
-                            let view = content.read(app);
-                            let articles = view.articles.clone();
-                            articles[index].clone().into_any_element()
-                        }
-                        None => div().into_any(),
-                    },
-                )
-                .size_full(),
-            )
-        };
-
-        let loading = || div().child("Loading...");
-
-        div()
-            .p_1()
-            .flex()
-            .flex_col()
-            .size_full()
-            .child(if self.articles.is_empty() {
-                loading()
-            } else {
-                render_articles()
-            })
+    fn render(&mut self, _window: &mut Window, _cx: &mut gpui::Context<Self>) -> impl IntoElement {
+        div().id("articles").overflow_scroll().p_1().m_1().children(
+            self.articles
+                .iter()
+                .map(|article| div().m_1().child(article.clone())),
+        )
     }
 }

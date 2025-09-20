@@ -2,21 +2,21 @@
 use gpui::{rgb, Global, WindowAppearance};
 
 mod light {
-    pub const TEXT_COLOR: u32 = 0x424242;
-    pub const BACKGROUND_COLOR: u32 = 0xeeeeee;
+    pub const TEXT_COLOR: u32 = 0x14181E;
+    pub const BACKGROUND_COLOR: u32 = 0xFAFAFC;
     pub const TEXT_LIGHT_BAR: u32 = 0xd1dbe0;
-    pub const TEXT_INCREASING: u32 = 0x38841d;
-    pub const TEXT_DECREASING: u32 = 0xc8321c;
-    pub const STATUS_BAR_BACKGROUND: u32 = 0xdeddda;
+    pub const TEXT_INCREASING: u32 = 0x15803D;
+    pub const TEXT_DECREASING: u32 = 0xB91C1C;
+    pub const SURFACE: u32 = 0xF5F7FA;
 }
 
 mod dark {
-    pub const TEXT_COLOR: u32 = 0xf6f5f4;
-    pub const BACKGROUND_COLOR: u32 = 0x000000;
+    pub const TEXT_COLOR: u32 = 0xEBEEF5;
+    pub const BACKGROUND_COLOR: u32 = 0x0C0E12;
     pub const TEXT_LIGHT_BAR: u32 = 0x77767b;
     pub const TEXT_INCREASING: u32 = 0x57e389;
     pub const TEXT_DECREASING: u32 = 0xed333b;
-    pub const STATUS_BAR_BACKGROUND: u32 = 0xc0bfbc;
+    pub const SURFACE: u32 = 0x14181E;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -61,10 +61,10 @@ impl Theme {
         })
     }
 
-    pub fn status_bar_background(&self) -> gpui::Rgba {
+    pub fn surface(&self) -> gpui::Rgba {
         rgb(match self {
-            Theme::Dark => dark::STATUS_BAR_BACKGROUND,
-            Theme::Light => light::STATUS_BAR_BACKGROUND,
+            Theme::Dark => dark::SURFACE,
+            Theme::Light => light::SURFACE,
         })
     }
 }
