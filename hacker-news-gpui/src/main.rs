@@ -77,11 +77,17 @@ impl Render for MainWindow {
         let theme: Theme = window.appearance().into();
 
         div()
+            .font_family(".SystemUIFont")
             .flex()
             .flex_col()
             .w_full()
             .h_full()
             .bg(theme.bg())
+            // .bg(linear_gradient(
+            //     45.,
+            //     linear_color_stop(white(), 0.),
+            //     linear_color_stop(theme.bg(), 1.),
+            // ))
             .child(self.content.clone())
             .child(self.footer.clone())
     }

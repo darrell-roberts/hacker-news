@@ -1,8 +1,7 @@
 use crate::{content::Content, theme::Theme, ArticleSelection, UrlHover};
 use chrono::Local;
 use gpui::{
-    div, prelude::*, rems, solid_background, App, Entity, Fill, ParentElement, Render,
-    SharedString, Styled, Window,
+    div, prelude::*, rems, App, Entity, ParentElement, Render, SharedString, Styled, Window,
 };
 
 pub struct Footer {
@@ -55,7 +54,7 @@ impl Render for Footer {
         div()
             .p_1()
             .text_color(theme.text_color())
-            .bg(Fill::Color(solid_background(theme.status_bar_background())))
+            .bg(theme.surface())
             .text_size(rems(0.75))
             .child(self.url.clone().unwrap_or_default())
             .child(self.status_line.clone())
