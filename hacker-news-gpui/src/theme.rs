@@ -2,21 +2,23 @@
 use gpui::{rgb, Global, WindowAppearance};
 
 mod light {
-    pub const TEXT_COLOR: u32 = 0x14181E;
-    pub const BACKGROUND_COLOR: u32 = 0xFAFAFC;
+    pub const TEXT_COLOR: u32 = 0x1B2430;
+    pub const BACKGROUND_COLOR: u32 = 0xF9FAFC;
     pub const TEXT_LIGHT_BAR: u32 = 0xd1dbe0;
     pub const TEXT_INCREASING: u32 = 0x15803D;
     pub const TEXT_DECREASING: u32 = 0xB91C1C;
-    pub const SURFACE: u32 = 0xF5F7FA;
+    pub const SURFACE: u32 = 0xFFFFFF;
+    pub const BORDER: u32 = 0xe9ecef;
 }
 
 mod dark {
-    pub const TEXT_COLOR: u32 = 0xEBEEF5;
-    pub const BACKGROUND_COLOR: u32 = 0x0C0E12;
+    pub const TEXT_COLOR: u32 = 0xefefef;
+    pub const BACKGROUND_COLOR: u32 = 0x121212;
     pub const TEXT_LIGHT_BAR: u32 = 0x77767b;
     pub const TEXT_INCREASING: u32 = 0x57e389;
     pub const TEXT_DECREASING: u32 = 0xed333b;
-    pub const SURFACE: u32 = 0x14181E;
+    pub const SURFACE: u32 = 0x1e1e1e;
+    pub const BORDER: u32 = 0x3a3a3a;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -65,6 +67,13 @@ impl Theme {
         rgb(match self {
             Theme::Dark => dark::SURFACE,
             Theme::Light => light::SURFACE,
+        })
+    }
+
+    pub fn border(&self) -> gpui::Rgba {
+        rgb(match self {
+            Theme::Dark => dark::BORDER,
+            Theme::Light => light::BORDER,
         })
     }
 }
