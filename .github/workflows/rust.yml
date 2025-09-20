@@ -16,9 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup glib
-        run: sudo apt install libglib2.0-dev
+        run: sudo apt install libglib2.0-dev libxkbcommon-dev libxkbcommon-x11-dev
       - name: Build
-        run: cargo build --bin hacker-news-iced
+        run: cargo build --bin hacker-news-reader
       - name: Run clippy
         run: cargo clippy
       - name: Run tests
