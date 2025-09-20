@@ -163,7 +163,7 @@ impl Render for ArticleView {
             .rounded_md()
             .bg(theme.surface())
             .border_1()
-            .border_color(theme.text_color())
+            .border_color(theme.border())
             .when(self.order_change > 2, |div| {
                 div.text_color(theme.text_increasing())
             })
