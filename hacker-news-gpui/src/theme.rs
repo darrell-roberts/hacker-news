@@ -1,5 +1,5 @@
 //! Simple themes
-use gpui::{rgb, Global};
+use gpui::{rgb, Global, WindowAppearance};
 
 mod light {
     pub const TEXT_COLOR: u32 = 0x424242;
@@ -76,6 +76,17 @@ impl From<platform_settings::Theme> for Theme {
         match theme {
             platform_settings::Theme::Dark => Self::Dark,
             platform_settings::Theme::Light => Self::Light,
+        }
+    }
+}
+
+impl From<WindowAppearance> for Theme {
+    fn from(appearance: WindowAppearance) -> Self {
+        match appearance {
+            WindowAppearance::Light => Self::Light,
+            WindowAppearance::VibrantLight => Self::Light,
+            WindowAppearance::Dark => Self::Dark,
+            WindowAppearance::VibrantDark => Self::Dark,
         }
     }
 }

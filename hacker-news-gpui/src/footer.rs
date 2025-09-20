@@ -48,10 +48,10 @@ impl Footer {
 impl Render for Footer {
     fn render(
         &mut self,
-        _window: &mut Window,
-        cx: &mut gpui::Context<Self>,
+        window: &mut Window,
+        _cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
-        let theme = cx.global::<Theme>();
+        let theme: Theme = window.appearance().into();
         div()
             .p_1()
             .text_color(theme.text_color())

@@ -56,10 +56,10 @@ impl ArticleView {
 impl Render for ArticleView {
     fn render(
         &mut self,
-        _window: &mut Window,
+        window: &mut Window,
         cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
-        let theme = cx.global::<Theme>();
+        let theme: Theme = window.appearance().into();
 
         let rank_change_col = div()
             .flex()
