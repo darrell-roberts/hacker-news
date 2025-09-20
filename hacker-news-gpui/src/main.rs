@@ -67,8 +67,14 @@ impl MainWindow {
 }
 
 impl Render for MainWindow {
-    fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        let theme = cx.global::<Theme>();
+    fn render(&mut self, window: &mut Window, _cx: &mut gpui::Context<Self>) -> impl IntoElement {
+        window
+            .observe_window_appearance(|_window, app| {
+                app.refresh_windows();
+            })
+            .detach();
+
+        let theme: Theme = window.appearance().into();
 
         div()
             .flex()
@@ -95,9 +101,6 @@ fn main() {
             viewing_article_total: 50,
         });
         app.set_global(UrlHover(None));
-
-        let theme: Theme = platform_settings::initial_theme().into();
-        app.set_global(theme);
 
         // Add menu items
         app.set_menus(vec![Menu {

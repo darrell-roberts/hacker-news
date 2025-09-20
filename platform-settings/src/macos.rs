@@ -1,4 +1,5 @@
 //! Macos system access.
+
 use crate::{SettingChange, Theme};
 use futures::{stream, Stream};
 use log::info;
@@ -45,20 +46,19 @@ pub fn listen_to_system_changes() -> impl Stream<Item = SettingChange> {
 //             _notification: *mut objc2::runtime::AnyObject,
 //         ) {
 //             // Query the current theme and invoke the callback
-//             if let Ok(theme) = initial_theme() {
-//                 // SAFETY: The callback is stored in a thread-safe Arc and can be safely cloned.
-//                 let callback = unsafe {
-//                     let ptr = _self as *const objc2::runtime::AnyObject
-//                         as *const std::sync::Arc<dyn Fn(Theme)>;
-//                     (*ptr).clone()
-//                 };
-//                 callback(theme);
-//             }
+//             let theme = initial_theme();
+//             // SAFETY: The callback is stored in a thread-safe Arc and can be safely cloned.
+//             let callback = unsafe {
+//                 let ptr = _self as *const objc2::runtime::AnyObject
+//                     as *const std::sync::Arc<dyn Fn(Theme)>;
+//                 (*ptr).clone()
+//             };
+//             callback(theme);
 //         }
 
 //         let superclass = class!(NSObject);
 //         let mut builder =
-//             objc2::runtime::ClassBuilder::new("ThemeChangeObserver", superclass).unwrap();
+//             objc2::runtime::ClassBuilder::new(c"ThemeChangeObserver", superclass).unwrap();
 
 //         builder.add_method(
 //             sel!(themeChanged:),
