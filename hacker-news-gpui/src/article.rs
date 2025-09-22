@@ -1,47 +1,48 @@
 //! Article view.
-use crate::{theme::Theme, UrlHover};
+use crate::{
+    comment::CommentView, common::COMMENT_IMAGE, content::Content, theme::Theme, ApiClientState,
+    UrlHover,
+};
 use chrono::{DateTime, Utc};
+use futures::TryStreamExt;
 use gpui::{
-    div, img, prelude::*, px, rems, solid_background, AppContext, AsyncApp, Entity, Fill,
-    FontWeight, Image, ImageSource, SharedString, StyleRefinement, Window,
+    div, img, prelude::*, pulsating_between, px, rems, solid_background, Animation, AnimationExt,
+    AppContext, AsyncApp, Entity, Fill, FontWeight, ImageSource, SharedString, StyleRefinement,
+    WeakEntity, Window,
 };
 use hacker_news_api::Item;
-use std::sync::{Arc, LazyLock};
+use log::error;
+use std::{sync::Arc, time::Duration};
 
 // An article view is rendered for each article item.
 pub struct ArticleView {
     title: SharedString,
     author: SharedString,
-    comments: Option<SharedString>,
+    comment_count: Option<SharedString>,
     url: Option<SharedString>,
     order_change_label: SharedString,
     order_change: i64,
     age: SharedString,
     comment_image: ImageSource,
-    id: u64,
     rank: SharedString,
+    comments: Vec<Entity<CommentView>>,
+    comment_ids: Arc<Vec<u64>>,
+    content: WeakEntity<Content>,
+    loading_comments: bool,
 }
-
-/// An embedded SVG comment image.
-static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
-    Arc::new(Image::from_bytes(
-        gpui::ImageFormat::Svg,
-        include_bytes!("../assets/comment.svg").into(),
-    ))
-});
 
 impl ArticleView {
     pub fn new(
         app: &mut AsyncApp,
+        content: WeakEntity<Content>,
         item: Item,
         order_change: i64,
         rank: usize,
     ) -> anyhow::Result<Entity<Self>> {
         app.new(|_| Self {
-            id: item.id,
             title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
-            comments: item
+            comment_count: item
                 .descendants
                 .filter(|&n| n > 0)
                 .map(|n| format!("{n}"))
@@ -56,6 +57,10 @@ impl ArticleView {
             age: parse_date(item.time).unwrap_or_default().into(),
             comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
             rank: format!("{rank}").into(),
+            comments: Vec::new(),
+            comment_ids: Arc::new(item.kids),
+            content,
+            loading_comments: false,
         })
     }
 }
@@ -84,28 +89,89 @@ impl Render for ArticleView {
             .items_center()
             .child(self.order_change_label.clone());
 
-        let id = self.id;
         let hover_element = |style: StyleRefinement| {
             style
                 .font_weight(FontWeight::BOLD)
                 .text_color(theme.text_color())
-                .bg(Fill::Color(solid_background(theme.text_light_bar())))
+                .bg(Fill::Color(solid_background(theme.hover())))
         };
 
-        let comments_col = div().w(rems(3.)).justify_end().id("comments").when_some(
-            self.comments.as_ref(),
+        let ids = self.comment_ids.clone();
+        let entity = cx.weak_entity();
+        let content = self.content.clone();
+
+        let comments_col = div().w(rems(4.)).justify_end().id("comments").when_some(
+            self.comment_count.as_ref(),
             |div, comments| {
                 div.flex()
                     .cursor_pointer()
                     .rounded_md()
                     .on_click(move |_, _, app| {
-                        app.open_url(&format!("https://news.ycombinator.com/item?id={id}"));
+                        if let Err(err) = entity.update(app, |article: &mut ArticleView, _cx| {
+                            article.loading_comments = true;
+                        }) {
+                            error!("Failed to set loading flag: {err}");
+                        };
+
+                        let entity = entity.clone();
+                        let content = content.clone();
+                        let ids = ids.clone();
+
+                        app.spawn(async move |app: &mut AsyncApp| {
+                            let client = app
+                                .read_global(|client: &ApiClientState, _| client.0.clone())
+                                .unwrap();
+                            let items = async_compat::Compat::new(
+                                client.items(&ids).try_collect::<Vec<_>>(),
+                            )
+                            .await
+                            .unwrap_or_default();
+
+                            let comments = items
+                                .into_iter()
+                                .filter_map(|comment| CommentView::new(app, comment, None).ok())
+                                .collect();
+
+                            if let Err(err) = entity.update(app, |this: &mut ArticleView, _cx| {
+                                this.comments = comments;
+                            }) {
+                                error!("Failed to update comments: {err}");
+                            };
+
+                            if let Err(err) =
+                                entity.update(app, |article: &mut ArticleView, _cx| {
+                                    article.loading_comments = false;
+                                })
+                            {
+                                error!("Failed to set loading comments: {err}");
+                            };
+
+                            if let Err(err) = content.update(app, |content: &mut Content, _cx| {
+                                content.viewing_comment = true;
+                            }) {
+                                error!("Failed to update content viewing state: {err}");
+                            };
+                        })
+                        .detach();
                     })
                     .hover(hover_element)
                     .flex()
                     .flex_row()
                     .child(comments.clone())
-                    .child(img(self.comment_image.clone()))
+                    .child(gpui::div().child(img(self.comment_image.clone())).when(
+                        self.loading_comments,
+                        |el| {
+                            gpui::div().child(
+                                el.with_animation(
+                                    "comment-loading",
+                                    Animation::new(Duration::from_secs(1))
+                                        .repeat()
+                                        .with_easing(pulsating_between(0.1, 0.8)),
+                                    |label, delta| label.opacity(delta),
+                                ),
+                            )
+                        },
+                    ))
             },
         );
 
@@ -145,9 +211,9 @@ impl Render for ArticleView {
                     .flex()
                     .flex_row()
                     .italic()
+                    // .items_start()
                     .items_center()
-                    // .font_family(SharedString::new_static(".SystemUIFont"))
-                    .text_size(px(12.0))
+                    .text_size(rems(0.75))
                     .child(self.author.clone())
                     .child(self.age.clone())
                     .gap_x(px(5.0)),
@@ -155,37 +221,43 @@ impl Render for ArticleView {
             .gap_x(px(5.0));
 
         div()
-            .flex()
-            .flex_row()
-            // .font_family("Roboto, sans-serif")
-            .text_size(px(15.0))
-            .text_color(theme.text_color())
-            .rounded_md()
-            .bg(theme.surface())
-            .border_1()
-            .border_color(theme.border())
-            .when(self.order_change > 2, |div| {
-                div.text_color(theme.text_increasing())
-            })
-            .when(self.order_change < -2, |div| {
-                div.text_color(theme.text_decreasing())
-            })
             .child(
-                div().m_1().child(
-                    div()
-                        .flex()
-                        .flex_row()
-                        .children([
-                            rank_change_col,
+                div()
+                    .flex()
+                    .flex_row()
+                    // .font_family("Roboto, sans-serif")
+                    // .text_size(px(15.0))
+                    .text_color(theme.text_color())
+                    .rounded_md()
+                    .shadow_sm()
+                    .bg(theme.surface())
+                    .border_1()
+                    .border_color(theme.border())
+                    .when(self.order_change > 2, |div| {
+                        div.text_color(theme.text_increasing())
+                    })
+                    .when(self.order_change < -2, |div| {
+                        div.text_color(theme.text_decreasing())
+                    })
+                    .child(
+                        div().m_1().child(
                             div()
-                                .text_align(gpui::TextAlign::Right)
-                                .child(self.rank.clone()),
-                            div().child(comments_col),
-                            title_col,
-                        ])
-                        .gap_1(),
-                ),
+                                .flex()
+                                .flex_row()
+                                .children([
+                                    rank_change_col,
+                                    div()
+                                        .w(rems(2.))
+                                        .text_align(gpui::TextAlign::Right)
+                                        .child(self.rank.clone()),
+                                    div().child(comments_col),
+                                    title_col,
+                                ])
+                                .gap_1(),
+                        ),
+                    ),
             )
+            .children(self.comments.clone())
     }
 }
 

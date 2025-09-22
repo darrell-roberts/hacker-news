@@ -4,7 +4,7 @@ use gpui::{rgb, Global, WindowAppearance};
 mod light {
     pub const TEXT_COLOR: u32 = 0x1B2430;
     pub const BACKGROUND_COLOR: u32 = 0xF9FAFC;
-    pub const TEXT_LIGHT_BAR: u32 = 0xd1dbe0;
+    pub const HOVER: u32 = 0xF0F2F5;
     pub const TEXT_INCREASING: u32 = 0x15803D;
     pub const TEXT_DECREASING: u32 = 0xB91C1C;
     pub const SURFACE: u32 = 0xFFFFFF;
@@ -14,7 +14,7 @@ mod light {
 mod dark {
     pub const TEXT_COLOR: u32 = 0xefefef;
     pub const BACKGROUND_COLOR: u32 = 0x121212;
-    pub const TEXT_LIGHT_BAR: u32 = 0x77767b;
+    pub const HOVER: u32 = 0x2A2A2A;
     pub const TEXT_INCREASING: u32 = 0x57e389;
     pub const TEXT_DECREASING: u32 = 0xed333b;
     pub const SURFACE: u32 = 0x1e1e1e;
@@ -42,10 +42,10 @@ impl Theme {
         })
     }
 
-    pub fn text_light_bar(&self) -> gpui::Rgba {
+    pub fn hover(&self) -> gpui::Rgba {
         rgb(match self {
-            Theme::Dark => dark::TEXT_LIGHT_BAR,
-            Theme::Light => light::TEXT_LIGHT_BAR,
+            Theme::Dark => dark::HOVER,
+            Theme::Light => light::HOVER,
         })
     }
 

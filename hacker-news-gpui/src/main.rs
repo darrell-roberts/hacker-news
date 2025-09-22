@@ -2,17 +2,17 @@
 use crate::theme::Theme;
 use content::Content;
 use footer::Footer;
-use futures::StreamExt;
 use gpui::{
     actions, div, point, prelude::*, px, size, App, Application, Entity, Global, Menu, MenuItem,
     SharedString, Window, WindowDecorations, WindowKind, WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
-use log::{debug, error, info};
+use log::info;
 use std::{ops::Deref, sync::Arc};
 
 mod article;
-// mod comment;
+mod comment;
+mod common;
 mod content;
 mod footer;
 mod theme;
@@ -78,16 +78,12 @@ impl Render for MainWindow {
 
         div()
             .font_family(".SystemUIFont")
+            .text_size(px(14.))
             .flex()
             .flex_col()
             .w_full()
             .h_full()
             .bg(theme.bg())
-            // .bg(linear_gradient(
-            //     45.,
-            //     linear_color_stop(white(), 0.),
-            //     linear_color_stop(theme.bg(), 1.),
-            // ))
             .child(self.content.clone())
             .child(self.footer.clone())
     }
@@ -119,26 +115,26 @@ fn main() {
         })
         .detach();
 
-        app.spawn(async |app| {
-            info!("Subscribing to system settings changes");
-            let mut changes = platform_settings::listen_to_system_changes();
-            while let Some(change) = changes.next().await {
-                debug!("Received system setting change: {change:?}");
-                match change {
-                    platform_settings::SettingChange::Theme(linux_theme) => {
-                        if let Err(err) = app.update_global(|theme: &mut Theme, app| {
-                            *theme = linux_theme.into();
-                            app.refresh_windows();
-                        }) {
-                            error!("Failed to update theme: {err}");
-                        };
-                    }
-                    platform_settings::SettingChange::FontScale(_) => todo!(),
-                }
-            }
-            info!("System settings changes stream closed");
-        })
-        .detach();
+        // app.spawn(async |app| {
+        //     info!("Subscribing to system settings changes");
+        //     let mut changes = platform_settings::listen_to_system_changes();
+        //     while let Some(change) = changes.next().await {
+        //         debug!("Received system setting change: {change:?}");
+        //         match change {
+        //             platform_settings::SettingChange::Theme(linux_theme) => {
+        //                 if let Err(err) = app.update_global(|theme: &mut Theme, app| {
+        //                     *theme = linux_theme.into();
+        //                     app.refresh_windows();
+        //                 }) {
+        //                     error!("Failed to update theme: {err}");
+        //                 };
+        //             }
+        //             platform_settings::SettingChange::FontScale(_) => todo!(),
+        //         }
+        //     }
+        //     info!("System settings changes stream closed");
+        // })
+        // .detach();
 
         app.open_window(
             WindowOptions {
@@ -148,7 +144,7 @@ fn main() {
                     appears_transparent: false,
                 }),
                 window_decorations: Some(WindowDecorations::Server),
-                window_min_size: Some(size(px(800.), px(600.))),
+                window_min_size: Some(size(px(600.), px(800.))),
                 is_movable: true,
                 window_bounds: None,
                 show: true,
