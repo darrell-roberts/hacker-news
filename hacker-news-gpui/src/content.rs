@@ -12,6 +12,7 @@ pub struct Content {
     articles: Vec<Entity<ArticleView>>,
     list_state: ListState,
     article_ranks: HashMap<u64, usize>,
+    pub viewing_comment: bool,
 }
 
 pub struct TotalArticles(pub usize);
@@ -28,6 +29,7 @@ impl Content {
                 articles: Default::default(),
                 list_state,
                 article_ranks: Default::default(),
+                viewing_comment: false,
             }
         });
 
@@ -38,6 +40,14 @@ impl Content {
         app.spawn(async move |app| {
             while let Some(items) = rx.next().await {
                 if let Some(entity) = weak_entity.upgrade() {
+                    let viewing_comment = entity
+                        .read_with(app, |content: &Content, _app| content.viewing_comment)
+                        .unwrap_or_default();
+
+                    if viewing_comment {
+                        continue;
+                    }
+
                     let ranking_map = items
                         .iter()
                         .enumerate()
@@ -56,7 +66,13 @@ impl Content {
                                     }
                                 })
                                 .unwrap();
-                            ArticleView::new(app, article, order_change, index + 1)
+                            ArticleView::new(
+                                app,
+                                weak_entity.clone(),
+                                article,
+                                order_change,
+                                index + 1,
+                            )
                         })
                         .collect::<Result<Vec<_>, _>>();
 
