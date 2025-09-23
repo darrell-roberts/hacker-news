@@ -1,11 +1,16 @@
 //! Render comment
-use crate::{common::COMMENT_IMAGE, theme::Theme, ApiClientState};
+use crate::{
+    article::{ArticleEvent, ArticleView},
+    common::COMMENT_IMAGE,
+    theme::Theme,
+    ApiClientState,
+};
 use futures::TryStreamExt as _;
 use gpui::{
-    black, div, img, prelude::FluentBuilder as _, pulsating_between, px, rems, rgb, Animation,
+    div, img, prelude::FluentBuilder as _, pulsating_between, px, rems, rgb, Animation,
     AnimationExt as _, AppContext as _, AsyncApp, Entity, EventEmitter, Font, FontWeight,
     ImageSource, InteractiveElement, ParentElement, Render, SharedString,
-    StatefulInteractiveElement, Styled, StyledText, TextRun, UnderlineStyle, WeakEntity, Window,
+    StatefulInteractiveElement, Styled, StyledText, TextRun, UnderlineStyle, Window,
 };
 use hacker_news_api::Item;
 use html_sanitizer::{parse_elements, Element};
@@ -15,14 +20,15 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 pub struct CommentView {
     id: u64,
     text: SharedString,
-    runs: Vec<TextRun>,
     author: SharedString,
     children: HashMap<u64, Entity<CommentView>>,
     comment_ids: Arc<Vec<u64>>,
     comment_image: ImageSource,
     total_comments: SharedString,
     loading_comments: bool,
-    parent: Option<WeakEntity<CommentView>>,
+    parent: Option<Entity<CommentView>>,
+    article: Entity<ArticleView>,
+    text_layout: Vec<TextLayout>,
 }
 
 #[derive(Debug)]
@@ -36,18 +42,19 @@ impl CommentView {
     pub fn new(
         cx: &mut AsyncApp,
         item: Item,
-        parent: Option<WeakEntity<CommentView>>,
+        article: Entity<ArticleView>,
+        parent: Option<Entity<CommentView>>,
     ) -> anyhow::Result<Entity<Self>> {
-        let (text, runs) = item
+        let (text, text_layout) = item
             .text
             .as_deref()
             .map(parse_elements)
-            .map(traverse)
+            .map(text_layout)
             .unwrap_or_default();
 
         cx.new(|cx| {
-            if let Some(parent) = parent.as_ref().and_then(|parent| parent.upgrade()) {
-                cx.subscribe(&parent, |_comment_view, entity, event, app| {
+            if let Some(parent) = parent.as_ref() {
+                cx.subscribe(parent, |_comment_view, entity, event, app| {
                     info!("Received event {event:?}");
                     match event {
                         CommentEvent::Close(close_id) => entity.update(app, |this, _app| {
@@ -61,7 +68,6 @@ impl CommentView {
             Self {
                 id: item.id,
                 text: text.into(),
-                runs,
                 author: format!("by: {} ({})", item.by, item.id).into(),
                 children: HashMap::new(),
                 total_comments: format!("{}", item.kids.len()).into(),
@@ -69,6 +75,8 @@ impl CommentView {
                 comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
                 loading_comments: false,
                 parent,
+                article,
+                text_layout,
             }
         })
     }
@@ -88,12 +96,16 @@ impl Render for CommentView {
         let parent = self.parent.clone();
         let id = self.id;
 
+        let article = self.article.clone();
+        let article_close = self.article.clone();
+
         div()
             .bg(theme.surface())
             .rounded_md()
             .border_1()
             .border_color(theme.border())
             .shadow_sm()
+            .text_color(theme.text_color())
             .m_1()
             .p_1()
             .child(
@@ -107,17 +119,23 @@ impl Render for CommentView {
                     .id("close")
                     .on_click(move |_event, _window, app| {
                         info!("Close comment clicked: {parent:?}");
-                        if let Some(parent) = parent.as_ref() {
-                            if let Err(err) = parent.update(app, |_this, cx| {
-                                info!("Emitting close event");
-                                cx.emit(CommentEvent::Close(id));
-                            }) {
-                                error!("Failed to close comment: {err}");
-                            };
+                        match parent.as_ref() {
+                            Some(parent) => {
+                                parent.update(app, |_this, cx| {
+                                    info!("Emitting close event");
+                                    cx.emit(CommentEvent::Close(id));
+                                });
+                            }
+                            None => article_close.update(app, |_this, cx| {
+                                cx.emit(ArticleEvent::CloseComments);
+                            }),
                         }
                     }),
             )
-            .child(StyledText::new(self.text.clone()).with_runs(self.runs.clone()))
+            .child(
+                StyledText::new(self.text.clone())
+                    .with_runs(rich_text_runs(theme, self.text_layout.clone()).collect()),
+            )
             .child(
                 gpui::div()
                     .flex()
@@ -139,6 +157,7 @@ impl Render for CommentView {
                                     };
                                     let ids = ids.clone();
                                     let weak_entity = weak_entity.clone();
+                                    let article = article.clone();
                                     app.spawn(async move |async_app| {
                                         let client = async_app
                                             .read_global(|client: &ApiClientState, _| {
@@ -157,7 +176,8 @@ impl Render for CommentView {
                                                 CommentView::new(
                                                     async_app,
                                                     item,
-                                                    Some(weak_entity.clone()),
+                                                    article.clone(),
+                                                    weak_entity.upgrade(),
                                                 )
                                                 .ok()
                                                 .map(|view| (id, view))
@@ -198,7 +218,7 @@ impl Render for CommentView {
     }
 }
 
-fn normal(len: usize) -> TextRun {
+fn normal(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
@@ -208,14 +228,14 @@ fn normal(len: usize) -> TextRun {
             weight: Default::default(),
             style: Default::default(),
         },
-        color: black(),
+        color: theme.text_color().into(),
         background_color: None,
         underline: None,
         strikethrough: None,
     }
 }
 
-fn italic(len: usize) -> TextRun {
+fn italic(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
@@ -225,14 +245,14 @@ fn italic(len: usize) -> TextRun {
             weight: Default::default(),
             style: gpui::FontStyle::Italic,
         },
-        color: black(),
+        color: theme.text_color().into(),
         background_color: None,
         underline: None,
         strikethrough: None,
     }
 }
 
-fn bold(len: usize) -> TextRun {
+fn bold(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
@@ -242,14 +262,14 @@ fn bold(len: usize) -> TextRun {
             weight: FontWeight::BOLD,
             style: gpui::FontStyle::Normal,
         },
-        color: black(),
+        color: theme.text_color().into(),
         background_color: None,
         underline: None,
         strikethrough: None,
     }
 }
 
-fn code(len: usize) -> TextRun {
+fn code(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
@@ -259,14 +279,14 @@ fn code(len: usize) -> TextRun {
             weight: Default::default(),
             style: gpui::FontStyle::Normal,
         },
-        color: black(),
+        color: theme.text_color().into(),
         background_color: Some(rgb(0xeaeaea).into()),
         underline: None,
         strikethrough: None,
     }
 }
 
-fn link(len: usize) -> TextRun {
+fn link(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
@@ -276,26 +296,26 @@ fn link(len: usize) -> TextRun {
             weight: FontWeight::default(),
             style: gpui::FontStyle::Normal,
         },
-        color: black(),
+        color: theme.text_color().into(),
         background_color: Some(rgb(0xe6e600).into()),
         underline: Some(UnderlineStyle {
             thickness: px(1.),
-            color: Some(black()),
+            color: Some(theme.text_color().into()),
             wavy: true,
         }),
         strikethrough: None,
     }
 }
 
-fn traverse(elements: Vec<Element<'_>>) -> (String, Vec<TextRun>) {
+fn text_layout(elements: Vec<Element<'_>>) -> (String, Vec<TextLayout>) {
+    let mut layout = Vec::new();
     let mut buffer = String::new();
-    let mut runs = Vec::new();
 
     for element in elements {
         match element {
             Element::Text(s) => {
+                layout.push(TextLayout::Normal(s.len()));
                 buffer.push_str(s);
-                runs.push(normal(s.len()));
             }
             Element::Link(anchor) => {
                 let text = anchor
@@ -311,36 +331,53 @@ fn traverse(elements: Vec<Element<'_>>) -> (String, Vec<TextRun>) {
                     });
 
                 if let Some(text) = text {
+                    layout.push(TextLayout::Link(text.len()));
                     buffer.push_str(text);
-                    runs.push(link(text.len()));
                 }
             }
             Element::Escaped(c) => {
+                layout.push(TextLayout::Normal(1));
                 buffer.push(c);
-                runs.push(normal(1));
             }
             Element::Paragraph => {
+                layout.push(TextLayout::Normal(1));
                 buffer.push('\n');
-                runs.push(normal(1));
             }
             Element::Code(s) => {
+                layout.push(TextLayout::Code(s.len()));
                 buffer.push_str(&s);
-                runs.push(code(s.len()));
             }
             Element::Italic(elements) => {
-                let (italic_string, _italic_runs) = traverse(elements);
-                // runs.extend(italic_runs);
-                buffer.push_str(&italic_string);
-                runs.push(italic(italic_string.len()));
+                let (italic_str, _ls) = text_layout(elements);
+                layout.push(TextLayout::Italic(italic_str.len()));
+                buffer.push_str(&italic_str);
             }
             Element::Bold(elements) => {
-                let (bold_string, _bold_runs) = traverse(elements);
-                // runs.extend(bold_runs);
-                buffer.push_str(&bold_string);
-                runs.push(bold(bold_string.len()));
+                let (bold_str, _ls) = text_layout(elements);
+                layout.push(TextLayout::Bold(bold_str.len()));
+                buffer.push_str(&bold_str);
             }
         }
     }
 
-    (buffer, runs)
+    (buffer, layout)
+}
+
+#[derive(Copy, Clone)]
+enum TextLayout {
+    Normal(usize),
+    Bold(usize),
+    Italic(usize),
+    Link(usize),
+    Code(usize),
+}
+
+fn rich_text_runs(theme: Theme, layout: Vec<TextLayout>) -> impl Iterator<Item = TextRun> {
+    layout.into_iter().map(move |element| match element {
+        TextLayout::Normal(n) => normal(theme, n),
+        TextLayout::Bold(n) => bold(theme, n),
+        TextLayout::Italic(n) => italic(theme, n),
+        TextLayout::Link(n) => link(theme, n),
+        TextLayout::Code(n) => code(theme, n),
+    })
 }

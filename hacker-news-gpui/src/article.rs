@@ -1,14 +1,16 @@
 //! Article view.
 use crate::{
-    comment::CommentView, common::COMMENT_IMAGE, content::Content, theme::Theme, ApiClientState,
-    UrlHover,
+    comment::CommentView,
+    common::{parse_date, COMMENT_IMAGE},
+    content::{Content, ContentEvent},
+    theme::Theme,
+    ApiClientState, UrlHover,
 };
-use chrono::{DateTime, Utc};
 use futures::TryStreamExt;
 use gpui::{
     div, img, prelude::*, pulsating_between, px, rems, solid_background, Animation, AnimationExt,
-    AppContext, AsyncApp, Entity, Fill, FontWeight, ImageSource, SharedString, StyleRefinement,
-    WeakEntity, Window,
+    AppContext, AsyncApp, Entity, EventEmitter, Fill, FontWeight, ImageSource, SharedString,
+    StyleRefinement, Window,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -27,40 +29,59 @@ pub struct ArticleView {
     rank: SharedString,
     comments: Vec<Entity<CommentView>>,
     comment_ids: Arc<Vec<u64>>,
-    content: WeakEntity<Content>,
+    content: Entity<Content>,
     loading_comments: bool,
 }
+
+pub enum ArticleEvent {
+    CloseComments,
+}
+
+impl EventEmitter<ArticleEvent> for ArticleView {}
 
 impl ArticleView {
     pub fn new(
         app: &mut AsyncApp,
-        content: WeakEntity<Content>,
+        content: Entity<Content>,
         item: Item,
         order_change: i64,
         rank: usize,
     ) -> anyhow::Result<Entity<Self>> {
-        app.new(|_| Self {
-            title: item.title.unwrap_or_default().into(),
-            author: format!("by {}", item.by.clone()).into(),
-            comment_count: item
-                .descendants
-                .filter(|&n| n > 0)
-                .map(|n| format!("{n}"))
-                .map(Into::into),
-            url: item.url.map(Into::into),
-            order_change_label: if order_change == 0 {
-                Default::default()
-            } else {
-                format!("{order_change}").into()
-            },
-            order_change,
-            age: parse_date(item.time).unwrap_or_default().into(),
-            comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
-            rank: format!("{rank}").into(),
-            comments: Vec::new(),
-            comment_ids: Arc::new(item.kids),
-            content,
-            loading_comments: false,
+        let c = content.clone();
+        app.new(move |cx| {
+            cx.subscribe_self(move |this: &mut ArticleView, event, cx| match event {
+                ArticleEvent::CloseComments => {
+                    this.comments.clear();
+                    c.update(cx, |_c, cx| {
+                        cx.emit(ContentEvent::ViewingComments(false));
+                    })
+                }
+            })
+            .detach();
+
+            Self {
+                title: item.title.unwrap_or_default().into(),
+                author: format!("by {}", item.by.clone()).into(),
+                comment_count: item
+                    .descendants
+                    .filter(|&n| n > 0)
+                    .map(|n| format!("{n}"))
+                    .map(Into::into),
+                url: item.url.map(Into::into),
+                order_change_label: if order_change == 0 {
+                    Default::default()
+                } else {
+                    format!("{order_change}").into()
+                },
+                order_change,
+                age: parse_date(item.time).unwrap_or_default().into(),
+                comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
+                rank: format!("{rank}").into(),
+                comments: Vec::new(),
+                comment_ids: Arc::new(item.kids),
+                content,
+                loading_comments: false,
+            }
         })
     }
 }
@@ -100,6 +121,8 @@ impl Render for ArticleView {
         let entity = cx.weak_entity();
         let content = self.content.clone();
 
+        let article = cx.weak_entity().upgrade();
+
         let comments_col = div().w(rems(4.)).justify_end().id("comments").when_some(
             self.comment_count.as_ref(),
             |div, comments| {
@@ -107,6 +130,7 @@ impl Render for ArticleView {
                     .cursor_pointer()
                     .rounded_md()
                     .on_click(move |_, _, app| {
+                        let article = article.clone();
                         if let Err(err) = entity.update(app, |article: &mut ArticleView, _cx| {
                             article.loading_comments = true;
                         }) {
@@ -129,7 +153,11 @@ impl Render for ArticleView {
 
                             let comments = items
                                 .into_iter()
-                                .filter_map(|comment| CommentView::new(app, comment, None).ok())
+                                .filter_map(|comment| {
+                                    article.clone().and_then(|article| {
+                                        CommentView::new(app, comment, article.clone(), None).ok()
+                                    })
+                                })
                                 .collect();
 
                             if let Err(err) = entity.update(app, |this: &mut ArticleView, _cx| {
@@ -146,8 +174,8 @@ impl Render for ArticleView {
                                 error!("Failed to set loading comments: {err}");
                             };
 
-                            if let Err(err) = content.update(app, |content: &mut Content, _cx| {
-                                content.viewing_comment = true;
+                            if let Err(err) = content.update(app, |_content: &mut Content, cx| {
+                                cx.emit(ContentEvent::ViewingComments(true));
                             }) {
                                 error!("Failed to update content viewing state: {err}");
                             };
@@ -259,25 +287,4 @@ impl Render for ArticleView {
             )
             .children(self.comments.clone())
     }
-}
-
-/// Extract the duration from a UNIX time and convert duration into a human
-/// friendly sentence.
-fn parse_date(time: u64) -> Option<String> {
-    let duration =
-        DateTime::<Utc>::from_timestamp(time.try_into().ok()?, 0).map(|then| Utc::now() - then)?;
-
-    let hours = duration.num_hours();
-    let minutes = duration.num_minutes();
-    let days = duration.num_days();
-
-    match (days, hours, minutes) {
-        (0, 0, 1) => "1 minute ago".to_string(),
-        (0, 0, m) => format!("{m} minutes ago"),
-        (0, 1, _) => "1 hour ago".to_string(),
-        (0, h, _) => format!("{h} hours ago"),
-        (1, _, _) => "1 day ago".to_string(),
-        (d, _, _) => format!("{d} days ago"),
-    }
-    .into()
 }
