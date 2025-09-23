@@ -7,7 +7,7 @@ use crate::{
 };
 use futures::TryStreamExt as _;
 use gpui::{
-    div, img, prelude::FluentBuilder as _, pulsating_between, px, rems, rgb, Animation,
+    div, img, prelude::FluentBuilder as _, pulsating_between, px, rems, Animation,
     AnimationExt as _, AppContext as _, AsyncApp, Entity, Font, FontWeight, ImageSource,
     InteractiveElement, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
     StyledText, TextRun, UnderlineStyle, Window,
@@ -69,9 +69,6 @@ impl Render for CommentView {
         let ids = self.comment_ids.clone();
         let weak_entity = cx.weak_entity();
 
-        // let parent = self.parent.clone();
-        // let id = self.id;
-
         let article = self.article.clone();
         let close_comment = cx.weak_entity();
 
@@ -85,8 +82,10 @@ impl Render for CommentView {
             .m_1()
             .p_1()
             .child(
-                StyledText::new(self.text.clone())
-                    .with_runs(rich_text_runs(theme, self.text_layout.clone()).collect()),
+                div().pb_2().child(
+                    StyledText::new(self.text.clone())
+                        .with_runs(rich_text_runs(theme, self.text_layout.clone()).collect()),
+                ),
             )
             .child(
                 gpui::div()
@@ -94,6 +93,9 @@ impl Render for CommentView {
                     .flex_row()
                     .italic()
                     .gap_1()
+                    .border_t_1()
+                    .pt_1()
+                    .border_color(theme.border())
                     .text_size(rems(0.75))
                     .child(self.author.clone())
                     .child(self.age.clone())
@@ -256,7 +258,8 @@ fn code(theme: Theme, len: usize) -> TextRun {
             style: gpui::FontStyle::Normal,
         },
         color: theme.text_color().into(),
-        background_color: Some(rgb(0xeaeaea).into()),
+        // background_color: Some(rgb(0xeaeaea).into()),
+        background_color: None,
         underline: None,
         strikethrough: None,
     }
@@ -273,7 +276,8 @@ fn link(theme: Theme, len: usize) -> TextRun {
             style: gpui::FontStyle::Normal,
         },
         color: theme.text_color().into(),
-        background_color: Some(rgb(0xe6e600).into()),
+        // background_color: Some(rgb(0xe6e600).into()),
+        background_color: None,
         underline: Some(UnderlineStyle {
             thickness: px(1.),
             color: Some(theme.text_color().into()),
