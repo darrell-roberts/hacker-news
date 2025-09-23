@@ -94,7 +94,6 @@ impl Render for ArticleView {
         let hover_element = |style: StyleRefinement| {
             style
                 .font_weight(FontWeight::BOLD)
-                .text_color(theme.text_color())
                 .bg(Fill::Color(solid_background(theme.hover())))
         };
 
@@ -235,7 +234,6 @@ impl Render for ArticleView {
                 div()
                     .flex()
                     .flex_row()
-                    .text_color(theme.text_color())
                     .rounded_md()
                     .shadow_sm()
                     .bg(theme.surface())

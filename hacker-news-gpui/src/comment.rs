@@ -78,7 +78,6 @@ impl Render for CommentView {
             .border_1()
             .border_color(theme.border())
             .shadow_sm()
-            .text_color(theme.text_color())
             .m_1()
             .p_1()
             .child(
