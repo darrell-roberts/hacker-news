@@ -65,7 +65,6 @@ impl Render for Footer {
 
         div()
             .p_1()
-            .text_color(theme.text_color())
             .bg(theme.surface())
             .text_size(rems(0.75))
             .child(self.url.clone().unwrap_or_default())

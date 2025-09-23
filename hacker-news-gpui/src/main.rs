@@ -79,6 +79,7 @@ impl Render for MainWindow {
         div()
             .font_family(".SystemUIFont")
             .text_size(px(14.))
+            .text_color(theme.text_color())
             .flex()
             .flex_col()
             .w_full()
