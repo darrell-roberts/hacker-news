@@ -56,7 +56,7 @@ impl MainWindow {
     fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
         // let header = Header::new(window, app);
         let content = Content::new(window, app);
-        let footer = Footer::new(window, app, &content);
+        let footer = Footer::new(window, app, content.clone());
 
         app.new(|_ctx| Self {
             // header,

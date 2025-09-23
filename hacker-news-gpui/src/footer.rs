@@ -1,19 +1,22 @@
-use crate::{content::Content, theme::Theme, ArticleSelection, UrlHover};
+use crate::{
+    content::{Content, ContentEvent},
+    theme::Theme,
+    ArticleSelection, UrlHover,
+};
 use chrono::Local;
 use gpui::{
-    div, prelude::*, rems, App, Entity, ParentElement, Render, SharedString, Styled, WeakEntity,
-    Window,
+    div, prelude::*, rems, App, Entity, ParentElement, Render, SharedString, Styled, Window,
 };
 
 pub struct Footer {
     status_line: SharedString,
     url: Option<SharedString>,
-    content: WeakEntity<Content>,
+    content: Entity<Content>,
+    subscribed: bool,
 }
 
 impl Footer {
-    pub fn new(_cx: &mut Window, app: &mut App, content: &Entity<Content>) -> Entity<Self> {
-        let weak_content = content.downgrade();
+    pub fn new(_cx: &mut Window, app: &mut App, content: Entity<Content>) -> Entity<Self> {
         app.new(|cx| {
             cx.observe_global::<ArticleSelection>(move |footer: &mut Footer, cx| {
                 footer.status_line = "Fetching...".into();
@@ -22,14 +25,15 @@ impl Footer {
             .detach();
 
             cx.subscribe(
-                content,
-                |footer: &mut Footer, _content, total_articles, _cx| {
-                    footer.status_line = format!(
-                        "Updated: {}, total {}",
-                        Local::now().format("%D %T"),
-                        total_articles.0
-                    )
-                    .into();
+                &content,
+                |footer: &mut Footer, _content, event, _cx| match event {
+                    ContentEvent::TotalArticles(n) => {
+                        footer.status_line =
+                            format!("Updated: {}, total {n}", Local::now().format("%D %T"),).into();
+                    }
+                    ContentEvent::ViewingComments(viewing) => {
+                        footer.subscribed = !viewing;
+                    }
                 },
             )
             .detach();
@@ -42,7 +46,8 @@ impl Footer {
             Self {
                 status_line: Default::default(),
                 url: None,
-                content: weak_content,
+                content,
+                subscribed: true,
             }
         })
     }
@@ -56,7 +61,9 @@ impl Render for Footer {
     ) -> impl gpui::IntoElement {
         let theme: Theme = window.appearance().into();
 
-        let weak_content = self.content.clone();
+        let content = self.content.clone();
+
+        let subscribed = self.subscribed;
 
         div()
             .p_1()
@@ -75,13 +82,12 @@ impl Render for Footer {
                             .id("resume")
                             .cursor_pointer()
                             .on_click(move |_event, _window, app| {
-                                if let Some(content) = weak_content.upgrade() {
-                                    content.update(app, |content: &mut Content, _app| {
-                                        content.viewing_comment = false;
-                                    })
-                                }
+                                content.update(app, |_content: &mut Content, cx| {
+                                    cx.emit(ContentEvent::ViewingComments(subscribed));
+                                    // content.viewing_comment = false;
+                                })
                             })
-                            .child("[~]"),
+                            .when_else(!subscribed, |el| el.child("[*]"), |el| el.child("[~]")),
                     ),
             )
     }
