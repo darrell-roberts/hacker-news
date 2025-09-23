@@ -60,9 +60,7 @@ impl Render for Footer {
         _cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
         let theme: Theme = window.appearance().into();
-
         let content = self.content.clone();
-
         let subscribed = self.subscribed;
 
         div()
@@ -84,7 +82,6 @@ impl Render for Footer {
                             .on_click(move |_event, _window, app| {
                                 content.update(app, |_content: &mut Content, cx| {
                                     cx.emit(ContentEvent::ViewingComments(subscribed));
-                                    // content.viewing_comment = false;
                                 })
                             })
                             .when_else(!subscribed, |el| el.child("[*]"), |el| el.child("[~]")),

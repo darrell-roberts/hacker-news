@@ -1,24 +1,23 @@
 //! Render comment
 use crate::{
-    article::{ArticleEvent, ArticleView},
-    common::COMMENT_IMAGE,
+    article::ArticleView,
+    common::{parse_date, COMMENT_IMAGE},
     theme::Theme,
     ApiClientState,
 };
 use futures::TryStreamExt as _;
 use gpui::{
     div, img, prelude::FluentBuilder as _, pulsating_between, px, rems, rgb, Animation,
-    AnimationExt as _, AppContext as _, AsyncApp, Entity, EventEmitter, Font, FontWeight,
-    ImageSource, InteractiveElement, ParentElement, Render, SharedString,
-    StatefulInteractiveElement, Styled, StyledText, TextRun, UnderlineStyle, Window,
+    AnimationExt as _, AppContext as _, AsyncApp, Entity, Font, FontWeight, ImageSource,
+    InteractiveElement, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
+    StyledText, TextRun, UnderlineStyle, Window,
 };
 use hacker_news_api::Item;
 use html_sanitizer::{parse_elements, Element};
-use log::{error, info};
+use log::error;
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 pub struct CommentView {
-    id: u64,
     text: SharedString,
     author: SharedString,
     children: HashMap<u64, Entity<CommentView>>,
@@ -26,24 +25,16 @@ pub struct CommentView {
     comment_image: ImageSource,
     total_comments: SharedString,
     loading_comments: bool,
-    parent: Option<Entity<CommentView>>,
     article: Entity<ArticleView>,
     text_layout: Vec<TextLayout>,
+    age: SharedString,
 }
-
-#[derive(Debug)]
-enum CommentEvent {
-    Close(u64),
-}
-
-impl EventEmitter<CommentEvent> for CommentView {}
 
 impl CommentView {
     pub fn new(
         cx: &mut AsyncApp,
         item: Item,
         article: Entity<ArticleView>,
-        parent: Option<Entity<CommentView>>,
     ) -> anyhow::Result<Entity<Self>> {
         let (text, text_layout) = item
             .text
@@ -52,32 +43,17 @@ impl CommentView {
             .map(text_layout)
             .unwrap_or_default();
 
-        cx.new(|cx| {
-            if let Some(parent) = parent.as_ref() {
-                cx.subscribe(parent, |_comment_view, entity, event, app| {
-                    info!("Received event {event:?}");
-                    match event {
-                        CommentEvent::Close(close_id) => entity.update(app, |this, _app| {
-                            this.children.remove(close_id);
-                        }),
-                    }
-                })
-                .detach();
-            }
-
-            Self {
-                id: item.id,
-                text: text.into(),
-                author: format!("by: {} ({})", item.by, item.id).into(),
-                children: HashMap::new(),
-                total_comments: format!("{}", item.kids.len()).into(),
-                comment_ids: Arc::new(item.kids),
-                comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
-                loading_comments: false,
-                parent,
-                article,
-                text_layout,
-            }
+        cx.new(|_cx| Self {
+            text: text.into(),
+            author: format!("by: {} ({})", item.by, item.id).into(),
+            children: HashMap::new(),
+            total_comments: format!("{}", item.kids.len()).into(),
+            comment_ids: Arc::new(item.kids),
+            comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
+            loading_comments: false,
+            article,
+            text_layout,
+            age: parse_date(item.time).unwrap_or_default().into(),
         })
     }
 }
@@ -93,11 +69,11 @@ impl Render for CommentView {
         let ids = self.comment_ids.clone();
         let weak_entity = cx.weak_entity();
 
-        let parent = self.parent.clone();
-        let id = self.id;
+        // let parent = self.parent.clone();
+        // let id = self.id;
 
         let article = self.article.clone();
-        let article_close = self.article.clone();
+        let close_comment = cx.weak_entity();
 
         div()
             .bg(theme.surface())
@@ -108,30 +84,6 @@ impl Render for CommentView {
             .text_color(theme.text_color())
             .m_1()
             .p_1()
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .flex_grow()
-                    .justify_end()
-                    .child("[X]")
-                    .cursor_pointer()
-                    .id("close")
-                    .on_click(move |_event, _window, app| {
-                        info!("Close comment clicked: {parent:?}");
-                        match parent.as_ref() {
-                            Some(parent) => {
-                                parent.update(app, |_this, cx| {
-                                    info!("Emitting close event");
-                                    cx.emit(CommentEvent::Close(id));
-                                });
-                            }
-                            None => article_close.update(app, |_this, cx| {
-                                cx.emit(ArticleEvent::CloseComments);
-                            }),
-                        }
-                    }),
-            )
             .child(
                 StyledText::new(self.text.clone())
                     .with_runs(rich_text_runs(theme, self.text_layout.clone()).collect()),
@@ -144,6 +96,7 @@ impl Render for CommentView {
                     .gap_1()
                     .text_size(rems(0.75))
                     .child(self.author.clone())
+                    .child(self.age.clone())
                     .when(!self.comment_ids.is_empty(), |el| {
                         el.child(
                             div()
@@ -173,14 +126,9 @@ impl Render for CommentView {
                                             .into_iter()
                                             .filter_map(|item| {
                                                 let id = item.id;
-                                                CommentView::new(
-                                                    async_app,
-                                                    item,
-                                                    article.clone(),
-                                                    weak_entity.upgrade(),
-                                                )
-                                                .ok()
-                                                .map(|view| (id, view))
+                                                CommentView::new(async_app, item, article.clone())
+                                                    .ok()
+                                                    .map(|view| (id, view))
                                             })
                                             .collect::<HashMap<_, _>>();
                                         if let Err(err) =
@@ -214,7 +162,35 @@ impl Render for CommentView {
                         )
                     }),
             )
-            .children(self.children.values().cloned())
+            .when(!self.children.is_empty(), |el| {
+                el.child(
+                    div()
+                        .border_1()
+                        .bg(theme.bg())
+                        .border_color(theme.border())
+                        .p_1()
+                        .m_1()
+                        .shadow_sm()
+                        .child(
+                            div()
+                                .flex()
+                                .flex_grow()
+                                .flex_row()
+                                .justify_end()
+                                .child("[X]")
+                                .cursor_pointer()
+                                .id("close-comments")
+                                .on_click(move |_event, _window, app| {
+                                    if let Some(this) = close_comment.upgrade() {
+                                        this.update(app, |comment_view, _cx| {
+                                            comment_view.children.clear();
+                                        });
+                                    }
+                                }),
+                        )
+                        .children(self.children.values().cloned()),
+                )
+            })
     }
 }
 
