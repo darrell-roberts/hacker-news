@@ -115,27 +115,6 @@ fn main() {
         })
         .detach();
 
-        // app.spawn(async |app| {
-        //     info!("Subscribing to system settings changes");
-        //     let mut changes = platform_settings::listen_to_system_changes();
-        //     while let Some(change) = changes.next().await {
-        //         debug!("Received system setting change: {change:?}");
-        //         match change {
-        //             platform_settings::SettingChange::Theme(linux_theme) => {
-        //                 if let Err(err) = app.update_global(|theme: &mut Theme, app| {
-        //                     *theme = linux_theme.into();
-        //                     app.refresh_windows();
-        //                 }) {
-        //                     error!("Failed to update theme: {err}");
-        //                 };
-        //             }
-        //             platform_settings::SettingChange::FontScale(_) => todo!(),
-        //         }
-        //     }
-        //     info!("System settings changes stream closed");
-        // })
-        // .detach();
-
         app.open_window(
             WindowOptions {
                 titlebar: Some(gpui::TitlebarOptions {

@@ -9,8 +9,8 @@ use crate::{
 use futures::TryStreamExt;
 use gpui::{
     div, img, prelude::*, pulsating_between, px, rems, solid_background, Animation, AnimationExt,
-    AppContext, AsyncApp, Entity, EventEmitter, Fill, FontWeight, ImageSource, SharedString,
-    StyleRefinement, Window,
+    AppContext, AsyncApp, Entity, Fill, FontWeight, ImageSource, SharedString, StyleRefinement,
+    Window,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -33,12 +33,6 @@ pub struct ArticleView {
     loading_comments: bool,
 }
 
-pub enum ArticleEvent {
-    CloseComments,
-}
-
-impl EventEmitter<ArticleEvent> for ArticleView {}
-
 impl ArticleView {
     pub fn new(
         app: &mut AsyncApp,
@@ -47,41 +41,28 @@ impl ArticleView {
         order_change: i64,
         rank: usize,
     ) -> anyhow::Result<Entity<Self>> {
-        let c = content.clone();
-        app.new(move |cx| {
-            cx.subscribe_self(move |this: &mut ArticleView, event, cx| match event {
-                ArticleEvent::CloseComments => {
-                    this.comments.clear();
-                    c.update(cx, |_c, cx| {
-                        cx.emit(ContentEvent::ViewingComments(false));
-                    })
-                }
-            })
-            .detach();
-
-            Self {
-                title: item.title.unwrap_or_default().into(),
-                author: format!("by {}", item.by.clone()).into(),
-                comment_count: item
-                    .descendants
-                    .filter(|&n| n > 0)
-                    .map(|n| format!("{n}"))
-                    .map(Into::into),
-                url: item.url.map(Into::into),
-                order_change_label: if order_change == 0 {
-                    Default::default()
-                } else {
-                    format!("{order_change}").into()
-                },
-                order_change,
-                age: parse_date(item.time).unwrap_or_default().into(),
-                comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
-                rank: format!("{rank}").into(),
-                comments: Vec::new(),
-                comment_ids: Arc::new(item.kids),
-                content,
-                loading_comments: false,
-            }
+        app.new(move |_cx| Self {
+            title: item.title.unwrap_or_default().into(),
+            author: format!("by {}", item.by.clone()).into(),
+            comment_count: item
+                .descendants
+                .filter(|&n| n > 0)
+                .map(|n| format!("{n}"))
+                .map(Into::into),
+            url: item.url.map(Into::into),
+            order_change_label: if order_change == 0 {
+                Default::default()
+            } else {
+                format!("{order_change}").into()
+            },
+            order_change,
+            age: parse_date(item.time).unwrap_or_default().into(),
+            comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
+            rank: format!("{rank}").into(),
+            comments: Vec::new(),
+            comment_ids: Arc::new(item.kids),
+            content,
+            loading_comments: false,
         })
     }
 }
@@ -120,8 +101,10 @@ impl Render for ArticleView {
         let ids = self.comment_ids.clone();
         let entity = cx.weak_entity();
         let content = self.content.clone();
+        let content_close = self.content.clone();
 
         let article = cx.weak_entity().upgrade();
+        let close_comment = cx.weak_entity();
 
         let comments_col = div().w(rems(4.)).justify_end().id("comments").when_some(
             self.comment_count.as_ref(),
@@ -155,7 +138,7 @@ impl Render for ArticleView {
                                 .into_iter()
                                 .filter_map(|comment| {
                                     article.clone().and_then(|article| {
-                                        CommentView::new(app, comment, article.clone(), None).ok()
+                                        CommentView::new(app, comment, article.clone()).ok()
                                     })
                                 })
                                 .collect();
@@ -239,7 +222,6 @@ impl Render for ArticleView {
                     .flex()
                     .flex_row()
                     .italic()
-                    // .items_start()
                     .items_center()
                     .text_size(rems(0.75))
                     .child(self.author.clone())
@@ -253,8 +235,6 @@ impl Render for ArticleView {
                 div()
                     .flex()
                     .flex_row()
-                    // .font_family("Roboto, sans-serif")
-                    // .text_size(px(15.0))
                     .text_color(theme.text_color())
                     .rounded_md()
                     .shadow_sm()
@@ -285,6 +265,38 @@ impl Render for ArticleView {
                         ),
                     ),
             )
-            .children(self.comments.clone())
+            .when(!self.comments.is_empty(), |el| {
+                el.child(
+                    div()
+                        .border_1()
+                        .bg(theme.bg())
+                        .border_color(theme.border())
+                        .p_1()
+                        .m_1()
+                        .shadow_sm()
+                        .child(
+                            div()
+                                .flex()
+                                .flex_grow()
+                                .flex_row()
+                                .justify_end()
+                                .child("[X]")
+                                .cursor_pointer()
+                                .id("close-comments")
+                                .on_click(move |_event, _window, app| {
+                                    if let Some(this) = close_comment.upgrade() {
+                                        this.update(app, |article, _cx| {
+                                            article.comments.clear();
+                                        });
+                                    }
+
+                                    content_close.update(app, |_content: &mut Content, cx| {
+                                        cx.emit(ContentEvent::ViewingComments(false));
+                                    })
+                                }),
+                        )
+                        .children(self.comments.clone()),
+                )
+            })
     }
 }
