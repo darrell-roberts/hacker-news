@@ -12,7 +12,7 @@ mod light {
 }
 
 mod dark {
-    pub const TEXT_COLOR: u32 = 0xefefef;
+    pub const TEXT_COLOR: u32 = 0xbfbfbf;
     pub const BACKGROUND_COLOR: u32 = 0x121212;
     pub const HOVER: u32 = 0x2A2A2A;
     pub const TEXT_INCREASING: u32 = 0x57e389;
