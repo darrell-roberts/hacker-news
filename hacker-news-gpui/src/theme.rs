@@ -4,7 +4,7 @@ use gpui::{rgb, Global, WindowAppearance};
 mod light {
     pub const TEXT_COLOR: u32 = 0x444444;
     pub const BACKGROUND_COLOR: u32 = 0xb3b3b3;
-    pub const HOVER: u32 = 0xF0F2F5;
+    pub const HOVER: u32 = 0xe0e4eb;
     pub const TEXT_INCREASING: u32 = 0x15803D;
     pub const TEXT_DECREASING: u32 = 0xd70000;
     pub const SURFACE: u32 = 0xeeeeee;
