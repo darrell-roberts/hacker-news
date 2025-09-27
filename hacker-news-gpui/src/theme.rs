@@ -8,7 +8,7 @@ mod light {
     pub const TEXT_INCREASING: u32 = 0x15803D;
     pub const TEXT_DECREASING: u32 = 0xd70000;
     pub const SURFACE: u32 = 0xeeeeee;
-    pub const BORDER: u32 = 0xe9ecef;
+    pub const BORDER: u32 = 0xb5bfc9;
 }
 
 mod dark {
