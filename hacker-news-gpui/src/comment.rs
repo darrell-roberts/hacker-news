@@ -74,14 +74,10 @@ impl Render for CommentView {
 
         div()
             .bg(theme.surface())
-            .rounded_md()
-            .border_1()
-            .border_color(theme.border())
-            .shadow_sm()
-            .m_1()
-            .p_1()
+            .rounded_tl_md()
+            .mt_1()
             .child(
-                div().pb_2().child(
+                div().p_1().child(
                     StyledText::new(self.text.clone())
                         .with_runs(rich_text_runs(theme, self.text_layout.clone()).collect()),
                 ),
@@ -93,7 +89,7 @@ impl Render for CommentView {
                     .italic()
                     .gap_1()
                     .border_t_1()
-                    .pt_1()
+                    .p_1()
                     .border_color(theme.border())
                     .text_size(rems(0.75))
                     .child(self.author.clone())
@@ -164,18 +160,16 @@ impl Render for CommentView {
             .when(!self.children.is_empty(), |el| {
                 el.child(
                     div()
-                        .border_1()
                         .bg(theme.bg())
-                        .border_color(theme.border())
-                        .p_1()
-                        .m_1()
-                        .shadow_sm()
+                        .pl_1()
+                        .ml_1()
+                        .rounded_tl_md()
                         .child(
                             div()
                                 .flex()
                                 .flex_grow()
                                 .flex_row()
-                                .justify_end()
+                                .text_size(rems(0.75))
                                 .child("[X]")
                                 .cursor_pointer()
                                 .id("close-comments")

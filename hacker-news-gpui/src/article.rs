@@ -266,18 +266,17 @@ impl Render for ArticleView {
             .when(!self.comments.is_empty(), |el| {
                 el.child(
                     div()
-                        .border_1()
                         .bg(theme.bg())
-                        .border_color(theme.border())
-                        .p_1()
-                        .m_1()
-                        .shadow_sm()
+                        .mt_1()
+                        .ml_1()
+                        .pl_1()
+                        .rounded_tl_md()
                         .child(
                             div()
                                 .flex()
                                 .flex_grow()
                                 .flex_row()
-                                .justify_end()
+                                .text_size(rems(0.75))
                                 .child("[X]")
                                 .cursor_pointer()
                                 .id("close-comments")
