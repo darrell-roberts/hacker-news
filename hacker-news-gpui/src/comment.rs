@@ -15,12 +15,12 @@ use gpui::{
 use hacker_news_api::Item;
 use html_sanitizer::{parse_elements, Element};
 use log::error;
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 pub struct CommentView {
     text: SharedString,
     author: SharedString,
-    children: HashMap<u64, Entity<CommentView>>,
+    children: Vec<Entity<CommentView>>,
     comment_ids: Arc<Vec<u64>>,
     comment_image: ImageSource,
     total_comments: SharedString,
@@ -46,7 +46,7 @@ impl CommentView {
         cx.new(|_cx| Self {
             text: text.into(),
             author: format!("by: {} ({})", item.by, item.id).into(),
-            children: HashMap::new(),
+            children: Vec::new(),
             total_comments: format!("{}", item.kids.len()).into(),
             comment_ids: Arc::new(item.kids),
             comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
@@ -126,12 +126,10 @@ impl Render for CommentView {
                                         let children = items
                                             .into_iter()
                                             .filter_map(|item| {
-                                                let id = item.id;
                                                 CommentView::new(async_app, item, article.clone())
                                                     .ok()
-                                                    .map(|view| (id, view))
                                             })
-                                            .collect::<HashMap<_, _>>();
+                                            .collect::<Vec<_>>();
                                         if let Err(err) =
                                             weak_entity.update(async_app, |this, _cx| {
                                                 this.children = children;
@@ -189,7 +187,7 @@ impl Render for CommentView {
                                     }
                                 }),
                         )
-                        .children(self.children.values().cloned()),
+                        .children(self.children.clone()),
                 )
             })
     }
