@@ -266,7 +266,7 @@ impl Render for ArticleView {
             .when(!self.comments.is_empty(), |el| {
                 el.child(
                     div()
-                        .bg(theme.bg())
+                        .bg(theme.comment_border())
                         .mt_1()
                         .ml_1()
                         .pl_1()
