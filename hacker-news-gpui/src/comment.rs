@@ -160,7 +160,7 @@ impl Render for CommentView {
             .when(!self.children.is_empty(), |el| {
                 el.child(
                     div()
-                        .bg(theme.bg())
+                        .bg(theme.comment_border())
                         .pl_1()
                         .ml_1()
                         .rounded_tl_md()
