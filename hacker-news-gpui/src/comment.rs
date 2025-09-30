@@ -9,13 +9,13 @@ use futures::TryStreamExt as _;
 use gpui::{
     div, img, prelude::FluentBuilder as _, pulsating_between, px, rems, Animation,
     AnimationExt as _, AppContext as _, AsyncApp, Entity, Font, FontWeight, ImageSource,
-    InteractiveElement, ParentElement, Render, SharedString, StatefulInteractiveElement, Styled,
-    StyledText, TextRun, UnderlineStyle, Window,
+    InteractiveElement, InteractiveText, ParentElement, Render, SharedString,
+    StatefulInteractiveElement, Styled, StyledText, TextRun, UnderlineStyle, Window,
 };
 use hacker_news_api::Item;
 use html_sanitizer::{parse_elements, Element};
 use log::error;
-use std::{sync::Arc, time::Duration};
+use std::{ops::Range, sync::Arc, time::Duration};
 
 pub struct CommentView {
     text: SharedString,
@@ -28,6 +28,7 @@ pub struct CommentView {
     article: Entity<ArticleView>,
     text_layout: Vec<TextLayout>,
     age: SharedString,
+    urls: Vec<String>,
 }
 
 impl CommentView {
@@ -36,11 +37,11 @@ impl CommentView {
         item: Item,
         article: Entity<ArticleView>,
     ) -> anyhow::Result<Entity<Self>> {
-        let (text, text_layout) = item
+        let ParsedComment { text, layout, urls } = item
             .text
             .as_deref()
             .map(parse_elements)
-            .map(text_layout)
+            .map(parse_layout)
             .unwrap_or_default();
 
         cx.new(|_cx| Self {
@@ -52,7 +53,8 @@ impl CommentView {
             comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
             loading_comments: false,
             article,
-            text_layout,
+            text_layout: layout,
+            urls,
             age: parse_date(item.time).unwrap_or_default().into(),
         })
     }
@@ -72,14 +74,30 @@ impl Render for CommentView {
         let article = self.article.clone();
         let close_comment = cx.weak_entity();
 
+        let open_url_entity = weak_entity.clone();
         div()
             .bg(theme.surface())
             .rounded_tl_md()
             .mt_1()
             .child(
                 div().p_1().child(
-                    StyledText::new(self.text.clone())
-                        .with_runs(rich_text_runs(theme, self.text_layout.clone()).collect()),
+                    InteractiveText::new(
+                        "comment_text",
+                        StyledText::new(self.text.clone())
+                            .with_runs(rich_text_runs(theme, &self.text_layout).collect()),
+                    )
+                    .on_click(
+                        url_ranges(&self.text_layout),
+                        move |index, _window, app| {
+                            open_url_entity
+                                .read_with(app, |this: &CommentView, app| {
+                                    if let Some(url) = this.urls.get(index) {
+                                        app.open_url(url);
+                                    }
+                                })
+                                .unwrap_or_default();
+                        },
+                    ),
                 ),
             )
             .child(
@@ -249,7 +267,6 @@ fn code(theme: Theme, len: usize) -> TextRun {
             style: gpui::FontStyle::Normal,
         },
         color: theme.text_color().into(),
-        // background_color: Some(rgb(0xeaeaea).into()),
         background_color: None,
         underline: None,
         strikethrough: None,
@@ -267,7 +284,6 @@ fn link(theme: Theme, len: usize) -> TextRun {
             style: gpui::FontStyle::Normal,
         },
         color: theme.text_color().into(),
-        // background_color: Some(rgb(0xe6e600).into()),
         background_color: None,
         underline: Some(UnderlineStyle {
             thickness: px(1.),
@@ -278,9 +294,17 @@ fn link(theme: Theme, len: usize) -> TextRun {
     }
 }
 
-fn text_layout(elements: Vec<Element<'_>>) -> (String, Vec<TextLayout>) {
+#[derive(Default)]
+struct ParsedComment {
+    text: String,
+    layout: Vec<TextLayout>,
+    urls: Vec<String>,
+}
+
+fn parse_layout(elements: Vec<Element<'_>>) -> ParsedComment {
     let mut layout = Vec::new();
     let mut buffer = String::new();
+    let mut urls = Vec::new();
 
     for element in elements {
         match element {
@@ -289,21 +313,22 @@ fn text_layout(elements: Vec<Element<'_>>) -> (String, Vec<TextLayout>) {
                 buffer.push_str(s);
             }
             Element::Link(anchor) => {
-                let text = anchor
+                let link = anchor
                     .attributes
                     .iter()
                     .find(|a| a.name == "href")
                     .map(|attr| {
                         if anchor.children.is_empty() {
-                            attr.value.as_str()
+                            (attr.value.as_str(), attr.value.as_str())
                         } else {
-                            anchor.children.as_str()
+                            (anchor.children.as_str(), attr.value.as_str())
                         }
                     });
 
-                if let Some(text) = text {
+                if let Some((text, url)) = link {
                     layout.push(TextLayout::Link(text.len()));
                     buffer.push_str(text);
+                    urls.push(url.to_string());
                 }
             }
             Element::Escaped(c) => {
@@ -319,19 +344,23 @@ fn text_layout(elements: Vec<Element<'_>>) -> (String, Vec<TextLayout>) {
                 buffer.push_str(&s);
             }
             Element::Italic(elements) => {
-                let (italic_str, _ls) = text_layout(elements);
-                layout.push(TextLayout::Italic(italic_str.len()));
-                buffer.push_str(&italic_str);
+                let ParsedComment { text, .. } = parse_layout(elements);
+                layout.push(TextLayout::Italic(text.len()));
+                buffer.push_str(&text);
             }
             Element::Bold(elements) => {
-                let (bold_str, _ls) = text_layout(elements);
-                layout.push(TextLayout::Bold(bold_str.len()));
-                buffer.push_str(&bold_str);
+                let ParsedComment { text, .. } = parse_layout(elements);
+                layout.push(TextLayout::Bold(text.len()));
+                buffer.push_str(&text);
             }
         }
     }
 
-    (buffer, layout)
+    ParsedComment {
+        text: buffer,
+        layout,
+        urls,
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -343,12 +372,38 @@ enum TextLayout {
     Code(usize),
 }
 
-fn rich_text_runs(theme: Theme, layout: Vec<TextLayout>) -> impl Iterator<Item = TextRun> {
-    layout.into_iter().map(move |element| match element {
-        TextLayout::Normal(n) => normal(theme, n),
-        TextLayout::Bold(n) => bold(theme, n),
-        TextLayout::Italic(n) => italic(theme, n),
-        TextLayout::Link(n) => link(theme, n),
-        TextLayout::Code(n) => code(theme, n),
+fn rich_text_runs(theme: Theme, layout: &[TextLayout]) -> impl Iterator<Item = TextRun> + use<'_> {
+    layout.iter().map(move |element| match element {
+        TextLayout::Normal(n) => normal(theme, *n),
+        TextLayout::Bold(n) => bold(theme, *n),
+        TextLayout::Italic(n) => italic(theme, *n),
+        TextLayout::Link(n) => link(theme, *n),
+        TextLayout::Code(n) => code(theme, *n),
     })
+}
+
+fn url_ranges(layout: &[TextLayout]) -> Vec<Range<usize>> {
+    let mut ranges = Vec::new();
+    let mut total_chars = 0;
+    for l in layout {
+        match l {
+            TextLayout::Normal(n) => {
+                total_chars += n;
+            }
+            TextLayout::Bold(n) => {
+                total_chars += n;
+            }
+            TextLayout::Italic(n) => {
+                total_chars += n;
+            }
+            TextLayout::Link(n) => {
+                ranges.push(total_chars..(total_chars + n));
+                total_chars += n;
+            }
+            TextLayout::Code(n) => {
+                total_chars += n;
+            }
+        }
+    }
+    ranges
 }
