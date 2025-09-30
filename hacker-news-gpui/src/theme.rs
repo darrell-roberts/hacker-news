@@ -20,7 +20,7 @@ mod dark {
     pub const TEXT_DECREASING: u32 = 0xed333b;
     pub const SURFACE: u32 = 0x1e1e1e;
     pub const BORDER: u32 = 0x3a3a3a;
-    pub const COMMENT_BORDER: u32 = 0xff9900;
+    pub const COMMENT_BORDER: u32 = 0xb36b00;
 }
 
 #[derive(Debug, Copy, Clone)]
