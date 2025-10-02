@@ -8,7 +8,7 @@
     <key>CFBundleDisplayName</key>
     <string>Hacker News</string>
     <key>CFBundleExecutable</key>
-    <string>hacker-news-iced</string>
+    <string>hacker-news-reader</string>
     <key>CFBundleIconFile</key>
     <string>icon.icns</string>
     <key>CFBundleIdentifier</key>
