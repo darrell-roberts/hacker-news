@@ -94,10 +94,10 @@ impl App {
     fn on_mouse_event(&mut self, mouse_event: MouseEvent) {
         match mouse_event.kind {
             MouseEventKind::ScrollDown => {
-                self.move_down(3);
+                self.move_up(3);
             }
             MouseEventKind::ScrollUp => {
-                self.move_up(3);
+                self.move_down(3);
             }
             _ => (),
         }
@@ -108,7 +108,16 @@ impl App {
     }
 
     fn move_down(&mut self, interval: usize) {
-        let result = self.selected_item.and_then(|n| n.checked_add(interval));
+        let result = self
+            .selected_item
+            .and_then(|n| n.checked_add(interval))
+            .map(|n| {
+                if n < self.top_stories.len() {
+                    n
+                } else {
+                    self.top_stories.len() - 1
+                }
+            });
         self.selected_item = result.or(Some(0));
     }
 
@@ -133,7 +142,7 @@ impl App {
                 self.selected_item = None;
             }
             (_, KeyCode::End) => {
-                self.selected_item = Some(self.top_stories.len());
+                self.selected_item = Some(self.top_stories.len() - 1);
             }
 
             _ => {}
