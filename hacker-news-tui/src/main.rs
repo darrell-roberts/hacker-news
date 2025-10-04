@@ -29,8 +29,8 @@ pub struct App {
     running: bool,
     search_context: Arc<RwLock<SearchContext>>,
     top_stories: Vec<Story>,
-    /// scroll offset
-    scroll_offset: usize,
+    // scroll_offset: usize,
+    selected_item: Option<usize>,
 }
 
 pub const APP_INFO: AppInfo = AppInfo {
@@ -59,7 +59,8 @@ impl App {
             running: false,
             search_context,
             top_stories,
-            scroll_offset: 0,
+            // scroll_offset: 0,
+            selected_item: None,
         })
     }
 
@@ -103,22 +104,12 @@ impl App {
     }
 
     fn move_up(&mut self, interval: usize) {
-        let result = self.scroll_offset.checked_sub(interval);
-
-        if let Some(new_offset) = result {
-            self.scroll_offset = new_offset;
-        } else {
-            self.scroll_offset = 0;
-        }
+        self.selected_item = self.selected_item.and_then(|n| n.checked_sub(interval));
     }
 
     fn move_down(&mut self, interval: usize) {
-        let result = self.scroll_offset.checked_add(interval);
-        if let Some(new_offset) = result
-            && new_offset <= self.top_stories.len()
-        {
-            self.scroll_offset = new_offset;
-        }
+        let result = self.selected_item.and_then(|n| n.checked_add(interval));
+        self.selected_item = result.or(Some(0));
     }
 
     /// Handles the key events and updates the state of [`App`].
@@ -138,6 +129,13 @@ impl App {
             (_, KeyCode::PageUp) => {
                 self.move_up(10);
             }
+            (_, KeyCode::Home) => {
+                self.selected_item = None;
+            }
+            (_, KeyCode::End) => {
+                self.selected_item = Some(self.top_stories.len());
+            }
+
             _ => {}
         }
     }
@@ -153,10 +151,11 @@ impl Widget for &mut App {
     where
         Self: Sized,
     {
-        ArticlesWidget::new(self.search_context.clone(), self.scroll_offset).render(
-            area,
-            buf,
-            &mut self.top_stories,
-        );
+        ArticlesWidget::new(
+            self.search_context.clone(),
+            // self.scroll_offset,
+            self.selected_item,
+        )
+        .render(area, buf, &mut self.top_stories);
     }
 }

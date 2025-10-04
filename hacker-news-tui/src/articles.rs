@@ -15,10 +15,16 @@ pub struct ArticlesWidget {
 }
 
 impl ArticlesWidget {
-    pub fn new(search_context: Arc<RwLock<SearchContext>>, offset: usize) -> Self {
+    pub fn new(
+        search_context: Arc<RwLock<SearchContext>>,
+        // offset: usize,
+        selected: Option<usize>,
+    ) -> Self {
         Self {
             search_context,
-            list_state: ListState::default().with_offset(offset),
+            list_state: ListState::default()
+                // .with_offset(offset)
+                .with_selected(selected),
         }
     }
 }
@@ -41,7 +47,9 @@ impl StatefulWidget for &mut ArticlesWidget {
 
         List::new(items)
             .block(Block::bordered().title(title))
+            .highlight_style(Style::new().yellow())
             .render(area, buf, &mut self.list_state);
+
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .begin_symbol(Some("↑"))
             .end_symbol(Some("↓"));
@@ -55,12 +63,18 @@ impl StatefulWidget for &mut ArticlesWidget {
 
 fn render_article_line(article: &Story) -> Line<'_> {
     let style = Style::new().white();
-    Line::from(
-        [
-            Span::styled(&article.title, style),
-            Span::styled(format!(" by {}", &article.by), style.italic()),
-        ]
-        .into_iter()
-        .collect::<Vec<_>>(),
-    )
+    Line::from_iter([
+        comment_col(article.descendants, style),
+        Span::styled(&article.title, style),
+        Span::styled(format!(" by {} ", &article.by), style.italic()),
+        Span::styled(article.age_label().unwrap_or_default(), style.italic()),
+    ])
+}
+
+fn comment_col<'a>(comments: u64, style: Style) -> Span<'a> {
+    if comments > 0 {
+        Span::styled(format!("[{:<5}] ", comments), style)
+    } else {
+        Span::styled("        ", style)
+    }
 }

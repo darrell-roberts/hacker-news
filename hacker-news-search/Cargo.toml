@@ -22,3 +22,4 @@ thiserror = "2"
 tokio.workspace = true
 
 tracing = { version = "0.1", optional = true }
+chrono.workspace = true
