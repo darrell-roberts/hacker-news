@@ -10,6 +10,8 @@ use hacker_news_api::ArticleType;
 use hacker_news_search::{SearchContext, api::Story, api_client};
 use ratatui::{
     DefaultTerminal,
+    layout::{Constraint, Layout, Rect},
+    text::Line,
     widgets::{StatefulWidget, Widget},
 };
 
@@ -29,7 +31,6 @@ pub struct App {
     running: bool,
     search_context: Arc<RwLock<SearchContext>>,
     top_stories: Vec<Story>,
-    // scroll_offset: usize,
     selected_item: Option<usize>,
 }
 
@@ -59,7 +60,6 @@ impl App {
             running: false,
             search_context,
             top_stories,
-            // scroll_offset: 0,
             selected_item: None,
         })
     }
@@ -140,6 +140,12 @@ impl App {
         }
     }
 
+    fn select_item_url(&self) -> Option<&str> {
+        self.selected_item
+            .and_then(|selected| self.top_stories.get(selected))
+            .and_then(|item| item.url.as_deref())
+    }
+
     /// Set running to false to quit the application.
     fn quit(&mut self) {
         self.running = false;
@@ -147,15 +153,19 @@ impl App {
 }
 
 impl Widget for &mut App {
-    fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
+    fn render(self, area: Rect, buf: &mut ratatui::prelude::Buffer)
     where
         Self: Sized,
     {
-        ArticlesWidget::new(
-            self.search_context.clone(),
-            // self.scroll_offset,
-            self.selected_item,
-        )
-        .render(area, buf, &mut self.top_stories);
+        let main_layout =
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(1)]).split(area);
+
+        ArticlesWidget::new(self.search_context.clone(), self.selected_item).render(
+            main_layout[0],
+            buf,
+            &mut self.top_stories,
+        );
+
+        Line::raw(self.select_item_url().unwrap_or_default()).render(main_layout[1], buf);
     }
 }
