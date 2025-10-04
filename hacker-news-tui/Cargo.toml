@@ -1,0 +1,16 @@
+[package]
+name = "hacker-news-tui"
+version = "0.1.0"
+description = "Hacker News Tui"
+authors = ["Darrell Roberts <droberts0674@gmail.com>"]
+license = "MIT"
+edition = "2024"
+
+[dependencies]
+crossterm = "0.29"
+ratatui = "0.29"
+color-eyre = "0.6"
+
+hacker-news-api.workspace = true
+hacker-news-search.workspace = true
+app_dirs2.workspace = true
