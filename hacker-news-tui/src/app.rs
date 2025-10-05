@@ -3,6 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::{
     articles::ArticlesWidget,
+    comments::{CommentState, CommentsWidget},
     events::{AppEvent, EventManager, IndexRebuildState},
     footer::FooterWidget,
 };
@@ -13,8 +14,10 @@ use crossterm::event::{
 };
 use hacker_news_api::ArticleType;
 use hacker_news_search::{RebuildProgress, SearchContext, api::Story, api_client};
+use log::{debug, error};
 use ratatui::{
     DefaultTerminal,
+    buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     widgets::{StatefulWidget, Widget},
 };
@@ -28,6 +31,7 @@ pub struct App {
     top_stories: Vec<Story>,
     selected_item: Option<usize>,
     pub rebuild_progress: Option<IndexRebuildState>,
+    pub comment_state: Option<CommentState>,
 }
 
 pub const APP_INFO: AppInfo = AppInfo {
@@ -59,6 +63,7 @@ impl App {
             top_stories,
             selected_item: None,
             rebuild_progress: None,
+            comment_state: None,
         })
     }
 
@@ -125,28 +130,48 @@ impl App {
     }
 
     fn move_up(&mut self, interval: usize) {
-        self.selected_item = self.selected_item.and_then(|n| n.checked_sub(interval));
+        match self.comment_state.as_mut() {
+            Some(state) => {
+                state.scroll_view_state.scroll_up();
+            }
+            None => {
+                self.selected_item = self.selected_item.and_then(|n| n.checked_sub(interval));
+            }
+        }
     }
 
     fn move_down(&mut self, interval: usize) {
-        let result = self
-            .selected_item
-            .and_then(|n| n.checked_add(interval))
-            .map(|n| {
-                if n < self.top_stories.len() {
-                    n
-                } else {
-                    self.top_stories.len() - 1
-                }
-            });
-        self.selected_item = result.or(Some(0));
+        match self.comment_state.as_mut() {
+            Some(state) => {
+                state.scroll_view_state.scroll_down();
+            }
+            None => {
+                let result = self
+                    .selected_item
+                    .and_then(|n| n.checked_add(interval))
+                    .map(|n| {
+                        if n < self.top_stories.len() {
+                            n
+                        } else {
+                            self.top_stories.len() - 1
+                        }
+                    });
+                self.selected_item = result.or(Some(0));
+            }
+        }
     }
 
     /// Handles the key events and updates the state of [`App`].
     fn on_key_event(&mut self, key: KeyEvent) {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q'))
-            | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => self.quit(),
+            | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
+                if self.comment_state.is_some() {
+                    self.comment_state = None;
+                } else {
+                    self.quit();
+                }
+            }
             (_, KeyCode::Down | KeyCode::Char('j')) => {
                 self.move_down(1);
             }
@@ -176,8 +201,70 @@ impl App {
                 if let Some(url) = self.select_item_url()
                     && let Err(err) = open::that(url)
                 {
-                    eprintln!("Failed to open url {url}: {err}");
+                    error!("Failed to open url {url}: {err}");
                 }
+            }
+            (_, KeyCode::Right | KeyCode::Char('c')) => {
+                match self.comment_state.as_mut() {
+                    // The viewing comment is being requested to open children.
+                    Some(state) => {
+                        debug!("opening child comment");
+                        if let Some(viewing) = state.viewing {
+                            state.parent_id = viewing;
+                            state.offset = 0;
+                            let comments = self.search_context.read().unwrap().comments(
+                                state.parent_id,
+                                state.limit,
+                                state.offset,
+                            );
+                            match comments {
+                                Ok((comments, total)) => {
+                                    state.comments = comments;
+                                    state.total_comments = total;
+                                }
+                                Err(err) => {
+                                    error!("Failed to get comments: {err}");
+                                }
+                            }
+                        }
+                    }
+                    // We are opening comments for a story
+                    None => {
+                        if let Some(selected_item) = self
+                            .selected_item
+                            .and_then(|id| self.top_stories.get(id))
+                            .map(|story| story.id)
+                        {
+                            debug!("opening comments for selected article: {selected_item}");
+                            let comments =
+                                self.search_context
+                                    .read()
+                                    .unwrap()
+                                    .comments(selected_item, 10, 0);
+
+                            match comments {
+                                Ok((comments, total)) => {
+                                    self.comment_state = Some(CommentState {
+                                        parent_id: selected_item,
+                                        limit: 10,
+                                        offset: 0,
+                                        viewing: None,
+                                        comments,
+                                        total_comments: total,
+                                        scroll_view_state: Default::default(),
+                                    });
+                                }
+                                Err(err) => {
+                                    error!("Failed to get comments: {err}");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            (_, KeyCode::Left) => {
+                debug!("Closing comment view");
+                self.comment_state = None;
             }
 
             _ => {}
@@ -197,11 +284,11 @@ impl App {
 }
 
 impl Widget for &mut App {
-    fn render(self, area: Rect, buf: &mut ratatui::prelude::Buffer)
+    fn render(self, area: Rect, buf: &mut Buffer)
     where
         Self: Sized,
     {
-        let main_layout = Layout::vertical([
+        let [content_area, footer_area] = Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(if self.rebuild_progress.is_some() {
                 3
@@ -209,9 +296,20 @@ impl Widget for &mut App {
                 1
             }),
         ])
-        .split(area);
+        .areas(area);
 
-        ArticlesWidget::new(self.selected_item).render(main_layout[0], buf, &mut self.top_stories);
-        FooterWidget::new(self).render(main_layout[1], buf);
+        match self.comment_state.as_mut() {
+            Some(comment_state) => {
+                CommentsWidget::default().render(content_area, buf, comment_state);
+            }
+            None => {
+                ArticlesWidget::new(self.selected_item).render(
+                    content_area,
+                    buf,
+                    &mut self.top_stories,
+                );
+            }
+        }
+        FooterWidget::new(self).render(footer_area, buf);
     }
 }
