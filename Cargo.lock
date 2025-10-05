@@ -3208,9 +3208,11 @@ dependencies = [
  "app_dirs2",
  "color-eyre",
  "crossterm 0.29.0",
+ "futures",
  "hacker-news-api",
  "hacker-news-search",
  "ratatui",
+ "tokio",
 ]
 
 [[package]]
