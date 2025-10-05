@@ -16,3 +16,4 @@ hacker-news-search.workspace = true
 app_dirs2.workspace = true
 futures = "0.3"
 tokio = { version = "1", features = ["rt"] }
+open = "5"

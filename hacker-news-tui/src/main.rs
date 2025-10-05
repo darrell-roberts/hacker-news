@@ -195,6 +195,13 @@ impl App {
                     self.events.rebuild_index(self.search_context.clone());
                 }
             }
+            (_, KeyCode::Char('o')) => {
+                if let Some(url) = self.select_item_url()
+                    && let Err(err) = open::that(url)
+                {
+                    eprintln!("Failed to open url {url}: {err}");
+                }
+            }
 
             _ => {}
         }
