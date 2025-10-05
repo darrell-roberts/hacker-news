@@ -1,6 +1,5 @@
-use std::sync::{Arc, RwLock};
-
-use hacker_news_search::{SearchContext, api::Story};
+//! Articles list widget.
+use hacker_news_search::api::Story;
 use ratatui::{
     style::{Style, Stylize as _},
     text::{Line, Span},
@@ -9,22 +8,16 @@ use ratatui::{
     },
 };
 
+/// Widget to render list of articles.
 pub struct ArticlesWidget {
-    pub search_context: Arc<RwLock<SearchContext>>,
     list_state: ListState,
 }
 
 impl ArticlesWidget {
-    pub fn new(
-        search_context: Arc<RwLock<SearchContext>>,
-        // offset: usize,
-        selected: Option<usize>,
-    ) -> Self {
+    /// Create a new articles widget with optional selected item.
+    pub fn new(selected: Option<usize>) -> Self {
         Self {
-            search_context,
-            list_state: ListState::default()
-                // .with_offset(offset)
-                .with_selected(selected),
+            list_state: ListState::default().with_selected(selected),
         }
     }
 }
@@ -61,6 +54,7 @@ impl StatefulWidget for &mut ArticlesWidget {
     }
 }
 
+/// Render a single line for an article.
 fn render_article_line(article: &Story) -> Line<'_> {
     let style = Style::new().white();
     Line::from_iter([
@@ -71,6 +65,7 @@ fn render_article_line(article: &Story) -> Line<'_> {
     ])
 }
 
+/// Render the article total comment count column.
 fn comment_col<'a>(comments: u64, style: Style) -> Span<'a> {
     if comments > 0 {
         Span::styled(format!("[{:<5}] ", comments), style)

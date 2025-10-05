@@ -1,20 +1,23 @@
+//! Footer widget.
 use crate::App;
 use ratatui::{
     text::Line,
     widgets::{Block, Borders, Gauge, Widget},
 };
 
-pub struct FooterView<'a> {
+/// Footer widget displayed at the bottom.
+pub struct FooterWidget<'a> {
     app: &'a App,
 }
 
-impl<'a> FooterView<'a> {
+impl<'a> FooterWidget<'a> {
+    /// Create a new footer widget.
     pub fn new(app: &'a App) -> Self {
         Self { app }
     }
 }
 
-impl<'a> Widget for FooterView<'a> {
+impl<'a> Widget for FooterWidget<'a> {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
     where
         Self: Sized,

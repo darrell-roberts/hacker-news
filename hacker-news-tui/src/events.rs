@@ -1,3 +1,4 @@
+//! Background events
 use std::{
     sync::{
         Arc, RwLock,
@@ -11,22 +12,43 @@ use futures::StreamExt as _;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{RebuildProgress, SearchContext};
 
+#[derive(Debug)]
+pub struct IndexRebuildState {
+    /// Total number of items that will be indexed.
+    pub total_items: f64,
+    /// The current number of items that have been indexed.
+    pub total_rebuilt: f64,
+}
+
+impl IndexRebuildState {
+    /// Rebuild status as completion percentage.
+    pub fn percent(&self) -> u16 {
+        ((self.total_rebuilt / self.total_items) * 100.) as u16
+    }
+}
+
+/// Background application event
 pub enum AppEvent {
+    /// Keyboard or mouse event.
     CrossTerm(event::Event),
+    /// Index rebuild progress event.
     UpdateProgress(RebuildProgress),
 }
 
-pub struct EventHandler {
+/// Event manager.
+pub struct EventManager {
     sender: Sender<AppEvent>,
     receiver: Receiver<AppEvent>,
 }
 
-impl EventHandler {
+impl EventManager {
+    /// Create an event manager and subscribe to crossterm events.
     pub fn new() -> Self {
         let (sender, receiver) = channel::<AppEvent>();
         Self { sender, receiver }.subscribe_to_crossterm()
     }
 
+    /// Wait for the next event.
     pub fn next(&self) -> Result<AppEvent, RecvError> {
         self.receiver.recv()
     }
