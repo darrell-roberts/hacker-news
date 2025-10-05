@@ -38,6 +38,7 @@ pub struct IndexRebuildState {
 }
 
 impl IndexRebuildState {
+    /// Rebuild status as completion percentage.
     pub fn percent(&self) -> u16 {
         ((self.total_rebuilt / self.total_items) * 100.) as u16
     }

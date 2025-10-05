@@ -24,10 +24,7 @@ pub struct EventHandler {
 impl EventHandler {
     pub fn new() -> Self {
         let (sender, receiver) = channel::<AppEvent>();
-
-        let s = Self { sender, receiver };
-        s.subscribe_to_crossterm();
-        s
+        Self { sender, receiver }.subscribe_to_crossterm()
     }
 
     pub fn next(&self) -> Result<AppEvent, RecvError> {
@@ -35,7 +32,7 @@ impl EventHandler {
     }
 
     /// Keyboard and mouse events.
-    fn subscribe_to_crossterm(&self) {
+    fn subscribe_to_crossterm(self) -> Self {
         let tx = self.sender.clone();
         thread::spawn(move || {
             loop {
@@ -44,6 +41,7 @@ impl EventHandler {
                     .expect("App event receiver is gone");
             }
         });
+        self
     }
 
     /// Spawn a tokio task that will emit rebuild index events
