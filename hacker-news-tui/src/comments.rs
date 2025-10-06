@@ -33,23 +33,24 @@ impl StatefulWidget for &mut CommentsWidget {
         Self: Sized,
     {
         let mut scroll_view = tui_scrollview::ScrollView::new(area.as_size())
-            .horizontal_scrollbar_visibility(ScrollbarVisibility::Never)
+            // .horizontal_scrollbar_visibility(ScrollbarVisibility::Never)
             .vertical_scrollbar_visibility(ScrollbarVisibility::Always);
         let mut y = 0;
 
-        let comment_height = 10;
+        let paragraph_width = area.width - 5;
 
         for paragraph in state.comments.iter().map(|item| render_comment(item)) {
+            let height = paragraph.line_count(paragraph_width);
             scroll_view.render_widget(
                 paragraph,
                 Rect {
                     x: 0,
                     y,
                     width: area.width - 5,
-                    height: comment_height,
+                    height: height as u16,
                 },
             );
-            y += comment_height;
+            y += height as u16;
             if y >= area.height - 5 {
                 break;
             }
@@ -67,12 +68,13 @@ fn render_comment<'a>(item: &'a Comment) -> Paragraph<'a> {
         .into_iter()
         .collect::<Vec<_>>();
 
-    Paragraph::new(Line::from(lines))
+    Paragraph::new(lines)
         .block(Block::bordered().title(item.by.as_str()))
         .wrap(Wrap { trim: true })
 }
 
-fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>> {
+fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
+    let mut lines = Vec::new();
     let mut text_spans = Vec::new();
 
     for element in elements {
@@ -93,19 +95,64 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>> {
                 text_spans.push(Span::styled(c.to_string(), base_style));
             }
             Element::Paragraph => {
-                text_spans.push(Span::styled("\n", base_style));
+                lines.extend([Line::raw(""), Line::from(text_spans), Line::raw("")]);
+                text_spans = Vec::new();
             }
             Element::Code(c) => {
                 text_spans.push(Span::styled(c, Style::default()));
             }
             Element::Italic(elements) => {
-                text_spans.extend(spans(elements, base_style.add_modifier(Modifier::ITALIC)));
+                text_spans.extend(sub_spans(
+                    elements,
+                    base_style.add_modifier(Modifier::ITALIC),
+                ));
             }
             Element::Bold(elements) => {
-                text_spans.extend(spans(elements, base_style.add_modifier(Modifier::BOLD)));
+                text_spans.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
             }
         }
     }
 
+    if !text_spans.is_empty() {
+        lines.push(Line::from(text_spans));
+    }
+
+    lines
+}
+
+fn sub_spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>> {
+    let mut text_spans = Vec::new();
+    for element in elements {
+        match element {
+            Element::Text(s) => {
+                text_spans.push(Span::styled(s, base_style));
+            }
+            Element::Link(anchor) => {
+                let href_attr = anchor.attributes.iter().find(|attr| attr.name == "href");
+                if let Some(href_attr) = href_attr {
+                    text_spans.push(Span::styled(
+                        href_attr.value.to_string(),
+                        Style::default().add_modifier(Modifier::UNDERLINED),
+                    ));
+                }
+            }
+            Element::Escaped(c) => {
+                text_spans.push(Span::styled(c.to_string(), base_style));
+            }
+            Element::Paragraph => {}
+            Element::Code(c) => {
+                text_spans.push(Span::styled(c, Style::default()));
+            }
+            Element::Italic(elements) => {
+                text_spans.extend(sub_spans(
+                    elements,
+                    base_style.add_modifier(Modifier::ITALIC),
+                ));
+            }
+            Element::Bold(elements) => {
+                text_spans.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
+            }
+        }
+    }
     text_spans
 }
