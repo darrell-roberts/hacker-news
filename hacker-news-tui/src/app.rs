@@ -316,7 +316,15 @@ impl Widget for &mut App {
 
         match self.comment_state.as_mut() {
             Some(comment_state) => {
-                CommentsWidget::default().render(content_area, buf, comment_state);
+                let selected_title = self
+                    .selected_item
+                    .and_then(|id| self.top_stories.get(id))
+                    .map(|story| story.title.as_str());
+                CommentsWidget::new(selected_title.unwrap_or_default()).render(
+                    content_area,
+                    buf,
+                    comment_state,
+                );
             }
             None => {
                 ArticlesWidget::new(self.selected_item).render(
