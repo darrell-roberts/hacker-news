@@ -63,41 +63,49 @@ fn render_comment<'a>(item: &'a Comment) -> Paragraph<'a> {
     debug!("rendering comment for {}", item.id);
     let elements = html_sanitizer::parse_elements(&item.body);
 
-    let lines = spans(elements)
+    let lines = spans(elements, Style::default())
         .into_iter()
-        .map(Line::from)
         .collect::<Vec<_>>();
 
-    Paragraph::new(lines)
+    Paragraph::new(Line::from(lines))
         .block(Block::bordered().title(item.by.as_str()))
         .wrap(Wrap { trim: true })
 }
 
-fn spans<'a>(elements: Vec<Element<'a>>) -> Vec<Span<'a>> {
-    elements
-        .into_iter()
-        .map(|element| match element {
-            Element::Text(s) => Span::styled(s, Style::default()),
+fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>> {
+    let mut text_spans = Vec::new();
+
+    for element in elements {
+        match element {
+            Element::Text(s) => {
+                text_spans.push(Span::styled(s, base_style));
+            }
             Element::Link(anchor) => {
                 let href_attr = anchor.attributes.iter().find(|attr| attr.name == "href");
                 if let Some(href_attr) = href_attr {
-                    Span::styled(
+                    text_spans.push(Span::styled(
                         href_attr.value.to_string(),
                         Style::default().add_modifier(Modifier::UNDERLINED),
-                    )
-                } else {
-                    Span::raw("")
+                    ));
                 }
             }
-            Element::Escaped(c) => Span::styled(c.to_string(), Style::default()),
-            Element::Paragraph => Span::styled("\n", Style::default()),
-            Element::Code(c) => Span::styled(c, Style::default()),
+            Element::Escaped(c) => {
+                text_spans.push(Span::styled(c.to_string(), base_style));
+            }
+            Element::Paragraph => {
+                text_spans.push(Span::styled("\n", base_style));
+            }
+            Element::Code(c) => {
+                text_spans.push(Span::styled(c, Style::default()));
+            }
             Element::Italic(elements) => {
-                Span::styled("", Style::default().add_modifier(Modifier::ITALIC))
+                text_spans.extend(spans(elements, base_style.add_modifier(Modifier::ITALIC)));
             }
             Element::Bold(elements) => {
-                Span::styled("", Style::default().add_modifier(Modifier::BOLD))
+                text_spans.extend(spans(elements, base_style.add_modifier(Modifier::BOLD)));
             }
-        })
-        .collect()
+        }
+    }
+
+    text_spans
 }
