@@ -132,7 +132,9 @@ impl App {
     fn move_up(&mut self, interval: usize) {
         match self.comment_state.as_mut() {
             Some(state) => {
-                state.scroll_view_state.scroll_up();
+                let mut position = state.scroll_view_state.offset();
+                position.y = position.y.saturating_sub(interval as u16);
+                state.scroll_view_state.set_offset(position);
             }
             None => {
                 self.selected_item = self.selected_item.and_then(|n| n.checked_sub(interval));
@@ -143,7 +145,9 @@ impl App {
     fn move_down(&mut self, interval: usize) {
         match self.comment_state.as_mut() {
             Some(state) => {
-                state.scroll_view_state.scroll_down();
+                let mut position = state.scroll_view_state.offset();
+                position.y = position.y.saturating_add(interval as u16);
+                state.scroll_view_state.set_offset(position);
             }
             None => {
                 let result = self
@@ -184,11 +188,23 @@ impl App {
             (_, KeyCode::PageUp) => {
                 self.move_up(10);
             }
-            (_, KeyCode::Home) => {
-                self.selected_item = None;
-            }
+            (_, KeyCode::Home) => match self.comment_state.as_mut() {
+                Some(state) => {
+                    state.scroll_view_state.scroll_to_top();
+                }
+                None => {
+                    self.selected_item = None;
+                }
+            },
             (_, KeyCode::End) | (KeyModifiers::SHIFT, KeyCode::Char('G')) => {
-                self.selected_item = Some(self.top_stories.len() - 1);
+                match self.comment_state.as_mut() {
+                    Some(state) => {
+                        state.scroll_view_state.scroll_to_bottom();
+                    }
+                    None => {
+                        self.selected_item = Some(self.top_stories.len() - 1);
+                    }
+                }
             }
             // Rebuild the index.
             (_, KeyCode::Char('r')) => {

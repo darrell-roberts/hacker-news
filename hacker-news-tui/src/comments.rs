@@ -4,12 +4,12 @@ use html_sanitizer::Element;
 use log::debug;
 use ratatui::{
     buffer::Buffer,
-    layout::Rect,
+    layout::{Rect, Size},
     style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Paragraph, StatefulWidget, Wrap},
 };
-use tui_scrollview::{ScrollViewState, ScrollbarVisibility};
+use tui_scrollview::ScrollViewState;
 
 pub struct CommentState {
     pub parent_id: u64,
@@ -32,28 +32,41 @@ impl StatefulWidget for &mut CommentsWidget {
     where
         Self: Sized,
     {
-        let mut scroll_view = tui_scrollview::ScrollView::new(area.as_size())
-            // .horizontal_scrollbar_visibility(ScrollbarVisibility::Never)
-            .vertical_scrollbar_visibility(ScrollbarVisibility::Always);
+        let paragraph_widgets = state
+            .comments
+            .iter()
+            .map(render_comment)
+            .collect::<Vec<_>>();
+
+        let scroll_view_height: u16 = paragraph_widgets
+            .iter()
+            .map(|p| p.line_count(buf.area.width))
+            .sum::<usize>() as u16
+            + 5;
+
+        let width = if buf.area.height < scroll_view_height {
+            buf.area.width - 1
+        } else {
+            buf.area.width
+        };
+
+        let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
         let mut y = 0;
 
-        let paragraph_width = area.width - 5;
+        let paragraph_width = width - 2;
 
-        for paragraph in state.comments.iter().map(|item| render_comment(item)) {
+        for paragraph in paragraph_widgets {
             let height = paragraph.line_count(paragraph_width);
             scroll_view.render_widget(
                 paragraph,
                 Rect {
                     x: 0,
                     y,
-                    width: area.width - 5,
+                    width: paragraph_width,
                     height: height as u16,
                 },
             );
             y += height as u16;
-            if y >= area.height - 5 {
-                break;
-            }
         }
 
         scroll_view.render(area, buf, &mut state.scroll_view_state);
