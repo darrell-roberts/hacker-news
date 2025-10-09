@@ -13,7 +13,7 @@ use crossterm::event::{
     self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
 };
 use hacker_news_api::ArticleType;
-use hacker_news_search::{RebuildProgress, SearchContext, api::Story, api_client};
+use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api::Story, api_client};
 use log::{debug, error};
 use ratatui::{
     DefaultTerminal,
@@ -32,6 +32,7 @@ pub struct App {
     selected_item: Option<usize>,
     pub rebuild_progress: Option<IndexRebuildState>,
     pub comment_state: Option<CommentState>,
+    pub index_stats: Option<IndexStats>,
 }
 
 pub const APP_INFO: AppInfo = AppInfo {
@@ -64,6 +65,7 @@ impl App {
             selected_item: None,
             rebuild_progress: None,
             comment_state: None,
+            index_stats: None,
         })
     }
 
@@ -82,6 +84,18 @@ impl App {
             AppEvent::CrossTerm(event) => self.handle_crossterm_event(event),
             AppEvent::UpdateProgress(rebuild_progress) => {
                 self.handle_rebuild_progress(rebuild_progress)
+            }
+            AppEvent::IndexingCompleted(index_stats) => {
+                let top_stories = self.search_context.read().unwrap().top_stories(75, 0);
+                match top_stories {
+                    Ok(stories) => {
+                        self.top_stories = stories;
+                    }
+                    Err(err) => {
+                        error!("Failed to fetch top stories: {err}");
+                    }
+                }
+                self.index_stats.replace(index_stats);
             }
         }
     }

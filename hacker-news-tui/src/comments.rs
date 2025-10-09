@@ -30,6 +30,8 @@ impl<'a> CommentsWidget<'a> {
     pub fn new(article_title: &'a str) -> Self {
         Self { article_title }
     }
+
+    fn check_viewing_comment_visibility(&mut self) {}
 }
 
 impl<'a> StatefulWidget for &mut CommentsWidget<'a> {

@@ -10,7 +10,8 @@ use std::{
 use crossterm::event;
 use futures::StreamExt as _;
 use hacker_news_api::ArticleType;
-use hacker_news_search::{RebuildProgress, SearchContext};
+use hacker_news_search::{IndexStats, RebuildProgress, SearchContext};
+use log::error;
 
 #[derive(Debug)]
 pub struct IndexRebuildState {
@@ -33,6 +34,8 @@ pub enum AppEvent {
     CrossTerm(event::Event),
     /// Index rebuild progress event.
     UpdateProgress(RebuildProgress),
+    /// Indexing completed
+    IndexingCompleted(IndexStats),
 }
 
 /// Event manager.
@@ -77,7 +80,23 @@ impl EventManager {
             }
         });
 
-        let fut = hacker_news_search::rebuild_index(search_context, ArticleType::Top, tx);
-        tokio::spawn(fut);
+        tokio::spawn(rebuild(search_context, tx, self.sender.clone()));
+    }
+}
+
+async fn rebuild(
+    search_context: Arc<RwLock<SearchContext>>,
+    tx_progress: futures::channel::mpsc::Sender<RebuildProgress>,
+    tx_result: Sender<AppEvent>,
+) {
+    let stats =
+        hacker_news_search::rebuild_index(search_context, ArticleType::Top, tx_progress).await;
+    match stats {
+        Ok(stats) => {
+            tx_result.send(AppEvent::IndexingCompleted(stats)).unwrap();
+        }
+        Err(err) => {
+            error!("Failed to build index: {err}");
+        }
     }
 }
