@@ -4,9 +4,9 @@ use html_sanitizer::Element;
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect, Size},
-    style::{Modifier, Style},
+    style::{Modifier, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, Paragraph, StatefulWidget, Widget, Wrap},
+    widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget, Wrap},
 };
 use tui_scrollview::ScrollViewState;
 
@@ -18,7 +18,6 @@ pub struct CommentState {
     pub comments: Vec<Comment>,
     pub total_comments: usize,
     pub scroll_view_state: ScrollViewState,
-    // pub list_state: ListState,
 }
 
 #[derive(Default)]
@@ -47,7 +46,8 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
         let paragraph_widgets = state
             .comments
             .iter()
-            .map(render_comment)
+            .zip(0..)
+            .map(|(item, index)| render_comment(item, state.viewing == Some(index)))
             .collect::<Vec<_>>();
 
         let scroll_view_height: u16 = paragraph_widgets
@@ -85,16 +85,27 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
     }
 }
 
-fn render_comment<'a>(item: &'a Comment) -> Paragraph<'a> {
+fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
     let elements = html_sanitizer::parse_elements(&item.body);
 
     let lines = spans(elements, Style::default())
         .into_iter()
+        .chain([Line::raw(format!("[{}]", item.kids.len()))])
         .collect::<Vec<_>>();
 
     Paragraph::new(lines)
         .block(
             Block::bordered()
+                .border_style(if selected {
+                    Style::new().green().on_black()
+                } else {
+                    Style::new()
+                })
+                .border_type(if selected {
+                    BorderType::QuadrantInside
+                } else {
+                    BorderType::Plain
+                })
                 .title_bottom(format!("by {} [{}]", item.by.as_str(), item.kids.len()))
                 .title_alignment(Alignment::Right),
         )

@@ -282,6 +282,25 @@ impl App {
                 debug!("Closing comment view");
                 self.comment_state = None;
             }
+            (KeyModifiers::SHIFT, KeyCode::BackTab) => {
+                if let Some(state) = self.comment_state.as_mut()
+                    && let Some(n) = state.viewing.as_mut()
+                {
+                    *n = n.saturating_sub(1);
+                }
+            }
+            (_, KeyCode::Tab) => {
+                if let Some(state) = self.comment_state.as_mut() {
+                    match state.viewing.as_mut() {
+                        Some(n) => {
+                            *n = n.saturating_add(1);
+                        }
+                        None => {
+                            state.viewing.replace(0);
+                        }
+                    }
+                }
+            }
 
             _ => {}
         }
