@@ -18,6 +18,7 @@ pub struct CommentState {
     pub comments: Vec<Comment>,
     pub total_comments: usize,
     pub scroll_view_state: ScrollViewState,
+    pub child_stack: Vec<u64>,
 }
 
 #[derive(Default)]
@@ -90,7 +91,7 @@ fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
 
     let lines = spans(elements, Style::default())
         .into_iter()
-        .chain([Line::raw(format!("[{}]", item.kids.len()))])
+        // .chain([Line::raw(format!("[{}]", item.kids.len()))])
         .collect::<Vec<_>>();
 
     Paragraph::new(lines)
@@ -106,7 +107,12 @@ fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
                 } else {
                     BorderType::Plain
                 })
-                .title_bottom(format!("by {} [{}]", item.by.as_str(), item.kids.len()))
+                .title_bottom(format!(
+                    "by {} [{}] ({})",
+                    item.by.as_str(),
+                    item.kids.len(),
+                    item.id
+                ))
                 .title_alignment(Alignment::Right),
         )
         .wrap(Wrap { trim: true })

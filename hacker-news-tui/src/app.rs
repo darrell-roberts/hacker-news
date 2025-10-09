@@ -170,10 +170,35 @@ impl App {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
-                if self.comment_state.is_some() {
-                    self.comment_state = None;
-                } else {
-                    self.quit();
+                match self.comment_state.as_mut() {
+                    Some(state) => {
+                        let parent_id = state.child_stack.pop();
+                        match parent_id {
+                            Some(parent_id) => {
+                                state.parent_id = parent_id;
+                                let comments = self
+                                    .search_context
+                                    .read()
+                                    .unwrap()
+                                    .comments(parent_id, 10, 0);
+                                match comments {
+                                    Ok((comments, total)) => {
+                                        state.comments = comments;
+                                        state.total_comments = total;
+                                    }
+                                    Err(err) => {
+                                        error!("Failed to get comments: {err}");
+                                    }
+                                }
+                            }
+                            None => {
+                                self.comment_state = None;
+                            }
+                        }
+                    }
+                    None => {
+                        self.quit();
+                    }
                 }
             }
             (_, KeyCode::Down | KeyCode::Char('j')) => {
@@ -225,9 +250,16 @@ impl App {
                     // The viewing comment is being requested to open children.
                     Some(state) => {
                         debug!("opening child comment");
-                        if let Some(viewing) = state.viewing {
-                            state.parent_id = viewing;
+                        if let Some(parent_id) = state
+                            .viewing
+                            .and_then(|viewing| state.comments.get(viewing as usize))
+                            .map(|comment| comment.id)
+                        {
+                            state.child_stack.push(state.parent_id);
+                            state.parent_id = parent_id;
                             state.offset = 0;
+                            state.viewing = None;
+                            debug!("opening comments for {parent_id}");
                             let comments = self.search_context.read().unwrap().comments(
                                 state.parent_id,
                                 state.limit,
@@ -237,6 +269,7 @@ impl App {
                                 Ok((comments, total)) => {
                                     state.comments = comments;
                                     state.total_comments = total;
+                                    debug!("opened {} child comments", state.comments.len());
                                 }
                                 Err(err) => {
                                     error!("Failed to get comments: {err}");
@@ -268,6 +301,7 @@ impl App {
                                         comments,
                                         total_comments: total,
                                         scroll_view_state: Default::default(),
+                                        child_stack: Default::default(),
                                     });
                                 }
                                 Err(err) => {
