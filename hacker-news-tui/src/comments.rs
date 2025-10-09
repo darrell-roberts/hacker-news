@@ -1,5 +1,5 @@
 //! Comments view widget.
-use hacker_news_search::api::Comment;
+use hacker_news_search::api::{AgeLabel, Comment};
 use html_sanitizer::Element;
 use ratatui::{
     buffer::Buffer,
@@ -30,8 +30,6 @@ impl<'a> CommentsWidget<'a> {
     pub fn new(article_title: &'a str) -> Self {
         Self { article_title }
     }
-
-    fn check_viewing_comment_visibility(&mut self) {}
 }
 
 impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
@@ -93,7 +91,6 @@ fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
 
     let lines = spans(elements, Style::default())
         .into_iter()
-        // .chain([Line::raw(format!("[{}]", item.kids.len()))])
         .collect::<Vec<_>>();
 
     Paragraph::new(lines)
@@ -110,10 +107,11 @@ fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
                     BorderType::Plain
                 })
                 .title_bottom(format!(
-                    "by {} [{}] ({})",
+                    "by {} [{}] ({}) {}",
                     item.by.as_str(),
                     item.kids.len(),
-                    item.id
+                    item.id,
+                    item.age_label().unwrap_or_default()
                 ))
                 .title_alignment(Alignment::Right),
         )

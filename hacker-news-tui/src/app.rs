@@ -2,7 +2,7 @@
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    articles::ArticlesWidget,
+    articles::{ArticlesState, ArticlesWidget},
     comments::{CommentState, CommentsWidget},
     events::{AppEvent, EventManager, IndexRebuildState},
     footer::FooterWidget,
@@ -13,13 +13,13 @@ use crossterm::event::{
     self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
 };
 use hacker_news_api::ArticleType;
-use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api::Story, api_client};
+use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api_client};
 use log::{debug, error};
 use ratatui::{
     DefaultTerminal,
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    widgets::{StatefulWidget, Widget},
+    widgets::{ScrollbarState, StatefulWidget, Widget},
 };
 
 /// The main application which holds the state and logic of the application.
@@ -28,11 +28,10 @@ pub struct App {
     /// Is the application running?
     running: bool,
     search_context: Arc<RwLock<SearchContext>>,
-    top_stories: Vec<Story>,
-    selected_item: Option<usize>,
     pub rebuild_progress: Option<IndexRebuildState>,
     pub comment_state: Option<CommentState>,
     pub index_stats: Option<IndexStats>,
+    articles_state: ArticlesState,
 }
 
 pub const APP_INFO: AppInfo = AppInfo {
@@ -55,17 +54,22 @@ impl App {
             ArticleType::Top,
         )?));
 
-        let top_stories = search_context.read().unwrap().top_stories(75, 0)?;
+        let stories = search_context.read().unwrap().top_stories(75, 0)?;
+
+        let articles_state = ArticlesState {
+            stories,
+            list_state: Default::default(),
+            scrollbar_state: ScrollbarState::new(75),
+        };
 
         Ok(Self {
             event_manager: EventManager::new(),
             running: false,
             search_context,
-            top_stories,
-            selected_item: None,
             rebuild_progress: None,
             comment_state: None,
             index_stats: None,
+            articles_state,
         })
     }
 
@@ -89,7 +93,7 @@ impl App {
                 let top_stories = self.search_context.read().unwrap().top_stories(75, 0);
                 match top_stories {
                     Ok(stories) => {
-                        self.top_stories = stories;
+                        self.articles_state.stories = stories;
                     }
                     Err(err) => {
                         error!("Failed to fetch top stories: {err}");
@@ -134,10 +138,10 @@ impl App {
     fn on_mouse_event(&mut self, mouse_event: MouseEvent) {
         match mouse_event.kind {
             MouseEventKind::ScrollDown => {
-                self.move_up(3);
+                self.move_up(1);
             }
             MouseEventKind::ScrollUp => {
-                self.move_down(3);
+                self.move_down(1);
             }
             _ => (),
         }
@@ -151,7 +155,15 @@ impl App {
                 state.scroll_view_state.set_offset(position);
             }
             None => {
-                self.selected_item = self.selected_item.and_then(|n| n.checked_sub(interval));
+                let selected = self
+                    .articles_state
+                    .list_state
+                    .selected()
+                    .map(|n| n.saturating_sub(interval));
+                self.articles_state.list_state.select(selected);
+                for _ in 0..interval {
+                    self.articles_state.scrollbar_state.prev();
+                }
             }
         }
     }
@@ -164,17 +176,15 @@ impl App {
                 state.scroll_view_state.set_offset(position);
             }
             None => {
-                let result = self
-                    .selected_item
-                    .and_then(|n| n.checked_add(interval))
-                    .map(|n| {
-                        if n < self.top_stories.len() {
-                            n
-                        } else {
-                            self.top_stories.len() - 1
-                        }
-                    });
-                self.selected_item = result.or(Some(0));
+                let selected = self
+                    .articles_state
+                    .list_state
+                    .selected()
+                    .map(|n| n.saturating_add(interval));
+                self.articles_state.list_state.select(selected.or(Some(0)));
+                for _ in 0..interval {
+                    self.articles_state.scrollbar_state.next();
+                }
             }
         }
     }
@@ -232,7 +242,8 @@ impl App {
                     state.scroll_view_state.scroll_to_top();
                 }
                 None => {
-                    self.selected_item = None;
+                    self.articles_state.list_state.select(Some(0));
+                    self.articles_state.scrollbar_state.first();
                 }
             },
             (_, KeyCode::End) | (KeyModifiers::SHIFT, KeyCode::Char('G')) => {
@@ -241,7 +252,10 @@ impl App {
                         state.scroll_view_state.scroll_to_bottom();
                     }
                     None => {
-                        self.selected_item = Some(self.top_stories.len() - 1);
+                        self.articles_state
+                            .list_state
+                            .select(Some(self.articles_state.stories.len() - 1));
+                        self.articles_state.scrollbar_state.last();
                     }
                 }
             }
@@ -294,8 +308,10 @@ impl App {
                     // We are opening comments for a story
                     None => {
                         if let Some(selected_item) = self
-                            .selected_item
-                            .and_then(|id| self.top_stories.get(id))
+                            .articles_state
+                            .list_state
+                            .selected()
+                            .and_then(|id| self.articles_state.stories.get(id))
                             .map(|story| story.id)
                         {
                             debug!("opening comments for selected article: {selected_item}");
@@ -355,8 +371,10 @@ impl App {
     }
 
     pub fn select_item_url(&self) -> Option<&str> {
-        self.selected_item
-            .and_then(|selected| self.top_stories.get(selected))
+        self.articles_state
+            .list_state
+            .selected()
+            .and_then(|selected| self.articles_state.stories.get(selected))
             .and_then(|item| item.url.as_deref())
     }
 
@@ -384,8 +402,10 @@ impl Widget for &mut App {
         match self.comment_state.as_mut() {
             Some(comment_state) => {
                 let selected_title = self
-                    .selected_item
-                    .and_then(|id| self.top_stories.get(id))
+                    .articles_state
+                    .list_state
+                    .selected()
+                    .and_then(|id| self.articles_state.stories.get(id))
                     .map(|story| story.title.as_str());
                 CommentsWidget::new(selected_title.unwrap_or_default()).render(
                     content_area,
@@ -394,11 +414,7 @@ impl Widget for &mut App {
                 );
             }
             None => {
-                ArticlesWidget::new(self.selected_item).render(
-                    content_area,
-                    buf,
-                    &mut self.top_stories,
-                );
+                ArticlesWidget.render(content_area, buf, &mut self.articles_state);
             }
         }
         FooterWidget::new(self).render(footer_area, buf);

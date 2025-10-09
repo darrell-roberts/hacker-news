@@ -1,5 +1,5 @@
 //! Articles list widget.
-use hacker_news_search::api::Story;
+use hacker_news_search::api::{AgeLabel as _, Story};
 use ratatui::{
     style::{Style, Stylize as _},
     text::{Line, Span},
@@ -8,22 +8,18 @@ use ratatui::{
     },
 };
 
-/// Widget to render list of articles.
-pub struct ArticlesWidget {
-    list_state: ListState,
+#[derive(Default)]
+pub struct ArticlesState {
+    pub stories: Vec<Story>,
+    pub list_state: ListState,
+    pub scrollbar_state: ScrollbarState,
 }
 
-impl ArticlesWidget {
-    /// Create a new articles widget with optional selected item.
-    pub fn new(selected: Option<usize>) -> Self {
-        Self {
-            list_state: ListState::default().with_selected(selected),
-        }
-    }
-}
+/// Widget to render list of articles.
+pub struct ArticlesWidget;
 
 impl StatefulWidget for &mut ArticlesWidget {
-    type State = Vec<Story>;
+    type State = ArticlesState;
 
     fn render(
         self,
@@ -32,6 +28,7 @@ impl StatefulWidget for &mut ArticlesWidget {
         state: &mut Self::State,
     ) {
         let items = state
+            .stories
             .iter()
             .map(|item| render_article_line(item))
             .collect::<Vec<_>>();
@@ -40,17 +37,14 @@ impl StatefulWidget for &mut ArticlesWidget {
 
         List::new(items)
             .block(Block::bordered().title(title))
-            .highlight_style(Style::new().yellow())
-            .render(area, buf, &mut self.list_state);
+            .highlight_style(Style::new().green().on_black())
+            .render(area, buf, &mut state.list_state);
 
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .begin_symbol(Some("↑"))
             .end_symbol(Some("↓"));
 
-        let mut scrollbar_state =
-            ScrollbarState::new(state.len()).position(self.list_state.offset());
-
-        scrollbar.render(area, buf, &mut scrollbar_state);
+        scrollbar.render(area, buf, &mut state.scrollbar_state);
     }
 }
 
