@@ -1,4 +1,9 @@
 //! Background events
+use crossterm::event;
+use futures::StreamExt as _;
+use hacker_news_api::ArticleType;
+use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api::Story, update_story};
+use log::error;
 use std::{
     sync::{
         Arc, RwLock,
@@ -6,12 +11,6 @@ use std::{
     },
     thread,
 };
-
-use crossterm::event;
-use futures::StreamExt as _;
-use hacker_news_api::ArticleType;
-use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api::Story, update_story};
-use log::error;
 
 #[derive(Debug)]
 pub struct IndexRebuildState {

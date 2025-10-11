@@ -7,17 +7,17 @@ license = "MIT"
 edition = "2024"
 
 [dependencies]
+chrono.workspace = true
+chrono-tz.workspace = true
 color-eyre = "0.6"
 crossterm = "0.29"
-ratatui = { version = "0.29", features = ["unstable-rendered-line-info"] }
-chrono.workspace = true
 futures = "0.3"
 hacker-news-api.workspace = true
+hacker-news-config.workspace = true
 hacker-news-search.workspace = true
 html-sanitizer.workspace = true
 log.workspace = true
 open = "5"
+ratatui = { version = "0.29", features = ["unstable-rendered-line-info"] }
 tokio = { version = "1", features = ["rt"] }
 tui-scrollview = "0.5"
-hacker-news-config.workspace = true
-chrono-tz.workspace = true
