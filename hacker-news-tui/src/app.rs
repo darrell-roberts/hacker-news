@@ -231,10 +231,11 @@ impl App {
             (_, KeyCode::Up | KeyCode::Char('k')) => {
                 self.move_up(1);
             }
-            (_, KeyCode::PageDown) => {
+            (_, KeyCode::PageDown) | (KeyModifiers::CONTROL, KeyCode::Char('f')) => {
                 self.move_down(10);
             }
-            (_, KeyCode::PageUp) => {
+            (_, KeyCode::PageUp)
+            | (KeyModifiers::CONTROL, KeyCode::Char('b') | KeyCode::Char('u')) => {
                 self.move_up(10);
             }
             (_, KeyCode::Home) => match self.comment_state.as_mut() {

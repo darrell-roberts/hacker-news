@@ -140,7 +140,11 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                 text_spans.push(Span::styled(c.to_string(), base_style));
             }
             Element::Paragraph => {
-                lines.extend([Line::raw(""), Line::from(text_spans), Line::raw("")]);
+                if lines.is_empty() {
+                    lines.extend([Line::from(text_spans), Line::raw("")]);
+                } else {
+                    lines.extend([Line::raw(""), Line::from(text_spans), Line::raw("")]);
+                }
                 text_spans = Vec::new();
             }
             Element::Code(c) => {
