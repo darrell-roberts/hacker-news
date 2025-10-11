@@ -20,3 +20,4 @@ open = "5"
 tokio = { version = "1", features = ["rt"] }
 tui-scrollview = "0.5"
 hacker-news-config.workspace = true
+chrono-tz.workspace = true

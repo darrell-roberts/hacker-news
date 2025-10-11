@@ -99,6 +99,16 @@ impl App {
 
                 self.index_stats.replace(index_stats);
             }
+            AppEvent::StoryUpdated(story) => {
+                if let Some(s) = self
+                    .articles_state
+                    .stories
+                    .iter_mut()
+                    .find(|s| s.id == story.id)
+                {
+                    *s = story;
+                }
+            }
         }
     }
 
@@ -379,6 +389,21 @@ impl App {
                     }
                 }
             }
+            (_, KeyCode::Char('u')) => match self.comment_state.as_mut() {
+                Some(_) => {}
+                None => {
+                    let story = self
+                        .articles_state
+                        .list_state
+                        .selected()
+                        .and_then(|selected| self.articles_state.stories.get(selected))
+                        .cloned();
+                    if let Some(story) = story {
+                        self.event_manager
+                            .update_story(self.search_context.clone(), story);
+                    }
+                }
+            },
 
             _ => {}
         }

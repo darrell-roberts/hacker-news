@@ -1,4 +1,6 @@
 //! Comments view widget.
+use std::borrow::Cow;
+
 use hacker_news_search::api::{AgeLabel, Comment};
 use html_sanitizer::Element;
 use ratatui::{
@@ -95,6 +97,18 @@ fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
         .into_iter()
         .collect::<Vec<_>>();
 
+    let title = Line::from_iter([
+        Cow::Borrowed("by "),
+        Cow::Borrowed(item.by.as_str()),
+        Cow::Borrowed(" "),
+        Cow::Owned(item.age_label().unwrap_or_default()),
+        if item.kids.is_empty() {
+            Cow::Borrowed("")
+        } else {
+            Cow::Owned(format!(" [{}]", item.kids.len()))
+        },
+    ]);
+
     Paragraph::new(lines)
         .block(
             Block::bordered()
@@ -108,13 +122,7 @@ fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
                 } else {
                     BorderType::Plain
                 })
-                .title_bottom(format!(
-                    "by {} [{}] ({}) {}",
-                    item.by.as_str(),
-                    item.kids.len(),
-                    item.id,
-                    item.age_label().unwrap_or_default()
-                ))
+                .title_bottom(title)
                 .title_alignment(Alignment::Right),
         )
         .wrap(Wrap { trim: true })

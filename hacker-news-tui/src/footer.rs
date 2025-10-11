@@ -1,6 +1,9 @@
 //! Footer widget.
+use std::{borrow::Cow, time::Duration};
+
 use crate::App;
 use chrono::{DateTime, Utc};
+use chrono_tz::America::New_York;
 use ratatui::{
     layout::{Constraint, Layout},
     text::Line,
@@ -35,12 +38,19 @@ impl<'a> Widget for FooterWidget<'a> {
                 let [url, index_stats] =
                     Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).areas(area);
                 Line::raw(self.app.select_item_url().unwrap_or_default()).render(url, buf);
-                if let Some(built) = self
-                    .app
-                    .index_stats
-                    .and_then(|stats| local_time(stats.built_on))
-                {
-                    Line::raw(format!("Updated {built}")).render(index_stats, buf);
+                if let Some(stats) = self.app.index_stats {
+                    Line::from_iter([
+                        Cow::Owned(format!(
+                            "Updated in {} on ",
+                            duration_string(stats.build_time)
+                        )),
+                        match local_time(stats.built_on) {
+                            Some(built_on) => Cow::Owned(built_on),
+                            None => Cow::Borrowed(""),
+                        },
+                        Cow::Owned(format!(". Total comments: {}", stats.total_comments)),
+                    ])
+                    .render(index_stats, buf);
                 }
             }
         }
@@ -48,7 +58,20 @@ impl<'a> Widget for FooterWidget<'a> {
 }
 
 fn local_time(ts: u64) -> Option<String> {
-    let build_date = DateTime::<Utc>::from_timestamp(ts.try_into().ok()?, 0)?;
-    let local = build_date.naive_local();
-    Some(local.format("%c").to_string())
+    let build_date = DateTime::<Utc>::from_timestamp(ts.try_into().ok()?, 0)
+        .map(|dt| dt.with_timezone(&New_York))?;
+    Some(build_date.format("%d/%m/%y %H:%M").to_string())
+}
+
+fn duration_string(elapsed: Duration) -> String {
+    match (elapsed.as_secs(), elapsed.as_millis()) {
+        (0, ms) => format!("{ms} ms"),
+        (secs @ 1..60, ms) => format!("{secs} seconds and {} ms", ms % 60),
+        (secs @ 60..=3600, _) => {
+            format!("{} minutes", secs / 60)
+        }
+        (secs, _) => {
+            format!("{} hours", secs / 3600)
+        }
+    }
 }

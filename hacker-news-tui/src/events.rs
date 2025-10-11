@@ -10,7 +10,7 @@ use std::{
 use crossterm::event;
 use futures::StreamExt as _;
 use hacker_news_api::ArticleType;
-use hacker_news_search::{IndexStats, RebuildProgress, SearchContext};
+use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api::Story, update_story};
 use log::error;
 
 #[derive(Debug)]
@@ -36,6 +36,8 @@ pub enum AppEvent {
     UpdateProgress(RebuildProgress),
     /// Indexing completed
     IndexingCompleted(IndexStats),
+    /// Story updated
+    StoryUpdated(Story),
 }
 
 /// Event manager.
@@ -81,6 +83,24 @@ impl EventManager {
         });
 
         tokio::spawn(rebuild(search_context, tx, self.sender.clone()));
+    }
+
+    /// Update a single story.
+    pub fn update_story(&self, search_context: Arc<RwLock<SearchContext>>, story: Story) {
+        let tx = self.sender.clone();
+        tokio::spawn(async move {
+            let result = update_story(search_context, story).await;
+            match result {
+                Ok(story) => {
+                    if let Some(story) = story {
+                        tx.send(AppEvent::StoryUpdated(story)).unwrap();
+                    }
+                }
+                Err(err) => {
+                    error!("Failed to update story: {err}");
+                }
+            }
+        });
     }
 }
 
