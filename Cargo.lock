@@ -3136,6 +3136,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "hacker-news-config"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app_dirs2",
+ "flexi_logger",
+ "hacker-news-api",
+ "hacker-news-search",
+ "rmp-serde",
+ "serde",
+ "tokio",
+]
+
+[[package]]
 name = "hacker-news-gpui"
 version = "0.1.0"
 dependencies = [
@@ -3157,16 +3171,15 @@ name = "hacker-news-iced"
 version = "0.1.16"
 dependencies = [
  "anyhow",
- "app_dirs2",
  "chrono",
  "chrono-tz",
  "console-subscriber",
  "either",
- "flexi_logger",
  "futures",
  "gio",
  "glib",
  "hacker-news-api",
+ "hacker-news-config",
  "hacker-news-search",
  "html-sanitizer",
  "iced",
@@ -3179,7 +3192,6 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
- "rmp-serde",
  "serde",
  "tokio",
  "tracing",
@@ -3211,12 +3223,12 @@ dependencies = [
 name = "hacker-news-tui"
 version = "0.1.0"
 dependencies = [
- "app_dirs2",
+ "chrono",
  "color-eyre",
  "crossterm 0.29.0",
- "flexi_logger",
  "futures",
  "hacker-news-api",
+ "hacker-news-config",
  "hacker-news-search",
  "html-sanitizer",
  "log",

@@ -1,12 +1,16 @@
 //! A hacker news reader for the terminal.
-use app_dirs2::get_app_dir;
-use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 
-use crate::app::{APP_INFO, App};
+use std::error::Error;
+
+use crate::{app::App, config::CONFIG_FILE};
+use color_eyre::eyre::Context;
+use hacker_news_config::{init_logger, load_config};
+use hacker_news_search::IndexStats;
 
 mod app;
 mod articles;
 mod comments;
+mod config;
 mod events;
 mod footer;
 
@@ -14,29 +18,15 @@ mod footer;
 /// in tokio in order to use the `hacker-news-search`
 /// API's which are async.
 #[tokio::main]
-async fn main() -> color_eyre::Result<()> {
+async fn main() -> Result<(), Box<dyn Error>> {
     color_eyre::install()?;
 
-    let log_dir = get_app_dir(app_dirs2::AppDataType::UserData, &APP_INFO, "logs")?;
+    init_logger()?;
 
-    println!("Writing logs to {log_dir:?}");
-
-    let _logger = flexi_logger::Logger::try_with_env_or_str("info")?
-        .log_to_file(
-            FileSpec::default()
-                .directory(log_dir)
-                .basename("hacker-news"),
-        )
-        .rotate(
-            Criterion::Age(Age::Day),
-            Naming::Timestamps,
-            Cleanup::KeepLogFiles(5),
-        )
-        .print_message()
-        .start()?;
+    let config = load_config::<IndexStats>(CONFIG_FILE).ok();
 
     let terminal = ratatui::init();
-    let result = App::new()?.run(terminal);
+    let result = App::new(config)?.run(terminal);
     ratatui::restore();
-    result
+    Ok(result.context("Run failed")?)
 }

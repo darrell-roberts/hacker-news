@@ -1,7 +1,8 @@
 //! Articles list widget.
 use hacker_news_search::api::{AgeLabel as _, Story};
 use ratatui::{
-    layout::{Constraint, Layout},
+    buffer::Buffer,
+    layout::{Constraint, Layout, Rect},
     style::{Style, Stylize as _},
     text::{Line, Span},
     widgets::{
@@ -14,6 +15,7 @@ pub struct ArticlesState {
     pub stories: Vec<Story>,
     pub list_state: ListState,
     pub scrollbar_state: ScrollbarState,
+    pub page_height: u16,
 }
 
 /// Widget to render list of articles.
@@ -22,12 +24,7 @@ pub struct ArticlesWidget;
 impl StatefulWidget for &mut ArticlesWidget {
     type State = ArticlesState;
 
-    fn render(
-        self,
-        area: ratatui::prelude::Rect,
-        buf: &mut ratatui::prelude::Buffer,
-        state: &mut Self::State,
-    ) {
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let items = state
             .stories
             .iter()
@@ -39,6 +36,8 @@ impl StatefulWidget for &mut ArticlesWidget {
 
         let [content, scroll] =
             Layout::horizontal([Constraint::Fill(1), Constraint::Length(2)]).areas(area);
+
+        state.page_height = area.height - 2;
 
         List::new(items)
             .block(Block::bordered().title(title))

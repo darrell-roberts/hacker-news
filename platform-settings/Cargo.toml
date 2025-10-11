@@ -5,8 +5,8 @@ license.workspace = true
 edition.workspace = true
 
 [dependencies]
-log.workspace = true
 futures = "0.3"
+log.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gio = "0.21"

@@ -19,6 +19,7 @@ pub struct CommentState {
     pub total_comments: usize,
     pub scroll_view_state: ScrollViewState,
     pub child_stack: Vec<u64>,
+    pub page_height: u16,
 }
 
 #[derive(Default)]
@@ -82,6 +83,7 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
             y += height as u16;
         }
 
+        state.page_height = scroll_view.area().height;
         scroll_view.render(body, buf, &mut state.scroll_view_state);
     }
 }

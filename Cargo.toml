@@ -1,12 +1,13 @@
 [workspace]
 members = [
-    "hacker-news-api",
-    "hacker-news-gpui",
-    "hacker-news-iced",
-    "hacker-news-search",
-    "hacker-news-tui",
-    "html-sanitizer",
-    "platform-settings",
+  "hacker-news-api",
+  "hacker-news-config",
+  "hacker-news-gpui",
+  "hacker-news-iced",
+  "hacker-news-search",
+  "hacker-news-tui",
+  "html-sanitizer",
+  "platform-settings",
 ]
 resolver = "2"
 
@@ -31,6 +32,9 @@ path = "hacker-news-search"
 
 [workspace.dependencies.html-sanitizer]
 path = "html-sanitizer"
+
+[workspace.dependencies.hacker-news-config]
+path = "hacker-news-config"
 
 [workspace.dependencies.serde]
 version = "1"

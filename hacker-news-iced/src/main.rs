@@ -1,12 +1,11 @@
 use anyhow::Context;
 use app::{update, view, App, AppMsg, PaneState, ScrollBy};
-use app_dirs2::get_app_dir;
 use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
-use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 use footer::FooterState;
 use hacker_news_api::ArticleType;
-use hacker_news_search::{api_client, SearchContext};
+use hacker_news_config::{init_logger, load_config, search_context};
+use hacker_news_search::api_client;
 use header::{HeaderMsg, HeaderState};
 use iced::{
     advanced::graphics::core::window,
@@ -25,9 +24,10 @@ use log::{error, info};
 use nav_history::Content;
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, RwLock},
     time::Duration,
 };
+
+use crate::config::{Config, CONFIG_FILE};
 
 mod app;
 mod articles;
@@ -54,39 +54,14 @@ fn start() -> anyhow::Result<()> {
     // Load this here so if it fails we fail to launch.
     let _ = api_client();
 
-    let log_dir = get_app_dir(app_dirs2::AppDataType::UserData, &config::APP_INFO, "logs")?;
-
-    let _logger = flexi_logger::Logger::try_with_env_or_str("info")?
-        .log_to_file(
-            FileSpec::default()
-                .directory(log_dir)
-                .basename("hacker-news"),
-        )
-        .rotate(
-            Criterion::Age(Age::Day),
-            Naming::Timestamps,
-            Cleanup::KeepLogFiles(5),
-        )
-        .print_message()
-        .start()?;
+    init_logger()?;
 
     #[cfg(target_family = "unix")]
     check_nofiles_limit();
 
-    let index_dir = get_app_dir(
-        app_dirs2::AppDataType::UserData,
-        &config::APP_INFO,
-        "hacker-news-index",
-    )?;
+    let search_context = search_context()?;
 
-    info!("Reading index dir {index_dir:?}");
-
-    let search_context = Arc::new(RwLock::new(SearchContext::new(
-        &index_dir,
-        ArticleType::Top,
-    )?));
-
-    let mut app = config::load_config()
+    let mut app = load_config::<Config>(CONFIG_FILE)
         .map(|config| config.into_app(search_context.clone()))
         .unwrap_or_else(|err| {
             error!("Could not load config: {err}");

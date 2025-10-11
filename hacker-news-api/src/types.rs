@@ -95,10 +95,11 @@ where
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash, Serialize, Deserialize, Default)]
 pub enum ArticleType {
     New,
     Best,
+    #[default]
     Top,
     Ask,
     Show,

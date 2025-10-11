@@ -1,25 +1,27 @@
 //! App state, management and root widget.
-use std::sync::{Arc, RwLock};
-
 use crate::{
     articles::{ArticlesState, ArticlesWidget},
     comments::{CommentState, CommentsWidget},
+    config::CONFIG_FILE,
     events::{AppEvent, EventManager, IndexRebuildState},
     footer::FooterWidget,
 };
-use app_dirs2::{AppInfo, get_app_dir};
 use color_eyre::Result;
 use crossterm::event::{
     self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
 };
-use hacker_news_api::ArticleType;
+use hacker_news_config::{save_config, search_context};
 use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api_client};
-use log::{debug, error};
+use log::error;
 use ratatui::{
     DefaultTerminal,
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    widgets::{ScrollbarState, StatefulWidget, Widget},
+    widgets::{ListState, ScrollbarState, StatefulWidget, Widget},
+};
+use std::{
+    ops::Not as _,
+    sync::{Arc, RwLock},
 };
 
 /// The main application which holds the state and logic of the application.
@@ -34,32 +36,19 @@ pub struct App {
     articles_state: ArticlesState,
 }
 
-pub const APP_INFO: AppInfo = AppInfo {
-    name: "Hacker News",
-    author: "Somebody",
-};
-
 impl App {
     /// Construct a new instance of [`App`].
-    pub fn new() -> color_eyre::Result<Self> {
+    pub fn new(config: Option<IndexStats>) -> Result<Self, Box<dyn std::error::Error>> {
         let _ = api_client();
 
-        let index_dir = get_app_dir(
-            app_dirs2::AppDataType::UserData,
-            &APP_INFO,
-            "hacker-news-index",
-        )?;
-        let search_context = Arc::new(RwLock::new(SearchContext::new(
-            &index_dir,
-            ArticleType::Top,
-        )?));
-
+        let search_context = search_context()?;
         let stories = search_context.read().unwrap().top_stories(75, 0)?;
 
         let articles_state = ArticlesState {
+            list_state: ListState::default().with_selected(stories.is_empty().not().then_some(0)),
             stories,
-            list_state: Default::default(),
             scrollbar_state: ScrollbarState::new(75),
+            page_height: 0,
         };
 
         Ok(Self {
@@ -68,7 +57,7 @@ impl App {
             search_context,
             rebuild_progress: None,
             comment_state: None,
-            index_stats: None,
+            index_stats: config,
             articles_state,
         })
     }
@@ -93,12 +82,21 @@ impl App {
                 let top_stories = self.search_context.read().unwrap().top_stories(75, 0);
                 match top_stories {
                     Ok(stories) => {
+                        if !stories.is_empty() {
+                            self.articles_state.list_state.select(Some(0));
+                        }
                         self.articles_state.stories = stories;
                     }
                     Err(err) => {
                         error!("Failed to fetch top stories: {err}");
                     }
                 }
+                tokio::spawn(async move {
+                    if let Err(err) = save_config(index_stats, CONFIG_FILE).await {
+                        error!("Failed to save config: {err}");
+                    }
+                });
+
                 self.index_stats.replace(index_stats);
             }
         }
@@ -147,11 +145,11 @@ impl App {
         }
     }
 
-    fn move_up(&mut self, interval: usize) {
+    fn move_up(&mut self, interval: u16) {
         match self.comment_state.as_mut() {
             Some(state) => {
                 let mut position = state.scroll_view_state.offset();
-                position.y = position.y.saturating_sub(interval as u16);
+                position.y = position.y.saturating_sub(interval);
                 state.scroll_view_state.set_offset(position);
             }
             None => {
@@ -159,7 +157,7 @@ impl App {
                     .articles_state
                     .list_state
                     .selected()
-                    .map(|n| n.saturating_sub(interval));
+                    .map(|n| n.saturating_sub(interval as usize));
                 self.articles_state.list_state.select(selected);
                 for _ in 0..interval {
                     self.articles_state.scrollbar_state.prev();
@@ -168,11 +166,11 @@ impl App {
         }
     }
 
-    fn move_down(&mut self, interval: usize) {
+    fn move_down(&mut self, interval: u16) {
         match self.comment_state.as_mut() {
             Some(state) => {
                 let mut position = state.scroll_view_state.offset();
-                position.y = position.y.saturating_add(interval as u16);
+                position.y = position.y.saturating_add(interval);
                 state.scroll_view_state.set_offset(position);
             }
             None => {
@@ -180,8 +178,12 @@ impl App {
                     .articles_state
                     .list_state
                     .selected()
-                    .map(|n| n.saturating_add(interval));
-                self.articles_state.list_state.select(selected.or(Some(0)));
+                    .and_then(|n| u16::try_from(n).ok())
+                    .map(|n| n.saturating_add(interval))
+                    .or((interval > 1).then_some(interval));
+                self.articles_state
+                    .list_state
+                    .select(selected.or(Some(0_u16)).map(|n| n as usize));
                 for _ in 0..interval {
                     self.articles_state.scrollbar_state.next();
                 }
@@ -232,11 +234,25 @@ impl App {
                 self.move_up(1);
             }
             (_, KeyCode::PageDown) | (KeyModifiers::CONTROL, KeyCode::Char('f')) => {
-                self.move_down(10);
+                match self.comment_state.as_ref() {
+                    Some(state) => {
+                        self.move_down(state.page_height);
+                    }
+                    None => {
+                        self.move_down(self.articles_state.page_height);
+                    }
+                };
             }
             (_, KeyCode::PageUp)
             | (KeyModifiers::CONTROL, KeyCode::Char('b') | KeyCode::Char('u')) => {
-                self.move_up(10);
+                match self.comment_state.as_ref() {
+                    Some(state) => {
+                        self.move_up(state.page_height);
+                    }
+                    None => {
+                        self.move_up(self.articles_state.page_height);
+                    }
+                }
             }
             (_, KeyCode::Home) => match self.comment_state.as_mut() {
                 Some(state) => {
@@ -278,17 +294,16 @@ impl App {
                 match self.comment_state.as_mut() {
                     // The viewing comment is being requested to open children.
                     Some(state) => {
-                        debug!("opening child comment");
                         if let Some(parent_id) = state
                             .viewing
                             .and_then(|viewing| state.comments.get(viewing as usize))
+                            .filter(|comment| !comment.kids.is_empty())
                             .map(|comment| comment.id)
                         {
                             state.child_stack.push(state.parent_id);
                             state.parent_id = parent_id;
                             state.offset = 0;
                             state.viewing = None;
-                            debug!("opening comments for {parent_id}");
                             let comments = self.search_context.read().unwrap().comments(
                                 state.parent_id,
                                 state.limit,
@@ -298,7 +313,6 @@ impl App {
                                 Ok((comments, total)) => {
                                     state.comments = comments;
                                     state.total_comments = total;
-                                    debug!("opened {} child comments", state.comments.len());
                                 }
                                 Err(err) => {
                                     error!("Failed to get comments: {err}");
@@ -315,7 +329,6 @@ impl App {
                             .and_then(|id| self.articles_state.stories.get(id))
                             .map(|story| story.id)
                         {
-                            debug!("opening comments for selected article: {selected_item}");
                             let comments =
                                 self.search_context
                                     .read()
@@ -333,6 +346,7 @@ impl App {
                                         total_comments: total,
                                         scroll_view_state: Default::default(),
                                         child_stack: Default::default(),
+                                        page_height: 0,
                                     });
                                 }
                                 Err(err) => {
@@ -344,7 +358,6 @@ impl App {
                 }
             }
             (_, KeyCode::Left) => {
-                debug!("Closing comment view");
                 self.comment_state = None;
             }
             (KeyModifiers::SHIFT, KeyCode::BackTab) => {
@@ -395,7 +408,7 @@ impl Widget for &mut App {
             Constraint::Length(if self.rebuild_progress.is_some() {
                 3
             } else {
-                1
+                2
             }),
         ])
         .areas(area);
