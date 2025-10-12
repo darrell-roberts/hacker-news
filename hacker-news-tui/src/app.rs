@@ -445,11 +445,7 @@ impl App {
                 if let Some(viewing) = self.viewing_state.as_mut() {
                     match viewing {
                         Viewing::Comments(comment_state) => {
-                            let next_offset = comment_state.offset.saturating_add(1);
-                            let total_pages = comment_state.total_comments / 10 + 1;
-                            if next_offset < total_pages {
-                                comment_state.offset = total_pages;
-                            }
+                            comment_state.page_forward(self.search_context.clone());
                         }
                         Viewing::Search(search_state) => {
                             search_state.page_forward(self.search_context.clone());
@@ -460,7 +456,9 @@ impl App {
             (_, KeyCode::Left) => {
                 if let Some(viewing) = self.viewing_state.as_mut() {
                     match viewing {
-                        Viewing::Comments(_comment_state) => {}
+                        Viewing::Comments(comment_state) => {
+                            comment_state.page_back(self.search_context.clone());
+                        }
                         Viewing::Search(search_state) => {
                             search_state.page_back(self.search_context.clone());
                         }
