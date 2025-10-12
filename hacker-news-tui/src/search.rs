@@ -8,7 +8,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect, Size},
     style::{Style, Stylize},
     text::{Line, Span},
-    widgets::{StatefulWidget, Widget},
+    widgets::{Block, Paragraph, StatefulWidget, Widget, block::Title},
 };
 use tui_input::Input;
 use tui_scrollview::ScrollViewState;
@@ -80,7 +80,7 @@ impl StatefulWidget for SearchWidget {
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let [search_area, page_area, search_results] = Layout::vertical([
-            Constraint::Length(1),
+            Constraint::Length(3),
             Constraint::Length(1),
             Constraint::Fill(1),
         ])
@@ -89,11 +89,15 @@ impl StatefulWidget for SearchWidget {
         match state.input_mode {
             InputMode::Editing => {
                 let val = state.input.value();
-                Line::raw(val).render(search_area, buf);
-                let _x = state.input.visual_cursor();
+                Paragraph::new(val)
+                    .block(Block::bordered().title(Title::from("Search")))
+                    .render(search_area, buf);
+                // let _x = state.input.visual_cursor();
             }
             InputMode::Normal => {
-                Line::raw(state.search.as_deref().unwrap_or_default()).render(search_area, buf);
+                Paragraph::new(state.search.as_deref().unwrap_or_default())
+                    .block(Block::bordered().title(Title::from("Search")))
+                    .render(search_area, buf);
                 Line::raw(format!("Search results {}", state.comments.len()))
                     .render(search_results, buf);
             }
