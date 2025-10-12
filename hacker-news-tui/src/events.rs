@@ -1,9 +1,9 @@
 //! Background events
-use crossterm::event;
 use futures::StreamExt as _;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api::Story, update_story};
 use log::error;
+use ratatui::crossterm::event;
 use std::{
     sync::{
         Arc, RwLock,

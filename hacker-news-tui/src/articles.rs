@@ -41,7 +41,7 @@ impl StatefulWidget for &mut ArticlesWidget {
 
         List::new(items)
             .block(Block::bordered().title(title))
-            .highlight_style(Style::new().green().on_black())
+            .highlight_style(Style::new().magenta().bold())
             .render(content, buf, &mut state.list_state);
 
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)

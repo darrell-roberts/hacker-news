@@ -47,50 +47,54 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
 
         Line::raw(self.article_title).render(title, buf);
 
-        let paragraph_widgets = state
-            .comments
-            .iter()
-            .zip(0..)
-            .map(|(item, index)| render_comment(item, state.viewing == Some(index)))
-            .collect::<Vec<_>>();
-
-        let scroll_view_height: u16 = paragraph_widgets
-            .iter()
-            .map(|p| p.line_count(buf.area.width))
-            .sum::<usize>() as u16
-            + 5;
-
-        let width = if buf.area.height < scroll_view_height {
-            buf.area.width - 1
-        } else {
-            buf.area.width
-        };
-
-        let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
-        let mut y = 0;
-
-        let paragraph_width = width - 2;
-
-        for paragraph in paragraph_widgets {
-            let height = paragraph.line_count(paragraph_width);
-            scroll_view.render_widget(
-                paragraph,
-                Rect {
-                    x: 0,
-                    y,
-                    width: paragraph_width,
-                    height: height as u16,
-                },
-            );
-            y += height as u16;
-        }
-
-        state.page_height = scroll_view.area().height;
-        scroll_view.render(body, buf, &mut state.scroll_view_state);
+        render_comments(buf, state, body);
     }
 }
 
-fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
+fn render_comments(buf: &mut Buffer, state: &mut CommentState, body: Rect) {
+    let paragraph_widgets = state
+        .comments
+        .iter()
+        .zip(0..)
+        .map(|(item, index)| render_comment(item, state.viewing == Some(index)))
+        .collect::<Vec<_>>();
+
+    let scroll_view_height: u16 = paragraph_widgets
+        .iter()
+        .map(|p| p.line_count(buf.area.width))
+        .sum::<usize>() as u16
+        + 5;
+
+    let width = if buf.area.height < scroll_view_height {
+        buf.area.width - 1
+    } else {
+        buf.area.width
+    };
+
+    let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
+    let mut y = 0;
+
+    let paragraph_width = width - 2;
+
+    for paragraph in paragraph_widgets {
+        let height = paragraph.line_count(paragraph_width);
+        scroll_view.render_widget(
+            paragraph,
+            Rect {
+                x: 0,
+                y,
+                width: paragraph_width,
+                height: height as u16,
+            },
+        );
+        y += height as u16;
+    }
+
+    state.page_height = scroll_view.area().height;
+    scroll_view.render(body, buf, &mut state.scroll_view_state);
+}
+
+pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
     let elements = html_sanitizer::parse_elements(&item.body);
 
     let lines = spans(elements, Style::default())
@@ -113,7 +117,7 @@ fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
         .block(
             Block::bordered()
                 .border_style(if selected {
-                    Style::new().green().on_black()
+                    Style::new().magenta()
                 } else {
                     Style::new()
                 })

@@ -5,15 +5,15 @@ use crate::{
     config::CONFIG_FILE,
     events::{AppEvent, EventManager, IndexRebuildState},
     footer::FooterWidget,
-    search::{SearchState, SearchWidget},
+    search::{InputMode, SearchState, SearchWidget},
 };
 use color_eyre::Result;
-use crossterm::event::{
-    self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
-};
 use hacker_news_config::{save_config, search_context};
 use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api_client};
 use log::error;
+use ratatui::crossterm::event::{
+    self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
+};
 use ratatui::{
     DefaultTerminal,
     buffer::Buffer,
@@ -24,6 +24,7 @@ use std::{
     ops::Not as _,
     sync::{Arc, RwLock},
 };
+use tui_input::backend::crossterm::EventHandler;
 
 /// Active viewing state.
 pub enum Viewing {
@@ -144,7 +145,45 @@ impl App {
     fn handle_crossterm_event(&mut self, event: event::Event) {
         match event {
             // it's important to check KeyEventKind::Press to avoid handling key release events
-            Event::Key(key) if key.kind == KeyEventKind::Press => self.on_key_event(key),
+            Event::Key(key) if key.kind == KeyEventKind::Press => {
+                match self.viewing_state.as_mut() {
+                    Some(Viewing::Search(search_state))
+                        if matches!(search_state.input_mode, InputMode::Editing) =>
+                    {
+                        match key.code {
+                            KeyCode::Esc => {
+                                search_state.search = None;
+                                search_state.input_mode = InputMode::Normal;
+                            }
+                            KeyCode::Enter => {
+                                let search = search_state.input.value_and_reset();
+                                match self
+                                    .search_context
+                                    .read()
+                                    .unwrap()
+                                    .search_all_comments(&search, 10, 0)
+                                {
+                                    Ok((comments, total_comments)) => {
+                                        search_state.comments = comments;
+                                        search_state.total_comments = total_comments;
+                                    }
+                                    Err(err) => {
+                                        error!("Failed to search: {err}");
+                                    }
+                                }
+                                search_state.search = Some(search);
+                                search_state.input_mode = InputMode::Normal;
+                            }
+                            _ => {
+                                search_state.input.handle_event(&event);
+                            }
+                        }
+                    }
+                    _ => {
+                        self.on_key_event(key);
+                    }
+                }
+            }
             Event::Mouse(mouse_event) => {
                 self.on_mouse_event(mouse_event);
             }
@@ -172,7 +211,11 @@ impl App {
                 position.y = position.y.saturating_sub(interval);
                 state.scroll_view_state.set_offset(position);
             }
-            Some(Viewing::Search(_state)) => {}
+            Some(Viewing::Search(state)) => {
+                let mut position = state.scroll_view_state.offset();
+                position.y = position.y.saturating_sub(interval);
+                state.scroll_view_state.set_offset(position);
+            }
             None => {
                 let selected = self
                     .articles_state
@@ -194,7 +237,11 @@ impl App {
                 position.y = position.y.saturating_add(interval);
                 state.scroll_view_state.set_offset(position);
             }
-            Some(Viewing::Search(_state)) => {}
+            Some(Viewing::Search(state)) => {
+                let mut position = state.scroll_view_state.offset();
+                position.y = position.y.saturating_add(interval);
+                state.scroll_view_state.set_offset(position);
+            }
             None => {
                 let selected = self
                     .articles_state
@@ -263,7 +310,9 @@ impl App {
                     Some(Viewing::Comments(state)) => {
                         self.move_down(state.page_height);
                     }
-                    Some(Viewing::Search(_state)) => {}
+                    Some(Viewing::Search(state)) => {
+                        self.move_down(state.page_height);
+                    }
                     None => {
                         self.move_down(self.articles_state.page_height);
                     }
@@ -275,7 +324,9 @@ impl App {
                     Some(Viewing::Comments(state)) => {
                         self.move_up(state.page_height);
                     }
-                    Some(Viewing::Search(_state)) => {}
+                    Some(Viewing::Search(state)) => {
+                        self.move_up(state.page_height);
+                    }
                     None => {
                         self.move_up(self.articles_state.page_height);
                     }
@@ -285,7 +336,9 @@ impl App {
                 Some(Viewing::Comments(state)) => {
                     state.scroll_view_state.scroll_to_top();
                 }
-                Some(Viewing::Search(_state)) => {}
+                Some(Viewing::Search(state)) => {
+                    state.scroll_view_state.scroll_to_top();
+                }
                 None => {
                     self.articles_state.list_state.select(Some(0));
                     self.articles_state.scrollbar_state.first();
@@ -296,7 +349,9 @@ impl App {
                     Some(Viewing::Comments(state)) => {
                         state.scroll_view_state.scroll_to_bottom();
                     }
-                    Some(Viewing::Search(_state)) => {}
+                    Some(Viewing::Search(state)) => {
+                        state.scroll_view_state.scroll_to_bottom();
+                    }
                     None => {
                         self.articles_state
                             .list_state
@@ -405,7 +460,10 @@ impl App {
                 if let Some(Viewing::Comments(state)) = self.viewing_state.as_mut() {
                     match state.viewing.as_mut() {
                         Some(n) => {
-                            *n = n.saturating_add(1);
+                            let next_val = n.saturating_add(1);
+                            if next_val < state.comments.len() as u64 {
+                                *n = n.saturating_add(1);
+                            }
                         }
                         None => {
                             state.viewing.replace(0);
