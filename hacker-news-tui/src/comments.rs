@@ -186,7 +186,8 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
         } else {
             Cow::Owned(format!(" [{}]", item.kids.len()))
         },
-    ]);
+    ])
+    .style(Style::new().italic());
 
     Paragraph::new(lines)
         .block(
