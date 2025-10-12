@@ -5,7 +5,7 @@ use crate::{
     config::CONFIG_FILE,
     events::{AppEvent, EventManager, IndexRebuildState},
     footer::FooterWidget,
-    search::SearchState,
+    search::{SearchState, SearchWidget},
 };
 use color_eyre::Result;
 use crossterm::event::{
@@ -244,7 +244,9 @@ impl App {
                             }
                         }
                     }
-                    Some(Viewing::Search(_state)) => {}
+                    Some(Viewing::Search(_state)) => {
+                        self.viewing_state = None;
+                    }
                     None => {
                         self.quit();
                     }
@@ -425,6 +427,9 @@ impl App {
                     }
                 };
             }
+            (_, KeyCode::Char('/')) => {
+                self.viewing_state = Some(Viewing::Search(SearchState::default()));
+            }
 
             _ => {}
         }
@@ -473,7 +478,9 @@ impl Widget for &mut App {
                     comment_state,
                 );
             }
-            Some(Viewing::Search(_state)) => {}
+            Some(Viewing::Search(state)) => {
+                SearchWidget.render(area, buf, state);
+            }
             None => {
                 ArticlesWidget.render(content_area, buf, &mut self.articles_state);
             }
