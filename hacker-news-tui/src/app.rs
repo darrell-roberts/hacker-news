@@ -1,7 +1,7 @@
 //! App state, management and root widget.
 use crate::{
     articles::{ArticlesState, ArticlesWidget},
-    comments::{CommentState, CommentsWidget},
+    comments::{CommentStack, CommentState, CommentsWidget},
     config::CONFIG_FILE,
     events::{AppEvent, EventManager, IndexRebuildState},
     footer::FooterWidget,
@@ -266,10 +266,18 @@ impl App {
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
                 match self.viewing_state.as_mut() {
                     Some(Viewing::Comments(state)) => {
-                        let parent_id = state.child_stack.pop();
-                        match parent_id {
-                            Some(parent_id) => {
+                        let stack_parent = state.child_stack.pop();
+                        match stack_parent {
+                            Some(CommentStack {
+                                parent_id,
+                                offset,
+                                index,
+                                scroll_view_state,
+                            }) => {
                                 state.parent_id = parent_id;
+                                state.offset = offset;
+                                state.viewing = Some(index);
+                                state.scroll_view_state = scroll_view_state;
                                 let comments = self
                                     .search_context
                                     .read()
@@ -383,7 +391,12 @@ impl App {
                             .filter(|comment| !comment.kids.is_empty())
                             .map(|comment| comment.id)
                         {
-                            state.child_stack.push(state.parent_id);
+                            state.child_stack.push(CommentStack {
+                                parent_id: state.parent_id,
+                                offset: state.offset,
+                                index: state.viewing.unwrap_or_default(),
+                                scroll_view_state: state.scroll_view_state,
+                            });
                             state.parent_id = parent_id;
                             state.offset = 0;
                             state.viewing = None;

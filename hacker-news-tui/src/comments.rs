@@ -1,9 +1,4 @@
 //! Comments view widget.
-use std::{
-    borrow::Cow,
-    sync::{Arc, RwLock},
-};
-
 use hacker_news_search::{
     SearchContext,
     api::{AgeLabel, Comment},
@@ -17,7 +12,18 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget, Wrap},
 };
+use std::{
+    borrow::Cow,
+    sync::{Arc, RwLock},
+};
 use tui_scrollview::ScrollViewState;
+
+pub struct CommentStack {
+    pub parent_id: u64,
+    pub offset: usize,
+    pub index: u64,
+    pub scroll_view_state: ScrollViewState,
+}
 
 pub struct CommentState {
     pub parent_id: u64,
@@ -27,7 +33,7 @@ pub struct CommentState {
     pub comments: Vec<Comment>,
     pub total_comments: usize,
     pub scroll_view_state: ScrollViewState,
-    pub child_stack: Vec<u64>,
+    pub child_stack: Vec<CommentStack>,
     pub page_height: u16,
 }
 
@@ -106,7 +112,7 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
                 Span::styled(
                     format!("{page} "),
                     if page == selected_page {
-                        Style::default().bold()
+                        Style::default().bold().magenta()
                     } else {
                         Style::default()
                     },

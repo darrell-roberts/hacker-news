@@ -110,7 +110,7 @@ impl StatefulWidget for SearchWidget {
                 Span::styled(
                     format!("{page} "),
                     if page == selected_page {
-                        Style::default().bold()
+                        Style::default().bold().magenta()
                     } else {
                         Style::default()
                     },
