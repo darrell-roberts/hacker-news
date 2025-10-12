@@ -2,8 +2,8 @@
 use std::{borrow::Cow, time::Duration};
 
 use crate::App;
-use chrono::{DateTime, Utc};
-use chrono_tz::America::New_York;
+use chrono::{DateTime, TimeZone, Utc};
+use chrono_tz::{America::New_York, Tz};
 use ratatui::{
     layout::{Constraint, Layout},
     text::Line,
@@ -58,8 +58,9 @@ impl<'a> Widget for FooterWidget<'a> {
 }
 
 fn local_time(ts: u64) -> Option<String> {
-    let build_date = DateTime::<Utc>::from_timestamp(ts.try_into().ok()?, 0)
-        .map(|dt| dt.with_timezone(&New_York))?;
+    let tz: Tz = iana_time_zone::get_timezone().ok()?.parse().ok()?;
+    let build_date =
+        DateTime::<Utc>::from_timestamp(ts.try_into().ok()?, 0).map(|dt| dt.with_timezone(&tz))?;
     Some(build_date.format("%d/%m/%y %H:%M").to_string())
 }
 

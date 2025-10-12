@@ -5,6 +5,7 @@ use crate::{
     config::CONFIG_FILE,
     events::{AppEvent, EventManager, IndexRebuildState},
     footer::FooterWidget,
+    search::SearchState,
 };
 use color_eyre::Result;
 use crossterm::event::{
@@ -24,6 +25,14 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+/// Active viewing state.
+pub enum Viewing {
+    /// Viewing comments.
+    Comments(CommentState),
+    /// Viewing search.
+    Search(SearchState),
+}
+
 /// The main application which holds the state and logic of the application.
 pub struct App {
     event_manager: EventManager,
@@ -31,7 +40,8 @@ pub struct App {
     running: bool,
     search_context: Arc<RwLock<SearchContext>>,
     pub rebuild_progress: Option<IndexRebuildState>,
-    pub comment_state: Option<CommentState>,
+    // pub comment_state: Option<CommentState>,
+    pub viewing_state: Option<Viewing>,
     pub index_stats: Option<IndexStats>,
     articles_state: ArticlesState,
 }
@@ -56,7 +66,7 @@ impl App {
             running: false,
             search_context,
             rebuild_progress: None,
-            comment_state: None,
+            viewing_state: None,
             index_stats: config,
             articles_state,
         })
@@ -156,12 +166,13 @@ impl App {
     }
 
     fn move_up(&mut self, interval: u16) {
-        match self.comment_state.as_mut() {
-            Some(state) => {
+        match self.viewing_state.as_mut() {
+            Some(Viewing::Comments(state)) => {
                 let mut position = state.scroll_view_state.offset();
                 position.y = position.y.saturating_sub(interval);
                 state.scroll_view_state.set_offset(position);
             }
+            Some(Viewing::Search(_state)) => {}
             None => {
                 let selected = self
                     .articles_state
@@ -177,12 +188,13 @@ impl App {
     }
 
     fn move_down(&mut self, interval: u16) {
-        match self.comment_state.as_mut() {
-            Some(state) => {
+        match self.viewing_state.as_mut() {
+            Some(Viewing::Comments(state)) => {
                 let mut position = state.scroll_view_state.offset();
                 position.y = position.y.saturating_add(interval);
                 state.scroll_view_state.set_offset(position);
             }
+            Some(Viewing::Search(_state)) => {}
             None => {
                 let selected = self
                     .articles_state
@@ -206,8 +218,8 @@ impl App {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
-                match self.comment_state.as_mut() {
-                    Some(state) => {
+                match self.viewing_state.as_mut() {
+                    Some(Viewing::Comments(state)) => {
                         let parent_id = state.child_stack.pop();
                         match parent_id {
                             Some(parent_id) => {
@@ -228,10 +240,11 @@ impl App {
                                 }
                             }
                             None => {
-                                self.comment_state = None;
+                                self.viewing_state = None;
                             }
                         }
                     }
+                    Some(Viewing::Search(_state)) => {}
                     None => {
                         self.quit();
                     }
@@ -244,10 +257,11 @@ impl App {
                 self.move_up(1);
             }
             (_, KeyCode::PageDown) | (KeyModifiers::CONTROL, KeyCode::Char('f')) => {
-                match self.comment_state.as_ref() {
-                    Some(state) => {
+                match self.viewing_state.as_ref() {
+                    Some(Viewing::Comments(state)) => {
                         self.move_down(state.page_height);
                     }
+                    Some(Viewing::Search(_state)) => {}
                     None => {
                         self.move_down(self.articles_state.page_height);
                     }
@@ -255,29 +269,32 @@ impl App {
             }
             (_, KeyCode::PageUp)
             | (KeyModifiers::CONTROL, KeyCode::Char('b') | KeyCode::Char('u')) => {
-                match self.comment_state.as_ref() {
-                    Some(state) => {
+                match self.viewing_state.as_ref() {
+                    Some(Viewing::Comments(state)) => {
                         self.move_up(state.page_height);
                     }
+                    Some(Viewing::Search(_state)) => {}
                     None => {
                         self.move_up(self.articles_state.page_height);
                     }
                 }
             }
-            (_, KeyCode::Home) => match self.comment_state.as_mut() {
-                Some(state) => {
+            (_, KeyCode::Home) => match self.viewing_state.as_mut() {
+                Some(Viewing::Comments(state)) => {
                     state.scroll_view_state.scroll_to_top();
                 }
+                Some(Viewing::Search(_state)) => {}
                 None => {
                     self.articles_state.list_state.select(Some(0));
                     self.articles_state.scrollbar_state.first();
                 }
             },
             (_, KeyCode::End) | (KeyModifiers::SHIFT, KeyCode::Char('G')) => {
-                match self.comment_state.as_mut() {
-                    Some(state) => {
+                match self.viewing_state.as_mut() {
+                    Some(Viewing::Comments(state)) => {
                         state.scroll_view_state.scroll_to_bottom();
                     }
+                    Some(Viewing::Search(_state)) => {}
                     None => {
                         self.articles_state
                             .list_state
@@ -301,9 +318,9 @@ impl App {
                 }
             }
             (_, KeyCode::Right | KeyCode::Char('c')) => {
-                match self.comment_state.as_mut() {
+                match self.viewing_state.as_mut() {
                     // The viewing comment is being requested to open children.
-                    Some(state) => {
+                    Some(Viewing::Comments(state)) => {
                         if let Some(parent_id) = state
                             .viewing
                             .and_then(|viewing| state.comments.get(viewing as usize))
@@ -330,6 +347,7 @@ impl App {
                             }
                         }
                     }
+                    Some(Viewing::Search(_state)) => {}
                     // We are opening comments for a story
                     None => {
                         if let Some(selected_item) = self
@@ -347,7 +365,7 @@ impl App {
 
                             match comments {
                                 Ok((comments, total)) => {
-                                    self.comment_state = Some(CommentState {
+                                    self.viewing_state = Some(Viewing::Comments(CommentState {
                                         parent_id: selected_item,
                                         limit: 10,
                                         offset: 0,
@@ -357,7 +375,7 @@ impl App {
                                         scroll_view_state: Default::default(),
                                         child_stack: Default::default(),
                                         page_height: 0,
-                                    });
+                                    }));
                                 }
                                 Err(err) => {
                                     error!("Failed to get comments: {err}");
@@ -368,17 +386,21 @@ impl App {
                 }
             }
             (_, KeyCode::Left) => {
-                self.comment_state = None;
+                // match self.viewing_state.as_mut() {
+                //     Some(_) => todo!(),
+                //     None => todo!(),
+                // }
+                // self.comment_state = None;
             }
             (KeyModifiers::SHIFT, KeyCode::BackTab) => {
-                if let Some(state) = self.comment_state.as_mut()
+                if let Some(Viewing::Comments(state)) = self.viewing_state.as_mut()
                     && let Some(n) = state.viewing.as_mut()
                 {
                     *n = n.saturating_sub(1);
                 }
             }
             (_, KeyCode::Tab) => {
-                if let Some(state) = self.comment_state.as_mut() {
+                if let Some(Viewing::Comments(state)) = self.viewing_state.as_mut() {
                     match state.viewing.as_mut() {
                         Some(n) => {
                             *n = n.saturating_add(1);
@@ -389,9 +411,8 @@ impl App {
                     }
                 }
             }
-            (_, KeyCode::Char('u')) => match self.comment_state.as_mut() {
-                Some(_) => {}
-                None => {
+            (_, KeyCode::Char('u')) => {
+                if self.viewing_state.is_none() {
                     let story = self
                         .articles_state
                         .list_state
@@ -402,8 +423,8 @@ impl App {
                         self.event_manager
                             .update_story(self.search_context.clone(), story);
                     }
-                }
-            },
+                };
+            }
 
             _ => {}
         }
@@ -438,8 +459,8 @@ impl Widget for &mut App {
         ])
         .areas(area);
 
-        match self.comment_state.as_mut() {
-            Some(comment_state) => {
+        match self.viewing_state.as_mut() {
+            Some(Viewing::Comments(comment_state)) => {
                 let selected_title = self
                     .articles_state
                     .list_state
@@ -452,6 +473,7 @@ impl Widget for &mut App {
                     comment_state,
                 );
             }
+            Some(Viewing::Search(_state)) => {}
             None => {
                 ArticlesWidget.render(content_area, buf, &mut self.articles_state);
             }

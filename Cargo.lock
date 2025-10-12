@@ -3232,6 +3232,7 @@ dependencies = [
  "hacker-news-config",
  "hacker-news-search",
  "html-sanitizer",
+ "iana-time-zone",
  "log",
  "open",
  "ratatui",
