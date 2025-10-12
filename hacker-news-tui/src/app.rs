@@ -157,12 +157,11 @@ impl App {
                             }
                             KeyCode::Enter => {
                                 let search = search_state.input.value_and_reset();
-                                match self
-                                    .search_context
-                                    .read()
-                                    .unwrap()
-                                    .search_all_comments(&search, 10, 0)
-                                {
+                                match self.search_context.read().unwrap().search_all_comments(
+                                    &search,
+                                    10,
+                                    search_state.offset,
+                                ) {
                                     Ok((comments, total_comments)) => {
                                         search_state.comments = comments;
                                         search_state.total_comments = total_comments;
@@ -374,7 +373,7 @@ impl App {
                     error!("Failed to open url {url}: {err}");
                 }
             }
-            (_, KeyCode::Right | KeyCode::Char('c')) => {
+            (_, KeyCode::Char('c')) => {
                 match self.viewing_state.as_mut() {
                     // The viewing comment is being requested to open children.
                     Some(Viewing::Comments(state)) => {
@@ -442,12 +441,31 @@ impl App {
                     }
                 }
             }
+            (_, KeyCode::Right) => {
+                if let Some(viewing) = self.viewing_state.as_mut() {
+                    match viewing {
+                        Viewing::Comments(comment_state) => {
+                            let next_offset = comment_state.offset.saturating_add(1);
+                            let total_pages = comment_state.total_comments / 10 + 1;
+                            if next_offset < total_pages {
+                                comment_state.offset = total_pages;
+                            }
+                        }
+                        Viewing::Search(search_state) => {
+                            search_state.page_forward(self.search_context.clone());
+                        }
+                    }
+                }
+            }
             (_, KeyCode::Left) => {
-                // match self.viewing_state.as_mut() {
-                //     Some(_) => todo!(),
-                //     None => todo!(),
-                // }
-                // self.comment_state = None;
+                if let Some(viewing) = self.viewing_state.as_mut() {
+                    match viewing {
+                        Viewing::Comments(_comment_state) => {}
+                        Viewing::Search(search_state) => {
+                            search_state.page_back(self.search_context.clone());
+                        }
+                    }
+                }
             }
             (KeyModifiers::SHIFT, KeyCode::BackTab) => {
                 if let Some(Viewing::Comments(state)) = self.viewing_state.as_mut()

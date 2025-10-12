@@ -1,9 +1,13 @@
 //! Comment search view and state
-use hacker_news_search::api::Comment;
+use std::sync::{Arc, RwLock};
+
+use hacker_news_search::{SearchContext, api::Comment};
+use log::error;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect, Size},
-    text::Line,
+    style::{Style, Stylize},
+    text::{Line, Span},
     widgets::{StatefulWidget, Widget},
 };
 use tui_input::Input;
@@ -33,14 +37,54 @@ pub struct SearchState {
     pub input_mode: InputMode,
 }
 
+impl SearchState {
+    pub fn page_forward(&mut self, search_context: Arc<RwLock<SearchContext>>) {
+        self.update_offset(self.offset.saturating_add(10));
+        self.update_comments(search_context);
+    }
+
+    pub fn page_back(&mut self, search_context: Arc<RwLock<SearchContext>>) {
+        self.update_offset(self.offset.saturating_sub(10));
+        self.update_comments(search_context);
+    }
+
+    fn update_offset(&mut self, next_offset: usize) {
+        let total_pages = self.total_comments / 10;
+        if next_offset / 10 < total_pages {
+            self.offset = next_offset;
+        }
+    }
+
+    fn update_comments(&mut self, search_context: Arc<RwLock<SearchContext>>) {
+        let result = search_context.read().unwrap().search_all_comments(
+            self.search.as_deref().unwrap_or_default(),
+            10,
+            self.offset,
+        );
+        match result {
+            Ok((comments, total_comments)) => {
+                self.comments = comments;
+                self.total_comments = total_comments;
+            }
+            Err(err) => {
+                error!("Failed to get comments: {err}");
+            }
+        }
+    }
+}
+
 pub struct SearchWidget;
 
 impl StatefulWidget for SearchWidget {
     type State = SearchState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let [search_area, search_results] =
-            Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).areas(area);
+        let [search_area, page_area, search_results] = Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Length(1),
+            Constraint::Fill(1),
+        ])
+        .areas(area);
 
         match state.input_mode {
             InputMode::Editing => {
@@ -55,6 +99,26 @@ impl StatefulWidget for SearchWidget {
             }
         }
 
+        if state.total_comments > 0 {
+            let total_pages = state.total_comments / 10;
+            let selected_page = if state.offset == 0 {
+                1
+            } else {
+                state.offset / 10 + 1
+            };
+            let spans = (1..=total_pages).map(|page| {
+                Span::styled(
+                    format!("{page} "),
+                    if page == selected_page {
+                        Style::default().bold()
+                    } else {
+                        Style::default()
+                    },
+                )
+            });
+
+            Line::from_iter(spans).centered().render(page_area, buf);
+        }
         render_comments(buf, state, search_results);
     }
 }
