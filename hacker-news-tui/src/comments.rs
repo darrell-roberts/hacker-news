@@ -18,13 +18,14 @@ use std::{
 };
 use tui_scrollview::ScrollViewState;
 
+#[derive(Default, Debug)]
 pub struct CommentStack {
     pub parent_id: u64,
     pub offset: usize,
-    pub index: u64,
     pub scroll_view_state: ScrollViewState,
 }
 
+#[derive(Default)]
 pub struct CommentState {
     pub parent_id: u64,
     pub limit: usize,

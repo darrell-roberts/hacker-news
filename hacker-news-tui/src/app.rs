@@ -10,15 +10,18 @@ use crate::{
 use color_eyre::Result;
 use hacker_news_config::{save_config, search_context};
 use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api_client};
-use log::error;
-use ratatui::crossterm::event::{
-    self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
-};
+use log::{debug, error};
 use ratatui::{
     DefaultTerminal,
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     widgets::{ListState, ScrollbarState, StatefulWidget, Widget},
+};
+use ratatui::{
+    crossterm::event::{
+        self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers, MouseEvent, MouseEventKind,
+    },
+    layout::Position,
 };
 use std::{
     ops::Not as _,
@@ -77,7 +80,19 @@ impl App {
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         self.running = true;
         while self.running {
-            terminal.draw(|frame| frame.render_widget(&mut self, frame.area()))?;
+            terminal.draw(|frame| {
+                if let Some(Viewing::Search(state)) = self.viewing_state.as_ref()
+                    && let InputMode::Editing = state.input_mode
+                {
+                    let cursor = state.input.visual_cursor();
+                    frame.set_cursor_position(Position {
+                        x: cursor as u16 + 1,
+                        y: 1,
+                    });
+                }
+
+                frame.render_widget(&mut self, frame.area());
+            })?;
             self.handle_event(self.event_manager.next()?);
         }
         Ok(())
@@ -271,20 +286,28 @@ impl App {
                             Some(CommentStack {
                                 parent_id,
                                 offset,
-                                index,
                                 scroll_view_state,
                             }) => {
+                                let last_parent_id = state.parent_id;
                                 state.parent_id = parent_id;
                                 state.offset = offset;
-                                state.viewing = Some(index);
                                 state.scroll_view_state = scroll_view_state;
                                 let comments = self
                                     .search_context
                                     .read()
                                     .unwrap()
                                     .comments(parent_id, 10, 0);
+
                                 match comments {
                                     Ok((comments, total)) => {
+                                        // Check selection
+                                        if let Some(selected_index) = comments
+                                            .iter()
+                                            .position(|comment| comment.id == last_parent_id)
+                                        {
+                                            debug!("Updating viewing index");
+                                            state.viewing = Some(selected_index as u64);
+                                        }
                                         state.comments = comments;
                                         state.total_comments = total;
                                     }
@@ -394,7 +417,6 @@ impl App {
                             state.child_stack.push(CommentStack {
                                 parent_id: state.parent_id,
                                 offset: state.offset,
-                                index: state.viewing.unwrap_or_default(),
                                 scroll_view_state: state.scroll_view_state,
                             });
                             state.parent_id = parent_id;
@@ -526,6 +548,7 @@ impl App {
                     }
                 }
             }
+            // Update the selected story in the stories view
             (_, KeyCode::Char('u')) => {
                 if self.viewing_state.is_none() {
                     let story = self
@@ -540,8 +563,75 @@ impl App {
                     }
                 };
             }
+            // Open search view
             (_, KeyCode::Char('/')) => {
                 self.viewing_state = Some(Viewing::Search(SearchState::default()));
+            }
+            // Rebuild comment stack on search result comment
+            (_, KeyCode::Char('t')) => {
+                if let Some(viewing) = self.viewing_state.as_mut()
+                    && let Viewing::Search(state) = viewing
+                    && let Some(comment_id) = state
+                        .viewing
+                        .and_then(|index| state.comments.get(index as usize))
+                        .map(|story| story.id)
+                {
+                    let result = self.search_context.read().unwrap().parents(comment_id);
+                    match result {
+                        Ok(stack) => {
+                            let mut child_stack = stack
+                                .comments
+                                .iter()
+                                .rev()
+                                .scan(stack.story.id, |parent_id, comment| {
+                                    let current_parent_id = *parent_id;
+                                    *parent_id = comment.parent_id;
+                                    Some(CommentStack {
+                                        parent_id: current_parent_id,
+                                        ..Default::default()
+                                    })
+                                })
+                                .skip(1)
+                                .collect::<Vec<_>>();
+
+                            debug!("Comment stack: {child_stack:#?}");
+
+                            if let Some(last_comment) = child_stack.pop() {
+                                let comments = self.search_context.read().unwrap().comments(
+                                    last_comment.parent_id,
+                                    10,
+                                    0,
+                                );
+                                match comments {
+                                    Ok((comments, total_comments)) => {
+                                        let comments_state = CommentState {
+                                            parent_id: last_comment.parent_id,
+                                            comments,
+                                            total_comments,
+                                            child_stack,
+                                            limit: 10,
+                                            ..Default::default()
+                                        };
+                                        let selected_index = self
+                                            .articles_state
+                                            .stories
+                                            .iter()
+                                            .position(|story| story.id == stack.story.id);
+                                        self.articles_state.list_state.select(selected_index);
+                                        self.viewing_state =
+                                            Some(Viewing::Comments(comments_state));
+                                    }
+                                    Err(err) => {
+                                        error!("Failed to rebuild comment thread: {err}");
+                                    }
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            error!("Failed to build comment thread stack: {err}");
+                        }
+                    }
+                }
             }
 
             _ => {}
