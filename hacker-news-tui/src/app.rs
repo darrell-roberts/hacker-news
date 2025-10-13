@@ -316,30 +316,6 @@ impl App {
                                     }
                                     next_offset += 10;
                                 }
-
-                                // let comments = self.search_context.read().unwrap().comments(
-                                //     parent_id,
-                                //     10,
-                                //     state.offset,
-                                // );
-
-                                // match comments {
-                                //     Ok((comments, total)) => {
-                                //         // Check selection
-                                //         if let Some(selected_index) = comments
-                                //             .iter()
-                                //             .position(|comment| comment.id == last_parent_id)
-                                //         {
-                                //             debug!("Updating viewing index");
-                                //             state.viewing = Some(selected_index as u64);
-                                //         }
-                                //         state.comments = comments;
-                                //         state.total_comments = total;
-                                //     }
-                                //     Err(err) => {
-                                //         error!("Failed to get comments: {err}");
-                                //     }
-                                // }
                             }
                             None => {
                                 self.viewing_state = None;
