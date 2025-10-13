@@ -114,8 +114,6 @@ impl StatefulWidget for SearchWidget {
                 Paragraph::new(state.search.as_deref().unwrap_or_default())
                     .block(Block::bordered().title(Title::from("Search")))
                     .render(search_area, buf);
-                Line::raw(format!("Search results {}", state.comments.len()))
-                    .render(search_results, buf);
             }
         }
 
