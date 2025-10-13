@@ -20,8 +20,8 @@ log.workspace = true
 open = "5"
 ratatui = { version = "0.29", features = ["unstable-rendered-line-info"] }
 tokio = { version = "1", features = ["rt"] }
-tui-scrollview = "0.5"
 tui-input = "0.14"
+tui-scrollview = "0.5"
 
 [package.metadata.deb]
 name = "hacker-news-tui"
