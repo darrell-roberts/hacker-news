@@ -241,6 +241,10 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                 text_spans = Vec::new();
             }
             Element::Code(c) => {
+                if !text_spans.is_empty() {
+                    lines.push(Line::from(text_spans));
+                    text_spans = Vec::new();
+                }
                 lines.extend(c.lines().map(|line| Line::raw(line.to_owned())));
             }
             Element::Italic(elements) => {
@@ -271,14 +275,9 @@ fn sub_spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>>
             Element::Text(s) => {
                 text_spans.push(Span::styled(s, base_style));
             }
-            Element::Link(anchor) => {
-                text_spans.extend(maybe_span(anchor));
-            }
             Element::Escaped(c) => {
                 text_spans.push(Span::styled(c.to_string(), base_style));
             }
-            // Sub elements won't have this
-            Element::Paragraph | Element::Code(_) => {}
             Element::Italic(elements) => {
                 text_spans.extend(sub_spans(
                     elements,
@@ -288,6 +287,8 @@ fn sub_spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>>
             Element::Bold(elements) => {
                 text_spans.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
             }
+            // Sub elements won't have this
+            Element::Paragraph | Element::Code(_) | Element::Link(_) => {}
         }
     }
     text_spans
@@ -296,11 +297,11 @@ fn sub_spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>>
 fn maybe_span(anchor: Anchor<'_>) -> Option<Span<'_>> {
     anchor
         .attributes
-        .iter()
+        .into_iter()
         .find(|attr| attr.name == "href")
         .map(|href_attr| {
             Span::styled(
-                href_attr.value.to_string(),
+                href_attr.value,
                 Style::default().add_modifier(Modifier::UNDERLINED),
             )
         })
