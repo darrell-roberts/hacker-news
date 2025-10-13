@@ -3,7 +3,7 @@ use hacker_news_search::{
     SearchContext,
     api::{AgeLabel, Comment},
 };
-use html_sanitizer::Element;
+use html_sanitizer::{Anchor, Element};
 use log::error;
 use ratatui::{
     buffer::Buffer,
@@ -227,13 +227,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                 text_spans.push(Span::styled(s, base_style));
             }
             Element::Link(anchor) => {
-                let href_attr = anchor.attributes.iter().find(|attr| attr.name == "href");
-                if let Some(href_attr) = href_attr {
-                    text_spans.push(Span::styled(
-                        href_attr.value.to_string(),
-                        Style::default().add_modifier(Modifier::UNDERLINED),
-                    ));
-                }
+                text_spans.extend(maybe_span(anchor));
             }
             Element::Escaped(c) => {
                 text_spans.push(Span::styled(c.to_string(), base_style));
@@ -278,21 +272,13 @@ fn sub_spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>>
                 text_spans.push(Span::styled(s, base_style));
             }
             Element::Link(anchor) => {
-                let href_attr = anchor.attributes.iter().find(|attr| attr.name == "href");
-                if let Some(href_attr) = href_attr {
-                    text_spans.push(Span::styled(
-                        href_attr.value.to_string(),
-                        Style::default().add_modifier(Modifier::UNDERLINED),
-                    ));
-                }
+                text_spans.extend(maybe_span(anchor));
             }
             Element::Escaped(c) => {
                 text_spans.push(Span::styled(c.to_string(), base_style));
             }
-            Element::Paragraph => {}
-            Element::Code(c) => {
-                text_spans.push(Span::styled(c, Style::default()));
-            }
+            // Sub elements won't have this
+            Element::Paragraph | Element::Code(_) => {}
             Element::Italic(elements) => {
                 text_spans.extend(sub_spans(
                     elements,
@@ -305,4 +291,17 @@ fn sub_spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>>
         }
     }
     text_spans
+}
+
+fn maybe_span(anchor: Anchor<'_>) -> Option<Span<'_>> {
+    anchor
+        .attributes
+        .iter()
+        .find(|attr| attr.name == "href")
+        .map(|href_attr| {
+            Span::styled(
+                href_attr.value.to_string(),
+                Style::default().add_modifier(Modifier::UNDERLINED),
+            )
+        })
 }
