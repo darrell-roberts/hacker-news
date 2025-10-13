@@ -5,7 +5,8 @@ use crate::App;
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use ratatui::{
-    layout::{Constraint, Layout},
+    buffer::Buffer,
+    layout::{Constraint, Layout, Rect},
     text::Line,
     widgets::{Block, Borders, Gauge, Widget},
 };
@@ -23,7 +24,7 @@ impl<'a> FooterWidget<'a> {
 }
 
 impl<'a> Widget for FooterWidget<'a> {
-    fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
+    fn render(self, area: Rect, buf: &mut Buffer)
     where
         Self: Sized,
     {
@@ -37,7 +38,9 @@ impl<'a> Widget for FooterWidget<'a> {
             None => {
                 let [url, index_stats] =
                     Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).areas(area);
+
                 Line::raw(self.app.select_item_url().unwrap_or_default()).render(url, buf);
+
                 if let Some(stats) = self.app.index_stats {
                     Line::from_iter([
                         Cow::Owned(format!(

@@ -479,23 +479,49 @@ impl App {
                 }
             }
             (KeyModifiers::SHIFT, KeyCode::BackTab) => {
-                if let Some(Viewing::Comments(state)) = self.viewing_state.as_mut()
-                    && let Some(n) = state.viewing.as_mut()
-                {
-                    *n = n.saturating_sub(1);
+                if let Some(viewing) = self.viewing_state.as_mut() {
+                    match viewing {
+                        Viewing::Comments(comment_state) => {
+                            if let Some(n) = comment_state.viewing.as_mut() {
+                                *n = n.saturating_sub(1);
+                            }
+                        }
+                        Viewing::Search(search_state) => {
+                            if let Some(n) = search_state.viewing.as_mut() {
+                                *n = n.saturating_sub(1);
+                            }
+                        }
+                    }
                 }
             }
             (_, KeyCode::Tab) => {
-                if let Some(Viewing::Comments(state)) = self.viewing_state.as_mut() {
-                    match state.viewing.as_mut() {
-                        Some(n) => {
-                            let next_val = n.saturating_add(1);
-                            if next_val < state.comments.len() as u64 {
-                                *n = n.saturating_add(1);
-                            }
+                if let Some(viewing) = self.viewing_state.as_mut() {
+                    match viewing {
+                        Viewing::Comments(comment_state) => {
+                            match comment_state.viewing.as_mut() {
+                                Some(n) => {
+                                    let next_val = n.saturating_add(1);
+                                    if next_val < comment_state.comments.len() as u64 {
+                                        *n = n.saturating_add(1);
+                                    }
+                                }
+                                None => {
+                                    comment_state.viewing.replace(0);
+                                }
+                            };
                         }
-                        None => {
-                            state.viewing.replace(0);
+                        Viewing::Search(search_state) => {
+                            match search_state.viewing.as_mut() {
+                                Some(n) => {
+                                    let next_val = n.saturating_add(1);
+                                    if next_val < search_state.comments.len() as u64 {
+                                        *n = n.saturating_add(1);
+                                    }
+                                }
+                                None => {
+                                    search_state.viewing.replace(0);
+                                }
+                            };
                         }
                     }
                 }
@@ -566,7 +592,7 @@ impl Widget for &mut App {
                 );
             }
             Some(Viewing::Search(state)) => {
-                SearchWidget.render(area, buf, state);
+                SearchWidget.render(content_area, buf, state);
             }
             None => {
                 ArticlesWidget.render(content_area, buf, &mut self.articles_state);

@@ -39,11 +39,14 @@ pub struct SearchState {
 
 impl SearchState {
     pub fn page_forward(&mut self, search_context: Arc<RwLock<SearchContext>>) {
+        self.viewing = None;
         self.update_offset(self.offset.saturating_add(10));
         self.update_comments(search_context);
+        self.scroll_view_state.scroll_to_top();
     }
 
     pub fn page_back(&mut self, search_context: Arc<RwLock<SearchContext>>) {
+        self.viewing = None;
         self.update_offset(self.offset.saturating_sub(10));
         self.update_comments(search_context);
     }

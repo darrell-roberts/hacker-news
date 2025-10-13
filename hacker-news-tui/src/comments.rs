@@ -42,6 +42,7 @@ impl CommentState {
         self.viewing = None;
         self.update_offset(self.offset.saturating_add(10));
         self.update_comments(search_context);
+        self.scroll_view_state.scroll_to_top();
     }
 
     pub fn page_back(&mut self, search_context: Arc<RwLock<SearchContext>>) {
