@@ -88,14 +88,20 @@ impl CommentState {
     }
 }
 
+/// Comments view widget.
 #[derive(Default)]
 pub struct CommentsWidget<'a> {
     article_title: &'a str,
+    article_body: Option<&'a str>,
 }
 
 impl<'a> CommentsWidget<'a> {
-    pub fn new(article_title: &'a str) -> Self {
-        Self { article_title }
+    /// Create a comment view with a a story title and body.
+    pub fn new(article_title: &'a str, body: Option<&'a str>) -> Self {
+        Self {
+            article_title,
+            article_body: body,
+        }
     }
 }
 
@@ -106,15 +112,35 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
     where
         Self: Sized,
     {
-        let [title, page_area, body] = Layout::vertical([
-            Constraint::Length(1),
+        let [title_area, content_area, page_area] = Layout::vertical([
             Constraint::Length(1),
             Constraint::Fill(1),
+            Constraint::Length(1),
         ])
         .areas(area);
 
-        Line::raw(self.article_title).render(title, buf);
+        // Article title
+        Line::styled(self.article_title, Style::new().bold()).render(title_area, buf);
 
+        // Comments
+        if let Some(body) = self.article_body.filter(|body| !body.is_empty()) {
+            let elements = html_sanitizer::parse_elements(body);
+            let paragraph =
+                Paragraph::new(spans(elements, Style::default())).wrap(Wrap { trim: false });
+
+            let lines = paragraph.line_count(content_area.width);
+
+            let [body_area, comments_area] =
+                Layout::vertical([Constraint::Length(lines as u16), Constraint::Fill(1)])
+                    .areas(content_area);
+
+            paragraph.render(body_area, buf);
+            render_comments(buf, state, comments_area);
+        } else {
+            render_comments(buf, state, content_area);
+        }
+
+        // Pagination pages
         if state.total_comments > 0 {
             let selected_page = state.selected_page();
             let spans = (1..=state.total_pages()).map(|page| {
@@ -130,8 +156,6 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
 
             Line::from_iter(spans).centered().render(page_area, buf);
         }
-
-        render_comments(buf, state, body);
     }
 }
 

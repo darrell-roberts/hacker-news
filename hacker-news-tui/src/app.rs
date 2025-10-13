@@ -683,13 +683,15 @@ impl Widget for &mut App {
 
         match self.viewing_state.as_mut() {
             Some(Viewing::Comments(comment_state)) => {
-                let selected_title = self
+                let (selected_title, selected_body) = self
                     .articles_state
                     .list_state
                     .selected()
                     .and_then(|id| self.articles_state.stories.get(id))
-                    .map(|story| story.title.as_str());
-                CommentsWidget::new(selected_title.unwrap_or_default()).render(
+                    .map(|story| (story.title.as_str(), story.body.as_deref()))
+                    .unwrap_or_default();
+
+                CommentsWidget::new(selected_title, selected_body).render(
                     content_area,
                     buf,
                     comment_state,

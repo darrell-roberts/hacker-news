@@ -88,26 +88,27 @@ impl SearchState {
     }
 }
 
+/// Search Widget
 pub struct SearchWidget;
 
 impl StatefulWidget for SearchWidget {
     type State = SearchState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let [search_area, page_area, search_results] = Layout::vertical([
+        let [search_area, search_results, page_area] = Layout::vertical([
             Constraint::Length(3),
-            Constraint::Length(1),
             Constraint::Fill(1),
+            Constraint::Length(1),
         ])
         .areas(area);
 
+        // Search input/display.
         match state.input_mode {
             InputMode::Editing => {
                 let val = state.input.value();
                 Paragraph::new(val)
                     .block(Block::bordered().title(Title::from("Search")))
                     .render(search_area, buf);
-                // let _x = state.input.visual_cursor();
             }
             InputMode::Normal => {
                 Paragraph::new(state.search.as_deref().unwrap_or_default())
@@ -118,6 +119,10 @@ impl StatefulWidget for SearchWidget {
             }
         }
 
+        // Search comments results.
+        render_comments(buf, state, search_results);
+
+        // Pagination pages.
         if state.total_comments > 0 {
             let selected_page = state.selected_page();
             let spans = (1..=state.total_pages()).map(|page| {
@@ -133,7 +138,6 @@ impl StatefulWidget for SearchWidget {
 
             Line::from_iter(spans).centered().render(page_area, buf);
         }
-        render_comments(buf, state, search_results);
     }
 }
 
@@ -159,7 +163,6 @@ fn render_comments(buf: &mut Buffer, state: &mut SearchState, body: Rect) {
 
     let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
     let mut y = 0;
-
     let paragraph_width = width - 2;
 
     for paragraph in paragraph_widgets {
