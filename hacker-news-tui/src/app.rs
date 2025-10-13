@@ -292,29 +292,54 @@ impl App {
                                 state.parent_id = parent_id;
                                 state.offset = offset;
                                 state.scroll_view_state = scroll_view_state;
-                                let comments = self
-                                    .search_context
-                                    .read()
-                                    .unwrap()
-                                    .comments(parent_id, 10, 0);
 
-                                match comments {
-                                    Ok((comments, total)) => {
-                                        // Check selection
-                                        if let Some(selected_index) = comments
-                                            .iter()
-                                            .position(|comment| comment.id == last_parent_id)
-                                        {
-                                            debug!("Updating viewing index");
-                                            state.viewing = Some(selected_index as u64);
-                                        }
+                                let mut next_offset = offset;
+
+                                loop {
+                                    debug!("Trying offset: {next_offset}");
+                                    let (comments, total_comments) = self
+                                        .search_context
+                                        .read()
+                                        .unwrap()
+                                        .comments(parent_id, 10, next_offset)
+                                        .unwrap();
+
+                                    if let Some(selected_index) = comments
+                                        .iter()
+                                        .position(|comment| comment.id == last_parent_id)
+                                    {
+                                        debug!("Updating viewing index");
+                                        state.viewing = Some(selected_index as u64);
                                         state.comments = comments;
-                                        state.total_comments = total;
+                                        state.total_comments = total_comments;
+                                        break;
                                     }
-                                    Err(err) => {
-                                        error!("Failed to get comments: {err}");
-                                    }
+                                    next_offset += 10;
                                 }
+
+                                // let comments = self.search_context.read().unwrap().comments(
+                                //     parent_id,
+                                //     10,
+                                //     state.offset,
+                                // );
+
+                                // match comments {
+                                //     Ok((comments, total)) => {
+                                //         // Check selection
+                                //         if let Some(selected_index) = comments
+                                //             .iter()
+                                //             .position(|comment| comment.id == last_parent_id)
+                                //         {
+                                //             debug!("Updating viewing index");
+                                //             state.viewing = Some(selected_index as u64);
+                                //         }
+                                //         state.comments = comments;
+                                //         state.total_comments = total;
+                                //     }
+                                //     Err(err) => {
+                                //         error!("Failed to get comments: {err}");
+                                //     }
+                                // }
                             }
                             None => {
                                 self.viewing_state = None;
@@ -570,60 +595,65 @@ impl App {
             // Rebuild comment stack on search result comment
             (_, KeyCode::Char('t')) => {
                 if let Some(viewing) = self.viewing_state.as_mut()
-                    && let Viewing::Search(state) = viewing
-                    && let Some(comment_id) = state
+                    && let Viewing::Search(search_state) = viewing
+                    && let Some((comment_id, comment_parent_id)) = search_state
                         .viewing
-                        .and_then(|index| state.comments.get(index as usize))
-                        .map(|story| story.id)
+                        .and_then(|index| search_state.comments.get(index as usize))
+                        .map(|comment| (comment.id, comment.parent_id))
                 {
                     let result = self.search_context.read().unwrap().parents(comment_id);
                     match result {
                         Ok(stack) => {
-                            let mut child_stack = stack
-                                .comments
-                                .iter()
-                                .rev()
-                                .scan(stack.story.id, |parent_id, comment| {
-                                    let current_parent_id = *parent_id;
-                                    *parent_id = comment.parent_id;
-                                    Some(CommentStack {
-                                        parent_id: current_parent_id,
-                                        ..Default::default()
-                                    })
-                                })
-                                .skip(1)
-                                .collect::<Vec<_>>();
-
-                            debug!("Comment stack: {child_stack:#?}");
-
-                            if let Some(last_comment) = child_stack.pop() {
-                                let comments = self.search_context.read().unwrap().comments(
-                                    last_comment.parent_id,
-                                    10,
-                                    0,
-                                );
-                                match comments {
-                                    Ok((comments, total_comments)) => {
-                                        let comments_state = CommentState {
-                                            parent_id: last_comment.parent_id,
-                                            comments,
-                                            total_comments,
-                                            child_stack,
-                                            limit: 10,
+                            let child_stack = || {
+                                stack
+                                    .comments
+                                    .iter()
+                                    .rev()
+                                    .scan(stack.story.id, |parent_id, comment| {
+                                        let current_parent_id = *parent_id;
+                                        *parent_id = comment.parent_id;
+                                        Some(CommentStack {
+                                            parent_id: current_parent_id,
                                             ..Default::default()
-                                        };
-                                        let selected_index = self
-                                            .articles_state
-                                            .stories
-                                            .iter()
-                                            .position(|story| story.id == stack.story.id);
-                                        self.articles_state.list_state.select(selected_index);
-                                        self.viewing_state =
-                                            Some(Viewing::Comments(comments_state));
-                                    }
-                                    Err(err) => {
-                                        error!("Failed to rebuild comment thread: {err}");
-                                    }
+                                        })
+                                    })
+                                    .skip(1)
+                                    .collect::<Vec<_>>()
+                            };
+
+                            let mut next_offset = 0;
+
+                            loop {
+                                let (comments, total_comments) = self
+                                    .search_context
+                                    .read()
+                                    .unwrap()
+                                    .comments(comment_parent_id, 10, next_offset)
+                                    .unwrap();
+                                let viewing = comments
+                                    .iter()
+                                    .position(|comment| comment.id == comment_id)
+                                    .map(|id| id as u64);
+                                if viewing.is_some() {
+                                    let comments_state = CommentState {
+                                        parent_id: comment_parent_id,
+                                        comments,
+                                        total_comments,
+                                        child_stack: child_stack(),
+                                        limit: 10,
+                                        viewing,
+                                        ..Default::default()
+                                    };
+                                    let selected_index = self
+                                        .articles_state
+                                        .stories
+                                        .iter()
+                                        .position(|story| story.id == stack.story.id);
+                                    self.articles_state.list_state.select(selected_index);
+                                    self.viewing_state = Some(Viewing::Comments(comments_state));
+                                    break;
+                                } else {
+                                    next_offset += 10;
                                 }
                             }
                         }
