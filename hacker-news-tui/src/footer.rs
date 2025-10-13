@@ -1,7 +1,7 @@
 //! Footer widget.
 use std::{borrow::Cow, time::Duration};
 
-use crate::App;
+use crate::{App, app::Viewing};
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use ratatui::{
@@ -39,7 +39,13 @@ impl<'a> Widget for FooterWidget<'a> {
                 let [url, index_stats] =
                     Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).areas(area);
 
-                Line::raw(self.app.select_item_url().unwrap_or_default()).render(url, buf);
+                match &self.app.viewing_state {
+                    Some(Viewing::Search(state)) => {
+                        Line::raw(format!("Found {}", state.total_comments))
+                    }
+                    _ => Line::raw(self.app.select_item_url().unwrap_or_default()),
+                }
+                .render(url, buf);
 
                 if let Some(stats) = self.app.index_stats {
                     Line::from_iter([

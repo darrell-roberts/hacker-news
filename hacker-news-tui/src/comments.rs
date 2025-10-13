@@ -52,8 +52,7 @@ impl CommentState {
     }
 
     fn update_offset(&mut self, next_offset: usize) {
-        let total_pages = self.total_comments / 10;
-        if next_offset / 10 < total_pages {
+        if next_offset / 10 < self.total_pages() {
             self.offset = next_offset;
         }
     }
@@ -71,6 +70,19 @@ impl CommentState {
             Err(err) => {
                 error!("Failed to get comments: {err}");
             }
+        }
+    }
+
+    fn total_pages(&self) -> usize {
+        let remainder = self.total_comments % 10;
+        self.total_comments / 10 + if remainder > 0 { 1 } else { 0 }
+    }
+
+    fn selected_page(&self) -> usize {
+        if self.offset == 0 {
+            1
+        } else {
+            self.offset / 10 + 1
         }
     }
 }
@@ -103,13 +115,8 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
         Line::raw(self.article_title).render(title, buf);
 
         if state.total_comments > 0 {
-            let total_pages = state.total_comments / 10;
-            let selected_page = if state.offset == 0 {
-                1
-            } else {
-                state.offset / 10 + 1
-            };
-            let spans = (1..=total_pages).map(|page| {
+            let selected_page = state.selected_page();
+            let spans = (1..=state.total_pages()).map(|page| {
                 Span::styled(
                     format!("{page} "),
                     if page == selected_page {
