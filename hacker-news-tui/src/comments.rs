@@ -30,7 +30,7 @@ pub struct CommentState {
     pub parent_id: u64,
     pub limit: usize,
     pub offset: usize,
-    pub viewing: Option<u64>,
+    pub viewing: Option<usize>,
     pub comments: Vec<Comment>,
     pub total_comments: usize,
     pub scroll_view_state: ScrollViewState,

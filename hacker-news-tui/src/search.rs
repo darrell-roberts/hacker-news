@@ -28,7 +28,7 @@ pub struct SearchState {
     pub search: Option<String>,
     pub limit: usize,
     pub offset: usize,
-    pub viewing: Option<u64>,
+    pub viewing: Option<usize>,
     pub comments: Vec<Comment>,
     pub total_comments: usize,
     pub scroll_view_state: ScrollViewState,

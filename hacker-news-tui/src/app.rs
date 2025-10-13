@@ -304,12 +304,13 @@ impl App {
                                         .comments(parent_id, 10, next_offset)
                                         .unwrap();
 
-                                    if let Some(selected_index) = comments
+                                    let selected_index = comments
                                         .iter()
-                                        .position(|comment| comment.id == last_parent_id)
-                                    {
+                                        .position(|comment| comment.id == last_parent_id);
+
+                                    if selected_index.is_some() {
                                         debug!("Updating viewing index");
-                                        state.viewing = Some(selected_index as u64);
+                                        state.viewing = selected_index;
                                         state.comments = comments;
                                         state.total_comments = total_comments;
                                         break;
@@ -411,7 +412,7 @@ impl App {
                     Some(Viewing::Comments(state)) => {
                         if let Some(parent_id) = state
                             .viewing
-                            .and_then(|viewing| state.comments.get(viewing as usize))
+                            .and_then(|viewing| state.comments.get(viewing))
                             .filter(|comment| !comment.kids.is_empty())
                             .map(|comment| comment.id)
                         {
@@ -524,7 +525,7 @@ impl App {
                             match comment_state.viewing.as_mut() {
                                 Some(n) => {
                                     let next_val = n.saturating_add(1);
-                                    if next_val < comment_state.comments.len() as u64 {
+                                    if next_val < comment_state.comments.len() {
                                         *n = n.saturating_add(1);
                                     }
                                 }
@@ -537,7 +538,7 @@ impl App {
                             match search_state.viewing.as_mut() {
                                 Some(n) => {
                                     let next_val = n.saturating_add(1);
-                                    if next_val < search_state.comments.len() as u64 {
+                                    if next_val < search_state.comments.len() {
                                         *n = n.saturating_add(1);
                                     }
                                 }
@@ -574,7 +575,7 @@ impl App {
                     && let Viewing::Search(search_state) = viewing
                     && let Some((comment_id, comment_parent_id)) = search_state
                         .viewing
-                        .and_then(|index| search_state.comments.get(index as usize))
+                        .and_then(|index| search_state.comments.get(index))
                         .map(|comment| (comment.id, comment.parent_id))
                 {
                     let result = self.search_context.read().unwrap().parents(comment_id);
@@ -606,10 +607,8 @@ impl App {
                                     .unwrap()
                                     .comments(comment_parent_id, 10, next_offset)
                                     .unwrap();
-                                let viewing = comments
-                                    .iter()
-                                    .position(|comment| comment.id == comment_id)
-                                    .map(|id| id as u64);
+                                let viewing =
+                                    comments.iter().position(|comment| comment.id == comment_id);
                                 if viewing.is_some() {
                                     let comments_state = CommentState {
                                         parent_id: comment_parent_id,
