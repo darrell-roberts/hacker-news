@@ -291,17 +291,16 @@ impl App {
                             }) => {
                                 let last_parent_id = state.parent_id;
                                 state.parent_id = parent_id;
-                                state.offset = offset;
                                 state.scroll_view_state = scroll_view_state;
 
-                                let mut next_offset = offset;
+                                let mut current_offset = offset;
 
                                 loop {
                                     let (comments, total_comments) = self
                                         .search_context
                                         .read()
                                         .unwrap()
-                                        .comments(parent_id, 10, next_offset)
+                                        .comments(parent_id, 10, current_offset)
                                         .unwrap();
 
                                     let selected_index = comments
@@ -312,9 +311,10 @@ impl App {
                                         state.viewing = selected_index;
                                         state.comments = comments;
                                         state.total_comments = total_comments;
+                                        state.offset = current_offset;
                                         break;
                                     }
-                                    next_offset += 10;
+                                    current_offset += 10;
                                 }
                             }
                             None => {
@@ -605,14 +605,14 @@ impl App {
                                     .collect::<Vec<_>>()
                             };
 
-                            let mut next_offset = 0;
+                            let mut current_offset = 0;
 
                             loop {
                                 let (comments, total_comments) = self
                                     .search_context
                                     .read()
                                     .unwrap()
-                                    .comments(comment_parent_id, 10, next_offset)
+                                    .comments(comment_parent_id, 10, current_offset)
                                     .unwrap();
                                 let viewing =
                                     comments.iter().position(|comment| comment.id == comment_id);
@@ -624,6 +624,7 @@ impl App {
                                         child_stack: child_stack(),
                                         limit: 10,
                                         viewing,
+                                        offset: current_offset,
                                         ..Default::default()
                                     };
                                     let selected_index = self
@@ -635,7 +636,7 @@ impl App {
                                     self.viewing_state = Some(Viewing::Comments(comments_state));
                                     break;
                                 } else {
-                                    next_offset += 10;
+                                    current_offset += 10;
                                 }
                             }
                         }
