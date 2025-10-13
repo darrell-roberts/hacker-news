@@ -214,7 +214,7 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
                 .title_bottom(title)
                 .title_alignment(Alignment::Right),
         )
-        .wrap(Wrap { trim: true })
+        .wrap(Wrap { trim: false })
 }
 
 fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
@@ -247,7 +247,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                 text_spans = Vec::new();
             }
             Element::Code(c) => {
-                text_spans.push(Span::styled(c, Style::default()));
+                lines.extend(c.lines().map(|line| Line::raw(line.to_owned())));
             }
             Element::Italic(elements) => {
                 text_spans.extend(sub_spans(

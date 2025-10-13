@@ -10,7 +10,7 @@ use crate::{
 use color_eyre::Result;
 use hacker_news_config::{save_config, search_context};
 use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api_client};
-use log::{debug, error};
+use log::error;
 use ratatui::{
     DefaultTerminal,
     buffer::Buffer,
@@ -276,6 +276,7 @@ impl App {
 
     /// Handles the key events and updates the state of [`App`].
     fn on_key_event(&mut self, key: KeyEvent) {
+        // Quit app or close child comment or search result.
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
@@ -296,7 +297,6 @@ impl App {
                                 let mut next_offset = offset;
 
                                 loop {
-                                    debug!("Trying offset: {next_offset}");
                                     let (comments, total_comments) = self
                                         .search_context
                                         .read()
@@ -309,7 +309,6 @@ impl App {
                                         .position(|comment| comment.id == last_parent_id);
 
                                     if selected_index.is_some() {
-                                        debug!("Updating viewing index");
                                         state.viewing = selected_index;
                                         state.comments = comments;
                                         state.total_comments = total_comments;
@@ -331,12 +330,15 @@ impl App {
                     }
                 }
             }
+            // Scroll down.
             (_, KeyCode::Down | KeyCode::Char('j')) => {
                 self.move_down(1);
             }
+            // Scroll up.
             (_, KeyCode::Up | KeyCode::Char('k')) => {
                 self.move_up(1);
             }
+            // Page down in scroll.
             (_, KeyCode::PageDown) | (KeyModifiers::CONTROL, KeyCode::Char('f')) => {
                 match self.viewing_state.as_ref() {
                     Some(Viewing::Comments(state)) => {
@@ -350,6 +352,7 @@ impl App {
                     }
                 };
             }
+            // Page up in scroll.
             (_, KeyCode::PageUp)
             | (KeyModifiers::CONTROL, KeyCode::Char('b') | KeyCode::Char('u')) => {
                 match self.viewing_state.as_ref() {
@@ -364,6 +367,7 @@ impl App {
                     }
                 }
             }
+            // Select first item.
             (_, KeyCode::Home) => match self.viewing_state.as_mut() {
                 Some(Viewing::Comments(state)) => {
                     state.scroll_view_state.scroll_to_top();
@@ -376,6 +380,7 @@ impl App {
                     self.articles_state.scrollbar_state.first();
                 }
             },
+            // Select last item.
             (_, KeyCode::End) | (KeyModifiers::SHIFT, KeyCode::Char('G')) => {
                 match self.viewing_state.as_mut() {
                     Some(Viewing::Comments(state)) => {
@@ -399,6 +404,7 @@ impl App {
                         .rebuild_index(self.search_context.clone());
                 }
             }
+            // Open URL for story.
             (_, KeyCode::Char('o')) => {
                 if let Some(url) = self.select_item_url()
                     && let Err(err) = open::that(url)
@@ -406,6 +412,7 @@ impl App {
                     error!("Failed to open url {url}: {err}");
                 }
             }
+            // Open child comments.
             (_, KeyCode::Char('c')) => {
                 match self.viewing_state.as_mut() {
                     // The viewing comment is being requested to open children.
@@ -461,13 +468,9 @@ impl App {
                                     self.viewing_state = Some(Viewing::Comments(CommentState {
                                         parent_id: selected_item,
                                         limit: 10,
-                                        offset: 0,
-                                        viewing: None,
                                         comments,
                                         total_comments: total,
-                                        scroll_view_state: Default::default(),
-                                        child_stack: Default::default(),
-                                        page_height: 0,
+                                        ..Default::default()
                                     }));
                                 }
                                 Err(err) => {
@@ -478,6 +481,7 @@ impl App {
                     }
                 }
             }
+            // Previous page in paginated results.
             (_, KeyCode::Right) => {
                 if let Some(viewing) = self.viewing_state.as_mut() {
                     match viewing {
@@ -490,6 +494,7 @@ impl App {
                     }
                 }
             }
+            // Next page in paginated results.
             (_, KeyCode::Left) => {
                 if let Some(viewing) = self.viewing_state.as_mut() {
                     match viewing {
@@ -502,6 +507,7 @@ impl App {
                     }
                 }
             }
+            // Move selection up.
             (KeyModifiers::SHIFT, KeyCode::BackTab) => {
                 if let Some(viewing) = self.viewing_state.as_mut() {
                     match viewing {
@@ -518,6 +524,7 @@ impl App {
                     }
                 }
             }
+            // Move selection down.
             (_, KeyCode::Tab) => {
                 if let Some(viewing) = self.viewing_state.as_mut() {
                     match viewing {
