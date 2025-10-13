@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
+    layout::{Alignment, Constraint, Layout, Rect},
     text::Line,
     widgets::{Block, Borders, Gauge, Widget},
 };
@@ -48,18 +48,23 @@ impl<'a> Widget for FooterWidget<'a> {
                 .render(url, buf);
 
                 if let Some(stats) = self.app.index_stats {
-                    Line::from_iter([
-                        Cow::Owned(format!(
-                            "Updated in {} on ",
-                            duration_string(stats.build_time)
-                        )),
+                    let [left, right] = Layout::horizontal([
+                        Constraint::Percentage(50),
+                        Constraint::Percentage(50),
+                    ])
+                    .areas(index_stats);
+                    Line::from_iter([Cow::Owned(format!(
+                        "Index ({}) ({})",
                         match local_time(stats.built_on) {
                             Some(built_on) => Cow::Owned(built_on),
                             None => Cow::Borrowed(""),
                         },
-                        Cow::Owned(format!(". Total comments: {}", stats.total_comments)),
-                    ])
-                    .render(index_stats, buf);
+                        duration_string(stats.build_time)
+                    ))])
+                    .render(left, buf);
+                    Line::raw(format!("Total comments: {}", stats.total_comments))
+                        .alignment(Alignment::Right)
+                        .render(right, buf);
                 }
             }
         }
@@ -76,7 +81,7 @@ fn local_time(ts: u64) -> Option<String> {
 fn duration_string(elapsed: Duration) -> String {
     match (elapsed.as_secs(), elapsed.as_millis()) {
         (0, ms) => format!("{ms} ms"),
-        (secs @ 1..60, ms) => format!("{secs} seconds and {} ms", ms % 60),
+        (secs @ 1..60, ms) => format!("{secs} sec, {} ms", ms % 60),
         (secs @ 60..=3600, _) => {
             format!("{} minutes", secs / 60)
         }

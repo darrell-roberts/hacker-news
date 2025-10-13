@@ -22,3 +22,13 @@ ratatui = { version = "0.29", features = ["unstable-rendered-line-info"] }
 tokio = { version = "1", features = ["rt"] }
 tui-scrollview = "0.5"
 tui-input = "0.14"
+
+[package.metadata.deb]
+name = "hacker-news-tui"
+maintainer = "Darrell Roberts"
+copyright = "2024, Darrell Roberts"
+license-file = "../LICENSE"
+extended-description = """Hacker News Tui Reader"""
+section = "utility"
+priority = "optional"
+assets = [["target/release/hacker-news-tui", "usr/bin/", "755"]]

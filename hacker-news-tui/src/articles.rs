@@ -1,4 +1,5 @@
 //! Articles list widget.
+use hacker_news_api::ArticleType;
 use hacker_news_search::api::{AgeLabel as _, Story};
 use ratatui::{
     buffer::Buffer,
@@ -16,6 +17,7 @@ pub struct ArticlesState {
     pub list_state: ListState,
     pub scrollbar_state: ScrollbarState,
     pub page_height: u16,
+    pub article_type: ArticleType,
 }
 
 /// Widget to render list of articles.
@@ -32,7 +34,10 @@ impl StatefulWidget for &mut ArticlesWidget {
             .map(|(item, index)| render_article_line(item, index))
             .collect::<Vec<_>>();
 
-        let title = Line::from("Hacker News").bold().blue().centered();
+        let title = Line::from(state.article_type.as_str())
+            .bold()
+            .blue()
+            .centered();
 
         let [content, scroll] =
             Layout::horizontal([Constraint::Fill(1), Constraint::Length(2)]).areas(area);

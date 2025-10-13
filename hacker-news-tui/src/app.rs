@@ -63,6 +63,7 @@ impl App {
             stories,
             scrollbar_state: ScrollbarState::new(75),
             page_height: 0,
+            article_type: hacker_news_api::ArticleType::Top,
         };
 
         Ok(Self {
