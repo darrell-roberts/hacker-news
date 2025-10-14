@@ -47,7 +47,15 @@ impl<'a> Widget for FooterWidget<'a> {
                 }
                 .render(url, buf);
 
-                if let Some(stats) = self.app.index_stats {
+                let active_index = self.app.search_context.read().unwrap().active_category();
+
+                if let Some(stats) = self
+                    .app
+                    .config
+                    .index_stats
+                    .iter()
+                    .find(|s| s.category == active_index)
+                {
                     let [left, right] = Layout::horizontal([
                         Constraint::Percentage(50),
                         Constraint::Percentage(50),

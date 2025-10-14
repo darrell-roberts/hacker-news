@@ -3238,6 +3238,7 @@ dependencies = [
  "log",
  "open",
  "ratatui",
+ "serde",
  "tokio",
  "tui-input",
  "tui-scrollview",

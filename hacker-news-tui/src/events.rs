@@ -71,7 +71,11 @@ impl EventManager {
     }
 
     /// Spawn a tokio task that will emit rebuild index events
-    pub fn rebuild_index(&self, search_context: Arc<RwLock<SearchContext>>) {
+    pub fn rebuild_index(
+        &self,
+        search_context: Arc<RwLock<SearchContext>>,
+        article_type: ArticleType,
+    ) {
         let (tx, mut rx) = futures::channel::mpsc::channel::<RebuildProgress>(100);
 
         let sender = self.sender.clone();
@@ -81,7 +85,12 @@ impl EventManager {
             }
         });
 
-        tokio::spawn(rebuild(search_context, tx, self.sender.clone()));
+        tokio::spawn(rebuild(
+            search_context,
+            tx,
+            self.sender.clone(),
+            article_type,
+        ));
     }
 
     /// Update a single story.
@@ -107,9 +116,9 @@ async fn rebuild(
     search_context: Arc<RwLock<SearchContext>>,
     tx_progress: futures::channel::mpsc::Sender<RebuildProgress>,
     tx_result: Sender<AppEvent>,
+    article_type: ArticleType,
 ) {
-    let stats =
-        hacker_news_search::rebuild_index(search_context, ArticleType::Top, tx_progress).await;
+    let stats = hacker_news_search::rebuild_index(search_context, article_type, tx_progress).await;
     match stats {
         Ok(stats) => {
             tx_result.send(AppEvent::IndexingCompleted(stats)).unwrap();

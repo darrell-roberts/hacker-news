@@ -20,8 +20,54 @@ pub struct ArticlesState {
     pub article_type: ArticleType,
 }
 
+impl ArticlesState {
+    pub fn next_article_type(&mut self) {
+        self.article_type = ARTICLE_TYPES
+            .into_iter()
+            .cycle()
+            .skip_while(|article_type| article_type != &self.article_type)
+            .nth(1)
+            .unwrap();
+    }
+
+    pub fn previous_article_type(&mut self) {
+        self.article_type = ARTICLE_TYPES
+            .into_iter()
+            .rev()
+            .cycle()
+            .skip_while(|article_type| article_type != &self.article_type)
+            .nth(1)
+            .unwrap();
+    }
+}
+
+const ARTICLE_TYPES: [ArticleType; 6] = [
+    ArticleType::Top,
+    ArticleType::Best,
+    ArticleType::Show,
+    ArticleType::Ask,
+    ArticleType::Job,
+    ArticleType::New,
+];
+
 /// Widget to render list of articles.
 pub struct ArticlesWidget;
+
+fn article_type_title<'a>(selected: &'a ArticleType) -> impl Iterator<Item = Span<'a>> + 'a {
+    ARTICLE_TYPES.iter().flat_map(move |article_type| {
+        [
+            Span::styled(
+                article_type.as_str(),
+                if article_type == selected {
+                    Style::default().magenta().bold()
+                } else {
+                    Style::default()
+                },
+            ),
+            Span::raw(" "),
+        ]
+    })
+}
 
 impl StatefulWidget for &mut ArticlesWidget {
     type State = ArticlesState;
@@ -34,7 +80,7 @@ impl StatefulWidget for &mut ArticlesWidget {
             .map(|(item, index)| render_article_line(item, index))
             .collect::<Vec<_>>();
 
-        let title = Line::from(state.article_type.as_str())
+        let title = Line::from_iter(article_type_title(&state.article_type))
             .bold()
             .blue()
             .centered();

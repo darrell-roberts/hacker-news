@@ -9,6 +9,7 @@ use app_dirs2::{get_app_dir, get_app_root, AppDataType, AppInfo};
 use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 use hacker_news_api::ArticleType;
 use hacker_news_search::{IndexStats, SearchContext};
+use log::info;
 use serde::{Deserialize, Serialize};
 
 #[cfg(target_family = "unix")]
@@ -40,6 +41,7 @@ pub async fn save_config(config: impl Serialize, file_name: &str) -> anyhow::Res
     let config_path = config_dir.join(file_name);
 
     tokio::fs::write(&config_path, &contents).await?;
+    info!("Wrote to config file: {config_path:?}");
 
     Ok(())
 }

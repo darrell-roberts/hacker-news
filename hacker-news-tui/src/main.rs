@@ -2,13 +2,16 @@
 
 use std::error::Error;
 
-use crate::{app::App, config::CONFIG_FILE};
+use crate::{
+    app::App,
+    config::{CONFIG_FILE, Config},
+};
 use color_eyre::eyre::Context;
 
 #[cfg(target_family = "unix")]
 use hacker_news_config::limits::check_nofiles_limit;
 use hacker_news_config::{init_logger, load_config};
-use hacker_news_search::IndexStats;
+use log::{debug, error};
 
 mod app;
 mod articles;
@@ -30,7 +33,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     #[cfg(target_family = "unix")]
     check_nofiles_limit();
 
-    let config = load_config::<IndexStats>(CONFIG_FILE).ok();
+    let config = load_config::<Config>(CONFIG_FILE)
+        .inspect_err(|err| {
+            error!("No config file: {err}");
+        })
+        .unwrap_or_default();
+
+    debug!("Config: {config:#?}");
 
     let terminal = ratatui::init();
     let result = App::new(config)?.run(terminal);

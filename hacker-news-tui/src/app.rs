@@ -2,14 +2,14 @@
 use crate::{
     articles::{ArticlesState, ArticlesWidget},
     comments::{CommentStack, CommentState, CommentsWidget},
-    config::CONFIG_FILE,
+    config::{CONFIG_FILE, Config},
     events::{AppEvent, EventManager, IndexRebuildState},
     footer::FooterWidget,
     search::{InputMode, SearchState, SearchWidget},
 };
 use color_eyre::Result;
 use hacker_news_config::{save_config, search_context};
-use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, api_client};
+use hacker_news_search::{RebuildProgress, SearchContext, api_client};
 use log::error;
 use ratatui::{
     DefaultTerminal,
@@ -42,17 +42,16 @@ pub struct App {
     event_manager: EventManager,
     /// Is the application running?
     running: bool,
-    search_context: Arc<RwLock<SearchContext>>,
+    pub search_context: Arc<RwLock<SearchContext>>,
     pub rebuild_progress: Option<IndexRebuildState>,
-    // pub comment_state: Option<CommentState>,
     pub viewing_state: Option<Viewing>,
-    pub index_stats: Option<IndexStats>,
+    pub config: Config,
     articles_state: ArticlesState,
 }
 
 impl App {
     /// Construct a new instance of [`App`].
-    pub fn new(config: Option<IndexStats>) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn new(config: Config) -> Result<Self, Box<dyn std::error::Error>> {
         let _ = api_client();
 
         let search_context = search_context()?;
@@ -72,7 +71,7 @@ impl App {
             search_context,
             rebuild_progress: None,
             viewing_state: None,
-            index_stats: config,
+            config,
             articles_state,
         })
     }
@@ -118,13 +117,28 @@ impl App {
                         error!("Failed to fetch top stories: {err}");
                     }
                 }
-                tokio::spawn(async move {
-                    if let Err(err) = save_config(index_stats, CONFIG_FILE).await {
+
+                let existing_stat = self
+                    .config
+                    .index_stats
+                    .iter_mut()
+                    .find(|stat| stat.category == index_stats.category);
+                match existing_stat {
+                    Some(stat) => {
+                        *stat = index_stats;
+                    }
+                    None => {
+                        self.config.index_stats.push(index_stats);
+                    }
+                }
+
+                let config = self.config.clone();
+
+                tokio::spawn(async {
+                    if let Err(err) = save_config(config, CONFIG_FILE).await {
                         error!("Failed to save config: {err}");
                     }
                 });
-
-                self.index_stats.replace(index_stats);
             }
             AppEvent::StoryUpdated(story) => {
                 if let Some(s) = self
@@ -401,8 +415,10 @@ impl App {
             // Rebuild the index.
             (_, KeyCode::Char('r')) => {
                 if self.rebuild_progress.is_none() {
-                    self.event_manager
-                        .rebuild_index(self.search_context.clone());
+                    self.event_manager.rebuild_index(
+                        self.search_context.clone(),
+                        self.articles_state.article_type,
+                    );
                 }
             }
             // Open URL for story.
@@ -493,6 +509,9 @@ impl App {
                             search_state.page_forward(self.search_context.clone());
                         }
                     }
+                } else {
+                    self.articles_state.next_article_type();
+                    self.update_stories();
                 }
             }
             // Next page in paginated results.
@@ -506,6 +525,9 @@ impl App {
                             search_state.page_back(self.search_context.clone());
                         }
                     }
+                } else {
+                    self.articles_state.previous_article_type();
+                    self.update_stories();
                 }
             }
             // Move selection up.
@@ -663,6 +685,23 @@ impl App {
     /// Set running to false to quit the application.
     fn quit(&mut self) {
         self.running = false;
+    }
+
+    fn update_stories(&mut self) {
+        self.search_context
+            .write()
+            .unwrap()
+            .activate_index(self.articles_state.article_type)
+            .unwrap();
+        match self.search_context.read().unwrap().top_stories(75, 0) {
+            Ok(stories) => {
+                self.articles_state.stories = stories;
+                self.articles_state.list_state.select(Some(0));
+            }
+            Err(err) => {
+                error!("Failed to fetch stories: {err}");
+            }
+        }
     }
 }
 

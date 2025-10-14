@@ -22,6 +22,7 @@ ratatui = { version = "0.29", features = ["unstable-rendered-line-info"] }
 tokio = { version = "1", features = ["rt"] }
 tui-input = "0.14"
 tui-scrollview = "0.5"
+serde.workspace = true
 
 [package.metadata.deb]
 name = "hacker-news-tui"
