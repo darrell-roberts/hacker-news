@@ -12,10 +12,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget, Wrap},
 };
-use std::{
-    borrow::Cow,
-    sync::{Arc, RwLock},
-};
+use std::sync::{Arc, RwLock};
 use tui_scrollview::ScrollViewState;
 
 #[derive(Default, Debug)]
