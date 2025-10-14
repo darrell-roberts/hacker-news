@@ -210,14 +210,14 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
         .collect::<Vec<_>>();
 
     let title = Line::from_iter([
-        Cow::Borrowed("by "),
-        Cow::Borrowed(item.by.as_str()),
-        Cow::Borrowed(" "),
-        Cow::Owned(item.age_label().unwrap_or_default()),
+        Span::raw("by "),
+        Span::raw(item.by.as_str()),
+        Span::raw(" "),
+        Span::raw(item.age_label().unwrap_or_default()),
         if item.kids.is_empty() {
-            Cow::Borrowed("")
+            Span::raw("")
         } else {
-            Cow::Owned(format!(" [{}]", item.kids.len()))
+            Span::raw(format!(" [{}]", item.kids.len()))
         },
     ])
     .style(Style::new().italic());

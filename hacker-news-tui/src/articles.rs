@@ -50,8 +50,8 @@ impl StatefulWidget for &mut ArticlesWidget {
             .render(content, buf, &mut state.list_state);
 
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
-            .begin_symbol(Some("↑"))
-            .end_symbol(Some("↓"));
+            .begin_symbol(Some("▲"))
+            .end_symbol(Some("▼"));
 
         scrollbar.render(scroll, buf, &mut state.scrollbar_state);
     }
@@ -63,7 +63,9 @@ fn render_article_line(article: &Story, index: usize) -> Line<'_> {
     Line::from_iter([
         Span::raw(format!("{index:<3}")),
         Span::styled(&article.title, style),
-        Span::styled(format!(" by {} ", &article.by), style.italic()),
+        Span::styled(" by ", style.italic()),
+        Span::styled(&article.by, style.italic()),
+        Span::raw(" "),
         Span::styled(article.age_label().unwrap_or_default(), style.italic()),
         if article.descendants > 0 {
             Span::raw(format!(" [{}]", article.descendants))

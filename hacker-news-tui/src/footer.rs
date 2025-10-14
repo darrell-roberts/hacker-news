@@ -1,5 +1,5 @@
 //! Footer widget.
-use std::{borrow::Cow, time::Duration};
+use std::time::Duration;
 
 use crate::{App, app::Viewing};
 use chrono::{DateTime, Utc};
@@ -7,7 +7,7 @@ use chrono_tz::Tz;
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect},
-    text::Line,
+    text::{Line, Span},
     widgets::{Block, Borders, Gauge, Widget},
 };
 
@@ -53,11 +53,11 @@ impl<'a> Widget for FooterWidget<'a> {
                         Constraint::Percentage(50),
                     ])
                     .areas(index_stats);
-                    Line::from_iter([Cow::Owned(format!(
+                    Line::from_iter([Span::raw(format!(
                         "Index ({}) ({})",
                         match local_time(stats.built_on) {
-                            Some(built_on) => Cow::Owned(built_on),
-                            None => Cow::Borrowed(""),
+                            Some(built_on) => Span::raw(built_on),
+                            None => Span::raw(""),
                         },
                         duration_string(stats.build_time)
                     ))])
