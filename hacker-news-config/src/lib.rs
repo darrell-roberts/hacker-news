@@ -11,6 +11,9 @@ use hacker_news_api::ArticleType;
 use hacker_news_search::{IndexStats, SearchContext};
 use serde::{Deserialize, Serialize};
 
+#[cfg(target_family = "unix")]
+pub mod limits;
+
 /// Index configuration.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IndexConfig {

@@ -4,6 +4,8 @@ use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
 use footer::FooterState;
 use hacker_news_api::ArticleType;
+#[cfg(target_family = "unix")]
+use hacker_news_config::limits::check_nofiles_limit;
 use hacker_news_config::{init_logger, load_config, search_context};
 use hacker_news_search::api_client;
 use header::{HeaderMsg, HeaderState};
@@ -18,9 +20,7 @@ use iced::{
     window::{close_requests, resize_events},
     Font, Size, Subscription, Task, Theme,
 };
-#[cfg(target_family = "unix")]
-use libc::{getrlimit, rlimit, setrlimit, RLIMIT_NOFILE};
-use log::{error, info};
+use log::error;
 use nav_history::Content;
 use std::{
     collections::{HashMap, HashSet},
@@ -253,42 +253,4 @@ fn theme(theme_name: &str) -> Option<Theme> {
         .iter()
         .find(|&theme| theme.to_string() == theme_name)
         .cloned()
-}
-
-#[cfg(target_family = "unix")]
-/// Increase the number open files limit on unix.
-fn check_nofiles_limit() {
-    const DESIRED_LIMIT: u64 = 10_240;
-
-    let mut rlim = rlimit {
-        rlim_cur: 0,
-        rlim_max: 0,
-    };
-
-    unsafe {
-        if getrlimit(RLIMIT_NOFILE, &mut rlim) != 0 {
-            let errno = std::io::Error::last_os_error();
-            error!("Could not get open files limit: {errno}");
-            return;
-        }
-    }
-
-    info!(
-        "Current open file limits: current {}, max {}",
-        rlim.rlim_cur, rlim.rlim_max
-    );
-
-    if rlim.rlim_cur < DESIRED_LIMIT {
-        rlim.rlim_cur = DESIRED_LIMIT;
-        rlim.rlim_max = DESIRED_LIMIT;
-
-        unsafe {
-            if setrlimit(RLIMIT_NOFILE, &rlim) != 0 {
-                let errno = std::io::Error::last_os_error();
-                error!("Could not set open files limit: {errno}");
-                return;
-            }
-        }
-        info!("Increased open file limit to {DESIRED_LIMIT}");
-    }
 }

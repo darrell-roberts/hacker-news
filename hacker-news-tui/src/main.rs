@@ -4,6 +4,9 @@ use std::error::Error;
 
 use crate::{app::App, config::CONFIG_FILE};
 use color_eyre::eyre::Context;
+
+#[cfg(target_family = "unix")]
+use hacker_news_config::limits::check_nofiles_limit;
 use hacker_news_config::{init_logger, load_config};
 use hacker_news_search::IndexStats;
 
@@ -23,6 +26,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
     color_eyre::install()?;
 
     init_logger()?;
+
+    #[cfg(target_family = "unix")]
+    check_nofiles_limit();
 
     let config = load_config::<IndexStats>(CONFIG_FILE).ok();
 

@@ -3144,6 +3144,8 @@ dependencies = [
  "flexi_logger",
  "hacker-news-api",
  "hacker-news-search",
+ "libc",
+ "log",
  "rmp-serde",
  "serde",
  "tokio",
