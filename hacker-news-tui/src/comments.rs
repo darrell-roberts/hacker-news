@@ -195,7 +195,7 @@ fn render_comments(buf: &mut Buffer, state: &mut CommentState, body: Rect) {
         y += height as u16;
     }
 
-    state.page_height = scroll_view.area().height;
+    state.page_height = body.height;
     scroll_view.render(body, buf, &mut state.scroll_view_state);
 }
 
