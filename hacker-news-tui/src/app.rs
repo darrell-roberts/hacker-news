@@ -5,6 +5,7 @@ use crate::{
     config::{CONFIG_FILE, Config},
     events::{AppEvent, EventManager, IndexRebuildState},
     footer::FooterWidget,
+    help::HelpWidget,
     search::{InputMode, SearchState, SearchWidget},
 };
 use color_eyre::Result;
@@ -14,8 +15,8 @@ use log::error;
 use ratatui::{
     DefaultTerminal,
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
-    widgets::{ListState, ScrollbarState, StatefulWidget, Widget},
+    layout::{Constraint, Direction, Layout, Rect},
+    widgets::{Clear, ListState, ScrollbarState, StatefulWidget, Widget},
 };
 use ratatui::{
     crossterm::event::{
@@ -28,6 +29,14 @@ use std::{
     sync::{Arc, RwLock},
 };
 use tui_input::backend::crossterm::EventHandler;
+
+/// Active view
+#[derive(Clone, Copy)]
+pub enum View {
+    Articles,
+    Search,
+    Comments,
+}
 
 /// Active viewing state.
 pub enum Viewing {
@@ -47,6 +56,7 @@ pub struct App {
     pub viewing_state: Option<Viewing>,
     pub config: Config,
     articles_state: ArticlesState,
+    show_help: bool,
 }
 
 impl App {
@@ -73,6 +83,7 @@ impl App {
             viewing_state: None,
             config,
             articles_state,
+            show_help: false,
         })
     }
 
@@ -92,10 +103,27 @@ impl App {
                 }
 
                 frame.render_widget(&mut self, frame.area());
+
+                if self.show_help {
+                    // show help
+                    let area = centered_rect(50, 50, frame.area());
+                    frame.render_widget(Clear, area);
+                    frame.render_widget(HelpWidget::new(self.viewing()), area);
+                }
             })?;
             self.handle_event(self.event_manager.next()?);
         }
         Ok(())
+    }
+
+    fn viewing(&self) -> View {
+        match &self.viewing_state {
+            Some(state) => match state {
+                Viewing::Comments(_) => View::Comments,
+                Viewing::Search(_) => View::Search,
+            },
+            None => View::Articles,
+        }
     }
 
     fn handle_event(&mut self, event: AppEvent) {
@@ -295,6 +323,11 @@ impl App {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => {
+                if self.show_help {
+                    self.show_help = false;
+                    return;
+                }
+
                 match self.viewing_state.as_mut() {
                     Some(Viewing::Comments(state)) => {
                         let stack_parent = state.child_stack.pop();
@@ -669,6 +702,15 @@ impl App {
                     }
                 }
             }
+            (_, KeyCode::Char('?')) => {
+                if let Some(Viewing::Search(state)) = &self.viewing_state
+                    && matches!(state.input_mode, InputMode::Editing)
+                {
+                    // ignore showing help if we are editing a search input.
+                } else {
+                    self.show_help = true;
+                }
+            }
 
             _ => {}
         }
@@ -745,4 +787,24 @@ impl Widget for &mut App {
         }
         FooterWidget::new(self).render(footer_area, buf);
     }
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Length(18),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Length(45),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }

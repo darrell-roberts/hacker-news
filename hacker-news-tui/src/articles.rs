@@ -109,18 +109,19 @@ impl StatefulWidget for &mut ArticlesWidget {
 
 /// Render a single line for an article.
 fn render_article_line(article: &Story, index: usize) -> Line<'_> {
-    let style = Style::new().white();
+    let italic = Style::default().italic();
     Line::from_iter([
         Span::raw(format!("{index:<3}")),
-        Span::styled(&article.title, style),
-        Span::styled(" by ", style.italic()),
-        Span::styled(&article.by, style.italic()),
+        Span::raw(&article.title),
+        Span::styled(" by ", italic),
+        Span::styled(&article.by, italic),
         Span::raw(" "),
-        Span::styled(article.age_label().unwrap_or_default(), style.italic()),
+        Span::styled(article.age_label().unwrap_or_default(), italic),
         if article.descendants > 0 {
             Span::raw(format!(" [{}]", article.descendants))
         } else {
             Span::raw("")
-        },
+        }
+        .style(italic),
     ])
 }

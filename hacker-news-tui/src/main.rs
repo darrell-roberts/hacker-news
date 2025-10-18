@@ -19,6 +19,7 @@ mod comments;
 mod config;
 mod events;
 mod footer;
+mod help;
 mod search;
 
 /// Starts ratatui and runs [`App`]. This runs
