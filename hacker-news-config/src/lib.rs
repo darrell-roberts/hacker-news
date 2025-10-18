@@ -15,13 +15,15 @@ use serde::{Deserialize, Serialize};
 #[cfg(target_family = "unix")]
 pub mod limits;
 
+/// Saved viewing state of the index
+pub const INDEX_CONFIG: &str = "index_config.data";
+
 /// Index configuration.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct IndexConfig {
     pub index_stats: Vec<IndexStats>,
-    pub current_index_stats: Option<IndexStats>,
-    pub article_count: usize,
-    pub article_type: ArticleType,
+    pub viewing_count: usize,
+    pub viewing_type: ArticleType,
 }
 
 /// Application information.

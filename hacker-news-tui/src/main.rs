@@ -2,15 +2,12 @@
 
 use std::error::Error;
 
-use crate::{
-    app::App,
-    config::{CONFIG_FILE, Config},
-};
+use crate::{app::App, config::load_config};
 use color_eyre::eyre::Context;
 
+use hacker_news_config::init_logger;
 #[cfg(target_family = "unix")]
 use hacker_news_config::limits::check_nofiles_limit;
-use hacker_news_config::{init_logger, load_config};
 use log::{debug, error};
 
 mod app;
@@ -34,7 +31,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     #[cfg(target_family = "unix")]
     check_nofiles_limit();
 
-    let config = load_config::<Config>(CONFIG_FILE)
+    let config = load_config()
         .inspect_err(|err| {
             error!("No config file: {err}");
         })

@@ -2,14 +2,14 @@
 use crate::{
     articles::{ArticlesState, ArticlesWidget},
     comments::{CommentStack, CommentState, CommentsWidget},
-    config::{CONFIG_FILE, Config},
+    config::{Config, save_config},
     events::{AppEvent, EventManager, IndexRebuildState},
     footer::FooterWidget,
     help::HelpWidget,
     search::{InputMode, SearchState, SearchWidget},
 };
 use color_eyre::Result;
-use hacker_news_config::{save_config, search_context};
+use hacker_news_config::search_context;
 use hacker_news_search::{RebuildProgress, SearchContext, api_client};
 use log::error;
 use ratatui::{
@@ -148,6 +148,7 @@ impl App {
 
                 let existing_stat = self
                     .config
+                    .index_config
                     .index_stats
                     .iter_mut()
                     .find(|stat| stat.category == index_stats.category);
@@ -156,14 +157,14 @@ impl App {
                         *stat = index_stats;
                     }
                     None => {
-                        self.config.index_stats.push(index_stats);
+                        self.config.index_config.index_stats.push(index_stats);
                     }
                 }
 
                 let config = self.config.clone();
 
                 tokio::spawn(async {
-                    if let Err(err) = save_config(config, CONFIG_FILE).await {
+                    if let Err(err) = save_config(config).await {
                         error!("Failed to save config: {err}");
                     }
                 });

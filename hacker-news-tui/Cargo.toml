@@ -23,6 +23,7 @@ tokio = { version = "1", features = ["rt"] }
 tui-input = "0.14"
 tui-scrollview = "0.5"
 serde.workspace = true
+anyhow.workspace = true
 
 [package.metadata.deb]
 name = "hacker-news-tui"

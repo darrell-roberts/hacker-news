@@ -52,6 +52,7 @@ impl<'a> Widget for FooterWidget<'a> {
                 if let Some(stats) = self
                     .app
                     .config
+                    .index_config
                     .index_stats
                     .iter()
                     .find(|s| s.category == active_index)

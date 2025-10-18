@@ -23,8 +23,8 @@ pub struct FooterState {
     pub status_line: String,
     pub last_update: Option<DateTime<Local>>,
     pub scale: f64,
-    pub current_index_stats: Option<IndexStats>,
-    pub index_stats: HashMap<&'static str, IndexStats>,
+    pub viewing_index: ArticleType,
+    pub index_stats: HashMap<ArticleType, IndexStats>,
     pub index_progress: Option<IndexProgress>,
 }
 
@@ -43,6 +43,10 @@ pub enum FooterMsg {
 }
 
 impl FooterState {
+    fn current_index_stats(&self) -> Option<&IndexStats> {
+        self.index_stats.get(&self.viewing_index)
+    }
+
     pub fn view<'a>(&'a self, theme: &'a Theme) -> Element<'a, AppMsg> {
         let themes = Theme::ALL;
 
@@ -78,7 +82,7 @@ impl FooterState {
             )
             .push(container(
                 Row::new()
-                    .push_maybe(self.current_index_stats.as_ref().map(|stats| {
+                    .push_maybe(self.current_index_stats().as_ref().map(|stats| {
                         Row::new()
                             .push(text(format!("{}", stats.category)))
                             .push_maybe(
@@ -159,22 +163,14 @@ impl FooterState {
                 self.scale = scale;
             }
             FooterMsg::IndexStats { stats, category } => {
-                if let Some(s) = self.current_index_stats.as_ref() {
-                    if s.category == category {
-                        self.current_index_stats = Some(stats);
-                    }
-                }
                 self.index_stats
-                    .entry(category.as_str())
+                    .entry(category)
                     .and_modify(|s| *s = stats)
                     .or_insert(stats);
                 return Task::done(AppMsg::SaveConfig);
             }
             FooterMsg::CurrentIndex(category) => {
-                self.current_index_stats = self
-                    .index_stats
-                    .get(category.as_str())
-                    .map(ToOwned::to_owned);
+                self.viewing_index = category;
             }
             FooterMsg::IndexProgress(progress) => match progress {
                 RebuildProgress::Started(total_stories) => {

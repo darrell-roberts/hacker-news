@@ -6,7 +6,7 @@ use footer::FooterState;
 use hacker_news_api::ArticleType;
 #[cfg(target_family = "unix")]
 use hacker_news_config::limits::check_nofiles_limit;
-use hacker_news_config::{init_logger, load_config, search_context};
+use hacker_news_config::{init_logger, search_context};
 use hacker_news_search::api_client;
 use header::{HeaderMsg, HeaderState};
 use iced::{
@@ -27,7 +27,7 @@ use std::{
     time::Duration,
 };
 
-use crate::config::{Config, CONFIG_FILE};
+use crate::config::load_config;
 
 mod app;
 mod articles;
@@ -61,7 +61,7 @@ fn start() -> anyhow::Result<()> {
 
     let search_context = search_context()?;
 
-    let mut app = load_config::<Config>(CONFIG_FILE)
+    let mut app = load_config()
         .map(|config| config.into_app(search_context.clone()))
         .unwrap_or_else(|err| {
             error!("Could not load config: {err}");
@@ -90,7 +90,7 @@ fn start() -> anyhow::Result<()> {
                     scale: 1.,
                     #[cfg(target_os = "linux")]
                     scale: linux::initial_font_scale(),
-                    current_index_stats: None,
+                    viewing_index: ArticleType::Top,
                     index_stats: HashMap::new(),
                     index_progress: None,
                 },
@@ -121,6 +121,8 @@ fn start() -> anyhow::Result<()> {
 
     #[cfg(target_os = "linux")]
     {
+        use log::info;
+
         app.scale = linux::initial_font_scale();
         app.footer.scale = app.scale;
         info!("Setting scale to {} from system font scale", app.scale);

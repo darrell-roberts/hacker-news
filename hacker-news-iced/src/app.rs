@@ -3,7 +3,7 @@ use crate::{
     articles::{self, ArticleMsg, ArticleState},
     comments::{self, CommentMsg, CommentState, NavStack},
     common::{self, error_task, FontExt as _},
-    config::{Config, CONFIG_FILE},
+    config::{save_config, Config, GuiConfig},
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState, SearchCriteria},
     header::{self, HeaderMsg, HeaderState},
@@ -12,7 +12,7 @@ use crate::{
     ROBOTO_FONT,
 };
 use hacker_news_api::ArticleType;
-use hacker_news_config::{save_config, IndexConfig};
+use hacker_news_config::IndexConfig;
 use hacker_news_search::{
     api::{Comment, Story},
     SearchContext,
@@ -587,16 +587,17 @@ impl From<&App> for Config {
         let visited = state.article_state.visited.clone();
 
         Config {
-            scale: state.scale,
             index_config: IndexConfig {
-                article_count: state.header.article_count,
-                article_type: state.header.article_type,
-                current_index_stats: state.footer.current_index_stats,
+                viewing_count: state.header.article_count,
+                viewing_type: state.header.article_type,
                 index_stats: state.footer.index_stats.values().cloned().collect(),
             },
-            visited: visited.clone(),
-            theme: state.theme.to_string(),
-            window_size: (state.size.width, state.size.height),
+            gui_config: GuiConfig {
+                visited: visited.clone(),
+                theme: state.theme.to_string(),
+                window_size: (state.size.width, state.size.height),
+                scale: state.scale,
+            },
         }
     }
 }
@@ -605,7 +606,7 @@ impl From<&App> for Config {
 pub fn save_task(app: &App) -> Task<AppMsg> {
     let config = Config::from(app);
 
-    Task::future(save_config(config, CONFIG_FILE)).then(|result| match result {
+    Task::future(save_config(config)).then(|result| match result {
         Ok(_) => Task::none(),
         Err(err) => error_task(err),
     })
