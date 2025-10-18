@@ -13,56 +13,51 @@ path = "src/main.rs"
 
 [features]
 trace = [
-    "opentelemetry",
-    "opentelemetry-otlp",
-    "opentelemetry_sdk",
-    "tracing-opentelemetry",
-    "opentelemetry-semantic-conventions",
-    "tracing-subscriber",
-    "hacker-news-search/trace",
-    "tracing",
+  "opentelemetry",
+  "opentelemetry-otlp",
+  "opentelemetry_sdk",
+  "tracing-opentelemetry",
+  "opentelemetry-semantic-conventions",
+  "tracing-subscriber",
+  "hacker-news-search/trace",
+  "tracing",
 ]
 
 [dependencies]
-iced = { version = "0.13", features = [
-    "lazy",
-    "tokio",
-    "advanced",
-    "auto-detect-theme",
-    "image",
-    "canvas",
-] }
-
 anyhow.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
-flexi_logger.workspace = true
+console-subscriber = "0.4"
+either = "1"
 hacker-news-api.workspace = true
+hacker-news-config.workspace = true
 hacker-news-search.workspace = true
 html-sanitizer.workspace = true
+iced = { version = "0.13", features = [
+  "lazy",
+  "tokio",
+  "advanced",
+  "auto-detect-theme",
+  "image",
+  "canvas",
+] }
 log.workspace = true
-serde.workspace = true
-tokio.workspace = true
-
+open = "5"
 opentelemetry = { version = "0.26", features = ["trace"], optional = true }
 opentelemetry-otlp = { version = "0.26", features = [
-    "grpc-tonic",
-    "trace",
+  "grpc-tonic",
+  "trace",
 ], optional = true }
 opentelemetry-semantic-conventions = { version = "0.26", optional = true }
 opentelemetry_sdk = { version = "0.26", features = [
-    "rt-tokio",
-    "trace",
+  "rt-tokio",
+  "trace",
 ], optional = true }
+serde.workspace = true
+tokio.workspace = true
 tracing = { version = "0.1", optional = true }
 tracing-opentelemetry = { version = "0.27", optional = true }
 tracing-subscriber = { version = "0.3", optional = true }
-
-app_dirs2 = "2"
-console-subscriber = "0.4"
-either = "1"
-open = "5"
-rmp-serde = "1.3"
 
 [target.'cfg(target_family = "unix")'.dependencies]
 libc = "0.2"
@@ -75,11 +70,11 @@ futures = "0.3"
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = [
-    "std",
-    "NSObject",
-    "NSString",
-    "NSDictionary",
-    "NSUserDefaults",
+  "std",
+  "NSObject",
+  "NSString",
+  "NSDictionary",
+  "NSUserDefaults",
 ] }
 
 [package.metadata.deb]
@@ -91,29 +86,29 @@ extended-description = """Hacker News Desktop Reader"""
 section = "utility"
 priority = "optional"
 assets = [
-    [
-        "target/release/hacker-news-reader",
-        "usr/bin/",
-        "755",
-    ],
-    [
-        "../assets/io.github.darrellroberts.hacker-news.desktop",
-        "usr/share/applications/",
-        "644",
-    ],
-    [
-        "../dist/icons/hicolor/32x32/apps/io.github.darrellroberts.hacker-news.png",
-        "usr/share/icons/hicolor/32x32/apps/",
-        "644",
-    ],
-    [
-        "../dist/icons/hicolor/128x128/apps/io.github.darrellroberts.hacker-news.png",
-        "usr/share/icons/hicolor/128x128/apps/",
-        "644",
-    ],
-    [
-        "../dist/icons/hicolor/256x256@2/apps/io.github.darrellroberts.hacker-news.png",
-        "usr/share/icons/hicolor/256x256@2/apps/",
-        "644",
-    ],
+  [
+    "target/release/hacker-news-reader",
+    "usr/bin/",
+    "755",
+  ],
+  [
+    "../assets/io.github.darrellroberts.hacker-news.desktop",
+    "usr/share/applications/",
+    "644",
+  ],
+  [
+    "../dist/icons/hicolor/32x32/apps/io.github.darrellroberts.hacker-news.png",
+    "usr/share/icons/hicolor/32x32/apps/",
+    "644",
+  ],
+  [
+    "../dist/icons/hicolor/128x128/apps/io.github.darrellroberts.hacker-news.png",
+    "usr/share/icons/hicolor/128x128/apps/",
+    "644",
+  ],
+  [
+    "../dist/icons/hicolor/256x256@2/apps/io.github.darrellroberts.hacker-news.png",
+    "usr/share/icons/hicolor/256x256@2/apps/",
+    "644",
+  ],
 ]

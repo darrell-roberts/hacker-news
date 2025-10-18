@@ -18,8 +18,8 @@ gpui = { git = "https://github.com/zed-industries/zed" }
 hacker-news-api.workspace = true
 html-sanitizer.workspace = true
 log.workspace = true
-tokio = "1"
 platform-settings = { path = "../platform-settings" }
+tokio = "1"
 
 [package.metadata.deb]
 name = "hacker-news-dashboard"
@@ -30,29 +30,29 @@ extended-description = """Hacker News Desktop Dashboard"""
 section = "utility"
 priority = "optional"
 assets = [
-    [
-        "target/release/hacker-news-dashboard",
-        "usr/bin/",
-        "755",
-    ],
-    [
-        "assets/io.github.darrellroberts.hacker-news-dashboard.desktop",
-        "usr/share/applications/",
-        "644",
-    ],
-    [
-        "dist/icons/hicolor/32x32/apps/io.github.darrellroberts.hacker-news-dashboard.png",
-        "usr/share/icons/hicolor/32x32/apps/",
-        "644",
-    ],
-    [
-        "dist/icons/hicolor/128x128/apps/io.github.darrellroberts.hacker-news-dashboard.png",
-        "usr/share/icons/hicolor/128x128/apps/",
-        "644",
-    ],
-    [
-        "dist/icons/hicolor/256x256@2/apps/io.github.darrellroberts.hacker-news-dashboard.png",
-        "usr/share/icons/hicolor/256x256@2/apps/",
-        "644",
-    ],
+  [
+    "target/release/hacker-news-dashboard",
+    "usr/bin/",
+    "755",
+  ],
+  [
+    "assets/io.github.darrellroberts.hacker-news-dashboard.desktop",
+    "usr/share/applications/",
+    "644",
+  ],
+  [
+    "dist/icons/hicolor/32x32/apps/io.github.darrellroberts.hacker-news-dashboard.png",
+    "usr/share/icons/hicolor/32x32/apps/",
+    "644",
+  ],
+  [
+    "dist/icons/hicolor/128x128/apps/io.github.darrellroberts.hacker-news-dashboard.png",
+    "usr/share/icons/hicolor/128x128/apps/",
+    "644",
+  ],
+  [
+    "dist/icons/hicolor/256x256@2/apps/io.github.darrellroberts.hacker-news-dashboard.png",
+    "usr/share/icons/hicolor/256x256@2/apps/",
+    "644",
+  ],
 ]

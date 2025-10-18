@@ -1,12 +1,13 @@
 use anyhow::Context;
 use app::{update, view, App, AppMsg, PaneState, ScrollBy};
-use app_dirs2::get_app_dir;
 use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
-use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
 use footer::FooterState;
 use hacker_news_api::ArticleType;
-use hacker_news_search::{api_client, SearchContext};
+#[cfg(target_family = "unix")]
+use hacker_news_config::limits::check_nofiles_limit;
+use hacker_news_config::{init_logger, search_context};
+use hacker_news_search::api_client;
 use header::{HeaderMsg, HeaderState};
 use iced::{
     advanced::graphics::core::window,
@@ -19,15 +20,14 @@ use iced::{
     window::{close_requests, resize_events},
     Font, Size, Subscription, Task, Theme,
 };
-#[cfg(target_family = "unix")]
-use libc::{getrlimit, rlimit, setrlimit, RLIMIT_NOFILE};
-use log::{error, info};
+use log::error;
 use nav_history::Content;
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, RwLock},
     time::Duration,
 };
+
+use crate::config::load_config;
 
 mod app;
 mod articles;
@@ -54,39 +54,14 @@ fn start() -> anyhow::Result<()> {
     // Load this here so if it fails we fail to launch.
     let _ = api_client();
 
-    let log_dir = get_app_dir(app_dirs2::AppDataType::UserData, &config::APP_INFO, "logs")?;
-
-    let _logger = flexi_logger::Logger::try_with_env_or_str("info")?
-        .log_to_file(
-            FileSpec::default()
-                .directory(log_dir)
-                .basename("hacker-news"),
-        )
-        .rotate(
-            Criterion::Age(Age::Day),
-            Naming::Timestamps,
-            Cleanup::KeepLogFiles(5),
-        )
-        .print_message()
-        .start()?;
+    init_logger()?;
 
     #[cfg(target_family = "unix")]
     check_nofiles_limit();
 
-    let index_dir = get_app_dir(
-        app_dirs2::AppDataType::UserData,
-        &config::APP_INFO,
-        "hacker-news-index",
-    )?;
+    let search_context = search_context()?;
 
-    info!("Reading index dir {index_dir:?}");
-
-    let search_context = Arc::new(RwLock::new(SearchContext::new(
-        &index_dir,
-        ArticleType::Top,
-    )?));
-
-    let mut app = config::load_config()
+    let mut app = load_config()
         .map(|config| config.into_app(search_context.clone()))
         .unwrap_or_else(|err| {
             error!("Could not load config: {err}");
@@ -115,7 +90,7 @@ fn start() -> anyhow::Result<()> {
                     scale: 1.,
                     #[cfg(target_os = "linux")]
                     scale: linux::initial_font_scale(),
-                    current_index_stats: None,
+                    viewing_index: ArticleType::Top,
                     index_stats: HashMap::new(),
                     index_progress: None,
                 },
@@ -146,6 +121,8 @@ fn start() -> anyhow::Result<()> {
 
     #[cfg(target_os = "linux")]
     {
+        use log::info;
+
         app.scale = linux::initial_font_scale();
         app.footer.scale = app.scale;
         info!("Setting scale to {} from system font scale", app.scale);
@@ -278,42 +255,4 @@ fn theme(theme_name: &str) -> Option<Theme> {
         .iter()
         .find(|&theme| theme.to_string() == theme_name)
         .cloned()
-}
-
-#[cfg(target_family = "unix")]
-/// Increase the number open files limit on unix.
-fn check_nofiles_limit() {
-    const DESIRED_LIMIT: u64 = 10_240;
-
-    let mut rlim = rlimit {
-        rlim_cur: 0,
-        rlim_max: 0,
-    };
-
-    unsafe {
-        if getrlimit(RLIMIT_NOFILE, &mut rlim) != 0 {
-            let errno = std::io::Error::last_os_error();
-            error!("Could not get open files limit: {errno}");
-            return;
-        }
-    }
-
-    info!(
-        "Current open file limits: current {}, max {}",
-        rlim.rlim_cur, rlim.rlim_max
-    );
-
-    if rlim.rlim_cur < DESIRED_LIMIT {
-        rlim.rlim_cur = DESIRED_LIMIT;
-        rlim.rlim_max = DESIRED_LIMIT;
-
-        unsafe {
-            if setrlimit(RLIMIT_NOFILE, &rlim) != 0 {
-                let errno = std::io::Error::last_os_error();
-                error!("Could not set open files limit: {errno}");
-                return;
-            }
-        }
-        info!("Increased open file limit to {DESIRED_LIMIT}");
-    }
 }

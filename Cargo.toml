@@ -1,27 +1,45 @@
 [workspace]
-resolver = "2"
 members = [
   "hacker-news-api",
-  "html-sanitizer",
+  "hacker-news-config",
+  "hacker-news-gpui",
   "hacker-news-iced",
   "hacker-news-search",
-  "hacker-news-gpui", "platform-settings",
+  "hacker-news-tui",
+  "html-sanitizer",
+  "platform-settings",
 ]
+resolver = "2"
 
 [workspace.package]
 license = "MIT"
 edition = "2021"
 
 [workspace.dependencies]
-log = "0.4"
 anyhow = "1"
 chrono = "0.4"
 chrono-tz = "0.10"
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 flexi_logger = "0.31"
+log = "0.4"
+serde_json = "1"
+app_dirs2 = "2"
 
-hacker-news-api = { path = "hacker-news-api" }
-html-sanitizer = { path = "html-sanitizer" }
-hacker-news-search = { path = "hacker-news-search" }
+[workspace.dependencies.hacker-news-api]
+path = "hacker-news-api"
+
+[workspace.dependencies.hacker-news-search]
+path = "hacker-news-search"
+
+[workspace.dependencies.html-sanitizer]
+path = "html-sanitizer"
+
+[workspace.dependencies.hacker-news-config]
+path = "hacker-news-config"
+
+[workspace.dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[workspace.dependencies.tokio]
+version = "1"
+features = ["full"]

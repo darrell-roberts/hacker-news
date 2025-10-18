@@ -77,7 +77,8 @@ impl Render for MainWindow {
         let theme: Theme = window.appearance().into();
 
         div()
-            .font_family(".SystemUIFont")
+            // .font_family(".SystemUIFont")
+            .font_family("Arial")
             .text_size(px(15.))
             .text_color(theme.text_color())
             .flex()

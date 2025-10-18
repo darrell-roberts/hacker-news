@@ -15,7 +15,7 @@ use hacker_news_search::{
 use iced::{
     border, padding,
     widget::{self, text::Shaping, tooltip::Position},
-    Color, Element, Length, Task,
+    Color, Element, Length, Shadow, Task,
 };
 use std::sync::{Arc, RwLock};
 
@@ -72,6 +72,11 @@ impl FullSearchState {
                     widget::container::Style {
                         background: Some(palette.background.weak.color.into()),
                         border: border::rounded(8),
+                        shadow: Shadow {
+                            color: Color::BLACK,
+                            offset: iced::Vector { x: 2., y: 2. },
+                            blur_radius: 5.,
+                        },
                         ..Default::default()
                     }
                 })

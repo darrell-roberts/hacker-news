@@ -7,10 +7,8 @@ use crate::{
     nav_history::Content,
     theme,
 };
-use anyhow::Context;
-use app_dirs2::{get_app_root, AppDataType, AppInfo};
-use hacker_news_api::ArticleType;
-use hacker_news_search::{IndexStats, SearchContext};
+use hacker_news_config::{IndexConfig, INDEX_CONFIG};
+use hacker_news_search::SearchContext;
 use iced::{
     widget::pane_grid::{self, Configuration},
     Size,
@@ -21,43 +19,42 @@ use std::{
     sync::{Arc, RwLock},
 };
 
-pub const APP_INFO: AppInfo = AppInfo {
-    name: "Hacker News",
-    author: "Somebody",
-};
+pub const CONFIG_FILE: &str = "config_gui.dat";
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Config {
+pub struct GuiConfig {
     pub scale: f64,
-    pub article_count: usize,
-    pub article_type: ArticleType,
     pub visited: HashSet<u64>,
     pub theme: String,
     pub window_size: (f32, f32),
-    pub current_index_stats: Option<IndexStats>,
-    pub index_stats: Vec<IndexStats>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Config {
+    pub index_config: IndexConfig,
+    pub gui_config: GuiConfig,
+}
+
+/// Save application configuration.
 pub async fn save_config(config: Config) -> anyhow::Result<()> {
-    let config_dir = get_app_root(AppDataType::UserConfig, &APP_INFO).context("No app root")?;
-    if !config_dir.exists() {
-        tokio::fs::create_dir_all(&config_dir).await?;
-    }
-
-    let contents = rmp_serde::to_vec(&config)?;
-    let config_path = config_dir.join("config.dat");
-
-    tokio::fs::write(&config_path, &contents).await?;
-
+    let Config {
+        index_config,
+        gui_config,
+    } = config;
+    hacker_news_config::save_config(index_config, INDEX_CONFIG).await?;
+    hacker_news_config::save_config(gui_config, CONFIG_FILE).await?;
     Ok(())
 }
 
+/// Load application configuration.
 pub fn load_config() -> anyhow::Result<Config> {
-    let config_dir = get_app_root(AppDataType::UserConfig, &APP_INFO).context("No app root")?;
-    let content = std::fs::read(config_dir.join("config.dat"))?;
-    let config = rmp_serde::from_slice(&content)?;
+    let index_config = hacker_news_config::load_config(INDEX_CONFIG)?;
+    let gui_config = hacker_news_config::load_config(CONFIG_FILE)?;
 
-    Ok(config)
+    Ok(Config {
+        index_config,
+        gui_config,
+    })
 }
 
 impl Config {
@@ -65,42 +62,46 @@ impl Config {
         let config = self;
         let index_stats = HashMap::from_iter(
             config
+                .index_config
                 .index_stats
                 .into_iter()
-                .map(|index_stat| (index_stat.category.as_str(), index_stat)),
+                .map(|index_stat| (index_stat.category, index_stat)),
         );
         App {
             search_context: search_context.clone(),
-            theme: theme(&config.theme).unwrap_or_default(),
-            scale: config.scale,
+            theme: theme(&config.gui_config.theme).unwrap_or_default(),
+            scale: config.gui_config.scale,
             header: HeaderState {
                 search_context: search_context.clone(),
-                article_count: config.article_count,
-                article_type: config.article_type,
+                article_count: config.index_config.viewing_count,
+                article_type: config.index_config.viewing_type,
                 building_index: false,
                 full_search: None,
             },
             footer: FooterState {
                 status_line: String::new(),
                 last_update: None,
-                scale: config.scale,
-                current_index_stats: config.current_index_stats,
+                scale: config.gui_config.scale,
+                viewing_index: config.index_config.viewing_type,
                 index_stats,
                 index_progress: None,
             },
             article_state: ArticleState {
                 search_context: search_context.clone(),
                 articles: Vec::new(),
-                visited: config.visited,
+                visited: config.gui_config.visited,
                 search: None,
                 viewing_item: None,
-                article_limit: config.article_count,
+                article_limit: config.index_config.viewing_count,
                 watch_handles: HashMap::new(),
                 watch_changes: HashMap::new(),
                 indexing_stories: Vec::new(),
                 filter_watching: false,
             },
-            size: Size::new(config.window_size.0, config.window_size.1),
+            size: Size::new(
+                config.gui_config.window_size.0,
+                config.gui_config.window_size.1,
+            ),
             panes: pane_grid::State::with_configuration(pane_grid::Configuration::Split {
                 axis: pane_grid::Axis::Vertical,
                 ratio: 0.3,
@@ -108,7 +109,7 @@ impl Config {
                 b: Box::new(Configuration::Pane(PaneState::Content)),
             }),
             focused_pane: None,
-            content: Content::Empty(config.article_type),
+            content: Content::Empty(config.index_config.viewing_type),
             history: Vec::new(),
         }
     }

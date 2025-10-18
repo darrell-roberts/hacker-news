@@ -33,7 +33,7 @@ pub fn api_client() -> Arc<ApiClient> {
     client.clone()
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub struct IndexStats {
     pub total_documents: u64,
     pub total_comments: u64,
