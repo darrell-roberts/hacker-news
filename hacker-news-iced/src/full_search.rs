@@ -84,14 +84,15 @@ impl FullSearchState {
             .map(iced::Element::from);
 
         let content = widget::Column::new()
-            .push_maybe((self.full_count > 0).then(|| self.pagination_element()))
             .push(
                 widget::scrollable(
                     widget::container(widget::Column::with_children(comment_rows).spacing(15))
                         .padding(padding::top(0).bottom(10).left(10).right(25)),
                 )
+                .height(Length::Fill)
                 .id(full_search_scroll_id()),
             )
+            .push_maybe((self.full_count > 0).then(|| self.pagination_element()))
             .spacing(5);
 
         widget::container(content).into()

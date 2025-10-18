@@ -223,7 +223,6 @@ impl CommentState {
                     ))
                     .spacing(5),
             )
-            .push_maybe((self.full_count > 10).then(|| self.pagination_element()))
             .push(
                 widget::scrollable(
                     widget::Column::new()
@@ -247,6 +246,7 @@ impl CommentState {
                 .id(comment_scroll_id())
                 .height(Length::Fill),
             )
+            .push_maybe((self.full_count > 10).then(|| self.pagination_element()))
             .padding(iced::padding::top(5));
 
         container(content.width(Length::Fill)).into()
