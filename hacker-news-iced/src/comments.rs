@@ -18,7 +18,7 @@ use iced::{
     widget::{
         self, button, container, scrollable::AbsoluteOffset, text::Shaping, Column, Container,
     },
-    Border, Color, Element, Length, Task,
+    Border, Color, Element, Length, Shadow, Task,
 };
 use std::sync::{Arc, RwLock};
 
@@ -136,6 +136,11 @@ impl CommentState {
                             width: 1.,
                             radius: 8.into(),
                         },
+                        shadow: Shadow {
+                            color: Color::BLACK,
+                            offset: iced::Vector { x: 2., y: 2. },
+                            blur_radius: 5.,
+                        },
                         ..Default::default()
                     }
                 }))
@@ -156,6 +161,11 @@ impl CommentState {
                             palette.background.weak.color.into()
                         }),
                         border: border::rounded(8),
+                        shadow: Shadow {
+                            color: Color::BLACK,
+                            offset: iced::Vector { x: 2., y: 2. },
+                            blur_radius: 5.,
+                        },
                         ..Default::default()
                     }
                 });

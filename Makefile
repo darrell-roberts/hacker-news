@@ -9,7 +9,7 @@ check:
 	cargo clippy
 
 build: check
-	cargo build --release  --bin hacker-news-iced
+	cargo build --release  --bin hacker-news-reader
 
 bundle-mac: clean-dist build
 	# Create necessary directories
@@ -20,8 +20,8 @@ bundle-mac: clean-dist build
 	# Copy application files
 	cp assets/icon.icns "dist/Hacker News.app/Contents/Resources"
 	cp assets/Info.plist "dist/Hacker News.app/Contents"
-	cp target/release/hacker-news-iced "dist/Hacker News.app/Contents/MacOS"
-	chmod +x "dist/Hacker News.app/Contents/MacOS/hacker-news-iced"
+	cp target/release/hacker-news-reader "dist/Hacker News.app/Contents/MacOS"
+	chmod +x "dist/Hacker News.app/Contents/MacOS/hacker-news-reader"
 
 	codesign --sign "MyApps" "dist/Hacker News.app"
 
@@ -57,7 +57,7 @@ linux-app-image: clean-dist build
 	linuxdeploy-x86_64.AppImage --appdir dist/AppDir
 
 	# Copy contents into AppDir
-	cp target/release/hacker-news-iced dist/AppDir/usr/bin
+	cp target/release/hacker-news-reader dist/AppDir/usr/bin
 	cp assets/io.github.darrellroberts.hacker-news.desktop dist/AppDir/usr/share/applications
 	tar zxvf assets/icons.tar.gz -C dist/AppDir/usr/share
 
@@ -78,7 +78,7 @@ install-local-linux: build
 	echo "Installing for linux"
 	mkdir -p ~/.local/share/applications
 	mkdir -p ~/.local/bin
-	cp target/release/hacker-news-iced ~/.local/bin
+	cp target/release/hacker-news-reader ~/.local/bin
 	cp assets/io.github.darrellroberts.hacker-news.desktop ~/.local/share/applications
 	tar zxvf assets/icons.tar.gz -C ~/.local/share
 
@@ -97,12 +97,12 @@ endif
 uninstall-linux:
 	rm -f ~/.local/share/applications/io.github.darrellroberts.hacker-news.desktop
 	fd io.github.darrellroberts.hacker-news ~/.local/share/icons | xargs rm -f
-	rm -f ~/.local/bin/hacker-news-iced
+	rm -f ~/.local/bin/hacker-news-reader
 
 # Starts the jaeger all-in-one docker container.
 trace:
 	docker compose up --detach --remove-orphans --wait
-	cargo run --bin hacker-news-iced --features trace
+	cargo run --bin hacker-news-reader --features trace
 
 # Stops the jaeger all-in-one docker container.
 trace-down:
