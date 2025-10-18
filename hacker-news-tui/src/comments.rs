@@ -227,11 +227,12 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
                 } else {
                     Style::new()
                 })
-                .border_type(if selected {
-                    BorderType::QuadrantInside
-                } else {
-                    BorderType::Plain
-                })
+                .border_type(BorderType::Rounded)
+                // .border_type(if selected {
+                //     BorderType::QuadrantInside
+                // } else {
+                //     BorderType::Rounded
+                // })
                 .title_bottom(title)
                 .title_alignment(Alignment::Right),
         )

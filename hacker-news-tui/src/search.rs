@@ -8,7 +8,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect, Size},
     style::{Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, Paragraph, StatefulWidget, Widget, block::Title},
+    widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget, block::Title},
 };
 use tui_input::Input;
 use tui_scrollview::ScrollViewState;
@@ -107,12 +107,20 @@ impl StatefulWidget for SearchWidget {
             InputMode::Editing => {
                 let val = state.input.value();
                 Paragraph::new(val)
-                    .block(Block::bordered().title(Title::from("Search")))
+                    .block(
+                        Block::bordered()
+                            .border_type(BorderType::Rounded)
+                            .title(Title::from("Search")),
+                    )
                     .render(search_area, buf);
             }
             InputMode::Normal => {
                 Paragraph::new(state.search.as_deref().unwrap_or_default())
-                    .block(Block::bordered().title(Title::from("Search")))
+                    .block(
+                        Block::bordered()
+                            .border_type(BorderType::Rounded)
+                            .title(Title::from("Search")),
+                    )
                     .render(search_area, buf);
             }
         }

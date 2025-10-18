@@ -91,7 +91,11 @@ impl StatefulWidget for &mut ArticlesWidget {
         state.page_height = area.height - 2;
 
         List::new(items)
-            .block(Block::bordered().title(title))
+            .block(
+                Block::bordered()
+                    .border_type(ratatui::widgets::BorderType::Rounded)
+                    .title(title),
+            )
             .highlight_style(Style::new().magenta().bold())
             .render(content, buf, &mut state.list_state);
 
