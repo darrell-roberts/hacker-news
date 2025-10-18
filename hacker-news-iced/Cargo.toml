@@ -48,7 +48,7 @@ opentelemetry-otlp = { version = "0.26", features = [
     "grpc-tonic",
     "trace",
 ], optional = true }
-opentelemetry-semantic-conventions = { version = "0.26", optional = true }
+opentelemetry-semantic-conventions = { version = "0.31", optional = true }
 opentelemetry_sdk = { version = "0.26", features = [
     "rt-tokio",
     "trace",
