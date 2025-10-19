@@ -279,7 +279,12 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
 
                 append_last_line = matches!(
                     element_iter.peek(),
-                    Some(Element::Escaped(_) | Element::Link(_))
+                    Some(
+                        Element::Escaped(_)
+                            | Element::Link(_)
+                            | Element::Bold(_)
+                            | Element::Italic(_)
+                    )
                 );
 
                 if !last_append_last_line && append_last_line && !text_spans.is_empty() {
@@ -304,7 +309,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                 }
             }
             Element::Paragraph => {
-                lines.extend([Line::from(text_spans)]);
+                lines.push(Line::from(text_spans));
                 text_spans = Vec::new();
                 append_last_line = false;
             }
@@ -317,13 +322,24 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                 append_last_line = false;
             }
             Element::Italic(elements) => {
-                text_spans.extend(sub_spans(
-                    elements,
-                    base_style.add_modifier(Modifier::ITALIC),
-                ));
+                if append_last_line && let Some(last_line) = lines.last_mut() {
+                    last_line.extend(sub_spans(
+                        elements,
+                        base_style.add_modifier(Modifier::ITALIC),
+                    ));
+                } else {
+                    text_spans.extend(sub_spans(
+                        elements,
+                        base_style.add_modifier(Modifier::ITALIC),
+                    ));
+                }
             }
             Element::Bold(elements) => {
-                text_spans.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
+                if append_last_line && let Some(last_line) = lines.last_mut() {
+                    last_line.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
+                } else {
+                    text_spans.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
+                }
             }
         }
     }
