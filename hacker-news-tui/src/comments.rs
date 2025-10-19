@@ -243,27 +243,70 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
 }
 
 fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
-    let mut lines = Vec::new();
+    let mut lines: Vec<Line<'_>> = Vec::new();
     let mut text_spans = Vec::new();
 
-    for element in elements {
+    let mut element_iter = elements.into_iter().peekable();
+    let mut append_last_line = false;
+
+    while let Some(element) = element_iter.next() {
         match element {
             Element::Text(s) => {
-                text_spans.push(Span::styled(s, base_style));
+                let multi_line = s.lines().count() > 1;
+
+                if multi_line {
+                    if append_last_line
+                        && let Some(last_line) = lines.last_mut()
+                        && let Some(next_line) = s.lines().next()
+                    {
+                        last_line.push_span(Span::styled(next_line, base_style));
+                    } else {
+                        lines.extend([Line::from(text_spans)]);
+                        text_spans = Vec::new();
+                    }
+                    lines.extend(
+                        s.lines()
+                            .skip(if append_last_line { 1 } else { 0 })
+                            .map(|line| Line::from(Span::styled(line, base_style))),
+                    );
+                } else if append_last_line && let Some(last_line) = lines.last_mut() {
+                    last_line.push_span(Span::styled(s, base_style));
+                } else {
+                    text_spans.push(Span::styled(s, base_style));
+                }
+
+                let last_append_last_line = append_last_line;
+
+                append_last_line = matches!(
+                    element_iter.peek(),
+                    Some(Element::Escaped(_) | Element::Link(_))
+                );
+
+                if !last_append_last_line && append_last_line && !text_spans.is_empty() {
+                    lines.push(Line::from(text_spans));
+                    text_spans = Vec::new();
+                }
             }
             Element::Link(anchor) => {
-                text_spans.extend(maybe_span(anchor));
+                if append_last_line && let Some(last_line) = lines.last_mut() {
+                    if let Some(span) = maybe_span(anchor) {
+                        last_line.push_span(span);
+                    }
+                } else {
+                    text_spans.extend(maybe_span(anchor));
+                }
             }
             Element::Escaped(c) => {
-                text_spans.push(Span::styled(c.to_string(), base_style));
+                if append_last_line && let Some(last_line) = lines.last_mut() {
+                    last_line.push_span(Span::styled(c.to_string(), base_style));
+                } else {
+                    text_spans.push(Span::styled(c.to_string(), base_style));
+                }
             }
             Element::Paragraph => {
-                if lines.is_empty() {
-                    lines.extend([Line::from(text_spans), Line::raw("")]);
-                } else {
-                    lines.extend([Line::raw(""), Line::from(text_spans), Line::raw("")]);
-                }
+                lines.extend([Line::from(text_spans)]);
                 text_spans = Vec::new();
+                append_last_line = false;
             }
             Element::Code(c) => {
                 if !text_spans.is_empty() {
@@ -271,6 +314,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                     text_spans = Vec::new();
                 }
                 lines.extend(c.lines().map(|line| Line::raw(line.to_owned())));
+                append_last_line = false;
             }
             Element::Italic(elements) => {
                 text_spans.extend(sub_spans(
