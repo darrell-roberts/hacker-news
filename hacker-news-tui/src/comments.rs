@@ -109,6 +109,7 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
     where
         Self: Sized,
     {
+        // Split layout into title scrollable content and pagination.
         let [title_area, content_area, page_area] = Layout::vertical([
             Constraint::Length(1),
             Constraint::Fill(1),
@@ -119,23 +120,17 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
         // Article title
         Line::styled(self.article_title, Style::new().bold()).render(title_area, buf);
 
+        // Optional article body
+        let body_paragraph = self
+            .article_body
+            .filter(|body| !body.is_empty())
+            .map(|body| {
+                let elements = html_sanitizer::parse_elements(body);
+                Paragraph::new(spans(elements, Style::default())).wrap(Wrap { trim: false })
+            });
+
         // Comments
-        if let Some(body) = self.article_body.filter(|body| !body.is_empty()) {
-            let elements = html_sanitizer::parse_elements(body);
-            let paragraph =
-                Paragraph::new(spans(elements, Style::default())).wrap(Wrap { trim: false });
-
-            let lines = paragraph.line_count(content_area.width);
-
-            let [body_area, comments_area] =
-                Layout::vertical([Constraint::Length(lines as u16), Constraint::Fill(1)])
-                    .areas(content_area);
-
-            paragraph.render(body_area, buf);
-            render_comments(buf, state, comments_area);
-        } else {
-            render_comments(buf, state, content_area);
-        }
+        render_comments(buf, state, content_area, body_paragraph);
 
         // Pagination pages
         if state.total_comments > 0 {
@@ -156,12 +151,21 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
     }
 }
 
-fn render_comments(buf: &mut Buffer, state: &mut CommentState, body: Rect) {
-    let paragraph_widgets = state
-        .comments
-        .iter()
-        .zip(0..)
-        .map(|(item, index)| render_comment(item, state.viewing == Some(index)))
+fn render_comments(
+    buf: &mut Buffer,
+    state: &mut CommentState,
+    body: Rect,
+    article_body: Option<Paragraph<'_>>,
+) {
+    let paragraph_widgets = article_body
+        .into_iter()
+        .chain(
+            state
+                .comments
+                .iter()
+                .zip(0..)
+                .map(|(item, index)| render_comment(item, state.viewing == Some(index))),
+        )
         .collect::<Vec<_>>();
 
     let scroll_view_height: u16 = paragraph_widgets

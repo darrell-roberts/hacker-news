@@ -482,6 +482,7 @@ impl App {
                             state.parent_id = parent_id;
                             state.offset = 0;
                             state.viewing = None;
+                            state.scroll_view_state.scroll_to_top();
                             let comments = self.search_context.read().unwrap().comments(
                                 state.parent_id,
                                 state.limit,
