@@ -248,6 +248,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
 
     let mut element_iter = elements.into_iter().peekable();
     let mut append_last_line = false;
+    let mut count = 0;
 
     while let Some(element) = element_iter.next() {
         match element {
@@ -261,7 +262,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                     {
                         last_line.push_span(Span::styled(next_line, base_style));
                     } else {
-                        lines.extend([Line::from(text_spans)]);
+                        lines.push(Line::from(text_spans));
                         text_spans = Vec::new();
                     }
                     lines.extend(
@@ -277,6 +278,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
 
                 let last_append_last_line = append_last_line;
 
+                // Look ahead to see if we need to append to last line.
                 append_last_line = matches!(
                     element_iter.peek(),
                     Some(
@@ -296,9 +298,16 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                 if append_last_line && let Some(last_line) = lines.last_mut() {
                     if let Some(span) = maybe_span(anchor) {
                         last_line.push_span(span);
+                        if count == 0 {
+                            append_last_line = true;
+                        }
                     }
                 } else {
-                    text_spans.extend(maybe_span(anchor));
+                    let span = maybe_span(anchor);
+                    if span.is_some() {
+                        append_last_line = true;
+                    }
+                    text_spans.extend(span);
                 }
             }
             Element::Escaped(c) => {
@@ -342,6 +351,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                 }
             }
         }
+        count += 1;
     }
 
     if !text_spans.is_empty() {
