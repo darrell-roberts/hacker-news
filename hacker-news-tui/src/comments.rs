@@ -229,13 +229,18 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
                     Style::new()
                 })
                 .border_type(if selected {
-                    BorderType::Double
+                    BorderType::Thick
                 } else {
                     BorderType::Rounded
                 })
                 .title_bottom(title)
                 .title_alignment(Alignment::Right),
         )
+        .style(if selected {
+            Style::new().white().on_dark_gray().bold()
+        } else {
+            Style::default()
+        })
         .wrap(Wrap { trim: false })
 }
 
