@@ -223,11 +223,6 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
     Paragraph::new(lines)
         .block(
             Block::bordered()
-                .border_style(if selected {
-                    Style::new().magenta()
-                } else {
-                    Style::new()
-                })
                 .border_type(if selected {
                     BorderType::Thick
                 } else {
