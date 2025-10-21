@@ -109,6 +109,7 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
     where
         Self: Sized,
     {
+        // Split layout into title scrollable content and pagination.
         let [title_area, content_area, page_area] = Layout::vertical([
             Constraint::Length(1),
             Constraint::Fill(1),
@@ -119,23 +120,17 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
         // Article title
         Line::styled(self.article_title, Style::new().bold()).render(title_area, buf);
 
+        // Optional article body
+        let body_paragraph = self
+            .article_body
+            .filter(|body| !body.is_empty())
+            .map(|body| {
+                let elements = html_sanitizer::parse_elements(body);
+                Paragraph::new(spans(elements, Style::default())).wrap(Wrap { trim: false })
+            });
+
         // Comments
-        if let Some(body) = self.article_body.filter(|body| !body.is_empty()) {
-            let elements = html_sanitizer::parse_elements(body);
-            let paragraph =
-                Paragraph::new(spans(elements, Style::default())).wrap(Wrap { trim: false });
-
-            let lines = paragraph.line_count(content_area.width);
-
-            let [body_area, comments_area] =
-                Layout::vertical([Constraint::Length(lines as u16), Constraint::Fill(1)])
-                    .areas(content_area);
-
-            paragraph.render(body_area, buf);
-            render_comments(buf, state, comments_area);
-        } else {
-            render_comments(buf, state, content_area);
-        }
+        render_comments(buf, state, content_area, body_paragraph);
 
         // Pagination pages
         if state.total_comments > 0 {
@@ -156,12 +151,21 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
     }
 }
 
-fn render_comments(buf: &mut Buffer, state: &mut CommentState, body: Rect) {
-    let paragraph_widgets = state
-        .comments
-        .iter()
-        .zip(0..)
-        .map(|(item, index)| render_comment(item, state.viewing == Some(index)))
+fn render_comments(
+    buf: &mut Buffer,
+    state: &mut CommentState,
+    body: Rect,
+    article_body: Option<Paragraph<'_>>,
+) {
+    let paragraph_widgets = article_body
+        .into_iter()
+        .chain(
+            state
+                .comments
+                .iter()
+                .zip(0..)
+                .map(|(item, index)| render_comment(item, state.viewing == Some(index))),
+        )
         .collect::<Vec<_>>();
 
     let scroll_view_height: u16 = paragraph_widgets
@@ -239,27 +243,84 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
 }
 
 fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
-    let mut lines = Vec::new();
+    let mut lines: Vec<Line<'_>> = Vec::new();
     let mut text_spans = Vec::new();
 
-    for element in elements {
+    let mut element_iter = elements.into_iter().peekable();
+    let mut append_last_line = false;
+    let mut count = 0;
+
+    while let Some(element) = element_iter.next() {
         match element {
             Element::Text(s) => {
-                text_spans.push(Span::styled(s, base_style));
+                let multi_line = s.lines().count() > 1;
+
+                if multi_line {
+                    if append_last_line
+                        && let Some(last_line) = lines.last_mut()
+                        && let Some(next_line) = s.lines().next()
+                    {
+                        last_line.push_span(Span::styled(next_line, base_style));
+                    } else {
+                        lines.push(Line::from(text_spans));
+                        text_spans = Vec::new();
+                    }
+                    lines.extend(
+                        s.lines()
+                            .skip(if append_last_line { 1 } else { 0 })
+                            .map(|line| Line::from(Span::styled(line, base_style))),
+                    );
+                } else if append_last_line && let Some(last_line) = lines.last_mut() {
+                    last_line.push_span(Span::styled(s, base_style));
+                } else {
+                    text_spans.push(Span::styled(s, base_style));
+                }
+
+                let last_append_last_line = append_last_line;
+
+                // Look ahead to see if we need to append to last line.
+                append_last_line = matches!(
+                    element_iter.peek(),
+                    Some(
+                        Element::Escaped(_)
+                            | Element::Link(_)
+                            | Element::Bold(_)
+                            | Element::Italic(_)
+                    )
+                );
+
+                if !last_append_last_line && append_last_line && !text_spans.is_empty() {
+                    lines.push(Line::from(text_spans));
+                    text_spans = Vec::new();
+                }
             }
             Element::Link(anchor) => {
-                text_spans.extend(maybe_span(anchor));
+                if append_last_line && let Some(last_line) = lines.last_mut() {
+                    if let Some(span) = maybe_span(anchor) {
+                        last_line.push_span(span);
+                        if count == 0 {
+                            append_last_line = true;
+                        }
+                    }
+                } else {
+                    let span = maybe_span(anchor);
+                    if span.is_some() {
+                        append_last_line = true;
+                    }
+                    text_spans.extend(span);
+                }
             }
             Element::Escaped(c) => {
-                text_spans.push(Span::styled(c.to_string(), base_style));
+                if append_last_line && let Some(last_line) = lines.last_mut() {
+                    last_line.push_span(Span::styled(c.to_string(), base_style));
+                } else {
+                    text_spans.push(Span::styled(c.to_string(), base_style));
+                }
             }
             Element::Paragraph => {
-                if lines.is_empty() {
-                    lines.extend([Line::from(text_spans), Line::raw("")]);
-                } else {
-                    lines.extend([Line::raw(""), Line::from(text_spans), Line::raw("")]);
-                }
+                lines.push(Line::from(text_spans));
                 text_spans = Vec::new();
+                append_last_line = false;
             }
             Element::Code(c) => {
                 if !text_spans.is_empty() {
@@ -267,17 +328,30 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                     text_spans = Vec::new();
                 }
                 lines.extend(c.lines().map(|line| Line::raw(line.to_owned())));
+                append_last_line = false;
             }
             Element::Italic(elements) => {
-                text_spans.extend(sub_spans(
-                    elements,
-                    base_style.add_modifier(Modifier::ITALIC),
-                ));
+                if append_last_line && let Some(last_line) = lines.last_mut() {
+                    last_line.extend(sub_spans(
+                        elements,
+                        base_style.add_modifier(Modifier::ITALIC),
+                    ));
+                } else {
+                    text_spans.extend(sub_spans(
+                        elements,
+                        base_style.add_modifier(Modifier::ITALIC),
+                    ));
+                }
             }
             Element::Bold(elements) => {
-                text_spans.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
+                if append_last_line && let Some(last_line) = lines.last_mut() {
+                    last_line.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
+                } else {
+                    text_spans.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
+                }
             }
         }
+        count += 1;
     }
 
     if !text_spans.is_empty() {
