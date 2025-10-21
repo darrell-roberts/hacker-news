@@ -96,7 +96,7 @@ impl StatefulWidget for &mut ArticlesWidget {
                     .border_type(ratatui::widgets::BorderType::Rounded)
                     .title(title),
             )
-            .highlight_style(Style::new().magenta().bold())
+            .highlight_style(Style::new().white().on_dark_gray().bold())
             .render(content, buf, &mut state.list_state);
 
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
