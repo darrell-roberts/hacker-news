@@ -171,8 +171,7 @@ fn render_comments(
     let scroll_view_height: u16 = paragraph_widgets
         .iter()
         .map(|p| p.line_count(buf.area.width))
-        .sum::<usize>() as u16
-        + 5;
+        .sum::<usize>() as u16;
 
     let width = if buf.area.height < scroll_view_height {
         buf.area.width - 1
@@ -183,16 +182,14 @@ fn render_comments(
     let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
     let mut y = 0;
 
-    let paragraph_width = width - 2;
-
     for paragraph in paragraph_widgets {
-        let height = paragraph.line_count(paragraph_width);
+        let height = paragraph.line_count(width);
         scroll_view.render_widget(
             paragraph,
             Rect {
                 x: 0,
                 y,
-                width: paragraph_width,
+                width,
                 height: height as u16,
             },
         );
@@ -232,13 +229,18 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
                     Style::new()
                 })
                 .border_type(if selected {
-                    BorderType::Double
+                    BorderType::Thick
                 } else {
                     BorderType::Rounded
                 })
                 .title_bottom(title)
                 .title_alignment(Alignment::Right),
         )
+        .style(if selected {
+            Style::new().white().on_dark_gray().bold()
+        } else {
+            Style::default()
+        })
         .wrap(Wrap { trim: false })
 }
 

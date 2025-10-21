@@ -106,7 +106,7 @@ impl App {
 
                 if self.show_help {
                     // show help
-                    let area = centered_rect(50, 50, frame.area());
+                    let area = centered_rect(30, 50, frame.area());
                     frame.render_widget(Clear, area);
                     frame.render_widget(HelpWidget::new(self.viewing()), area);
                 }
