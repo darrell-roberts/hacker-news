@@ -4,6 +4,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Rect},
+    style::{Color, Style},
     widgets::{Block, BorderType, Cell, Row, Table, Widget},
 };
 
@@ -39,7 +40,12 @@ impl Widget for HelpWidget {
         )
         .block(block)
         .header(Row::new(["Key", "Usage"]).bottom_margin(1))
-        .column_spacing(1);
+        .column_spacing(1)
+        .style(
+            Style::new()
+                .bg(Color::from_u32(0xb3ccff))
+                .fg(Color::from_u32(0x00000)),
+        );
 
         table.render(area, buf);
     }

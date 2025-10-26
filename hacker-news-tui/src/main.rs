@@ -18,6 +18,7 @@ mod events;
 mod footer;
 mod help;
 mod search;
+mod styles;
 
 /// Starts ratatui and runs [`App`]. This runs
 /// in tokio in order to use the `hacker-news-search`

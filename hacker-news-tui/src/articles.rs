@@ -4,12 +4,14 @@ use hacker_news_search::api::{AgeLabel as _, Story};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Style, Stylize as _},
+    style::{Color, Style, Stylize as _},
     text::{Line, Span},
     widgets::{
         Block, List, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget,
     },
 };
+
+use crate::styles::selected_style;
 
 #[derive(Default)]
 pub struct ArticlesState {
@@ -51,22 +53,40 @@ const ARTICLE_TYPES: [ArticleType; 6] = [
 ];
 
 /// Widget to render list of articles.
-pub struct ArticlesWidget;
+#[derive(Default)]
+pub struct ArticlesWidget {
+    style: Style,
+}
 
-fn article_type_title<'a>(selected: &'a ArticleType) -> impl Iterator<Item = Span<'a>> + 'a {
-    ARTICLE_TYPES.iter().flat_map(move |article_type| {
-        [
-            Span::styled(
-                article_type.as_str(),
-                if article_type == selected {
-                    Style::default().magenta().bold()
-                } else {
-                    Style::default()
-                },
-            ),
-            Span::raw(" "),
-        ]
-    })
+impl ArticlesWidget {
+    fn article_type_title<'a>(
+        &'a self,
+        selected: &'a ArticleType,
+    ) -> impl Iterator<Item = Span<'a>> + 'a {
+        ARTICLE_TYPES
+            .iter()
+            .flat_map(move |article_type| {
+                [
+                    Span::styled(
+                        article_type.as_str(),
+                        if article_type == selected {
+                            selected_style()
+                        } else {
+                            self.style
+                        },
+                    ),
+                    Span::raw(" "),
+                ]
+            })
+            .take(ARTICLE_TYPES.len() * 2 - 1)
+    }
+
+    /// Set the style
+    #[must_use = "method moves the value of self and returns the modified value"]
+    pub fn style<S: Into<Style>>(mut self, style: S) -> Self {
+        self.style = style.into();
+        self
+    }
 }
 
 impl StatefulWidget for &mut ArticlesWidget {
@@ -80,9 +100,8 @@ impl StatefulWidget for &mut ArticlesWidget {
             .map(|(item, index)| render_article_line(item, index))
             .collect::<Vec<_>>();
 
-        let title = Line::from_iter(article_type_title(&state.article_type))
+        let title = Line::from_iter(self.article_type_title(&state.article_type))
             .bold()
-            .blue()
             .centered();
 
         let [content, scroll] =
@@ -96,7 +115,7 @@ impl StatefulWidget for &mut ArticlesWidget {
                     .border_type(ratatui::widgets::BorderType::Rounded)
                     .title(title),
             )
-            .highlight_style(Style::new().white().on_dark_gray().bold())
+            .highlight_style(selected_style())
             .render(content, buf, &mut state.list_state);
 
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
@@ -111,7 +130,12 @@ impl StatefulWidget for &mut ArticlesWidget {
 fn render_article_line(article: &Story, index: usize) -> Line<'_> {
     let italic = Style::default().italic();
     Line::from_iter([
-        Span::raw(format!("{index:<3}")),
+        Span::raw(format!("{index:<3}")).style(
+            Style::new()
+                .bg(Color::from_u32(0x669999))
+                .fg(Color::from_u32(0x000000)),
+        ),
+        Span::raw(" "),
         Span::raw(&article.title),
         Span::styled(" by ", italic),
         Span::styled(&article.by, italic),

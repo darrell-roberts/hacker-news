@@ -6245,6 +6245,7 @@ dependencies = [
  "instability",
  "itertools 0.13.0",
  "lru",
+ "palette",
  "paste",
  "strum 0.26.3",
  "unicode-segmentation",

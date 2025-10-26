@@ -1,4 +1,5 @@
 //! Comments view widget.
+
 use hacker_news_search::{
     SearchContext,
     api::{AgeLabel, Comment},
@@ -8,12 +9,14 @@ use log::error;
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect, Size},
-    style::{Modifier, Style, Stylize},
+    style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget, Wrap},
 };
 use std::sync::{Arc, RwLock};
 use tui_scrollview::ScrollViewState;
+
+use crate::styles::selected_style;
 
 #[derive(Default, Debug)]
 pub struct CommentStack {
@@ -90,6 +93,7 @@ impl CommentState {
 pub struct CommentsWidget<'a> {
     article_title: &'a str,
     article_body: Option<&'a str>,
+    style: Style,
 }
 
 impl<'a> CommentsWidget<'a> {
@@ -98,7 +102,15 @@ impl<'a> CommentsWidget<'a> {
         Self {
             article_title,
             article_body: body,
+            style: Style::default(),
         }
+    }
+
+    /// Set the style
+    #[must_use = "method moves the value of self and returns the modified value"]
+    pub fn style<S: Into<Style>>(mut self, style: S) -> Self {
+        self.style = style.into();
+        self
     }
 }
 
@@ -118,7 +130,7 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
         .areas(area);
 
         // Article title
-        Line::styled(self.article_title, Style::new().bold()).render(title_area, buf);
+        Line::styled(self.article_title, selected_style()).render(title_area, buf);
 
         // Optional article body
         let body_paragraph = self
@@ -126,24 +138,33 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
             .filter(|body| !body.is_empty())
             .map(|body| {
                 let elements = html_sanitizer::parse_elements(body);
-                Paragraph::new(spans(elements, Style::default())).wrap(Wrap { trim: false })
+                let style = Style::new()
+                    .bg(Color::from_u32(0xb3ccff))
+                    .fg(Color::from_u32(0x00000));
+                Paragraph::new(spans(elements, style))
+                    .wrap(Wrap { trim: false })
+                    .style(style)
+                    .block(Block::bordered().border_type(BorderType::Rounded))
             });
 
         // Comments
-        render_comments(buf, state, content_area, body_paragraph);
+        render_comments(buf, state, content_area, body_paragraph, self.style);
 
         // Pagination pages
         if state.total_comments > 0 {
             let selected_page = state.selected_page();
-            let spans = (1..=state.total_pages()).map(|page| {
-                Span::styled(
-                    format!("{page} "),
-                    if page == selected_page {
-                        Style::default().bold().magenta()
-                    } else {
-                        Style::default()
-                    },
-                )
+            let spans = (1..=state.total_pages()).flat_map(|page| {
+                [
+                    Span::styled(
+                        format!("{page}"),
+                        if page == selected_page {
+                            selected_style()
+                        } else {
+                            self.style
+                        },
+                    ),
+                    Span::styled(" ", self.style),
+                ]
             });
 
             Line::from_iter(spans).centered().render(page_area, buf);
@@ -156,6 +177,7 @@ fn render_comments(
     state: &mut CommentState,
     body: Rect,
     article_body: Option<Paragraph<'_>>,
+    style: Style,
 ) {
     let paragraph_widgets = article_body
         .into_iter()
@@ -164,7 +186,7 @@ fn render_comments(
                 .comments
                 .iter()
                 .zip(0..)
-                .map(|(item, index)| render_comment(item, state.viewing == Some(index))),
+                .map(|(item, index)| render_comment(item, state.viewing == Some(index), style)),
         )
         .collect::<Vec<_>>();
 
@@ -200,10 +222,10 @@ fn render_comments(
     scroll_view.render(body, buf, &mut state.scroll_view_state);
 }
 
-pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
+pub fn render_comment<'a>(item: &'a Comment, selected: bool, style: Style) -> Paragraph<'a> {
     let elements = html_sanitizer::parse_elements(&item.body);
 
-    let lines = spans(elements, Style::default())
+    let lines = spans(elements, if selected { selected_style() } else { style })
         .into_iter()
         .collect::<Vec<_>>();
 
@@ -218,7 +240,7 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
             Span::raw(format!(" [{}]", item.kids.len()))
         },
     ])
-    .style(Style::new().italic());
+    .style(if selected { selected_style() } else { style }.italic());
 
     Paragraph::new(lines)
         .block(
@@ -231,11 +253,7 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool) -> Paragraph<'a> {
                 .title_bottom(title)
                 .title_alignment(Alignment::Right),
         )
-        .style(if selected {
-            Style::new().white().on_dark_gray().bold()
-        } else {
-            Style::default()
-        })
+        .style(if selected { selected_style() } else { style })
         .wrap(Wrap { trim: false })
 }
 
@@ -293,14 +311,14 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
             }
             Element::Link(anchor) => {
                 if append_last_line && let Some(last_line) = lines.last_mut() {
-                    if let Some(span) = maybe_span(anchor) {
+                    if let Some(span) = maybe_span(anchor, base_style) {
                         last_line.push_span(span);
                         if count == 0 {
                             append_last_line = true;
                         }
                     }
                 } else {
-                    let span = maybe_span(anchor);
+                    let span = maybe_span(anchor, base_style);
                     if span.is_some() {
                         append_last_line = true;
                     }
@@ -386,15 +404,10 @@ fn sub_spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>>
     text_spans
 }
 
-fn maybe_span(anchor: Anchor<'_>) -> Option<Span<'_>> {
+fn maybe_span(anchor: Anchor<'_>, style: Style) -> Option<Span<'_>> {
     anchor
         .attributes
         .into_iter()
         .find(|attr| attr.name == "href")
-        .map(|href_attr| {
-            Span::styled(
-                href_attr.value,
-                Style::default().add_modifier(Modifier::UNDERLINED),
-            )
-        })
+        .map(|href_attr| Span::styled(href_attr.value, style.add_modifier(Modifier::UNDERLINED)))
 }

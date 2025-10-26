@@ -7,6 +7,7 @@ use chrono_tz::Tz;
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect},
+    style::Style,
     text::{Line, Span},
     widgets::{Block, Borders, Gauge, Widget},
 };
@@ -14,12 +15,25 @@ use ratatui::{
 /// Footer widget displayed at the bottom.
 pub struct FooterWidget<'a> {
     app: &'a App,
+    style: Style,
 }
 
 impl<'a> FooterWidget<'a> {
     /// Create a new footer widget.
     pub fn new(app: &'a App) -> Self {
-        Self { app }
+        Self {
+            app,
+            style: Style::default(),
+        }
+    }
+}
+
+impl FooterWidget<'_> {
+    /// Set the style
+    #[must_use = "method moves the value of self and returns the modified value"]
+    pub fn style<S: Into<Style>>(mut self, style: S) -> Self {
+        self.style = style.into();
+        self
     }
 }
 
@@ -28,11 +42,14 @@ impl<'a> Widget for FooterWidget<'a> {
     where
         Self: Sized,
     {
+        buf.set_style(area, self.style);
         match self.app.rebuild_progress.as_ref() {
             Some(progress) => {
                 let gauge = Gauge::default()
                     .block(Block::new().borders(Borders::all()).title("Updating Index"))
-                    .percent(progress.percent());
+                    .percent(progress.percent())
+                    .style(self.style)
+                    .gauge_style(self.style);
                 gauge.render(area, buf);
             }
             None => {
