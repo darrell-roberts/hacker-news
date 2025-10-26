@@ -49,7 +49,7 @@ opentelemetry-otlp = { version = "0.26", features = [
     "trace",
 ], optional = true }
 opentelemetry-semantic-conventions = { version = "0.26", optional = true }
-opentelemetry_sdk = { version = "0.26", features = [
+opentelemetry_sdk = { version = "0.31", features = [
     "rt-tokio",
     "trace",
 ], optional = true }
