@@ -1,5 +1,6 @@
 //! Comments view widget.
 
+use crate::styles::{selected_style, top_header_style};
 use hacker_news_search::{
     SearchContext,
     api::{AgeLabel, Comment},
@@ -9,14 +10,12 @@ use log::error;
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect, Size},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget, Wrap},
 };
 use std::sync::{Arc, RwLock};
 use tui_scrollview::ScrollViewState;
-
-use crate::styles::selected_style;
 
 #[derive(Default, Debug)]
 pub struct CommentStack {
@@ -138,12 +137,9 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
             .filter(|body| !body.is_empty())
             .map(|body| {
                 let elements = html_sanitizer::parse_elements(body);
-                let style = Style::new()
-                    .bg(Color::from_u32(0xb3ccff))
-                    .fg(Color::from_u32(0x00000));
-                Paragraph::new(spans(elements, style))
+                Paragraph::new(spans(elements, top_header_style()))
                     .wrap(Wrap { trim: false })
-                    .style(style)
+                    .style(top_header_style())
                     .block(Block::bordered().border_type(BorderType::Rounded))
             });
 

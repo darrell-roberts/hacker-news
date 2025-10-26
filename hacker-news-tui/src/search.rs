@@ -1,6 +1,8 @@
 //! Comment search view and state
-use std::sync::{Arc, RwLock};
-
+use crate::{
+    comments::render_comment,
+    styles::{selected_style, top_header_style},
+};
 use hacker_news_search::{SearchContext, api::Comment};
 use log::error;
 use ratatui::{
@@ -10,10 +12,9 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget, block::Title},
 };
+use std::sync::{Arc, RwLock};
 use tui_input::Input;
 use tui_scrollview::ScrollViewState;
-
-use crate::{comments::render_comment, styles::selected_style};
 
 #[derive(Default)]
 pub enum InputMode {
@@ -124,7 +125,7 @@ impl StatefulWidget for SearchWidget {
                 .border_type(BorderType::Thick)
                 .title(Title::from("Search")),
         )
-        .style(selected_style())
+        .style(top_header_style())
         .render(search_area, buf);
 
         // Search comments results.

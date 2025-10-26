@@ -8,3 +8,10 @@ pub fn selected_style() -> Style {
         .bg(Color::from_u32(0xcc0000))
         .bold()
 }
+
+/// Used for search input and comment viewing optional article body
+pub fn top_header_style() -> Style {
+    Style::new()
+        .bg(Color::from_u32(0xb3ccff))
+        .fg(Color::from_u32(0x00000))
+}
