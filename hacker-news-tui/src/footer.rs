@@ -1,6 +1,4 @@
 //! Footer widget.
-use std::time::Duration;
-
 use crate::{App, app::Viewing};
 use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
@@ -11,6 +9,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Gauge, Widget},
 };
+use std::time::Duration;
 
 /// Footer widget displayed at the bottom.
 pub struct FooterWidget<'a> {
@@ -53,8 +52,15 @@ impl<'a> Widget for FooterWidget<'a> {
                 gauge.render(area, buf);
             }
             None => {
+                // let list = List::new().block(block);
+
+                let block = Block::bordered();
+
                 let [url, index_stats] =
-                    Layout::vertical([Constraint::Length(1), Constraint::Length(1)]).areas(area);
+                    Layout::vertical([Constraint::Length(1), Constraint::Length(1)])
+                        .areas(block.inner(area));
+
+                block.render(area, buf);
 
                 match &self.app.viewing_state {
                     Some(Viewing::Search(state)) => {
@@ -79,6 +85,7 @@ impl<'a> Widget for FooterWidget<'a> {
                         Constraint::Percentage(50),
                     ])
                     .areas(index_stats);
+
                     Line::from_iter([Span::raw(format!(
                         "Index ({}) ({})",
                         match local_time(stats.built_on) {
@@ -88,6 +95,7 @@ impl<'a> Widget for FooterWidget<'a> {
                         duration_string(stats.build_time)
                     ))])
                     .render(left, buf);
+
                     Line::raw(format!("Total comments: {}", stats.total_comments))
                         .alignment(Alignment::Right)
                         .render(right, buf);

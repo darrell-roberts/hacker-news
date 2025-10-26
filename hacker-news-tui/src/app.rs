@@ -769,7 +769,7 @@ impl Widget for &mut App {
             Constraint::Length(if self.rebuild_progress.is_some() {
                 3
             } else {
-                2
+                4
             }),
         ])
         .areas(area);
