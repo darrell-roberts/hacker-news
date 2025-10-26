@@ -1,5 +1,4 @@
 //! Comments view widget.
-
 use crate::styles::{selected_style, top_header_style};
 use hacker_news_search::{
     SearchContext,

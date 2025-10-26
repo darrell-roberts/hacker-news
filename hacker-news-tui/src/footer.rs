@@ -52,8 +52,6 @@ impl<'a> Widget for FooterWidget<'a> {
                 gauge.render(area, buf);
             }
             None => {
-                // let list = List::new().block(block);
-
                 let block = Block::bordered();
 
                 let [url, index_stats] =
