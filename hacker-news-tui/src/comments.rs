@@ -11,7 +11,7 @@ use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect, Size},
     style::{Modifier, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget, Wrap},
+    widgets::{Block, BorderType, Padding, Paragraph, StatefulWidget, Widget, Wrap},
 };
 use std::sync::{Arc, RwLock};
 use tui_scrollview::ScrollViewState;
@@ -246,7 +246,8 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool, style: Style) -> Pa
                     BorderType::Rounded
                 })
                 .title_bottom(title)
-                .title_alignment(Alignment::Right),
+                .title_alignment(Alignment::Right)
+                .padding(Padding::horizontal(1)),
         )
         .style(if selected { selected_style() } else { style })
         .wrap(Wrap { trim: false })
