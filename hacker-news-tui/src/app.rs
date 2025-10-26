@@ -16,6 +16,7 @@ use ratatui::{
     DefaultTerminal,
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
+    style::{Color, Style},
     widgets::{Clear, ListState, ScrollbarState, StatefulWidget, Widget},
 };
 use ratatui::{
@@ -546,6 +547,8 @@ impl App {
                     }
                 } else {
                     self.articles_state.next_article_type();
+                    self.articles_state.list_state.select_first();
+                    self.articles_state.scrollbar_state.first();
                     self.update_stories();
                 }
             }
@@ -562,6 +565,8 @@ impl App {
                     }
                 } else {
                     self.articles_state.previous_article_type();
+                    self.articles_state.list_state.select_first();
+                    self.articles_state.scrollbar_state.first();
                     self.update_stories();
                 }
             }
@@ -754,12 +759,17 @@ impl Widget for &mut App {
     where
         Self: Sized,
     {
+        let style = Style::new()
+            .bg(Color::from_u32(0x5e5c64))
+            .fg(Color::from_u32(0xffffff));
+        buf.set_style(area, style);
+
         let [content_area, footer_area] = Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(if self.rebuild_progress.is_some() {
                 3
             } else {
-                2
+                4
             }),
         ])
         .areas(area);
@@ -774,20 +784,30 @@ impl Widget for &mut App {
                     .map(|story| (story.title.as_str(), story.body.as_deref()))
                     .unwrap_or_default();
 
-                CommentsWidget::new(selected_title, selected_body).render(
-                    content_area,
-                    buf,
-                    comment_state,
-                );
+                CommentsWidget::new(selected_title, selected_body)
+                    .style(style)
+                    .render(content_area, buf, comment_state);
             }
             Some(Viewing::Search(state)) => {
-                SearchWidget.render(content_area, buf, state);
+                SearchWidget::default()
+                    .style(style)
+                    .render(content_area, buf, state);
             }
             None => {
-                ArticlesWidget.render(content_area, buf, &mut self.articles_state);
+                ArticlesWidget::default().style(style).render(
+                    content_area,
+                    buf,
+                    &mut self.articles_state,
+                );
             }
         }
-        FooterWidget::new(self).render(footer_area, buf);
+        FooterWidget::new(self)
+            .style(
+                Style::new()
+                    .bg(Color::from_u32(0x0086b3))
+                    .fg(Color::from_u32(0x272725)),
+            )
+            .render(footer_area, buf)
     }
 }
 

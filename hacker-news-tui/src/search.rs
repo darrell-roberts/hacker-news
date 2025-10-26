@@ -1,19 +1,20 @@
 //! Comment search view and state
-use std::sync::{Arc, RwLock};
-
+use crate::{
+    comments::render_comment,
+    styles::{selected_style, top_header_style},
+};
 use hacker_news_search::{SearchContext, api::Comment};
 use log::error;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect, Size},
-    style::{Style, Stylize},
+    style::Style,
     text::{Line, Span},
     widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget, block::Title},
 };
+use std::sync::{Arc, RwLock};
 use tui_input::Input;
 use tui_scrollview::ScrollViewState;
-
-use crate::comments::render_comment;
 
 #[derive(Default)]
 pub enum InputMode {
@@ -89,7 +90,19 @@ impl SearchState {
 }
 
 /// Search Widget
-pub struct SearchWidget;
+#[derive(Default)]
+pub struct SearchWidget {
+    style: Style,
+}
+
+impl SearchWidget {
+    /// Set the style
+    #[must_use = "method moves the value of self and returns the modified value"]
+    pub fn style<S: Into<Style>>(mut self, style: S) -> Self {
+        self.style = style.into();
+        self
+    }
+}
 
 impl StatefulWidget for SearchWidget {
     type State = SearchState;
@@ -112,23 +125,27 @@ impl StatefulWidget for SearchWidget {
                 .border_type(BorderType::Thick)
                 .title(Title::from("Search")),
         )
+        .style(top_header_style())
         .render(search_area, buf);
 
         // Search comments results.
-        render_comments(buf, state, search_results);
+        render_comments(buf, state, search_results, self.style);
 
         // Pagination pages.
         if state.total_comments > 0 {
             let selected_page = state.selected_page();
-            let spans = (1..=state.total_pages()).map(|page| {
-                Span::styled(
-                    format!("{page} "),
-                    if page == selected_page {
-                        Style::default().bold().magenta()
-                    } else {
-                        Style::default()
-                    },
-                )
+            let spans = (1..=state.total_pages()).flat_map(|page| {
+                [
+                    Span::styled(
+                        format!("{page}"),
+                        if page == selected_page {
+                            selected_style()
+                        } else {
+                            self.style
+                        },
+                    ),
+                    Span::styled(" ", self.style),
+                ]
             });
 
             Line::from_iter(spans).centered().render(page_area, buf);
@@ -136,12 +153,12 @@ impl StatefulWidget for SearchWidget {
     }
 }
 
-fn render_comments(buf: &mut Buffer, state: &mut SearchState, body: Rect) {
+fn render_comments(buf: &mut Buffer, state: &mut SearchState, body: Rect, style: Style) {
     let paragraph_widgets = state
         .comments
         .iter()
         .zip(0..)
-        .map(|(item, index)| render_comment(item, state.viewing == Some(index)))
+        .map(|(item, index)| render_comment(item, state.viewing == Some(index), style))
         .collect::<Vec<_>>();
 
     let scroll_view_height: u16 = paragraph_widgets

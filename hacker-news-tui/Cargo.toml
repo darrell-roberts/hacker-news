@@ -18,7 +18,10 @@ html-sanitizer.workspace = true
 iana-time-zone = "0.1"
 log.workspace = true
 open = "5"
-ratatui = { version = "0.29", features = ["unstable-rendered-line-info"] }
+ratatui = { version = "0.29", features = [
+    "unstable-rendered-line-info",
+    "palette",
+] }
 tokio = { version = "1", features = ["rt"] }
 tui-input = "0.14"
 tui-scrollview = "0.5"
