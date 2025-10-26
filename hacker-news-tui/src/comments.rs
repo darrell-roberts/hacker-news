@@ -139,7 +139,11 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
                 Paragraph::new(spans(elements, top_header_style()))
                     .wrap(Wrap { trim: false })
                     .style(top_header_style())
-                    .block(Block::bordered().border_type(BorderType::Rounded))
+                    .block(
+                        Block::bordered()
+                            .border_type(BorderType::Rounded)
+                            .padding(Padding::horizontal(1)),
+                    )
             });
 
         // Comments
