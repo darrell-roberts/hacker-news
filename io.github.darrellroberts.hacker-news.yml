@@ -4,7 +4,7 @@ runtime-version: "24.08"
 sdk: org.freedesktop.Sdk
 sdk-extensions:
   - org.freedesktop.Sdk.Extension.rust-stable
-command: hacker-news-iced
+command: hacker-news-reader
 finish-args:
   - --share=ipc
   - --socket=fallback-x11
@@ -31,7 +31,7 @@ modules:
       # - unzip -o Ubuntu.zip -d /app/share/fonts
       - cargo --offline fetch --manifest-path Cargo.toml
       - cargo --offline build --release
-      - install -Dm755 ./target/release/hacker-news-iced -t /app/bin/
+      - install -Dm755 ./target/release/hacker-news-reader -t /app/bin/
     sources:
       - type: dir
         path: .
