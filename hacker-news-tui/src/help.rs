@@ -30,14 +30,13 @@ impl Widget for HelpWidget {
             .title_alignment(Alignment::Right)
             .title("Help");
 
-        let table = Table::new(
-            match self.viewing {
-                View::Articles => article_help(),
-                View::Search => search_help(),
-                View::Comments => comment_help(),
-            },
-            [Constraint::Max(15), Constraint::Fill(1)],
-        )
+        let constraints = [Constraint::Max(15), Constraint::Fill(1)];
+
+        let table = match self.viewing {
+            View::Articles => Table::new(article_help(), constraints),
+            View::Search => Table::new(search_help(), constraints),
+            View::Comments => Table::new(comment_help(), constraints),
+        }
         .block(block)
         .header(Row::new(["Key", "Usage"]).bottom_margin(1))
         .column_spacing(1)
@@ -51,8 +50,8 @@ impl Widget for HelpWidget {
     }
 }
 
-fn article_help<'a>() -> Vec<Row<'a>> {
-    vec![
+fn article_help<'a>() -> impl IntoIterator<Item = Row<'a>> {
+    [
         Row::new(["j", "down"]),
         Row::new(["k", "up"]),
         Row::new(["pgup/ctrl+u", "page up"]),
@@ -70,8 +69,8 @@ fn article_help<'a>() -> Vec<Row<'a>> {
     ]
 }
 
-fn search_help<'a>() -> Vec<Row<'a>> {
-    vec![
+fn search_help<'a>() -> impl IntoIterator<Item = Row<'a>> {
+    [
         Row::new(["j", "down"]),
         Row::new(["k", "up"]),
         Row::new(["pgup/ctrl+u", "page up"]),
@@ -90,8 +89,8 @@ fn search_help<'a>() -> Vec<Row<'a>> {
     ]
 }
 
-fn comment_help<'a>() -> Vec<Row<'a>> {
-    vec![
+fn comment_help<'a>() -> impl IntoIterator<Item = Row<'a>> {
+    [
         Row::new(["j", "down"]),
         Row::new(["k", "up"]),
         Row::new(["pgup/ctrl+u", "page up"]),
