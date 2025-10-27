@@ -102,6 +102,53 @@ impl SearchWidget {
         self.style = style.into();
         self
     }
+
+    fn render_comments(&self, buf: &mut Buffer, state: &mut SearchState, body: Rect) {
+        let paragraph_widgets = state
+            .comments
+            .iter()
+            .zip(0..)
+            .map(|(item, index)| {
+                render_comment(
+                    item,
+                    state.viewing == Some(index),
+                    self.style,
+                    state.search.as_deref(),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let scroll_view_height: u16 = paragraph_widgets
+            .iter()
+            .map(|p| p.line_count(buf.area.width))
+            .sum::<usize>() as u16;
+
+        let width = if buf.area.height < scroll_view_height {
+            buf.area.width - 1
+        } else {
+            buf.area.width
+        };
+
+        let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
+        let mut y = 0;
+
+        for paragraph in paragraph_widgets {
+            let height = paragraph.line_count(width);
+            scroll_view.render_widget(
+                paragraph,
+                Rect {
+                    x: 0,
+                    y,
+                    width,
+                    height: height as u16,
+                },
+            );
+            y += height as u16;
+        }
+
+        state.page_height = body.height;
+        scroll_view.render(body, buf, &mut state.scroll_view_state);
+    }
 }
 
 impl StatefulWidget for SearchWidget {
@@ -129,7 +176,7 @@ impl StatefulWidget for SearchWidget {
         .render(search_area, buf);
 
         // Search comments results.
-        render_comments(buf, state, search_results, self.style);
+        self.render_comments(buf, state, search_results);
 
         // Pagination pages.
         if state.total_comments > 0 {
@@ -151,44 +198,4 @@ impl StatefulWidget for SearchWidget {
             Line::from_iter(spans).centered().render(page_area, buf);
         }
     }
-}
-
-fn render_comments(buf: &mut Buffer, state: &mut SearchState, body: Rect, style: Style) {
-    let paragraph_widgets = state
-        .comments
-        .iter()
-        .zip(0..)
-        .map(|(item, index)| render_comment(item, state.viewing == Some(index), style))
-        .collect::<Vec<_>>();
-
-    let scroll_view_height: u16 = paragraph_widgets
-        .iter()
-        .map(|p| p.line_count(buf.area.width))
-        .sum::<usize>() as u16;
-
-    let width = if buf.area.height < scroll_view_height {
-        buf.area.width - 1
-    } else {
-        buf.area.width
-    };
-
-    let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
-    let mut y = 0;
-
-    for paragraph in paragraph_widgets {
-        let height = paragraph.line_count(width);
-        scroll_view.render_widget(
-            paragraph,
-            Rect {
-                x: 0,
-                y,
-                width,
-                height: height as u16,
-            },
-        );
-        y += height as u16;
-    }
-
-    state.page_height = body.height;
-    scroll_view.render(body, buf, &mut state.scroll_view_state);
 }
