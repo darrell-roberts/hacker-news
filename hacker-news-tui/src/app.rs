@@ -761,7 +761,7 @@ impl Widget for &mut App {
     {
         let style = Style::new()
             .bg(Color::from_u32(0x5e5c64))
-            .fg(Color::from_u32(0xffffff));
+            .fg(Color::from_u32(0xe6e6e6));
         buf.set_style(area, style);
 
         let [content_area, footer_area] = Layout::vertical([
