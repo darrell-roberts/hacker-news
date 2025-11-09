@@ -16,6 +16,9 @@ use ratatui::{
 use std::sync::{Arc, RwLock};
 use tui_scrollview::ScrollViewState;
 
+#[cfg(test)]
+mod comments_test;
+
 #[derive(Default, Debug)]
 pub struct CommentStack {
     pub parent_id: u64,
@@ -262,87 +265,74 @@ pub fn render_comment<'a>(
         .wrap(Wrap { trim: false })
 }
 
+/// Convert the parsed `Element` markup into ratatui `Span`s and `Line`s.
 fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>) -> Vec<Line<'a>> {
     let mut lines: Vec<Line<'_>> = Vec::new();
     let mut text_spans = Vec::new();
 
-    let mut element_iter = elements.into_iter().peekable();
-    let mut append_last_line = false;
-    let mut count = 0;
-
-    while let Some(element) = element_iter.next() {
+    for element in elements {
         match element {
             Element::Text(s) => {
                 let multi_line = s.lines().count() > 1;
 
                 if multi_line {
-                    if append_last_line
-                        && let Some(last_line) = lines.last_mut()
+                    let mut skip_first_line = false;
+                    // if append_last_line
+                    if let Some(last_line) = lines.last_mut()
                         && let Some(next_line) = s.lines().next()
                     {
-                        // last_line.push_span(Span::styled(next_line, base_style));
                         last_line.extend(split_search(next_line, search, base_style));
-                    } else {
+                        skip_first_line = true;
+                    }
+
+                    // We started with some other element and don't have a line yet
+                    if lines.is_empty()
+                        && !text_spans.is_empty()
+                        && let Some(next_line) = s.lines().next()
+                    {
+                        text_spans.extend(split_search(next_line, search, base_style));
                         lines.push(Line::from(text_spans));
                         text_spans = Vec::new();
+                        skip_first_line = true;
                     }
+
                     lines.extend(
                         s.lines()
-                            .skip(if append_last_line { 1 } else { 0 })
-                            .map(|line| Line::from_iter(split_search(line, search, base_style))),
+                            .skip(if skip_first_line { 1 } else { 0 })
+                            .flat_map(|line| {
+                                [
+                                    Line::from(""),
+                                    Line::from_iter(split_search(line, search, base_style)),
+                                ]
+                            }),
                     );
-                } else if append_last_line && let Some(last_line) = lines.last_mut() {
-                    last_line.extend(split_search(s, search, base_style));
                 } else {
-                    // text_spans.push(Span::styled(s, base_style));
                     text_spans.extend(split_search(s, search, base_style));
-                }
-
-                let last_append_last_line = append_last_line;
-
-                // Look ahead to see if we need to append to last line.
-                append_last_line = matches!(
-                    element_iter.peek(),
-                    Some(
-                        Element::Escaped(_)
-                            | Element::Link(_)
-                            | Element::Bold(_)
-                            | Element::Italic(_)
-                    )
-                );
-
-                if !last_append_last_line && append_last_line && !text_spans.is_empty() {
-                    lines.push(Line::from(text_spans));
-                    text_spans = Vec::new();
                 }
             }
             Element::Link(anchor) => {
-                if append_last_line && let Some(last_line) = lines.last_mut() {
-                    if let Some(span) = maybe_span(anchor, base_style) {
-                        last_line.push_span(span);
-                        if count == 0 {
-                            append_last_line = true;
-                        }
-                    }
+                let span = maybe_span(anchor, base_style);
+                if text_spans.is_empty()
+                    && let Some(last_line) = lines.last_mut()
+                {
+                    last_line.extend(span);
                 } else {
-                    let span = maybe_span(anchor, base_style);
-                    if span.is_some() {
-                        append_last_line = true;
-                    }
                     text_spans.extend(span);
                 }
             }
             Element::Escaped(c) => {
-                if append_last_line && let Some(last_line) = lines.last_mut() {
-                    last_line.push_span(Span::styled(c.to_string(), base_style));
+                let span = Span::styled(c.to_string(), base_style);
+                if text_spans.is_empty()
+                    && let Some(last_line) = lines.last_mut()
+                {
+                    last_line.push_span(span);
                 } else {
-                    text_spans.push(Span::styled(c.to_string(), base_style));
+                    text_spans.push(span);
                 }
             }
             Element::Paragraph => {
                 lines.push(Line::from(text_spans));
                 text_spans = Vec::new();
-                append_last_line = false;
             }
             Element::Code(c) => {
                 if !text_spans.is_empty() {
@@ -350,48 +340,32 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>
                     text_spans = Vec::new();
                 }
                 lines.extend(c.lines().map(|line| Line::raw(line.to_owned())));
-                append_last_line = false;
             }
             Element::Italic(elements) => {
-                if append_last_line && let Some(last_line) = lines.last_mut() {
-                    last_line.extend(sub_spans(
-                        elements,
-                        base_style.add_modifier(Modifier::ITALIC),
-                        search,
-                    ));
+                let subs = sub_spans(elements, base_style.add_modifier(Modifier::ITALIC), search);
+                if let Some(last_line) = lines.last_mut() {
+                    last_line.extend(subs);
                 } else {
-                    text_spans.extend(sub_spans(
-                        elements,
-                        base_style.add_modifier(Modifier::ITALIC),
-                        search,
-                    ));
+                    text_spans.extend(subs);
                 }
             }
             Element::Bold(elements) => {
-                if append_last_line && let Some(last_line) = lines.last_mut() {
-                    last_line.extend(sub_spans(
-                        elements,
-                        base_style.add_modifier(Modifier::BOLD),
-                        search,
-                    ));
+                let subs = sub_spans(elements, base_style.add_modifier(Modifier::BOLD), search);
+                if let Some(last_line) = lines.last_mut() {
+                    last_line.extend(subs);
                 } else {
-                    text_spans.extend(sub_spans(
-                        elements,
-                        base_style.add_modifier(Modifier::BOLD),
-                        search,
-                    ));
+                    text_spans.extend(subs);
                 }
             }
         }
-        count += 1;
     }
 
     if !text_spans.is_empty() {
         lines.push(Line::from(text_spans));
     }
 
+    // Add an empty line at the end.
     lines.push(Line::from(""));
-
     lines
 }
 
@@ -431,11 +405,20 @@ fn sub_spans<'a>(
 }
 
 fn maybe_span(anchor: Anchor<'_>, style: Style) -> Option<Span<'_>> {
-    anchor
+    let href = anchor
         .attributes
         .into_iter()
         .find(|attr| attr.name == "href")
-        .map(|href_attr| Span::styled(href_attr.value, style.add_modifier(Modifier::UNDERLINED)))
+        .map(|href_attr| href_attr.value)?;
+
+    Some(if anchor.children.is_empty() || anchor.children == href {
+        Span::styled(href, style.add_modifier(Modifier::UNDERLINED))
+    } else {
+        Span::styled(
+            format!("{} ({href})", anchor.children),
+            style.add_modifier(Modifier::UNDERLINED),
+        )
+    })
 }
 
 fn split_search<'a>(line: &'a str, search: Option<&str>, style: Style) -> Vec<Span<'a>> {
