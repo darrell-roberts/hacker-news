@@ -405,20 +405,12 @@ fn sub_spans<'a>(
 }
 
 fn maybe_span(anchor: Anchor<'_>, style: Style) -> Option<Span<'_>> {
-    let href = anchor
+    anchor
         .attributes
         .into_iter()
         .find(|attr| attr.name == "href")
-        .map(|href_attr| href_attr.value)?;
-
-    Some(if anchor.children.is_empty() || anchor.children == href {
-        Span::styled(href, style.add_modifier(Modifier::UNDERLINED))
-    } else {
-        Span::styled(
-            format!("{} ({href})", anchor.children),
-            style.add_modifier(Modifier::UNDERLINED),
-        )
-    })
+        .map(|href_attr| href_attr.value)
+        .map(|href_value| Span::styled(href_value, style.add_modifier(Modifier::UNDERLINED)))
 }
 
 fn split_search<'a>(line: &'a str, search: Option<&str>, style: Style) -> Vec<Span<'a>> {
