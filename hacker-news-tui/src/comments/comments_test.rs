@@ -9,7 +9,6 @@ fn test_mark_up() {
 
     let elements = parse_elements(test);
 
-    dbg!(&elements);
-
-    let _ = spans(elements, Style::default(), None);
+    let spans = spans(elements, Style::default(), None);
+    assert_eq!(spans.len(), 7);
 }
