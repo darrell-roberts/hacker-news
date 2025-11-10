@@ -9,12 +9,15 @@ use log::error;
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect, Size},
-    style::{Modifier, Style, Stylize},
+    style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, BorderType, Padding, Paragraph, StatefulWidget, Widget, Wrap},
 };
 use std::sync::{Arc, RwLock};
 use tui_scrollview::ScrollViewState;
+
+#[cfg(test)]
+mod comments_test;
 
 #[derive(Default, Debug)]
 pub struct CommentStack {
@@ -110,6 +113,52 @@ impl<'a> CommentsWidget<'a> {
         self.style = style.into();
         self
     }
+
+    fn render_comments(
+        &self,
+        buf: &mut Buffer,
+        state: &mut CommentState,
+        body: Rect,
+        article_body: Option<Paragraph<'_>>,
+    ) {
+        let paragraph_widgets = article_body
+            .into_iter()
+            .chain(state.comments.iter().zip(0..).map(|(item, index)| {
+                render_comment(item, state.viewing == Some(index), self.style, None)
+            }))
+            .collect::<Vec<_>>();
+
+        let scroll_view_height: u16 = paragraph_widgets
+            .iter()
+            .map(|p| p.line_count(buf.area.width))
+            .sum::<usize>() as u16;
+
+        let width = if buf.area.height < scroll_view_height {
+            buf.area.width - 1
+        } else {
+            buf.area.width
+        };
+
+        let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
+        let mut y = 0;
+
+        for paragraph in paragraph_widgets {
+            let height = paragraph.line_count(width);
+            scroll_view.render_widget(
+                paragraph,
+                Rect {
+                    x: 0,
+                    y,
+                    width,
+                    height: height as u16,
+                },
+            );
+            y += height as u16;
+        }
+
+        state.page_height = body.height;
+        scroll_view.render(body, buf, &mut state.scroll_view_state);
+    }
 }
 
 impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
@@ -136,7 +185,7 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
             .filter(|body| !body.is_empty())
             .map(|body| {
                 let elements = html_sanitizer::parse_elements(body);
-                Paragraph::new(spans(elements, top_header_style()))
+                Paragraph::new(spans(elements, top_header_style(), None))
                     .wrap(Wrap { trim: false })
                     .style(top_header_style())
                     .block(
@@ -147,7 +196,7 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
             });
 
         // Comments
-        render_comments(buf, state, content_area, body_paragraph, self.style);
+        self.render_comments(buf, state, content_area, body_paragraph);
 
         // Pagination pages
         if state.total_comments > 0 {
@@ -171,62 +220,21 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
     }
 }
 
-fn render_comments(
-    buf: &mut Buffer,
-    state: &mut CommentState,
-    body: Rect,
-    article_body: Option<Paragraph<'_>>,
+pub fn render_comment<'a>(
+    item: &'a Comment,
+    selected: bool,
     style: Style,
-) {
-    let paragraph_widgets = article_body
-        .into_iter()
-        .chain(
-            state
-                .comments
-                .iter()
-                .zip(0..)
-                .map(|(item, index)| render_comment(item, state.viewing == Some(index), style)),
-        )
-        .collect::<Vec<_>>();
-
-    let scroll_view_height: u16 = paragraph_widgets
-        .iter()
-        .map(|p| p.line_count(buf.area.width))
-        .sum::<usize>() as u16;
-
-    let width = if buf.area.height < scroll_view_height {
-        buf.area.width - 1
-    } else {
-        buf.area.width
-    };
-
-    let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
-    let mut y = 0;
-
-    for paragraph in paragraph_widgets {
-        let height = paragraph.line_count(width);
-        scroll_view.render_widget(
-            paragraph,
-            Rect {
-                x: 0,
-                y,
-                width,
-                height: height as u16,
-            },
-        );
-        y += height as u16;
-    }
-
-    state.page_height = body.height;
-    scroll_view.render(body, buf, &mut state.scroll_view_state);
-}
-
-pub fn render_comment<'a>(item: &'a Comment, selected: bool, style: Style) -> Paragraph<'a> {
+    search: Option<&str>,
+) -> Paragraph<'a> {
     let elements = html_sanitizer::parse_elements(&item.body);
 
-    let lines = spans(elements, if selected { selected_style() } else { style })
-        .into_iter()
-        .collect::<Vec<_>>();
+    let lines = spans(
+        elements,
+        if selected { selected_style() } else { style },
+        search,
+    )
+    .into_iter()
+    .collect::<Vec<_>>();
 
     let title = Line::from_iter([
         Span::raw("by "),
@@ -257,85 +265,74 @@ pub fn render_comment<'a>(item: &'a Comment, selected: bool, style: Style) -> Pa
         .wrap(Wrap { trim: false })
 }
 
-fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
+/// Convert the parsed `Element` markup into ratatui `Span`s and `Line`s.
+fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>) -> Vec<Line<'a>> {
     let mut lines: Vec<Line<'_>> = Vec::new();
     let mut text_spans = Vec::new();
 
-    let mut element_iter = elements.into_iter().peekable();
-    let mut append_last_line = false;
-    let mut count = 0;
-
-    while let Some(element) = element_iter.next() {
+    for element in elements {
         match element {
             Element::Text(s) => {
                 let multi_line = s.lines().count() > 1;
 
                 if multi_line {
-                    if append_last_line
-                        && let Some(last_line) = lines.last_mut()
+                    let mut skip_first_line = false;
+                    // if append_last_line
+                    if let Some(last_line) = lines.last_mut()
                         && let Some(next_line) = s.lines().next()
                     {
-                        last_line.push_span(Span::styled(next_line, base_style));
-                    } else {
+                        last_line.extend(split_search(next_line, search, base_style));
+                        skip_first_line = true;
+                    }
+
+                    // We started with some other element and don't have a line yet
+                    if lines.is_empty()
+                        && !text_spans.is_empty()
+                        && let Some(next_line) = s.lines().next()
+                    {
+                        text_spans.extend(split_search(next_line, search, base_style));
                         lines.push(Line::from(text_spans));
                         text_spans = Vec::new();
+                        skip_first_line = true;
                     }
+
                     lines.extend(
                         s.lines()
-                            .skip(if append_last_line { 1 } else { 0 })
-                            .map(|line| Line::from(Span::styled(line, base_style))),
+                            .skip(if skip_first_line { 1 } else { 0 })
+                            .flat_map(|line| {
+                                [
+                                    Line::from(""),
+                                    Line::from_iter(split_search(line, search, base_style)),
+                                ]
+                            }),
                     );
-                } else if append_last_line && let Some(last_line) = lines.last_mut() {
-                    last_line.push_span(Span::styled(s, base_style));
                 } else {
-                    text_spans.push(Span::styled(s, base_style));
-                }
-
-                let last_append_last_line = append_last_line;
-
-                // Look ahead to see if we need to append to last line.
-                append_last_line = matches!(
-                    element_iter.peek(),
-                    Some(
-                        Element::Escaped(_)
-                            | Element::Link(_)
-                            | Element::Bold(_)
-                            | Element::Italic(_)
-                    )
-                );
-
-                if !last_append_last_line && append_last_line && !text_spans.is_empty() {
-                    lines.push(Line::from(text_spans));
-                    text_spans = Vec::new();
+                    text_spans.extend(split_search(s, search, base_style));
                 }
             }
             Element::Link(anchor) => {
-                if append_last_line && let Some(last_line) = lines.last_mut() {
-                    if let Some(span) = maybe_span(anchor, base_style) {
-                        last_line.push_span(span);
-                        if count == 0 {
-                            append_last_line = true;
-                        }
-                    }
+                let span = maybe_span(anchor, base_style);
+                if text_spans.is_empty()
+                    && let Some(last_line) = lines.last_mut()
+                {
+                    last_line.extend(span);
                 } else {
-                    let span = maybe_span(anchor, base_style);
-                    if span.is_some() {
-                        append_last_line = true;
-                    }
                     text_spans.extend(span);
                 }
             }
             Element::Escaped(c) => {
-                if append_last_line && let Some(last_line) = lines.last_mut() {
-                    last_line.push_span(Span::styled(c.to_string(), base_style));
+                let span = Span::styled(c.to_string(), base_style);
+                if text_spans.is_empty()
+                    && let Some(last_line) = lines.last_mut()
+                {
+                    last_line.push_span(span);
                 } else {
-                    text_spans.push(Span::styled(c.to_string(), base_style));
+                    text_spans.push(span);
                 }
             }
             Element::Paragraph => {
                 lines.push(Line::from(text_spans));
                 text_spans = Vec::new();
-                append_last_line = false;
             }
             Element::Code(c) => {
                 if !text_spans.is_empty() {
@@ -343,47 +340,45 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Line<'a>> {
                     text_spans = Vec::new();
                 }
                 lines.extend(c.lines().map(|line| Line::raw(line.to_owned())));
-                append_last_line = false;
             }
             Element::Italic(elements) => {
-                if append_last_line && let Some(last_line) = lines.last_mut() {
-                    last_line.extend(sub_spans(
-                        elements,
-                        base_style.add_modifier(Modifier::ITALIC),
-                    ));
+                let subs = sub_spans(elements, base_style.add_modifier(Modifier::ITALIC), search);
+                if let Some(last_line) = lines.last_mut() {
+                    last_line.extend(subs);
                 } else {
-                    text_spans.extend(sub_spans(
-                        elements,
-                        base_style.add_modifier(Modifier::ITALIC),
-                    ));
+                    text_spans.extend(subs);
                 }
             }
             Element::Bold(elements) => {
-                if append_last_line && let Some(last_line) = lines.last_mut() {
-                    last_line.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
+                let subs = sub_spans(elements, base_style.add_modifier(Modifier::BOLD), search);
+                if let Some(last_line) = lines.last_mut() {
+                    last_line.extend(subs);
                 } else {
-                    text_spans.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
+                    text_spans.extend(subs);
                 }
             }
         }
-        count += 1;
     }
 
     if !text_spans.is_empty() {
         lines.push(Line::from(text_spans));
     }
 
+    // Add an empty line at the end.
     lines.push(Line::from(""));
-
     lines
 }
 
-fn sub_spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>> {
+fn sub_spans<'a>(
+    elements: Vec<Element<'a>>,
+    base_style: Style,
+    search: Option<&str>,
+) -> Vec<Span<'a>> {
     let mut text_spans = Vec::new();
     for element in elements {
         match element {
             Element::Text(s) => {
-                text_spans.push(Span::styled(s, base_style));
+                text_spans.extend(split_search(s, search, base_style));
             }
             Element::Escaped(c) => {
                 text_spans.push(Span::styled(c.to_string(), base_style));
@@ -392,10 +387,15 @@ fn sub_spans<'a>(elements: Vec<Element<'a>>, base_style: Style) -> Vec<Span<'a>>
                 text_spans.extend(sub_spans(
                     elements,
                     base_style.add_modifier(Modifier::ITALIC),
+                    search,
                 ));
             }
             Element::Bold(elements) => {
-                text_spans.extend(sub_spans(elements, base_style.add_modifier(Modifier::BOLD)));
+                text_spans.extend(sub_spans(
+                    elements,
+                    base_style.add_modifier(Modifier::BOLD),
+                    search,
+                ));
             }
             // Sub elements won't have this
             Element::Paragraph | Element::Code(_) | Element::Link(_) => {}
@@ -409,5 +409,38 @@ fn maybe_span(anchor: Anchor<'_>, style: Style) -> Option<Span<'_>> {
         .attributes
         .into_iter()
         .find(|attr| attr.name == "href")
-        .map(|href_attr| Span::styled(href_attr.value, style.add_modifier(Modifier::UNDERLINED)))
+        .map(|href_attr| href_attr.value)
+        .map(|href_value| Span::styled(href_value, style.add_modifier(Modifier::UNDERLINED)))
+}
+
+fn split_search<'a>(line: &'a str, search: Option<&str>, style: Style) -> Vec<Span<'a>> {
+    match search {
+        Some(search) => {
+            let mut spans = Vec::new();
+            let mut last_index = 0;
+
+            for (index, matched) in line.match_indices(search) {
+                let (unmatched, _) = line.split_at(index);
+                if !unmatched.is_empty() {
+                    let segment = &unmatched[last_index..];
+                    spans.push(Span::styled(segment, style));
+                }
+
+                spans.push(Span::styled(
+                    matched,
+                    style
+                        .bg(Color::from_u32(0xe6e600))
+                        .fg(Color::from_u32(0x000000)),
+                ));
+                last_index = index + search.len();
+            }
+
+            let remaining = &line[last_index..];
+            if !remaining.is_empty() {
+                spans.push(Span::styled(remaining, style));
+            }
+            spans
+        }
+        None => vec![Span::styled(line, style)],
+    }
 }

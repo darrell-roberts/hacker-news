@@ -1,20 +1,20 @@
 //! Help widget
 //!
-
+use crate::app::View;
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Rect},
     style::{Color, Style},
-    widgets::{Block, BorderType, Cell, Row, Table, Widget},
+    widgets::{Block, BorderType, Row, Table, Widget},
 };
 
-use crate::app::View;
-
+/// Displays the help popup.
 pub struct HelpWidget {
     viewing: View,
 }
 
 impl HelpWidget {
+    /// Create a new help widget.
     pub fn new(viewing: View) -> Self {
         Self { viewing }
     }
@@ -30,14 +30,13 @@ impl Widget for HelpWidget {
             .title_alignment(Alignment::Right)
             .title("Help");
 
-        let table = Table::new(
-            match self.viewing {
-                View::Articles => article_help(),
-                View::Search => search_help(),
-                View::Comments => comment_help(),
-            },
-            [Constraint::Max(15), Constraint::Fill(1)],
-        )
+        let constraints = [Constraint::Max(15), Constraint::Fill(1)];
+
+        let table = match self.viewing {
+            View::Articles => Table::new(article_help(), constraints),
+            View::Search => Table::new(search_help(), constraints),
+            View::Comments => Table::new(comment_help(), constraints),
+        }
         .block(block)
         .header(Row::new(["Key", "Usage"]).bottom_margin(1))
         .column_spacing(1)
@@ -51,66 +50,60 @@ impl Widget for HelpWidget {
     }
 }
 
-fn article_help<'a>() -> Vec<Row<'a>> {
-    vec![
-        Row::new([Cell::from("j"), Cell::from("down")]),
-        Row::new([Cell::from("k"), Cell::from("up")]),
-        Row::new([Cell::from("pgup/ctrl+u"), Cell::from("page up")]),
-        Row::new([Cell::from("pgdwn/ctrl+f"), Cell::from("page down")]),
-        Row::new([Cell::from("home"), Cell::from("Scroll to top")]),
-        Row::new([Cell::from("end"), Cell::from("Scroll to end")]),
-        Row::new([Cell::from("->"), Cell::from("Next category")]),
-        Row::new([Cell::from("<-"), Cell::from("Previous category")]),
-        Row::new([Cell::from("r"), Cell::from("Rebuild category index")]),
-        Row::new([Cell::from("u"), Cell::from("Update selected article")]),
-        Row::new([Cell::from("o"), Cell::from("open article url")]),
-        Row::new([Cell::from("c"), Cell::from("open comments")]),
-        Row::new([Cell::from("/"), Cell::from("open comment search")]),
-        Row::new([Cell::from("q"), Cell::from("close/quit")]),
+fn article_help<'a>() -> impl IntoIterator<Item = Row<'a>> {
+    [
+        Row::new(["j", "down"]),
+        Row::new(["k", "up"]),
+        Row::new(["pgup/ctrl+u", "page up"]),
+        Row::new(["pgdwn/ctrl+f", "page down"]),
+        Row::new(["home", "Scroll to top"]),
+        Row::new(["end", "Scroll to end"]),
+        Row::new(["->", "Next category"]),
+        Row::new(["<-", "Previous category"]),
+        Row::new(["r", "Rebuild category index"]),
+        Row::new(["u", "Update selected article"]),
+        Row::new(["o", "open article url"]),
+        Row::new(["c", "open comments"]),
+        Row::new(["/", "open comment search"]),
+        Row::new(["q/Esc", "close/quit"]),
     ]
 }
 
-fn search_help<'a>() -> Vec<Row<'a>> {
-    vec![
-        Row::new([Cell::from("j"), Cell::from("down")]),
-        Row::new([Cell::from("k"), Cell::from("up")]),
-        Row::new([Cell::from("pgup/ctrl+u"), Cell::from("page up")]),
-        Row::new([Cell::from("pgdwn/ctrl+f"), Cell::from("page down")]),
-        Row::new([Cell::from("home"), Cell::from("Scroll to top")]),
-        Row::new([Cell::from("end"), Cell::from("Scroll to end")]),
-        Row::new([Cell::from("->"), Cell::from("Next page")]),
-        Row::new([Cell::from("<-"), Cell::from("Previous page")]),
-        Row::new([Cell::from("Tab"), Cell::from("Select next comment")]),
-        Row::new([
-            Cell::from("Shift+Tab"),
-            Cell::from("Select previous comment"),
-        ]),
-        Row::new([Cell::from("t"), Cell::from("open comment in thread")]),
-        Row::new([Cell::from("o"), Cell::from("open article url")]),
-        Row::new([Cell::from("c"), Cell::from("open comments")]),
-        Row::new([Cell::from("/"), Cell::from("open comment search")]),
-        Row::new([Cell::from("q"), Cell::from("close/quit")]),
+fn search_help<'a>() -> impl IntoIterator<Item = Row<'a>> {
+    [
+        Row::new(["j", "down"]),
+        Row::new(["k", "up"]),
+        Row::new(["pgup/ctrl+u", "page up"]),
+        Row::new(["pgdwn/ctrl+f", "page down"]),
+        Row::new(["home", "Scroll to top"]),
+        Row::new(["end", "Scroll to end"]),
+        Row::new(["->", "Next page"]),
+        Row::new(["<-", "Previous page"]),
+        Row::new(["Tab", "Select next comment"]),
+        Row::new(["Shift+Tab", "Select previous comment"]),
+        Row::new(["t", "open comment in thread"]),
+        Row::new(["o", "open article url"]),
+        Row::new(["c", "open comments"]),
+        Row::new(["/", "open comment search"]),
+        Row::new(["q/Esc", "close/quit"]),
     ]
 }
 
-fn comment_help<'a>() -> Vec<Row<'a>> {
-    vec![
-        Row::new([Cell::from("j"), Cell::from("down")]),
-        Row::new([Cell::from("k"), Cell::from("up")]),
-        Row::new([Cell::from("pgup/ctrl+u"), Cell::from("page up")]),
-        Row::new([Cell::from("pgdwn/ctrl+f"), Cell::from("page down")]),
-        Row::new([Cell::from("home"), Cell::from("Scroll to top")]),
-        Row::new([Cell::from("end"), Cell::from("Scroll to end")]),
-        Row::new([Cell::from("->"), Cell::from("Next page")]),
-        Row::new([Cell::from("<-"), Cell::from("Previous page")]),
-        Row::new([Cell::from("Tab"), Cell::from("Select next comment")]),
-        Row::new([
-            Cell::from("Shift+Tab"),
-            Cell::from("Select previous comment"),
-        ]),
-        Row::new([Cell::from("o"), Cell::from("open article url")]),
-        Row::new([Cell::from("c"), Cell::from("open comments")]),
-        Row::new([Cell::from("/"), Cell::from("open comment search")]),
-        Row::new([Cell::from("q"), Cell::from("close/quit")]),
+fn comment_help<'a>() -> impl IntoIterator<Item = Row<'a>> {
+    [
+        Row::new(["j", "down"]),
+        Row::new(["k", "up"]),
+        Row::new(["pgup/ctrl+u", "page up"]),
+        Row::new(["pgdwn/ctrl+f", "page down"]),
+        Row::new(["home", "Scroll to top"]),
+        Row::new(["end", "Scroll to end"]),
+        Row::new(["->", "Next page"]),
+        Row::new(["<-", "Previous page"]),
+        Row::new(["Tab", "Select next comment"]),
+        Row::new(["Shift+Tab", "Select previous comment"]),
+        Row::new(["o", "open article url"]),
+        Row::new(["c", "open comments"]),
+        Row::new(["/", "open comment search"]),
+        Row::new(["q/Esc", "close/quit"]),
     ]
 }
