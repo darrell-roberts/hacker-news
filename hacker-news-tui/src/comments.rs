@@ -130,14 +130,10 @@ impl<'a> CommentsWidget<'a> {
 
         let scroll_view_height: u16 = paragraph_widgets
             .iter()
-            .map(|p| p.line_count(buf.area.width))
+            .map(|p| p.line_count(buf.area.width) + 2)
             .sum::<usize>() as u16;
 
-        let width = if buf.area.height < scroll_view_height {
-            buf.area.width - 1
-        } else {
-            buf.area.width
-        };
+        let width = buf.area.width;
 
         let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
         let mut y = 0;
