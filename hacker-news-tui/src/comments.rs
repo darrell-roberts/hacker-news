@@ -273,12 +273,13 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>
     for element in elements {
         match element {
             Element::Text(s) => {
+                let last_line = lines.last_mut();
                 let multi_line = s.lines().count() > 1;
 
                 if multi_line {
                     let mut skip_first_line = false;
                     // if append_last_line
-                    if let Some(last_line) = lines.last_mut()
+                    if let Some(last_line) = last_line
                         && let Some(next_line) = s.lines().next()
                     {
                         last_line.extend(split_search(next_line, search, base_style));
@@ -307,7 +308,11 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>
                             }),
                     );
                 } else {
-                    text_spans.extend(split_search(s, search, base_style));
+                    if let Some(last_line) = last_line {
+                        last_line.extend(split_search(s, search, base_style));
+                    } else {
+                        text_spans.extend(split_search(s, search, base_style));
+                    }
                 }
             }
             Element::Link(anchor) => {
@@ -331,7 +336,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>
                 }
             }
             Element::Paragraph => {
-                lines.push(Line::from(text_spans));
+                lines.extend([Line::from(text_spans), Line::from("")]);
                 text_spans = Vec::new();
             }
             Element::Code(c) => {
