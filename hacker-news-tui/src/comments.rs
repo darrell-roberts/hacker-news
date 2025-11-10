@@ -268,32 +268,19 @@ pub fn render_comment<'a>(
 /// Convert the parsed `Element` markup into ratatui `Span`s and `Line`s.
 fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>) -> Vec<Line<'a>> {
     let mut lines: Vec<Line<'_>> = Vec::new();
-    let mut text_spans = Vec::new();
+    lines.push(Line::from(""));
 
     for element in elements {
+        let last_line = lines.last_mut().expect("We always start with one line");
         match element {
             Element::Text(s) => {
-                let last_line = lines.last_mut();
                 let multi_line = s.lines().count() > 1;
 
                 if multi_line {
                     let mut skip_first_line = false;
                     // if append_last_line
-                    if let Some(last_line) = last_line
-                        && let Some(next_line) = s.lines().next()
-                    {
+                    if let Some(next_line) = s.lines().next() {
                         last_line.extend(split_search(next_line, search, base_style));
-                        skip_first_line = true;
-                    }
-
-                    // We started with some other element and don't have a line yet
-                    if lines.is_empty()
-                        && !text_spans.is_empty()
-                        && let Some(next_line) = s.lines().next()
-                    {
-                        text_spans.extend(split_search(next_line, search, base_style));
-                        lines.push(Line::from(text_spans));
-                        text_spans = Vec::new();
                         skip_first_line = true;
                     }
 
@@ -308,65 +295,42 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>
                             }),
                     );
                 } else {
-                    if let Some(last_line) = last_line {
-                        last_line.extend(split_search(s, search, base_style));
-                    } else {
-                        text_spans.extend(split_search(s, search, base_style));
-                    }
+                    last_line.extend(split_search(s, search, base_style));
                 }
             }
             Element::Link(anchor) => {
-                let span = maybe_span(anchor, base_style);
-                if text_spans.is_empty()
-                    && let Some(last_line) = lines.last_mut()
-                {
-                    last_line.extend(span);
-                } else {
-                    text_spans.extend(span);
-                }
+                last_line.extend(maybe_span(anchor, base_style));
             }
             Element::Escaped(c) => {
-                let span = Span::styled(c.to_string(), base_style);
-                if text_spans.is_empty()
-                    && let Some(last_line) = lines.last_mut()
-                {
-                    last_line.push_span(span);
-                } else {
-                    text_spans.push(span);
-                }
+                last_line.push_span(Span::styled(c.to_string(), base_style));
             }
             Element::Paragraph => {
-                lines.extend([Line::from(text_spans), Line::from("")]);
-                text_spans = Vec::new();
+                // Add an empty line and a new line to append the next
+                // element to.
+                lines.extend([Line::from(""), Line::from("")]);
             }
             Element::Code(c) => {
-                if !text_spans.is_empty() {
-                    lines.push(Line::from(text_spans));
-                    text_spans = Vec::new();
-                }
-                lines.extend(c.lines().map(|line| Line::raw(line.to_owned())));
+                lines.extend(
+                    c.lines()
+                        .map(|line| Line::raw(line.to_owned()))
+                        .chain(std::iter::once(Line::from(""))),
+                );
             }
             Element::Italic(elements) => {
-                let subs = sub_spans(elements, base_style.add_modifier(Modifier::ITALIC), search);
-                if let Some(last_line) = lines.last_mut() {
-                    last_line.extend(subs);
-                } else {
-                    text_spans.extend(subs);
-                }
+                last_line.extend(sub_spans(
+                    elements,
+                    base_style.add_modifier(Modifier::ITALIC),
+                    search,
+                ));
             }
             Element::Bold(elements) => {
-                let subs = sub_spans(elements, base_style.add_modifier(Modifier::BOLD), search);
-                if let Some(last_line) = lines.last_mut() {
-                    last_line.extend(subs);
-                } else {
-                    text_spans.extend(subs);
-                }
+                last_line.extend(sub_spans(
+                    elements,
+                    base_style.add_modifier(Modifier::BOLD),
+                    search,
+                ));
             }
         }
-    }
-
-    if !text_spans.is_empty() {
-        lines.push(Line::from(text_spans));
     }
 
     // Add an empty line at the end.
