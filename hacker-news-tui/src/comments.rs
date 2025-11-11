@@ -130,7 +130,7 @@ impl<'a> CommentsWidget<'a> {
 
         let scroll_view_height: u16 = paragraph_widgets
             .iter()
-            .map(|p| p.line_count(buf.area.width) + 2)
+            .map(|p| p.line_count(buf.area.width))
             .sum::<usize>() as u16;
 
         let width = buf.area.width;
@@ -264,10 +264,11 @@ pub fn render_comment<'a>(
 /// Convert the parsed `Element` markup into ratatui `Span`s and `Line`s.
 fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>) -> Vec<Line<'a>> {
     let mut lines: Vec<Line<'_>> = Vec::new();
-    lines.push(Line::from(""));
+    lines.push(Line::styled("", base_style));
 
     for element in elements {
         let last_line = lines.last_mut().expect("We always start with one line");
+
         match element {
             Element::Text(s) => {
                 let multi_line = s.lines().count() > 1;
@@ -285,7 +286,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>
                             .skip(if skip_first_line { 1 } else { 0 })
                             .flat_map(|line| {
                                 [
-                                    Line::from(""),
+                                    Line::styled("", base_style),
                                     Line::from_iter(split_search(line, search, base_style)),
                                 ]
                             }),
@@ -303,7 +304,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>
             Element::Paragraph => {
                 // Add an empty line and a new line to append the next
                 // element to.
-                lines.extend([Line::from(""), Line::from("")]);
+                lines.extend([Line::styled("", base_style), Line::styled("", base_style)]);
             }
             Element::Code(c) => {
                 lines.extend(
