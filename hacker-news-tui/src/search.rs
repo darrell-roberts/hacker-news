@@ -118,32 +118,27 @@ impl SearchWidget {
             })
             .collect::<Vec<_>>();
 
+        let width = body.width - 1;
         let scroll_view_height: u16 = paragraph_widgets
             .iter()
-            .map(|p| p.line_count(buf.area.width))
+            .map(|p| p.line_count(width))
             .sum::<usize>() as u16;
 
-        let width = if buf.area.height < scroll_view_height {
-            buf.area.width - 1
-        } else {
-            buf.area.width
-        };
-
         let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
-        let mut y = 0;
 
+        let mut y = 0;
         for paragraph in paragraph_widgets {
-            let height = paragraph.line_count(width);
+            let height = paragraph.line_count(width) as u16;
             scroll_view.render_widget(
                 paragraph,
                 Rect {
                     x: 0,
                     y,
                     width,
-                    height: height as u16,
+                    height,
                 },
             );
-            y += height as u16;
+            y += height;
         }
 
         state.page_height = body.height;
@@ -155,7 +150,7 @@ impl StatefulWidget for SearchWidget {
     type State = SearchState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
-        let [search_area, search_results, page_area] = Layout::vertical([
+        let [search_area, search_results, pagination_area] = Layout::vertical([
             Constraint::Length(3),
             Constraint::Fill(1),
             Constraint::Length(1),
@@ -195,7 +190,9 @@ impl StatefulWidget for SearchWidget {
                 ]
             });
 
-            Line::from_iter(spans).centered().render(page_area, buf);
+            Line::from_iter(spans)
+                .centered()
+                .render(pagination_area, buf);
         }
     }
 }

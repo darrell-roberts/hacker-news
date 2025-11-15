@@ -105,7 +105,7 @@ impl StatefulWidget for &mut ArticlesWidget {
             .centered();
 
         let [content, scroll] =
-            Layout::horizontal([Constraint::Fill(1), Constraint::Length(2)]).areas(area);
+            Layout::horizontal([Constraint::Fill(1), Constraint::Length(1)]).areas(area);
 
         state.page_height = area.height - 2;
 

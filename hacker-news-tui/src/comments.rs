@@ -128,28 +128,29 @@ impl<'a> CommentsWidget<'a> {
             }))
             .collect::<Vec<_>>();
 
+        let width = body.width - 1;
         let scroll_view_height: u16 = paragraph_widgets
             .iter()
-            .map(|p| p.line_count(buf.area.width))
+            .map(|p| p.line_count(width))
             .sum::<usize>() as u16;
 
-        let width = buf.area.width;
-
         let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
-        let mut y = 0;
 
+        let mut y = 0;
         for paragraph in paragraph_widgets {
-            let height = paragraph.line_count(width);
+            // Each paragraph will render based on the number
+            // of lines.
+            let height = paragraph.line_count(width) as u16;
             scroll_view.render_widget(
                 paragraph,
                 Rect {
                     x: 0,
                     y,
                     width,
-                    height: height as u16,
+                    height,
                 },
             );
-            y += height as u16;
+            y += height;
         }
 
         state.page_height = body.height;
@@ -165,7 +166,7 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
         Self: Sized,
     {
         // Split layout into title scrollable content and pagination.
-        let [title_area, content_area, page_area] = Layout::vertical([
+        let [title_area, content_area, pagination_area] = Layout::vertical([
             Constraint::Length(1),
             Constraint::Fill(1),
             Constraint::Length(1),
@@ -211,7 +212,9 @@ impl<'a> StatefulWidget for &mut CommentsWidget<'a> {
                 ]
             });
 
-            Line::from_iter(spans).centered().render(page_area, buf);
+            Line::from_iter(spans)
+                .centered()
+                .render(pagination_area, buf);
         }
     }
 }
@@ -331,7 +334,7 @@ fn spans<'a>(elements: Vec<Element<'a>>, base_style: Style, search: Option<&str>
     }
 
     // Add an empty line at the end.
-    lines.push(Line::from(""));
+    // lines.push(Line::from(""));
     lines
 }
 
