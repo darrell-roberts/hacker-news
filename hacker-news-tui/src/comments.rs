@@ -128,35 +128,45 @@ impl<'a> CommentsWidget<'a> {
             }))
             .collect::<Vec<_>>();
 
-        let width = body.width - 1;
-        let scroll_view_height: u16 = paragraph_widgets
-            .iter()
-            .map(|p| p.line_count(width) + 1)
-            .sum::<usize>() as u16;
-
-        let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height))
-            .vertical_scrollbar_visibility(ScrollbarVisibility::Always);
-
-        let mut y = 0;
-        for paragraph in paragraph_widgets {
-            // Each paragraph will render based on the number
-            // of lines.
-            let height = paragraph.line_count(width) as u16 + 1;
-            scroll_view.render_widget(
-                paragraph,
-                Rect {
-                    x: 0,
-                    y,
-                    width,
-                    height,
-                },
-            );
-            y += height;
-        }
-
         state.page_height = body.height;
-        scroll_view.render(body, buf, &mut state.scroll_view_state);
+        render_comments(buf, body, paragraph_widgets, &mut state.scroll_view_state);
     }
+}
+
+/// Render `Paragraph` comments.
+pub fn render_comments(
+    buf: &mut Buffer,
+    body: Rect,
+    paragraph_widgets: Vec<Paragraph<'_>>,
+    scroll_view_state: &mut ScrollViewState,
+) {
+    let width = body.width - 1;
+    let scroll_view_height: u16 = paragraph_widgets
+        .iter()
+        .map(|p| p.line_count(width) + 1)
+        .sum::<usize>() as u16;
+
+    let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height))
+        .vertical_scrollbar_visibility(ScrollbarVisibility::Always);
+
+    let mut y = 0;
+    for paragraph in paragraph_widgets {
+        // Each paragraph will render based on the number
+        // of lines.
+        let height = paragraph.line_count(width) as u16 + 1;
+        scroll_view.render_widget(
+            paragraph,
+            Rect {
+                x: 0,
+                y,
+                width,
+                height,
+            },
+        );
+        y += height;
+    }
+
+    scroll_view.render(body, buf, scroll_view_state);
 }
 
 impl<'a> StatefulWidget for &mut CommentsWidget<'a> {

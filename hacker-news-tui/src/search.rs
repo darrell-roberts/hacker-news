@@ -1,20 +1,20 @@
 //! Comment search view and state
 use crate::{
-    comments::render_comment,
+    comments::{render_comment, render_comments},
     styles::{selected_style, top_header_style},
 };
 use hacker_news_search::{SearchContext, api::Comment};
 use log::error;
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect, Size},
+    layout::{Constraint, Layout, Rect},
     style::Style,
     text::{Line, Span},
     widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget, block::Title},
 };
 use std::sync::{Arc, RwLock};
 use tui_input::Input;
-use tui_scrollview::{ScrollViewState, ScrollbarVisibility};
+use tui_scrollview::ScrollViewState;
 
 #[derive(Default)]
 pub enum InputMode {
@@ -118,32 +118,8 @@ impl SearchWidget {
             })
             .collect::<Vec<_>>();
 
-        let width = body.width - 1;
-        let scroll_view_height: u16 = paragraph_widgets
-            .iter()
-            .map(|p| p.line_count(width) + 1)
-            .sum::<usize>() as u16;
-
-        let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height))
-            .vertical_scrollbar_visibility(ScrollbarVisibility::Always);
-
-        let mut y = 0;
-        for paragraph in paragraph_widgets {
-            let height = paragraph.line_count(width) as u16 + 1;
-            scroll_view.render_widget(
-                paragraph,
-                Rect {
-                    x: 0,
-                    y,
-                    width,
-                    height,
-                },
-            );
-            y += height;
-        }
-
         state.page_height = body.height;
-        scroll_view.render(body, buf, &mut state.scroll_view_state);
+        render_comments(buf, body, paragraph_widgets, &mut state.scroll_view_state);
     }
 }
 
