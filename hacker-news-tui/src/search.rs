@@ -121,14 +121,14 @@ impl SearchWidget {
         let width = body.width - 1;
         let scroll_view_height: u16 = paragraph_widgets
             .iter()
-            .map(|p| p.line_count(width))
+            .map(|p| p.line_count(width) + 1)
             .sum::<usize>() as u16;
 
         let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
 
         let mut y = 0;
         for paragraph in paragraph_widgets {
-            let height = paragraph.line_count(width) as u16;
+            let height = paragraph.line_count(width) as u16 + 1;
             scroll_view.render_widget(
                 paragraph,
                 Rect {
