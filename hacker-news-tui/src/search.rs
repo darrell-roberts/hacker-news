@@ -14,7 +14,7 @@ use ratatui::{
 };
 use std::sync::{Arc, RwLock};
 use tui_input::Input;
-use tui_scrollview::ScrollViewState;
+use tui_scrollview::{ScrollViewState, ScrollbarVisibility};
 
 #[derive(Default)]
 pub enum InputMode {
@@ -124,7 +124,8 @@ impl SearchWidget {
             .map(|p| p.line_count(width) + 1)
             .sum::<usize>() as u16;
 
-        let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
+        let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height))
+            .vertical_scrollbar_visibility(ScrollbarVisibility::Always);
 
         let mut y = 0;
         for paragraph in paragraph_widgets {

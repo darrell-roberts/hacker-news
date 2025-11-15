@@ -14,7 +14,7 @@ use ratatui::{
     widgets::{Block, BorderType, Padding, Paragraph, StatefulWidget, Widget, Wrap},
 };
 use std::sync::{Arc, RwLock};
-use tui_scrollview::ScrollViewState;
+use tui_scrollview::{ScrollViewState, ScrollbarVisibility};
 
 #[cfg(test)]
 mod comments_test;
@@ -134,7 +134,8 @@ impl<'a> CommentsWidget<'a> {
             .map(|p| p.line_count(width) + 1)
             .sum::<usize>() as u16;
 
-        let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height));
+        let mut scroll_view = tui_scrollview::ScrollView::new(Size::new(width, scroll_view_height))
+            .vertical_scrollbar_visibility(ScrollbarVisibility::Always);
 
         let mut y = 0;
         for paragraph in paragraph_widgets {

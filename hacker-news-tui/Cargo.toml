@@ -6,6 +6,7 @@ license = "MIT"
 edition = "2024"
 
 [dependencies]
+anyhow.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
 color-eyre = "0.6"
@@ -19,14 +20,13 @@ iana-time-zone = "0.1"
 log.workspace = true
 open = "5"
 ratatui = { version = "0.29", features = [
-    "unstable-rendered-line-info",
-    "palette",
+  "unstable-rendered-line-info",
+  "palette",
 ] }
+serde.workspace = true
 tokio = { version = "1", features = ["rt"] }
 tui-input = "0.14"
 tui-scrollview = "0.5"
-serde.workspace = true
-anyhow.workspace = true
 
 [package.metadata.deb]
 name = "hacker-news-tui"
