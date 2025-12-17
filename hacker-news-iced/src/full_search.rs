@@ -92,7 +92,7 @@ impl FullSearchState {
                 .height(Length::Fill)
                 .id(full_search_scroll_id()),
             )
-            .push_maybe((self.full_count > 0).then(|| self.pagination_element()))
+            .push((self.full_count > 0).then(|| self.pagination_element()))
             .spacing(5);
 
         widget::container(content).into()
@@ -155,7 +155,7 @@ impl FullSearchState {
                 })
                 .push(
                     widget::Row::new()
-                        .push(widget::rich_text([
+                        .push(widget::rich_text::<'_, AppMsg, AppMsg, _, _>([
                             widget::span(format!("by {}", comment.by))
                                 .link(AppMsg::Header(HeaderMsg::Search(format!(
                                     "by:{}",
@@ -294,9 +294,9 @@ impl FullSearchState {
                 .map(AppMsg::FullSearch)
             }
         }
-        .chain(widget::scrollable::scroll_to(
+        .chain(widget::operation::scroll_to(
             full_search_scroll_id(),
-            Default::default(),
+            widget::operation::AbsoluteOffset { x: 0.0, y: 0.0 },
         ))
     }
 }
@@ -323,6 +323,6 @@ impl PaginatingView<AppMsg> for FullSearchState {
     }
 }
 
-fn full_search_scroll_id() -> widget::scrollable::Id {
-    widget::scrollable::Id::new("full_search")
+fn full_search_scroll_id() -> widget::Id {
+    widget::Id::new("full_search")
 }

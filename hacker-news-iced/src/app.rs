@@ -18,11 +18,15 @@ use hacker_news_search::{
     SearchContext,
 };
 use iced::{
-    // clipboard,
     widget::{
-        self, button, container, focus_next, focus_previous, pane_grid, scrollable::AbsoluteOffset,
-        text::Shaping, Column,
+        self, button, container,
+        operation::{focus_next, focus_previous},
+        pane_grid,
+        scrollable::AbsoluteOffset,
+        text::Shaping,
+        Column,
     },
+    // clipboard,
     Length,
     Size,
     Task,
@@ -39,7 +43,7 @@ pub struct App {
     /// Active theme.
     pub theme: Theme,
     /// Scale.
-    pub scale: f64,
+    pub scale: f32,
     /// Header
     pub header: HeaderState,
     /// Article state.
@@ -112,7 +116,7 @@ pub enum AppMsg {
     FocusPane(widget::pane_grid::Pane),
     // Forward,
     Back,
-    SystemFontScale(f64),
+    SystemFontScale(f32),
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -251,29 +255,29 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             save_task(&*app)
         }
         AppMsg::ScrollBy(scroll_by) => {
-            let scroll_id = widget::scrollable::Id::new(match &app.content {
+            let scroll_id = widget::Id::new(match &app.content {
                 Content::Comment(_) => "comments",
                 Content::Search(_) => "full_search",
                 Content::Empty(_) => "articles",
             });
             match scroll_by {
                 ScrollBy::PageUp => {
-                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -500. })
+                    widget::operation::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -500. })
                 }
                 ScrollBy::PageDown => {
-                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 500. })
+                    widget::operation::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 500. })
                 }
                 ScrollBy::LineUp => {
-                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -10. })
+                    widget::operation::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: -10. })
                 }
                 ScrollBy::LineDown => {
-                    widget::scrollable::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 10. })
+                    widget::operation::scroll_by(scroll_id, AbsoluteOffset { x: 0., y: 10. })
                 }
                 ScrollBy::Top => {
-                    widget::scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: 0. })
+                    widget::operation::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: 0. })
                 }
                 ScrollBy::Bottom => {
-                    widget::scrollable::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: f32::MAX })
+                    widget::operation::scroll_to(scroll_id, AbsoluteOffset { x: 0., y: f32::MAX })
                 }
             }
         }
@@ -490,7 +494,7 @@ pub fn view(app: &App) -> iced::Element<'_, AppMsg> {
                                         app.article_state.search.as_deref().unwrap_or_default(),
                                     )
                                     .padding(5)
-                                    .id(widget::text_input::Id::new("article_search"))
+                                    .id(widget::Id::new("article_search"))
                                     .on_input(|search| {
                                         AppMsg::Articles(ArticleMsg::Search(search))
                                     }),
@@ -504,7 +508,8 @@ pub fn view(app: &App) -> iced::Element<'_, AppMsg> {
                         )
                         .push(
                             widget::container(common::tooltip(
-                                widget::checkbox("Watching", app.article_state.filter_watching)
+                                widget::checkbox(app.article_state.filter_watching)
+                                    .label("Watching")
                                     .on_toggle(|_| AppMsg::Articles(ArticleMsg::ToggleWatchFilter)),
                                 "Filter watched",
                                 widget::tooltip::Position::Bottom,

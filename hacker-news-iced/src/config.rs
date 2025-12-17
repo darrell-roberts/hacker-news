@@ -23,7 +23,7 @@ pub const CONFIG_FILE: &str = "config_gui.dat";
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GuiConfig {
-    pub scale: f64,
+    pub scale: f32,
     pub visited: HashSet<u64>,
     pub theme: String,
     pub window_size: (f32, f32),
@@ -69,7 +69,7 @@ impl Config {
         );
         App {
             search_context: search_context.clone(),
-            theme: theme(&config.gui_config.theme).unwrap_or_default(),
+            theme: theme(&config.gui_config.theme).unwrap_or(iced::Theme::Dark),
             scale: config.gui_config.scale,
             header: HeaderState {
                 search_context: search_context.clone(),

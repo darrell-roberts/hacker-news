@@ -33,11 +33,10 @@ hacker-news-api.workspace = true
 hacker-news-config.workspace = true
 hacker-news-search.workspace = true
 html-sanitizer.workspace = true
-iced = { version = "0.13", features = [
+iced = { version = "0.14", features = [
   "lazy",
   "tokio",
   "advanced",
-  "auto-detect-theme",
   "image",
   "canvas",
 ] }

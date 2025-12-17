@@ -22,7 +22,7 @@ pub struct IndexProgress {
 pub struct FooterState {
     pub status_line: String,
     pub last_update: Option<DateTime<Local>>,
-    pub scale: f64,
+    pub scale: f32,
     pub viewing_index: ArticleType,
     pub index_stats: HashMap<ArticleType, IndexStats>,
     pub index_progress: Option<IndexProgress>,
@@ -33,7 +33,7 @@ pub enum FooterMsg {
     Error(String),
     Url(String),
     NoUrl,
-    Scale(f64),
+    Scale(f32),
     IndexStats {
         stats: IndexStats,
         category: ArticleType,
@@ -64,7 +64,7 @@ impl FooterState {
                         )
                         .padding(iced::padding::top(5)),
                     )
-                    .push_maybe(self.index_progress.as_ref().map(|progress| {
+                    .push(self.index_progress.as_ref().map(|progress| {
                         container(stack([
                             progress_bar(
                                 0_f32..=progress.total_stories_to_index,
@@ -82,24 +82,24 @@ impl FooterState {
             )
             .push(container(
                 Row::new()
-                    .push_maybe(self.current_index_stats().as_ref().map(|stats| {
+                    .push(self.current_index_stats().as_ref().map(|stats| {
                         Row::new()
                             .push(text(format!("{}", stats.category)))
-                            .push_maybe(
+                            .push(
                                 DateTime::<Utc>::from_timestamp(stats.built_on as i64, 0)
                                     .map(|dt| dt.with_timezone(&New_York))
                                     .map(|dt| text(dt.format("%d/%m/%y %H:%M,").to_string())),
                             )
-                            .push_maybe(
+                            .push(
                                 (stats.build_time.as_secs() / 60 != 0).then(|| {
                                     text(format!("{} min", stats.build_time.as_secs() / 60))
                                 }),
                             )
-                            .push_maybe(
+                            .push(
                                 (stats.build_time.as_millis() < 1000)
                                     .then(|| text(format!("{} ms", stats.build_time.as_millis()))),
                             )
-                            .push_maybe((stats.build_time.as_secs() >= 1).then(|| {
+                            .push((stats.build_time.as_secs() >= 1).then(|| {
                                 text(format!("{} secs,", stats.build_time.as_secs() % 60))
                             }))
                             .push(text(format!(
@@ -115,7 +115,7 @@ impl FooterState {
                     .push(
                         container(
                             Row::new()
-                                .push_maybe((self.scale != 1.0).then(|| {
+                                .push((self.scale != 1.0).then(|| {
                                     text(format!("Scale: {:.2}", self.scale)).font(light_font())
                                 }))
                                 .push(pick_list(themes, Some(theme), |selected| {

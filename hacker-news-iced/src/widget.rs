@@ -2,7 +2,7 @@
 //! and existed.
 use iced::{
     advanced::{self, mouse, renderer, widget, Widget},
-    event,
+    event::Status,
     widget::container,
     Element, Event, Length, Point, Rectangle,
 };
@@ -89,13 +89,13 @@ where
     }
 
     fn layout(
-        &self,
+        &mut self,
         tree: &mut advanced::widget::Tree,
         renderer: &Renderer,
         limits: &advanced::layout::Limits,
     ) -> advanced::layout::Node {
         self.content
-            .as_widget()
+            .as_widget_mut()
             .layout(&mut tree.children[0], renderer, limits)
     }
 
@@ -137,18 +137,18 @@ where
         )
     }
 
-    fn on_event(
+    fn update(
         &mut self,
         tree: &mut widget::Tree,
-        event: Event,
+        event: &Event,
         layout: advanced::Layout<'_>,
         cursor: mouse::Cursor,
         renderer: &Renderer,
         clipboard: &mut dyn advanced::Clipboard,
         shell: &mut advanced::Shell<'_, Message>,
         viewport: &Rectangle,
-    ) -> event::Status {
-        if let event::Status::Captured = self.content.as_widget_mut().on_event(
+    ) {
+        self.content.as_widget_mut().update(
             &mut tree.children[0],
             event,
             layout,
@@ -157,8 +157,10 @@ where
             clipboard,
             shell,
             viewport,
-        ) {
-            return event::Status::Captured;
+        );
+
+        if shell.event_status() == Status::Captured {
+            return;
         }
 
         let state = tree.state.downcast_mut::<State>();
@@ -182,8 +184,6 @@ where
             }
             _ => (),
         }
-
-        event::Status::Ignored
     }
 }
 
