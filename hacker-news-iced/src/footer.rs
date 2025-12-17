@@ -84,40 +84,42 @@ impl FooterState {
                 Row::new()
                     .push(self.current_index_stats().as_ref().map(|stats| {
                         Row::new()
-                            .push(text(format!("{}", stats.category)))
+                            .push(text!("{}", stats.category))
                             .push(
                                 DateTime::<Utc>::from_timestamp(stats.built_on as i64, 0)
                                     .map(|dt| dt.with_timezone(&New_York))
                                     .map(|dt| text(dt.format("%d/%m/%y %H:%M,").to_string())),
                             )
                             .push(
-                                (stats.build_time.as_secs() / 60 != 0).then(|| {
-                                    text(format!("{} min", stats.build_time.as_secs() / 60))
-                                }),
+                                (stats.build_time.as_secs() / 60 != 0)
+                                    .then(|| text!("{} min", stats.build_time.as_secs() / 60)),
                             )
                             .push(
                                 (stats.build_time.as_millis() < 1000)
-                                    .then(|| text(format!("{} ms", stats.build_time.as_millis()))),
+                                    .then(|| text!("{} ms", stats.build_time.as_millis())),
                             )
-                            .push((stats.build_time.as_secs() >= 1).then(|| {
-                                text(format!("{} secs,", stats.build_time.as_secs() % 60))
-                            }))
-                            .push(text(format!(
+                            .push(
+                                (stats.build_time.as_secs() >= 1)
+                                    .then(|| text!("{} secs,", stats.build_time.as_secs() % 60)),
+                            )
+                            .push(text!(
                                 "docs: {}, comments: {}, stories: {}, jobs: {}, polls: {}",
                                 stats.total_documents,
                                 stats.total_comments,
                                 stats.total_stories,
                                 stats.total_jobs,
                                 stats.total_polls
-                            )))
+                            ))
                             .spacing(5)
                     }))
                     .push(
                         container(
                             Row::new()
-                                .push((self.scale != 1.0).then(|| {
-                                    text(format!("Scale: {:.2}", self.scale)).font(light_font())
-                                }))
+                                .push(
+                                    (self.scale != 1.0).then(|| {
+                                        text!("Scale: {:.2}", self.scale).font(light_font())
+                                    }),
+                                )
                                 .push(pick_list(themes, Some(theme), |selected| {
                                     AppMsg::ChangeTheme(selected)
                                 }))

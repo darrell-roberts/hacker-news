@@ -162,31 +162,31 @@ impl ArticleState {
                                 .push(
                                     widget::container(
                                         Row::new()
-                                            .push({
-                                                let has_rust = story.title.split(' ').any(|word| {
-                                                    word == "Rust"
-                                                        || (word.starts_with("Rust")
-                                                            && word.len() == 5
-                                                            && word
-                                                                .chars()
-                                                                .last()
-                                                                .map(|c| {
-                                                                    matches!(
-                                                                        c,
-                                                                        ',' | '.' | ':' | '?' | '!'
-                                                                    )
-                                                                })
-                                                                .unwrap_or(false))
-                                                });
-                                                has_rust.then(|| {
-                                                    widget::container(
-                                                        widget::image(Handle::from_bytes(
-                                                            RUST_LOGO,
-                                                        ))
-                                                        .content_fit(iced::ContentFit::Contain),
-                                                    )
-                                                })
-                                            })
+                                            // .push({
+                                            //     let has_rust = story.title.split(' ').any(|word| {
+                                            //         word == "Rust"
+                                            //             || (word.starts_with("Rust")
+                                            //                 && word.len() == 5
+                                            //                 && word
+                                            //                     .chars()
+                                            //                     .last()
+                                            //                     .map(|c| {
+                                            //                         matches!(
+                                            //                             c,
+                                            //                             ',' | '.' | ':' | '?' | '!'
+                                            //                         )
+                                            //                     })
+                                            //                     .unwrap_or(false))
+                                            //     });
+                                            //     has_rust.then(|| {
+                                            //         widget::container(
+                                            //             widget::image(Handle::from_bytes(
+                                            //                 RUST_LOGO,
+                                            //             ))
+                                            //             .content_fit(iced::ContentFit::Contain),
+                                            //         )
+                                            //     })
+                                            // })
                                             .push(self.visited.contains(&story.id).then(|| {
                                                 widget::container(
                                                     widget::text("✅")
@@ -225,16 +225,16 @@ impl ArticleState {
                         )
                         .push(
                             Row::new()
-                                .push(widget::text(format!("{}", story.rank)))
+                                .push(widget::text!("{}", story.rank))
                                 .push((story.ty != "job").then(|| {
-                                    widget::text(format!("🔼{}", story.score))
+                                    widget::text!("🔼{}", story.score)
                                         .shaping(text::Shaping::Advanced)
                                 }))
                                 .push(if story.descendants == 0 {
                                     Element::from(text(""))
                                 } else {
                                     Element::from(
-                                        widget::text(format!("💬{}", story.descendants))
+                                        widget::text!("💬{}", story.descendants)
                                             .shaping(text::Shaping::Advanced),
                                     )
                                 })
@@ -309,7 +309,7 @@ impl ArticleState {
                             widget::container(
                                 widget::container(common::tooltip(
                                     widget::button(
-                                        widget::text(format!("{}", watch_change.new_comments))
+                                        widget::text!("{}", watch_change.new_comments)
                                             .color(Color::from_rgb8(255, 255, 153))
                                             .font(ROBOTO_FONT.bold()),
                                     )

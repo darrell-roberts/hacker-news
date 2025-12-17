@@ -102,20 +102,18 @@ impl FullSearchState {
         let child_comments_button: Element<'_, AppMsg> = if comment.kids.is_empty() {
             widget::text("").into()
         } else {
-            widget::button(
-                widget::text(format!("💬{}", comment.kids.len())).shaping(Shaping::Advanced),
-            )
-            .padding(0)
-            .on_press(AppMsg::FullSearch(FullSearchMsg::OpenComment(comment.id)))
-            .style(widget::button::text)
-            .into()
+            widget::button(widget::text!("💬{}", comment.kids.len()).shaping(Shaping::Advanced))
+                .padding(0)
+                .on_press(AppMsg::FullSearch(FullSearchMsg::OpenComment(comment.id)))
+                .style(widget::button::text)
+                .into()
         };
         widget::container(
             widget::Column::new()
                 .push(
                     widget::Row::new()
                         .push(widget::container(
-                            widget::button(widget::text(format!("{}", comment.id)))
+                            widget::button(widget::text!("{}", comment.id))
                                 .on_press(AppMsg::OpenLink {
                                     url: format!(
                                         "https://news.ycombinator.com/item?id={}",

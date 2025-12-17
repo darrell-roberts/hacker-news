@@ -208,7 +208,7 @@ impl CommentState {
                                 widget::tooltip::Position::FollowCursor,
                             )),
                     )
-                    .push(widget::text(format!("{}", self.full_count)))
+                    .push(widget::text!("{}", self.full_count))
                     .push(
                         widget::toggler(self.oneline)
                             .label("oneline")
@@ -264,7 +264,7 @@ impl CommentState {
         let child_comments_button: Element<'_, AppMsg> = if comment.kids.is_empty() {
             widget::text("").into()
         } else {
-            button(widget::text(format!("💬{}", comment.kids.len())).shaping(Shaping::Advanced))
+            button(widget::text!("💬{}", comment.kids.len()).shaping(Shaping::Advanced))
                 .padding(0)
                 .on_press(AppMsg::Comments(CommentMsg::FetchComments {
                     parent_id: comment.id,
@@ -327,7 +327,7 @@ impl CommentState {
                                 ]),
                                 child_comments_button,
                                 widget::container(common::tooltip(
-                                    widget::button(widget::text(format!("{}", comment.id)))
+                                    widget::button(widget::text!("{}", comment.id))
                                         .on_press(AppMsg::OpenLink {
                                             url: format!(
                                                 "https://news.ycombinator.com/item?id={}",

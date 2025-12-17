@@ -53,7 +53,7 @@ where
         let max = if rem > 0 { div + 1 } else { div };
         let pages = (1..=max).map(|page| {
             widget::button(
-                widget::container(widget::text(format!("{page}")))
+                widget::container(widget::text!("{page}"))
                     .style(move |theme: &Theme| {
                         let palette = theme.extended_palette();
                         if page == self.current_page() {
