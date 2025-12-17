@@ -150,8 +150,11 @@ impl FullSearchState {
                         SearchCriteria::StoryId { .. } => None,
                     };
 
-                    widget::container(widget::rich_text(render_rich_text(&comment.body, s, false)))
-                        .width(Length::FillPortion(6).enclose(Length::Fixed(50.)))
+                    widget::container(
+                        widget::rich_text(render_rich_text(&comment.body, s, false))
+                            .on_link_click(|url| AppMsg::OpenLink { url }),
+                    )
+                    .width(Length::FillPortion(6).enclose(Length::Fixed(50.)))
                 })
                 .push(
                     widget::Row::new()

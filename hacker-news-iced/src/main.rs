@@ -80,14 +80,16 @@ fn start() -> anyhow::Result<()> {
 
         Subscription::batch([
             listen_with(|event, _, _| {
-                if let iced::event::Event::Keyboard(event) = event {
-                    if let iced::keyboard::Event::KeyReleased { key, modifiers, .. } = event {
-                        return listen_to_key_events(key, modifiers);
-                    }
+                if let iced::event::Event::Keyboard(iced::keyboard::Event::KeyReleased {
+                    key,
+                    modifiers,
+                    ..
+                }) = event
+                {
+                    return listen_to_key_events(key, modifiers);
                 }
                 None
             }),
-            // on_key_press(listen_to_key_events),
             close_requests().map(|_event| AppMsg::WindowClose),
             resize_events().map(|(_id, size)| AppMsg::WindowResize(size)),
             story_handle_watcher,

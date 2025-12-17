@@ -100,7 +100,10 @@ impl CommentState {
             .article
             .body
             .as_deref()
-            .map(|text| widget::rich_text(render_rich_text(text, self.search.as_deref(), false)))
+            .map(|text| {
+                widget::rich_text(render_rich_text(text, self.search.as_deref(), false))
+                    .on_link_click(|url| AppMsg::OpenLink { url })
+            })
             .map(|rt| container(rt).padding([10, 10]).into());
 
         let total_parents = self
@@ -299,11 +302,14 @@ impl CommentState {
                             ))
                             .align_right(Length::Fill)
                         }))
-                        .push(widget::rich_text(render_rich_text(
-                            &comment.body,
-                            self.search.as_deref(),
-                            self.oneline,
-                        )))
+                        .push(
+                            widget::rich_text(render_rich_text(
+                                &comment.body,
+                                self.search.as_deref(),
+                                self.oneline,
+                            ))
+                            .on_link_click(|url| AppMsg::OpenLink { url }),
+                        )
                         .push(
                             widget::row![
                                 widget::rich_text::<'_, AppMsg, AppMsg, _, _>([

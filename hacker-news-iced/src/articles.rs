@@ -114,11 +114,13 @@ impl ArticleState {
     }
 
     fn render_article_title<'a>(&'a self, story: &'a Story) -> iced::Element<'a, AppMsg> {
-        let title: widget::text::Rich<'a, _, AppMsg> = widget::rich_text(
+        let title = widget::rich_text(
             SearchSpanIter::new(&story.title, self.search.as_deref())
-                .map(|span| span.link(AppMsg::Articles(ArticleMsg::StoryClicked(story.clone()))))
+                .map(|span| span.link(story.clone()))
                 .collect::<Vec<_>>(),
-        );
+        )
+        .on_link_click(|link| AppMsg::Articles(ArticleMsg::StoryClicked(link)));
+
         match story.url.as_deref() {
             Some(url) => hoverable(title)
                 .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
@@ -130,12 +132,9 @@ impl ArticleState {
 
     /// Render a single story.
     fn render_article<'a>(&'a self, theme: &Theme, story: &'a Story) -> iced::Element<'a, AppMsg> {
-        let by: widget::text::Rich<'a, AppMsg, AppMsg> = widget::rich_text([
+        let by: widget::text::Rich<'a, String, AppMsg> = widget::rich_text([
             widget::span(format!("by {}", story.by))
-                .link(AppMsg::Header(HeaderMsg::Search(format!(
-                    "by:{}",
-                    story.by
-                ))))
+                .link(story.by.clone())
                 .font(ROBOTO_FONT.italic())
                 .size(14)
                 .color_maybe(widget::text::primary(theme).color),
@@ -144,7 +143,8 @@ impl ArticleState {
                 .font(ROBOTO_FONT.weight_light().italic())
                 .size(10)
                 .color_maybe(widget::text::primary(theme).color),
-        ]);
+        ])
+        .on_link_click(|by| AppMsg::Header(HeaderMsg::Search(format!("by:{by}"))));
 
         let article_id = story.id;
 

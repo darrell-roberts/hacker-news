@@ -120,22 +120,22 @@ where
         );
     }
 
-    fn mouse_interaction(
-        &self,
-        tree: &widget::Tree,
-        layout: advanced::Layout<'_>,
-        cursor: mouse::Cursor,
-        viewport: &Rectangle,
-        renderer: &Renderer,
-    ) -> mouse::Interaction {
-        self.content.as_widget().mouse_interaction(
-            &tree.children[0],
-            layout,
-            cursor,
-            viewport,
-            renderer,
-        )
-    }
+    // fn mouse_interaction(
+    //     &self,
+    //     tree: &widget::Tree,
+    //     layout: advanced::Layout<'_>,
+    //     cursor: mouse::Cursor,
+    //     viewport: &Rectangle,
+    //     renderer: &Renderer,
+    // ) -> mouse::Interaction {
+    //     self.content.as_widget().mouse_interaction(
+    //         &tree.children[0],
+    //         layout,
+    //         cursor,
+    //         viewport,
+    //         renderer,
+    //     )
+    // }
 
     fn update(
         &mut self,
