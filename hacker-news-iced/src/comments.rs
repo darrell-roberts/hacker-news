@@ -312,19 +312,17 @@ impl CommentState {
                         )
                         .push(
                             widget::row![
-                                widget::rich_text::<'_, AppMsg, AppMsg, _, _>([
+                                widget::rich_text([
                                     widget::span(format!("by {}", comment.by))
-                                        .link(AppMsg::Header(HeaderMsg::Search(format!(
-                                            "by:{}",
-                                            comment.by
-                                        ))))
+                                        .link(format!("by:{}", comment.by.as_str()))
                                         .font(ROBOTO_FONT.italic())
                                         .size(14),
                                     widget::span(" "),
                                     widget::span(parse_date(comment.time).unwrap_or_default())
                                         .font(ROBOTO_FONT.italic().weight_light())
                                         .size(10),
-                                ]),
+                                ])
+                                .on_link_click(|by| AppMsg::Header(HeaderMsg::Search(by))),
                                 child_comments_button,
                                 widget::container(common::tooltip(
                                     widget::button(widget::text!("{}", comment.id))

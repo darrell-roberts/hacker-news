@@ -156,19 +156,19 @@ impl FullSearchState {
                 })
                 .push(
                     widget::Row::new()
-                        .push(widget::rich_text::<'_, AppMsg, AppMsg, _, _>([
-                            widget::span(format!("by {}", comment.by))
-                                .link(AppMsg::Header(HeaderMsg::Search(format!(
-                                    "by:{}",
-                                    comment.by
-                                ))))
-                                .font(ROBOTO_FONT.italic())
-                                .size(14),
-                            widget::span(" "),
-                            widget::span(parse_date(comment.time).unwrap_or_default())
-                                .font(ROBOTO_FONT.weight_light().italic())
-                                .size(10),
-                        ]))
+                        .push(
+                            widget::rich_text([
+                                widget::span(format!("by {}", comment.by))
+                                    .link(format!("by:{}", comment.by))
+                                    .font(ROBOTO_FONT.italic())
+                                    .size(14),
+                                widget::span(" "),
+                                widget::span(parse_date(comment.time).unwrap_or_default())
+                                    .font(ROBOTO_FONT.weight_light().italic())
+                                    .size(10),
+                            ])
+                            .on_link_click(|by| AppMsg::Header(HeaderMsg::Search(by))),
+                        )
                         .push(child_comments_button)
                         .spacing(5),
                 )
