@@ -162,31 +162,31 @@ impl ArticleState {
                                 .push(
                                     widget::container(
                                         Row::new()
-                                            // .push({
-                                            //     let has_rust = story.title.split(' ').any(|word| {
-                                            //         word == "Rust"
-                                            //             || (word.starts_with("Rust")
-                                            //                 && word.len() == 5
-                                            //                 && word
-                                            //                     .chars()
-                                            //                     .last()
-                                            //                     .map(|c| {
-                                            //                         matches!(
-                                            //                             c,
-                                            //                             ',' | '.' | ':' | '?' | '!'
-                                            //                         )
-                                            //                     })
-                                            //                     .unwrap_or(false))
-                                            //     });
-                                            //     has_rust.then(|| {
-                                            //         widget::container(
-                                            //             widget::image(Handle::from_bytes(
-                                            //                 RUST_LOGO,
-                                            //             ))
-                                            //             .content_fit(iced::ContentFit::Contain),
-                                            //         )
-                                            //     })
-                                            // })
+                                            .push({
+                                                let has_rust = story.title.split(' ').any(|word| {
+                                                    word == "Rust"
+                                                        || (word.starts_with("Rust")
+                                                            && word.len() == 5
+                                                            && word
+                                                                .chars()
+                                                                .last()
+                                                                .map(|c| {
+                                                                    matches!(
+                                                                        c,
+                                                                        ',' | '.' | ':' | '?' | '!'
+                                                                    )
+                                                                })
+                                                                .unwrap_or(false))
+                                                });
+                                                has_rust.then(|| {
+                                                    widget::container(
+                                                        widget::image(Handle::from_bytes(
+                                                            RUST_LOGO,
+                                                        ))
+                                                        .content_fit(iced::ContentFit::Contain),
+                                                    )
+                                                })
+                                            })
                                             .push(self.visited.contains(&story.id).then(|| {
                                                 widget::container(
                                                     widget::text("✅")
