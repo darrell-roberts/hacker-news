@@ -70,6 +70,27 @@ pub struct ArticleState {
     pub indexing_stories: Vec<u64>,
     /// Filter articles being watched.
     pub filter_watching: bool,
+    /// Handle to static rust image.
+    pub rust_image: Handle,
+}
+
+impl ArticleState {
+    /// New article state.
+    pub fn new(search_context: Arc<RwLock<SearchContext>>) -> Self {
+        Self {
+            search_context,
+            articles: Vec::new(),
+            visited: HashSet::new(),
+            search: None,
+            viewing_item: None,
+            article_limit: 75,
+            watch_handles: HashMap::new(),
+            watch_changes: HashMap::new(),
+            indexing_stories: Vec::new(),
+            filter_watching: false,
+            rust_image: Handle::from_bytes(RUST_LOGO),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -180,10 +201,8 @@ impl ArticleState {
                                                 });
                                                 has_rust.then(|| {
                                                     widget::container(
-                                                        widget::image(Handle::from_bytes(
-                                                            RUST_LOGO,
-                                                        ))
-                                                        .content_fit(iced::ContentFit::Contain),
+                                                        widget::image(&self.rust_image)
+                                                            .content_fit(iced::ContentFit::Contain),
                                                     )
                                                 })
                                             })

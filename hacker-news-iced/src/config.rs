@@ -87,16 +87,9 @@ impl Config {
                 index_progress: None,
             },
             article_state: ArticleState {
-                search_context: search_context.clone(),
-                articles: Vec::new(),
                 visited: config.gui_config.visited,
-                search: None,
-                viewing_item: None,
                 article_limit: config.index_config.viewing_count,
-                watch_handles: HashMap::new(),
-                watch_changes: HashMap::new(),
-                indexing_stories: Vec::new(),
-                filter_watching: false,
+                ..ArticleState::new(search_context)
             },
             size: Size::new(
                 config.gui_config.window_size.0,

@@ -20,10 +20,7 @@ use iced::{
 };
 use log::error;
 use nav_history::Content;
-use std::{
-    collections::{HashMap, HashSet},
-    time::Duration,
-};
+use std::{collections::HashMap, time::Duration};
 
 use crate::config::load_config;
 
@@ -161,18 +158,7 @@ fn create_app() -> Result<App, anyhow::Error> {
                     index_stats: HashMap::new(),
                     index_progress: None,
                 },
-                article_state: ArticleState {
-                    search_context: search_context.clone(),
-                    articles: Vec::new(),
-                    visited: HashSet::new(),
-                    search: None,
-                    viewing_item: None,
-                    article_limit: 75,
-                    watch_handles: HashMap::new(),
-                    watch_changes: HashMap::new(),
-                    indexing_stories: Vec::new(),
-                    filter_watching: false,
-                },
+                article_state: ArticleState::new(search_context),
                 size: Size::new(800., 600.),
                 panes: pane_grid::State::with_configuration(pane_grid::Configuration::Split {
                     axis: pane_grid::Axis::Vertical,
