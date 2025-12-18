@@ -7,7 +7,7 @@ use hacker_news_api::ArticleType;
 #[cfg(target_family = "unix")]
 use hacker_news_config::limits::check_nofiles_limit;
 use hacker_news_config::{init_logger, search_context};
-use hacker_news_search::api_client;
+use hacker_news_search::{api_client, SearchContext};
 use header::{HeaderMsg, HeaderState};
 use iced::{
     advanced::graphics::core::window,
@@ -20,7 +20,11 @@ use iced::{
 };
 use log::error;
 use nav_history::Content;
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+    time::Duration,
+};
 
 use crate::config::load_config;
 
@@ -46,9 +50,24 @@ const ROBOTO_FONT: Font = Font::with_name("Roboto");
 const ROBOTO_MONO: Font = Font::with_name("Roboto Mono");
 
 fn start() -> anyhow::Result<()> {
+    let _ = api_client();
+
+    init_logger()?;
+
+    #[cfg(target_family = "unix")]
+    check_nofiles_limit();
+
+    let window_size = match load_config().ok() {
+        Some(config) => config.gui_config.window_size,
+        None => (800., 600.),
+    }
+    .into();
+
     iced::application(
+        // TODO: This should really be FnOnce or FnMut so app can be captured.
         || {
-            let app = create_app().expect("No app");
+            let search_context = search_context().expect("No search context");
+            let app = create_app(search_context.clone());
             let article_type = app.header.article_type;
             let article_count = app.header.article_count;
             (
@@ -95,7 +114,7 @@ fn start() -> anyhow::Result<()> {
         ])
     })
     .window(window::Settings {
-        // size: window_size,
+        size: window_size,
         #[cfg(target_os = "linux")]
         platform_specific: window::settings::PlatformSpecific {
             application_id: "io.github.darrellroberts.hacker-news".into(),
@@ -119,12 +138,7 @@ fn start() -> anyhow::Result<()> {
     .context("Failed to run UI")
 }
 
-fn create_app() -> Result<App, anyhow::Error> {
-    let _ = api_client();
-    init_logger()?;
-    #[cfg(target_family = "unix")]
-    check_nofiles_limit();
-    let search_context = search_context()?;
+fn create_app(search_context: Arc<RwLock<SearchContext>>) -> App {
     let mut app = load_config()
         .map(|config| config.into_app(search_context.clone()))
         .unwrap_or_else(|err| {
@@ -184,7 +198,7 @@ fn create_app() -> Result<App, anyhow::Error> {
     {
         app.theme = macos::initial_theme().unwrap_or(Theme::Light);
     }
-    Ok(app)
+    app
 }
 
 fn main() -> anyhow::Result<()> {
