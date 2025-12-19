@@ -130,6 +130,7 @@ fn start() -> anyhow::Result<()> {
         ))
         .default_font(ROBOTO_FONT)
         .antialiasing(true)
+        .title("Hacker News Reader")
         .run()
         .context("Failed to run UI")
 }
