@@ -21,6 +21,7 @@ use iced::{
 use log::error;
 use nav_history::Content;
 use std::{
+    cell::RefCell,
     collections::HashMap,
     sync::{Arc, RwLock},
     time::Duration,
@@ -57,85 +58,80 @@ fn start() -> anyhow::Result<()> {
     #[cfg(target_family = "unix")]
     check_nofiles_limit();
 
-    let window_size = match load_config().ok() {
-        Some(config) => config.gui_config.window_size,
-        None => (800., 600.),
-    }
-    .into();
+    let app = create_app(search_context()?);
+    let window_size = app.size;
+    // TODO: Bit of a hack to get around Fn trait bound.
+    // https://github.com/iced-rs/iced/issues/3080
+    let app = RefCell::new(Some(app));
+    let boot = move || {
+        let app = app.borrow_mut().take().expect("No app");
+        let article_type = app.header.article_type;
+        let article_count = app.header.article_count;
+        (
+            app,
+            Task::batch([
+                Task::done(HeaderMsg::Select {
+                    article_type,
+                    article_count,
+                })
+                .map(AppMsg::Header),
+                iced::widget::operation::focus(iced::widget::Id::new("article_search")),
+            ]),
+        )
+    };
 
-    iced::application(
-        // TODO: This should really be FnOnce or FnMut so app can be captured.
-        || {
-            let search_context = search_context().expect("No search context");
-            let app = create_app(search_context.clone());
-            let article_type = app.header.article_type;
-            let article_count = app.header.article_count;
-            (
-                app,
-                Task::batch([
-                    Task::done(HeaderMsg::Select {
-                        article_type,
-                        article_count,
-                    })
-                    .map(AppMsg::Header),
-                    iced::widget::operation::focus(iced::widget::Id::new("article_search")),
-                ]),
-            )
-        },
-        update,
-        view,
-    )
-    .theme(|app: &App| app.theme.clone())
-    .subscription(|app| {
-        // If we are watching any stories then check periodically on the subscriptions handles.
-        let story_handle_watcher = if !app.article_state.watch_handles.is_empty() {
-            every(Duration::from_secs(5)).map(|_| AppMsg::Articles(ArticleMsg::CheckHandles))
-        } else {
-            Subscription::none()
-        };
+    iced::application(boot, update, view)
+        .theme(|app: &App| app.theme.clone())
+        .subscription(|app| {
+            // If we are watching any stories then check periodically on the subscriptions handles.
+            let story_handle_watcher = if !app.article_state.watch_handles.is_empty() {
+                every(Duration::from_secs(5)).map(|_| AppMsg::Articles(ArticleMsg::CheckHandles))
+            } else {
+                Subscription::none()
+            };
 
-        Subscription::batch([
-            listen_with(|event, _, _| {
-                if let iced::event::Event::Keyboard(iced::keyboard::Event::KeyReleased {
-                    key,
-                    modifiers,
-                    ..
-                }) = event
-                {
-                    return listen_to_key_events(key, modifiers);
-                }
-                None
-            }),
-            close_requests().map(|_event| AppMsg::WindowClose),
-            resize_events().map(|(_id, size)| AppMsg::WindowResize(size)),
-            story_handle_watcher,
+            Subscription::batch([
+                listen_with(|event, _, _| {
+                    if let iced::event::Event::Keyboard(iced::keyboard::Event::KeyReleased {
+                        key,
+                        modifiers,
+                        ..
+                    }) = event
+                    {
+                        return listen_to_key_events(key, modifiers);
+                    }
+                    None
+                }),
+                close_requests().map(|_event| AppMsg::WindowClose),
+                resize_events().map(|(_id, size)| AppMsg::WindowResize(size)),
+                story_handle_watcher,
+                #[cfg(target_os = "linux")]
+                Subscription::run(linux::listen_to_system_changes),
+            ])
+        })
+        .window(window::Settings {
+            size: window_size,
             #[cfg(target_os = "linux")]
-            Subscription::run(linux::listen_to_system_changes),
-        ])
-    })
-    .window(window::Settings {
-        size: window_size,
-        #[cfg(target_os = "linux")]
-        platform_specific: window::settings::PlatformSpecific {
-            application_id: "io.github.darrellroberts.hacker-news".into(),
+            platform_specific: window::settings::PlatformSpecific {
+                application_id: "io.github.darrellroberts.hacker-news".into(),
+                ..Default::default()
+            },
             ..Default::default()
-        },
-        ..Default::default()
-    })
-    .scale_factor(|app| app.scale)
-    .font(include_bytes!(
-        "../../assets/fonts/Roboto-VariableFont_wdth,wght.ttf"
-    ))
-    .font(include_bytes!(
-        "../../assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf"
-    ))
-    .font(include_bytes!(
-        "../../assets/fonts/RobotoMono-VariableFont_wght.ttf"
-    ))
-    .default_font(ROBOTO_FONT)
-    .antialiasing(true)
-    .run()
-    .context("Failed to run UI")
+        })
+        .scale_factor(|app| app.scale)
+        .font(include_bytes!(
+            "../../assets/fonts/Roboto-VariableFont_wdth,wght.ttf"
+        ))
+        .font(include_bytes!(
+            "../../assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf"
+        ))
+        .font(include_bytes!(
+            "../../assets/fonts/RobotoMono-VariableFont_wght.ttf"
+        ))
+        .default_font(ROBOTO_FONT)
+        .antialiasing(true)
+        .run()
+        .context("Failed to run UI")
 }
 
 fn create_app(search_context: Arc<RwLock<SearchContext>>) -> App {
