@@ -2,7 +2,7 @@
 members = [
   "hacker-news-api",
   "hacker-news-config",
-  "hacker-news-gpui",
+  # "hacker-news-gpui",
   "hacker-news-iced",
   "hacker-news-search",
   "hacker-news-tui",

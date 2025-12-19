@@ -1,6 +1,6 @@
 //! Renders rich text from a simplified html string. Allows creating spans
 //! for search matches so search strings can be highlighted.
-use crate::{app::AppMsg, common::FontExt, ROBOTO_FONT, ROBOTO_MONO};
+use crate::{common::FontExt, ROBOTO_FONT, ROBOTO_MONO};
 use html_sanitizer::Anchor;
 use iced::{
     widget::{span, text::Span},
@@ -13,7 +13,7 @@ pub fn render_rich_text<'a>(
     escaped_text: &'a str,
     search: Option<&'a str>,
     oneline: bool,
-) -> Vec<Span<'a, AppMsg>> {
+) -> Vec<Span<'a, String>> {
     let elements = html_sanitizer::parse_elements(escaped_text);
     let mut spans = Vec::new();
 
@@ -105,29 +105,28 @@ pub fn render_rich_text<'a>(
     spans
 }
 
-fn anchor_spans(link: Anchor<'_>) -> impl Iterator<Item = Span<'_, AppMsg>> {
+fn anchor_spans(link: Anchor<'_>) -> impl Iterator<Item = Span<'_, String>> {
     let children = link.children;
-    let msg = |url| AppMsg::OpenLink { url };
 
     link.attributes
         .into_iter()
         .find_map(|attr| (attr.name == "href").then_some(attr.value))
         .map(move |url| {
             if children.is_empty() {
-                span(url.clone()).link(msg(url))
+                span(url.clone()).link(url)
             } else {
-                span(children).link(msg(url))
+                span(children).link(url)
             }
         })
         .into_iter()
 }
 
 /// Split an owned string into multiple owned spans.
-fn split_search(
+fn split_search<Link>(
     text: String,
     search: Option<&str>,
-    update_span: impl Fn(Span<'_, AppMsg>) -> Span<'_, AppMsg>,
-) -> Vec<Span<'_, AppMsg>> {
+    update_span: impl Fn(Span<'_, Link>) -> Span<'_, Link>,
+) -> Vec<Span<'_, Link>> {
     match search {
         Some(s) => {
             let mut spans = Vec::new();
@@ -159,16 +158,16 @@ fn split_search(
 }
 
 /// Yield multiple spans from a single str reference.
-pub struct SearchSpanIter<'a, 'b> {
+pub struct SearchSpanIter<'a, 'b, Link> {
     last_index: usize,
     search: Option<&'b str>,
     text: &'a str,
     matcher: Option<Box<dyn Iterator<Item = (usize, &'a str)> + 'a>>,
     finished: bool,
-    next_match: Option<Span<'a, AppMsg>>,
+    next_match: Option<Span<'a, Link>>,
 }
 
-impl<'a, 'b> SearchSpanIter<'a, 'b> {
+impl<'a, 'b, Link> SearchSpanIter<'a, 'b, Link> {
     pub fn new(text: &'a str, search: Option<&'b str>) -> Self {
         Self {
             last_index: 0,
@@ -181,8 +180,8 @@ impl<'a, 'b> SearchSpanIter<'a, 'b> {
     }
 }
 
-impl<'a, 'b: 'a> Iterator for SearchSpanIter<'a, 'b> {
-    type Item = Span<'a, AppMsg>;
+impl<'a, 'b: 'a, Link> Iterator for SearchSpanIter<'a, 'b, Link> {
+    type Item = Span<'a, Link>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {
@@ -202,7 +201,7 @@ impl<'a, 'b: 'a> Iterator for SearchSpanIter<'a, 'b> {
                 if let Some((index, matched)) = self.matcher.as_mut()?.next() {
                     let (unmatched, _) = self.text.split_at(index);
 
-                    let segment: Option<Span<'a, AppMsg>> = unmatched
+                    let segment: Option<Span<'a, Link>> = unmatched
                         .is_empty()
                         .not()
                         .then(|| span(&unmatched[self.last_index..]));

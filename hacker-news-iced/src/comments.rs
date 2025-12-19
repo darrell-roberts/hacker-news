@@ -100,7 +100,10 @@ impl CommentState {
             .article
             .body
             .as_deref()
-            .map(|text| widget::rich_text(render_rich_text(text, self.search.as_deref(), false)))
+            .map(|text| {
+                widget::rich_text(render_rich_text(text, self.search.as_deref(), false))
+                    .on_link_click(|url| AppMsg::OpenLink { url })
+            })
             .map(|rt| container(rt).padding([10, 10]).into());
 
         let total_parents = self
@@ -195,7 +198,7 @@ impl CommentState {
                                     "Search within story...",
                                     self.search.as_deref().unwrap_or_default(),
                                 )
-                                .id(widget::text_input::Id::new("comment_search"))
+                                .id(widget::Id::new("comment_search"))
                                 .on_input(|input| AppMsg::Comments(CommentMsg::Search(input))),
                             )
                             .push(common::tooltip(
@@ -205,7 +208,7 @@ impl CommentState {
                                 widget::tooltip::Position::FollowCursor,
                             )),
                     )
-                    .push(widget::text(format!("{}", self.full_count)))
+                    .push(widget::text!("{}", self.full_count))
                     .push(
                         widget::toggler(self.oneline)
                             .label("oneline")
@@ -226,12 +229,12 @@ impl CommentState {
             .push(
                 widget::scrollable(
                     widget::Column::new()
-                        .push_maybe(
+                        .push(
                             self.search
                                 .is_none()
                                 .then(|| Column::with_children(article_text).spacing(15)),
                         )
-                        .push_maybe(
+                        .push(
                             self.search
                                 .is_none()
                                 .then(|| Column::with_children(parent_comments).spacing(15)),
@@ -246,7 +249,7 @@ impl CommentState {
                 .id(comment_scroll_id())
                 .height(Length::Fill),
             )
-            .push_maybe((self.full_count > 10).then(|| self.pagination_element()))
+            .push((self.full_count > 10).then(|| self.pagination_element()))
             .padding(iced::padding::top(5));
 
         container(content.width(Length::Fill)).into()
@@ -261,7 +264,7 @@ impl CommentState {
         let child_comments_button: Element<'_, AppMsg> = if comment.kids.is_empty() {
             widget::text("").into()
         } else {
-            button(widget::text(format!("💬{}", comment.kids.len())).shaping(Shaping::Advanced))
+            button(widget::text!("💬{}", comment.kids.len()).shaping(Shaping::Advanced))
                 .padding(0)
                 .on_press(AppMsg::Comments(CommentMsg::FetchComments {
                     parent_id: comment.id,
@@ -276,14 +279,14 @@ impl CommentState {
             widget::mouse_area(
                 container(
                     widget::Column::new()
-                        .push_maybe(is_parent.then(|| {
+                        .push(is_parent.then(|| {
                             widget::container(
                                 widget::button(widget::text("X").size(10))
                                     .on_press(AppMsg::Comments(CommentMsg::Close(comment.id))),
                             )
                             .align_right(Length::Fill)
                         }))
-                        .push_maybe(self.search.is_some().then(|| {
+                        .push(self.search.is_some().then(|| {
                             widget::container(widget::tooltip(
                                 widget::button(widget::text("🧵").shaping(Shaping::Advanced))
                                     .style(widget::button::text)
@@ -299,29 +302,30 @@ impl CommentState {
                             ))
                             .align_right(Length::Fill)
                         }))
-                        .push(widget::rich_text(render_rich_text(
-                            &comment.body,
-                            self.search.as_deref(),
-                            self.oneline,
-                        )))
+                        .push(
+                            widget::rich_text(render_rich_text(
+                                &comment.body,
+                                self.search.as_deref(),
+                                self.oneline,
+                            ))
+                            .on_link_click(|url| AppMsg::OpenLink { url }),
+                        )
                         .push(
                             widget::row![
                                 widget::rich_text([
                                     widget::span(format!("by {}", comment.by))
-                                        .link(AppMsg::Header(HeaderMsg::Search(format!(
-                                            "by:{}",
-                                            comment.by
-                                        ))))
+                                        .link(format!("by:{}", comment.by.as_str()))
                                         .font(ROBOTO_FONT.italic())
                                         .size(14),
                                     widget::span(" "),
                                     widget::span(parse_date(comment.time).unwrap_or_default())
                                         .font(ROBOTO_FONT.italic().weight_light())
                                         .size(10),
-                                ]),
+                                ])
+                                .on_link_click(|by| AppMsg::Header(HeaderMsg::Search(by))),
                                 child_comments_button,
                                 widget::container(common::tooltip(
-                                    widget::button(widget::text(format!("{}", comment.id)))
+                                    widget::button(widget::text!("{}", comment.id))
                                         .on_press(AppMsg::OpenLink {
                                             url: format!(
                                                 "https://news.ycombinator.com/item?id={}",
@@ -385,7 +389,7 @@ impl CommentState {
                         self.comments = comments;
 
                         Task::batch([
-                            widget::scrollable::scroll_to(
+                            widget::operation::scroll_to(
                                 comment_scroll_id(),
                                 scroll_to.unwrap_or_default(),
                             ),
@@ -567,9 +571,9 @@ impl CommentState {
             })
             .map(AppMsg::Comments),
         }
-        .chain(widget::scrollable::scroll_to(
+        .chain(widget::operation::scroll_to(
             comment_scroll_id(),
-            Default::default(),
+            widget::operation::AbsoluteOffset { x: 0.0, y: 0.0 },
         ))
     }
 
@@ -605,6 +609,6 @@ impl PaginatingView<AppMsg> for CommentState {
 }
 
 /// Id for the comment view scroller.
-fn comment_scroll_id() -> widget::scrollable::Id {
-    widget::scrollable::Id::new("comments")
+fn comment_scroll_id() -> widget::Id {
+    widget::Id::new("comments")
 }

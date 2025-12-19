@@ -63,7 +63,7 @@ pub struct App {
 impl App {
     /// Construct a new instance of [`App`].
     pub fn new(config: Config) -> Result<Self, Box<dyn std::error::Error>> {
-        // let _ = api_client();
+        let _ = api_client();
 
         let search_context = search_context()?;
         let stories = search_context.read().unwrap().top_stories(75, 0)?;

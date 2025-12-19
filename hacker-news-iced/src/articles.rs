@@ -16,7 +16,7 @@ use iced::{
     alignment::{Horizontal, Vertical},
     border::{self},
     padding,
-    widget::{self, scrollable, text, Column, Row},
+    widget::{self, text, Column, Row},
     Background, Color, Element, Length, Shadow, Task, Theme,
 };
 use log::info;
@@ -70,6 +70,27 @@ pub struct ArticleState {
     pub indexing_stories: Vec<u64>,
     /// Filter articles being watched.
     pub filter_watching: bool,
+    /// Handle to static rust image.
+    pub rust_image: Handle,
+}
+
+impl ArticleState {
+    /// New article state.
+    pub fn new(search_context: Arc<RwLock<SearchContext>>) -> Self {
+        Self {
+            search_context,
+            articles: Vec::new(),
+            visited: HashSet::new(),
+            search: None,
+            viewing_item: None,
+            article_limit: 75,
+            watch_handles: HashMap::new(),
+            watch_changes: HashMap::new(),
+            indexing_stories: Vec::new(),
+            filter_watching: false,
+            rust_image: Handle::from_bytes(RUST_LOGO),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -109,16 +130,18 @@ impl ArticleState {
             .padding(padding::top(10).bottom(10).left(15).right(25)),
         )
         .height(Length::Fill)
-        .id(scrollable::Id::new("articles"))
+        .id(widget::Id::new("articles"))
         .into()
     }
 
     fn render_article_title<'a>(&'a self, story: &'a Story) -> iced::Element<'a, AppMsg> {
-        let title: widget::text::Rich<'a, AppMsg> = widget::rich_text(
+        let title = widget::rich_text(
             SearchSpanIter::new(&story.title, self.search.as_deref())
-                .map(|span| span.link(AppMsg::Articles(ArticleMsg::StoryClicked(story.clone()))))
+                .map(|span| span.link(story.clone()))
                 .collect::<Vec<_>>(),
-        );
+        )
+        .on_link_click(|link| AppMsg::Articles(ArticleMsg::StoryClicked(link)));
+
         match story.url.as_deref() {
             Some(url) => hoverable(title)
                 .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
@@ -130,12 +153,9 @@ impl ArticleState {
 
     /// Render a single story.
     fn render_article<'a>(&'a self, theme: &Theme, story: &'a Story) -> iced::Element<'a, AppMsg> {
-        let by = widget::rich_text([
+        let by: widget::text::Rich<'a, String, AppMsg> = widget::rich_text([
             widget::span(format!("by {}", story.by))
-                .link(AppMsg::Header(HeaderMsg::Search(format!(
-                    "by:{}",
-                    story.by
-                ))))
+                .link(story.by.clone())
                 .font(ROBOTO_FONT.italic())
                 .size(14)
                 .color_maybe(widget::text::primary(theme).color),
@@ -144,7 +164,8 @@ impl ArticleState {
                 .font(ROBOTO_FONT.weight_light().italic())
                 .size(10)
                 .color_maybe(widget::text::primary(theme).color),
-        ]);
+        ])
+        .on_link_click(|by| AppMsg::Header(HeaderMsg::Search(format!("by:{by}"))));
 
         let article_id = story.id;
 
@@ -162,7 +183,7 @@ impl ArticleState {
                                 .push(
                                     widget::container(
                                         Row::new()
-                                            .push_maybe({
+                                            .push({
                                                 let has_rust = story.title.split(' ').any(|word| {
                                                     word == "Rust"
                                                         || (word.starts_with("Rust")
@@ -180,22 +201,18 @@ impl ArticleState {
                                                 });
                                                 has_rust.then(|| {
                                                     widget::container(
-                                                        widget::image(Handle::from_bytes(
-                                                            RUST_LOGO,
-                                                        ))
-                                                        .content_fit(iced::ContentFit::Contain),
+                                                        widget::image(&self.rust_image)
+                                                            .content_fit(iced::ContentFit::Contain),
                                                     )
                                                 })
                                             })
-                                            .push_maybe(self.visited.contains(&story.id).then(
-                                                || {
-                                                    widget::container(
-                                                        widget::text("✅")
-                                                            .shaping(text::Shaping::Advanced),
-                                                    )
-                                                },
-                                            ))
-                                            .push_maybe(
+                                            .push(self.visited.contains(&story.id).then(|| {
+                                                widget::container(
+                                                    widget::text("✅")
+                                                        .shaping(text::Shaping::Advanced),
+                                                )
+                                            }))
+                                            .push(
                                                 self.indexing_stories
                                                     .contains(&story.id)
                                                     .not()
@@ -227,20 +244,20 @@ impl ArticleState {
                         )
                         .push(
                             Row::new()
-                                .push(widget::text(format!("{}", story.rank)))
-                                .push_maybe((story.ty != "job").then(|| {
-                                    widget::text(format!("🔼{}", story.score))
+                                .push(widget::text!("{}", story.rank))
+                                .push((story.ty != "job").then(|| {
+                                    widget::text!("🔼{}", story.score)
                                         .shaping(text::Shaping::Advanced)
                                 }))
                                 .push(if story.descendants == 0 {
                                     Element::from(text(""))
                                 } else {
                                     Element::from(
-                                        widget::text(format!("💬{}", story.descendants))
+                                        widget::text!("💬{}", story.descendants)
                                             .shaping(text::Shaping::Advanced),
                                     )
                                 })
-                                .push_maybe((story.ty != "job").then(|| {
+                                .push((story.ty != "job").then(|| {
                                     tooltip(
                                         widget::toggler(self.watch_handles.contains_key(&story.id))
                                             .on_toggle(|toggled| {
@@ -311,7 +328,7 @@ impl ArticleState {
                             widget::container(
                                 widget::container(common::tooltip(
                                     widget::button(
-                                        widget::text(format!("{}", watch_change.new_comments))
+                                        widget::text!("{}", watch_change.new_comments)
                                             .color(Color::from_rgb8(255, 255, 153))
                                             .font(ROBOTO_FONT.bold()),
                                     )
@@ -347,9 +364,10 @@ impl ArticleState {
             ArticleMsg::Receive(articles) => {
                 log::debug!("Received {} articles", articles.len());
                 self.articles = articles;
-                widget::scrollable::scroll_to::<AppMsg>(
-                    widget::scrollable::Id::new("articles"),
-                    Default::default(),
+                widget::operation::scroll_to::<AppMsg>(
+                    widget::Id::new("articles"),
+                    // Default::default(),
+                    widget::operation::AbsoluteOffset { x: 0.0, y: 0.0 },
                 )
             }
             ArticleMsg::Search(input) => {

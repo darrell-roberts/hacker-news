@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::Context as _;
 use app_dirs2::{get_app_dir, get_app_root, AppDataType, AppInfo};
-use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming};
+use flexi_logger::{opt_format, Age, Cleanup, Criterion, FileSpec, Naming};
 use hacker_news_api::ArticleType;
 use hacker_news_search::{IndexStats, SearchContext};
 use log::info;
@@ -79,6 +79,7 @@ pub fn init_logger() -> anyhow::Result<()> {
             Cleanup::KeepLogFiles(5),
         )
         .print_message()
+        .format(opt_format)
         .start()?;
     Ok(())
 }

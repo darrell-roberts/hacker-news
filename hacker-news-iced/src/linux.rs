@@ -16,7 +16,7 @@ pub fn listen_to_system_changes() -> impl Stream<Item = AppMsg> {
         let _handler = settings.connect_changed(
             Some("text-scaling-factor"),
             move |settings, scale_factor| {
-                let scale = settings.get::<f64>(scale_factor);
+                let scale = settings.get::<f64>(scale_factor) as f32;
                 info!("System font scale changed to: {scale}");
 
                 if let Err(err) = scale_tx.unbounded_send(AppMsg::SystemFontScale(scale)) {
@@ -44,8 +44,8 @@ pub fn listen_to_system_changes() -> impl Stream<Item = AppMsg> {
 }
 
 /// Read the initial dconf font scale
-pub fn initial_font_scale() -> f64 {
-    Settings::new("org.gnome.desktop.interface").get::<f64>("text-scaling-factor")
+pub fn initial_font_scale() -> f32 {
+    Settings::new("org.gnome.desktop.interface").get::<f64>("text-scaling-factor") as f32
 }
 
 pub fn initial_theme() -> Theme {

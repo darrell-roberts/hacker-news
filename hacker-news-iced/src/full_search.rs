@@ -92,7 +92,7 @@ impl FullSearchState {
                 .height(Length::Fill)
                 .id(full_search_scroll_id()),
             )
-            .push_maybe((self.full_count > 0).then(|| self.pagination_element()))
+            .push((self.full_count > 0).then(|| self.pagination_element()))
             .spacing(5);
 
         widget::container(content).into()
@@ -102,20 +102,18 @@ impl FullSearchState {
         let child_comments_button: Element<'_, AppMsg> = if comment.kids.is_empty() {
             widget::text("").into()
         } else {
-            widget::button(
-                widget::text(format!("💬{}", comment.kids.len())).shaping(Shaping::Advanced),
-            )
-            .padding(0)
-            .on_press(AppMsg::FullSearch(FullSearchMsg::OpenComment(comment.id)))
-            .style(widget::button::text)
-            .into()
+            widget::button(widget::text!("💬{}", comment.kids.len()).shaping(Shaping::Advanced))
+                .padding(0)
+                .on_press(AppMsg::FullSearch(FullSearchMsg::OpenComment(comment.id)))
+                .style(widget::button::text)
+                .into()
         };
         widget::container(
             widget::Column::new()
                 .push(
                     widget::Row::new()
                         .push(widget::container(
-                            widget::button(widget::text(format!("{}", comment.id)))
+                            widget::button(widget::text!("{}", comment.id))
                                 .on_press(AppMsg::OpenLink {
                                     url: format!(
                                         "https://news.ycombinator.com/item?id={}",
@@ -150,24 +148,27 @@ impl FullSearchState {
                         SearchCriteria::StoryId { .. } => None,
                     };
 
-                    widget::container(widget::rich_text(render_rich_text(&comment.body, s, false)))
-                        .width(Length::FillPortion(6).enclose(Length::Fixed(50.)))
+                    widget::container(
+                        widget::rich_text(render_rich_text(&comment.body, s, false))
+                            .on_link_click(|url| AppMsg::OpenLink { url }),
+                    )
+                    .width(Length::FillPortion(6).enclose(Length::Fixed(50.)))
                 })
                 .push(
                     widget::Row::new()
-                        .push(widget::rich_text([
-                            widget::span(format!("by {}", comment.by))
-                                .link(AppMsg::Header(HeaderMsg::Search(format!(
-                                    "by:{}",
-                                    comment.by
-                                ))))
-                                .font(ROBOTO_FONT.italic())
-                                .size(14),
-                            widget::span(" "),
-                            widget::span(parse_date(comment.time).unwrap_or_default())
-                                .font(ROBOTO_FONT.weight_light().italic())
-                                .size(10),
-                        ]))
+                        .push(
+                            widget::rich_text([
+                                widget::span(format!("by {}", comment.by))
+                                    .link(format!("by:{}", comment.by))
+                                    .font(ROBOTO_FONT.italic())
+                                    .size(14),
+                                widget::span(" "),
+                                widget::span(parse_date(comment.time).unwrap_or_default())
+                                    .font(ROBOTO_FONT.weight_light().italic())
+                                    .size(10),
+                            ])
+                            .on_link_click(|by| AppMsg::Header(HeaderMsg::Search(by))),
+                        )
                         .push(child_comments_button)
                         .spacing(5),
                 )
@@ -294,9 +295,9 @@ impl FullSearchState {
                 .map(AppMsg::FullSearch)
             }
         }
-        .chain(widget::scrollable::scroll_to(
+        .chain(widget::operation::scroll_to(
             full_search_scroll_id(),
-            Default::default(),
+            widget::operation::AbsoluteOffset { x: 0.0, y: 0.0 },
         ))
     }
 }
@@ -323,6 +324,6 @@ impl PaginatingView<AppMsg> for FullSearchState {
     }
 }
 
-fn full_search_scroll_id() -> widget::scrollable::Id {
-    widget::scrollable::Id::new("full_search")
+fn full_search_scroll_id() -> widget::Id {
+    widget::Id::new("full_search")
 }

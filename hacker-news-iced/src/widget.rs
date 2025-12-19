@@ -2,9 +2,9 @@
 //! and existed.
 use iced::{
     advanced::{self, mouse, renderer, widget, Widget},
-    event,
+    event::Status,
     widget::container,
-    Element, Event, Length, Point, Rectangle,
+    Element, Event, Length, Rectangle,
 };
 
 pub struct Hoverable<'a, Message, Theme = iced::Theme, Renderer = iced::Renderer> {
@@ -48,13 +48,11 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Eq)]
 enum State {
     #[default]
     Idle,
-    Hovered {
-        cursor_position: Point,
-    },
+    Hovered,
 }
 
 impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
@@ -89,14 +87,18 @@ where
     }
 
     fn layout(
-        &self,
+        &mut self,
         tree: &mut advanced::widget::Tree,
         renderer: &Renderer,
         limits: &advanced::layout::Limits,
     ) -> advanced::layout::Node {
-        self.content
-            .as_widget()
-            .layout(&mut tree.children[0], renderer, limits)
+        match tree.children.first_mut() {
+            Some(children) => self
+                .content
+                .as_widget_mut()
+                .layout(children, renderer, limits),
+            None => advanced::layout::Node::default(),
+        }
     }
 
     fn draw(
@@ -109,15 +111,17 @@ where
         cursor: mouse::Cursor,
         viewport: &Rectangle,
     ) {
-        self.content.as_widget().draw(
-            &tree.children[0],
-            renderer,
-            theme,
-            inherited_style,
-            layout,
-            cursor,
-            viewport,
-        );
+        if let Some(children) = tree.children.first() {
+            self.content.as_widget().draw(
+                children,
+                renderer,
+                theme,
+                inherited_style,
+                layout,
+                cursor,
+                viewport,
+            );
+        }
     }
 
     fn mouse_interaction(
@@ -128,62 +132,64 @@ where
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> mouse::Interaction {
-        self.content.as_widget().mouse_interaction(
-            &tree.children[0],
-            layout,
-            cursor,
-            viewport,
-            renderer,
-        )
+        match tree.children.first() {
+            Some(children) => self
+                .content
+                .as_widget()
+                .mouse_interaction(children, layout, cursor, viewport, renderer),
+            None => mouse::Interaction::None,
+        }
     }
 
-    fn on_event(
+    fn update(
         &mut self,
         tree: &mut widget::Tree,
-        event: Event,
+        event: &Event,
         layout: advanced::Layout<'_>,
         cursor: mouse::Cursor,
         renderer: &Renderer,
         clipboard: &mut dyn advanced::Clipboard,
         shell: &mut advanced::Shell<'_, Message>,
         viewport: &Rectangle,
-    ) -> event::Status {
-        if let event::Status::Captured = self.content.as_widget_mut().on_event(
-            &mut tree.children[0],
-            event,
-            layout,
-            cursor,
-            renderer,
-            clipboard,
-            shell,
-            viewport,
-        ) {
-            return event::Status::Captured;
+    ) {
+        let Some(children) = tree.children.first_mut() else {
+            return;
+        };
+
+        // Allow children to capture event.
+        self.content.as_widget_mut().update(
+            children, event, layout, cursor, renderer, clipboard, shell, viewport,
+        );
+
+        if shell.event_status() == Status::Captured {
+            return;
         }
 
-        let state = tree.state.downcast_mut::<State>();
-        let was_idle = *state == State::Idle;
+        let previous_state = tree.state.downcast_mut::<State>();
 
-        *state = cursor
-            .position_over(layout.bounds())
-            .map(|cursor_position| State::Hovered { cursor_position })
-            .unwrap_or_default();
+        let current_state = match cursor.is_over(layout.bounds()) {
+            true => State::Hovered,
+            false => State::Idle,
+        };
 
-        match (was_idle, matches!(state, State::Hovered { .. })) {
-            (false, false) => {
-                if let Some(msg) = &self.on_exit {
-                    shell.publish(msg.clone())
-                }
-            }
-            (false, true) => {
+        match (&previous_state, current_state) {
+            (State::Idle, State::Hovered) => {
                 if let Some(msg) = &self.on_hover {
-                    shell.publish(msg.clone())
+                    shell.publish(msg.clone());
                 }
             }
-            _ => (),
+            (State::Hovered, State::Idle) => {
+                if let Some(msg) = &self.on_exit {
+                    shell.publish(msg.clone());
+                }
+            }
+            _ => {}
         }
 
-        event::Status::Ignored
+        if *previous_state != current_state {
+            *previous_state = current_state;
+            shell.capture_event();
+        }
     }
 }
 
