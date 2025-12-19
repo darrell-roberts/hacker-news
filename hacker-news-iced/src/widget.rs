@@ -48,7 +48,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Eq)]
 enum State {
     #[default]
     Idle,
@@ -176,19 +176,20 @@ where
             (State::Idle, State::Hovered) => {
                 if let Some(msg) = &self.on_hover {
                     shell.publish(msg.clone());
-                    shell.capture_event();
                 }
             }
             (State::Hovered, State::Idle) => {
                 if let Some(msg) = &self.on_exit {
                     shell.publish(msg.clone());
-                    shell.capture_event();
                 }
             }
             _ => {}
         }
 
-        *previous_state = current_state;
+        if *previous_state != current_state {
+            *previous_state = current_state;
+            shell.capture_event();
+        }
     }
 }
 
