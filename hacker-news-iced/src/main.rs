@@ -43,6 +43,7 @@ mod linux;
 pub mod macos;
 mod nav_history;
 mod richtext;
+mod spinner;
 #[cfg(feature = "trace")]
 mod tracing;
 

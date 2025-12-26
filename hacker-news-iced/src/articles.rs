@@ -7,6 +7,7 @@ use crate::{
     header::HeaderMsg,
     parse_date,
     richtext::SearchSpanIter,
+    spinner::Spinner,
     ROBOTO_FONT,
 };
 use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
@@ -194,6 +195,7 @@ impl ArticleState {
                                 .push(
                                     widget::container(
                                         Row::new()
+                                            .push(Spinner::new())
                                             .push({
                                                 let has_rust = story.title.split(' ').any(|word| {
                                                     word == "Rust"
