@@ -8,7 +8,6 @@ use crate::{
     full_search::{FullSearchMsg, FullSearchState, SearchCriteria},
     header::{self, HeaderMsg, HeaderState},
     nav_history::{Content, History, HistoryElement},
-    widget::hoverable,
     ROBOTO_FONT,
 };
 use hacker_news_api::ArticleType;
@@ -457,7 +456,7 @@ pub fn view(app: &App) -> iced::Element<'_, AppMsg> {
                 .shaping(Shaping::Advanced);
 
             let content: iced::Element<AppMsg> = match story.url.as_deref() {
-                Some(url) => hoverable(
+                Some(url) => widget::mouse_area(
                     widget::button(title_text)
                         .on_press(AppMsg::OpenLink {
                             url: url.to_string(),
@@ -465,7 +464,7 @@ pub fn view(app: &App) -> iced::Element<'_, AppMsg> {
                         .style(button::text)
                         .padding(0),
                 )
-                .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
+                .on_enter(AppMsg::Footer(FooterMsg::Url(url.to_string())))
                 .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
                 .into(),
                 None => title_text.into(),

@@ -45,7 +45,6 @@ mod nav_history;
 mod richtext;
 #[cfg(feature = "trace")]
 mod tracing;
-mod widget;
 
 const ROBOTO_FONT: Font = Font::with_name("Roboto");
 const ROBOTO_MONO: Font = Font::with_name("Roboto Mono");

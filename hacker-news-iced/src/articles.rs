@@ -7,7 +7,6 @@ use crate::{
     header::HeaderMsg,
     parse_date,
     richtext::SearchSpanIter,
-    widget::hoverable,
     ROBOTO_FONT,
 };
 use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
@@ -91,6 +90,18 @@ impl ArticleState {
             rust_image: Handle::from_bytes(RUST_LOGO),
         }
     }
+
+    /// Set visited set.
+    pub fn visited(mut self, visited: HashSet<u64>) -> Self {
+        self.visited = visited;
+        self
+    }
+
+    /// Set article limit.
+    pub fn article_limit(mut self, article_limit: usize) -> Self {
+        self.article_limit = article_limit;
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -143,8 +154,8 @@ impl ArticleState {
         .on_link_click(|link| AppMsg::Articles(ArticleMsg::StoryClicked(link)));
 
         match story.url.as_deref() {
-            Some(url) => hoverable(title)
-                .on_hover(AppMsg::Footer(FooterMsg::Url(url.to_string())))
+            Some(url) => widget::mouse_area(title)
+                .on_enter(AppMsg::Footer(FooterMsg::Url(url.to_string())))
                 .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
                 .into(),
             None => Element::from(title),

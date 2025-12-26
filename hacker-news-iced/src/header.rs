@@ -26,6 +26,31 @@ pub struct HeaderState {
     pub full_search: Option<String>,
 }
 
+impl HeaderState {
+    /// Create a new Header state.
+    pub fn new(search_context: Arc<RwLock<SearchContext>>) -> Self {
+        Self {
+            search_context,
+            article_count: 0,
+            article_type: ArticleType::Top,
+            building_index: false,
+            full_search: None,
+        }
+    }
+
+    /// Set article count.
+    pub fn article_count(mut self, article_count: usize) -> Self {
+        self.article_count = article_count;
+        self
+    }
+
+    /// Set article type.
+    pub fn article_type(mut self, article_type: ArticleType) -> Self {
+        self.article_type = article_type;
+        self
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum HeaderMsg {
     Select {

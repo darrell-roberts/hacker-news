@@ -71,26 +71,18 @@ impl Config {
             search_context: search_context.clone(),
             theme: theme(&config.gui_config.theme).unwrap_or(iced::Theme::Dark),
             scale: config.gui_config.scale,
-            header: HeaderState {
-                search_context: search_context.clone(),
-                article_count: config.index_config.viewing_count,
-                article_type: config.index_config.viewing_type,
-                building_index: false,
-                full_search: None,
-            },
+            header: HeaderState::new(search_context.clone())
+                .article_count(config.index_config.viewing_count)
+                .article_type(config.index_config.viewing_type),
             footer: FooterState {
-                status_line: String::new(),
-                last_update: None,
                 scale: config.gui_config.scale,
                 viewing_index: config.index_config.viewing_type,
                 index_stats,
-                index_progress: None,
+                ..Default::default()
             },
-            article_state: ArticleState {
-                visited: config.gui_config.visited,
-                article_limit: config.index_config.viewing_count,
-                ..ArticleState::new(search_context)
-            },
+            article_state: ArticleState::new(search_context)
+                .visited(config.gui_config.visited)
+                .article_limit(config.index_config.viewing_count),
             size: Size::new(
                 config.gui_config.window_size.0,
                 config.gui_config.window_size.1,

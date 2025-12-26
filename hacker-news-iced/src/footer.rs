@@ -19,6 +19,7 @@ pub struct IndexProgress {
     pub total_stories_completed: f32,
 }
 
+#[derive(Default)]
 pub struct FooterState {
     pub status_line: String,
     pub last_update: Option<DateTime<Local>>,
