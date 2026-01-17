@@ -5,7 +5,7 @@ use opentelemetry_sdk::{
     trace::{BatchConfigBuilder, RandomIdGenerator, Sampler, Tracer, TracerProvider},
     Resource,
 };
-use std::{convert::Infallible, future::pending, sync::OnceLock};
+use std::{future::pending, sync::OnceLock};
 use tracing_opentelemetry::OpenTelemetryLayer;
 use tracing_subscriber::{layer::SubscriberExt, Registry};
 
@@ -30,7 +30,7 @@ pub fn start_runtime<R>(f: impl FnOnce() -> R) -> R {
     std::thread::Builder::new()
         .name("tracing-exporter".into())
         // Run this runtime effectively forever
-        .spawn(move || rt.block_on(pending::<Infallible>()))
+        .spawn(move || rt.block_on(pending::<()>()))
         .expect("failed to spawn thread");
 
     ret
