@@ -14,7 +14,7 @@ async-compat = "0.2"
 chrono.workspace = true
 flexi_logger.workspace = true
 futures = "0.3"
-gpui = { version = "*" }
+gpui = { git = "https://github.com/zed-industries/zed.git" }
 hacker-news-api.workspace = true
 html-sanitizer.workspace = true
 log.workspace = true
