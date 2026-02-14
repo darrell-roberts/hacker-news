@@ -125,7 +125,7 @@ fn main() {
                     appears_transparent: false,
                 }),
                 window_decorations: Some(WindowDecorations::Server),
-                window_min_size: Some(size(px(600.), px(800.))),
+                window_min_size: Some(size(px(400.), px(800.))),
                 is_movable: true,
                 window_bounds: None,
                 show: true,

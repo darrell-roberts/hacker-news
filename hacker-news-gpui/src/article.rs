@@ -190,28 +190,26 @@ impl Render for ArticleView {
             .flex_row()
             .flex_grow()
             .child(
-                div()
-                    .rounded_md()
-                    .child(
-                        div()
-                            .id("title")
-                            .child(self.title.clone())
-                            .cursor_pointer()
-                            .on_click(move |_, _, app| {
-                                if let Some(url) = url.as_deref() {
-                                    app.open_url(url.as_ref());
-                                }
-                            })
-                            .on_hover(move |hover, _window, app| {
-                                if !hover {
-                                    app.set_global::<UrlHover>(UrlHover(None));
-                                } else if let Some(entity) = weak_entity.upgrade() {
-                                    let view = entity.read(app);
-                                    app.set_global::<UrlHover>(UrlHover(view.url.clone()));
-                                }
-                            }),
-                    )
-                    .hover(hover_element),
+                div().rounded_md().child(
+                    div()
+                        .id("title")
+                        .child(self.title.clone())
+                        .cursor_pointer()
+                        .on_click(move |_, _, app| {
+                            if let Some(url) = url.as_deref() {
+                                app.open_url(url.as_ref());
+                            }
+                        })
+                        .on_hover(move |hover, _window, app| {
+                            if !hover {
+                                app.set_global::<UrlHover>(UrlHover(None));
+                            } else if let Some(entity) = weak_entity.upgrade() {
+                                let view = entity.read(app);
+                                app.set_global::<UrlHover>(UrlHover(view.url.clone()));
+                            }
+                        })
+                        .hover(hover_element),
+                ),
             )
             .child(
                 div()
