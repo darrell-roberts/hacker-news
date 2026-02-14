@@ -3,8 +3,8 @@ use crate::theme::Theme;
 use content::Content;
 use footer::Footer;
 use gpui::{
-    actions, div, point, prelude::*, px, size, App, Application, Entity, Global, Menu, MenuItem,
-    SharedString, Window, WindowDecorations, WindowKind, WindowOptions,
+    actions, div, point, prelude::*, px, size, App, Application, Bounds, Entity, Global, Menu,
+    MenuItem, SharedString, Window, WindowBounds, WindowDecorations, WindowKind, WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use log::info;
@@ -77,9 +77,9 @@ impl Render for MainWindow {
         let theme: Theme = window.appearance().into();
 
         div()
-            // .font_family(".SystemUIFont")
-            .font_family("Arial")
-            .text_size(px(15.))
+            .font_family(".SystemUIFont")
+            // .font_family("Arial")
+            .text_size(px(17.))
             .text_color(theme.text_color())
             .flex()
             .flex_col()
@@ -125,9 +125,12 @@ fn main() {
                     appears_transparent: false,
                 }),
                 window_decorations: Some(WindowDecorations::Server),
-                window_min_size: Some(size(px(600.), px(800.))),
+                window_min_size: Some(size(px(400.), px(800.))),
                 is_movable: true,
-                window_bounds: None,
+                window_bounds: Some(WindowBounds::Windowed(Bounds::centered_at(
+                    point(px(0.), px(0.)),
+                    size(px(1000.), px(1200.)),
+                ))),
                 show: true,
                 focus: true,
                 kind: WindowKind::Normal,
