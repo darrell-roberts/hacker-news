@@ -32,11 +32,7 @@ pub struct CommentView {
 }
 
 impl CommentView {
-    pub fn new(
-        cx: &mut AsyncApp,
-        item: Item,
-        article: Entity<ArticleView>,
-    ) -> anyhow::Result<Entity<Self>> {
+    pub fn new(cx: &mut AsyncApp, item: Item, article: Entity<ArticleView>) -> Entity<Self> {
         let ParsedComment { text, layout, urls } = item
             .text
             .as_deref()
@@ -127,11 +123,10 @@ impl Render for CommentView {
                                     let weak_entity = weak_entity.clone();
                                     let article = article.clone();
                                     app.spawn(async move |async_app| {
-                                        let client = async_app
-                                            .read_global(|client: &ApiClientState, _| {
+                                        let client =
+                                            async_app.read_global(|client: &ApiClientState, _| {
                                                 client.0.clone()
-                                            })
-                                            .unwrap();
+                                            });
                                         let items = async_compat::Compat::new(
                                             client.items(&ids).try_collect::<Vec<_>>(),
                                         )
@@ -139,9 +134,8 @@ impl Render for CommentView {
                                         .unwrap_or_default();
                                         let children = items
                                             .into_iter()
-                                            .filter_map(|item| {
+                                            .map(|item| {
                                                 CommentView::new(async_app, item, article.clone())
-                                                    .ok()
                                             })
                                             .collect::<Vec<_>>();
                                         if let Err(err) =

@@ -49,9 +49,8 @@ impl Content {
 
         app.spawn(async move |app| {
             while let Some(items) = rx.next().await {
-                let viewing_comment = entity_copy
-                    .read_with(app, |content: &Content, _app| content.viewing_comment)
-                    .unwrap_or_default();
+                let viewing_comment =
+                    entity_copy.read_with(app, |content: &Content, _app| content.viewing_comment);
 
                 if viewing_comment {
                     continue;
@@ -67,36 +66,24 @@ impl Content {
                     .into_iter()
                     .enumerate()
                     .map(|(index, article)| {
-                        let order_change = app
-                            .read_entity(&entity_copy, |content, _app| {
-                                match content.article_ranks.get(&article.id) {
-                                    Some(rank) => (*rank as i64) - (index as i64),
-                                    None => 0,
-                                }
-                            })
-                            .unwrap();
+                        let order_change = app.read_entity(&entity_copy, |content, _app| {
+                            match content.article_ranks.get(&article.id) {
+                                Some(rank) => (*rank as i64) - (index as i64),
+                                None => 0,
+                            }
+                        });
 
                         ArticleView::new(app, entity_copy.clone(), article, order_change, index + 1)
                     })
-                    .collect::<Result<Vec<_>, _>>();
+                    .collect::<Vec<_>>();
 
-                match views {
-                    Ok(views) => {
-                        let result = app.update_entity(&entity_copy, |content, cx| {
-                            content.articles = views;
-                            content.list_state.reset(content.articles.len());
-                            content.article_ranks = ranking_map;
-                            cx.emit(ContentEvent::TotalArticles(content.articles.len()));
-                            cx.notify();
-                        });
-                        if let Err(err) = result {
-                            error!("Failed to updated articles: {err}");
-                        }
-                    }
-                    Err(err) => {
-                        error!("Could not create article view. App shutting down? {err}");
-                    }
-                }
+                app.update_entity(&entity_copy, |content, cx| {
+                    content.articles = views;
+                    content.list_state.reset(content.articles.len());
+                    content.article_ranks = ranking_map;
+                    cx.emit(ContentEvent::TotalArticles(content.articles.len()));
+                    cx.notify();
+                });
             }
         })
         .detach();

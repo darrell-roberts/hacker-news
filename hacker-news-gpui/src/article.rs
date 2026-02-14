@@ -40,7 +40,7 @@ impl ArticleView {
         item: Item,
         order_change: i64,
         rank: usize,
-    ) -> anyhow::Result<Entity<Self>> {
+    ) -> Entity<Self> {
         app.new(move |_cx| Self {
             title: item.title.unwrap_or_default().into(),
             author: format!("by {}", item.by.clone()).into(),
@@ -124,9 +124,8 @@ impl Render for ArticleView {
                         let ids = ids.clone();
 
                         app.spawn(async move |app: &mut AsyncApp| {
-                            let client = app
-                                .read_global(|client: &ApiClientState, _| client.0.clone())
-                                .unwrap();
+                            let client =
+                                app.read_global(|client: &ApiClientState, _| client.0.clone());
                             let items = async_compat::Compat::new(
                                 client.items(&ids).try_collect::<Vec<_>>(),
                             )
@@ -136,8 +135,8 @@ impl Render for ArticleView {
                             let comments = items
                                 .into_iter()
                                 .filter_map(|comment| {
-                                    article.clone().and_then(|article| {
-                                        CommentView::new(app, comment, article.clone()).ok()
+                                    article.clone().map(|article| {
+                                        CommentView::new(app, comment, article.clone())
                                     })
                                 })
                                 .collect();
@@ -156,11 +155,9 @@ impl Render for ArticleView {
                                 error!("Failed to set loading comments: {err}");
                             };
 
-                            if let Err(err) = content.update(app, |_content: &mut Content, cx| {
+                            content.update(app, |_content: &mut Content, cx| {
                                 cx.emit(ContentEvent::ViewingComments(true));
-                            }) {
-                                error!("Failed to update content viewing state: {err}");
-                            };
+                            });
                         })
                         .detach();
                     })
