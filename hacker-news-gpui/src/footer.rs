@@ -40,6 +40,7 @@ impl Footer {
 
             cx.observe_global::<UrlHover>(|footer: &mut Footer, cx| {
                 footer.url = cx.global::<UrlHover>().0.clone();
+                cx.notify();
             })
             .detach();
 
