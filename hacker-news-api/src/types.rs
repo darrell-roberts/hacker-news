@@ -56,7 +56,7 @@ pub struct User {
 
 /// An event-source for hacker-news.
 #[derive(Deserialize, Debug)]
-pub struct TopStoriesEventData {
+pub struct StoriesEventData {
     pub path: String,
     pub data: Vec<u64>,
 }

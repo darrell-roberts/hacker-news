@@ -2,9 +2,9 @@
 mod client;
 mod types;
 
-pub use crate::client::{subscribe_top_stories, ApiClient};
+pub use crate::client::{subscribe_to_article_list, ApiClient};
 use thiserror::Error;
-pub use types::{ArticleType, Item, ItemEventData, ResultExt, TopStoriesEventData, User};
+pub use types::{ArticleType, Item, ItemEventData, ResultExt, StoriesEventData, User};
 
 #[derive(Debug, Error, Default)]
 pub enum ApiError {

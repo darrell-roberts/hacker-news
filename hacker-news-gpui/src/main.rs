@@ -1,10 +1,12 @@
 //! Simple hacker news view.
-use crate::theme::Theme;
-use content::Content;
+use crate::{content::start_background_article_list_subscription, header::Header, theme::Theme};
+use content::ContentView;
+use flexi_logger::colored_detailed_format;
 use footer::Footer;
 use gpui::{
-    actions, div, point, prelude::*, px, size, App, Application, Bounds, Entity, Global, Menu,
-    MenuItem, SharedString, Window, WindowBounds, WindowDecorations, WindowKind, WindowOptions,
+    actions, div, point, prelude::*, px, size, App, AppContext, Application, Bounds, Entity,
+    Global, Menu, MenuItem, SharedString, Window, WindowBounds, WindowDecorations, WindowKind,
+    WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use log::info;
@@ -15,8 +17,8 @@ mod comment;
 mod common;
 mod content;
 mod footer;
+mod header;
 mod theme;
-// mod header;
 
 #[derive(Clone)]
 pub struct ApiClientState(Arc<ApiClient>);
@@ -31,6 +33,7 @@ impl Deref for ApiClientState {
 
 impl Global for ApiClientState {}
 
+#[derive(Debug, Copy, Clone)]
 pub struct ArticleSelection {
     pub viewing_article_type: ArticleType,
     pub viewing_article_total: usize,
@@ -47,21 +50,46 @@ pub struct ArticleState(pub Vec<Item>);
 impl Global for ArticleState {}
 
 struct MainWindow {
-    // header: Entity<Header>,
-    content: Entity<Content>,
+    header: Entity<Header>,
+    content: Entity<ContentView>,
     footer: Entity<Footer>,
 }
 
 impl MainWindow {
     fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
-        // let header = Header::new(window, app);
-        let content = Content::new(window, app);
+        let header = Header::new(window, app);
+        let content = ContentView::new(window, app);
         let footer = Footer::new(window, app, content.clone());
 
-        app.new(|_ctx| Self {
-            // header,
-            content,
-            footer,
+        let content_update = content.clone();
+        app.new(move |cx| {
+            cx.observe_global::<ArticleSelection>(move |_main_window: &mut MainWindow, cx| {
+                let selection = *cx.global::<ArticleSelection>();
+                content_update.update(cx, |content_view, cx| {
+                    match content_view.article_sender.as_ref() {
+                        Some(tx) => {
+                            info!("Opening stream for {selection:?}");
+                            let old_task = content_view.background_task.replace(
+                                start_background_article_list_subscription(cx, tx.clone()),
+                            );
+                            if let Some(old_task) = old_task {
+                                info!("dropping old task");
+                                drop(old_task);
+                            }
+                        }
+                        None => {
+                            panic!("No article sender on content view");
+                        }
+                    }
+                });
+            })
+            .detach();
+
+            Self {
+                header,
+                content,
+                footer,
+            }
         })
     }
 }
@@ -78,7 +106,6 @@ impl Render for MainWindow {
 
         div()
             .font_family(".SystemUIFont")
-            // .font_family("Arial")
             .text_size(px(17.))
             .text_color(theme.text_color())
             .flex()
@@ -86,14 +113,23 @@ impl Render for MainWindow {
             .w_full()
             .h_full()
             .bg(theme.bg())
+            .child(self.header.clone())
             .child(self.content.clone())
-            .child(self.footer.clone())
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .w_full()
+                    .mt_auto()
+                    .child(self.footer.clone()),
+            )
     }
 }
 
 fn main() {
     flexi_logger::Logger::try_with_env()
         .unwrap()
+        .format(colored_detailed_format)
         .start()
         .expect("Application logger");
 
@@ -102,7 +138,7 @@ fn main() {
         app.set_global(ApiClientState(client));
         app.set_global(ArticleSelection {
             viewing_article_type: ArticleType::Top,
-            viewing_article_total: 50,
+            viewing_article_total: 25,
         });
         app.set_global(UrlHover(None));
 

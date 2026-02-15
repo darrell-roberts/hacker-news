@@ -9,7 +9,7 @@
 //! the structure of the REST API, multiple requests and connections are
 //! required to do most operations.
 use crate::{
-    types::{Item, ItemEventData, ResultExt, TopStoriesEventData, User},
+    types::{Item, ItemEventData, ResultExt, StoriesEventData, User},
     ArticleType,
 };
 use anyhow::{Context, Result};
@@ -176,9 +176,21 @@ impl ApiClient {
     }
 
     /// Top stories event-source stream.
-    pub async fn top_stories_stream(&self, sender: Sender<TopStoriesEventData>) -> Result<()> {
+    pub async fn articles_list_stream(
+        &self,
+        article_type: ArticleType,
+        sender: Sender<StoriesEventData>,
+    ) -> Result<()> {
+        let path = match article_type {
+            ArticleType::New => "newstories.json",
+            ArticleType::Best => "beststories.json",
+            ArticleType::Top => "topstories.json",
+            ArticleType::Ask => "askstories.json",
+            ArticleType::Show => "showstories.json",
+            ArticleType::Job => "jobstories.json",
+        };
         let mut stream = self
-            .event_source::<TopStoriesEventData>(format!("{}/topstories.json", Self::API_END_POINT))
+            .event_source::<StoriesEventData>(format!("{}/{path}", Self::API_END_POINT))
             .await?;
 
         while let Some(event) = stream.try_next().await? {
@@ -231,23 +243,27 @@ where
 
 /// Create a subscription to the top stories event stream. Provides a receive
 /// channel and a task handle for consuming events and canceling the task.
-pub fn subscribe_top_stories() -> (Receiver<TopStoriesEventData>, JoinHandle<()>) {
+pub fn subscribe_to_article_list(
+    article_type: ArticleType,
+) -> (Receiver<StoriesEventData>, JoinHandle<()>) {
     let (tx, rx) = mpsc::channel(100);
 
     let handle = tokio::spawn(async move {
         loop {
             match ApiClient::new() {
                 Ok(client) => {
-                    if let Err(err) = client.top_stories_stream(tx.clone()).await {
-                        error!("Event stream severed {err}");
+                    if let Err(err) = client.articles_list_stream(article_type, tx.clone()).await {
+                        error!("Event stream for {article_type:?} severed {err}");
+                        break;
                     }
+                    info!("Started article list subscription");
                 }
                 Err(err) => {
                     error!("Failed to create client {err}");
                 }
             }
             tokio::time::sleep(Duration::from_secs(60 * 5)).await;
-            info!("Restarting subscription");
+            info!("Restarting article list subscription");
         }
     });
 
