@@ -1,9 +1,9 @@
 //! Header view.
 use crate::ArticleSelection;
 use gpui::{
-    black, div, prelude::FluentBuilder, px, yellow, App, AppContext as _, BorrowAppContext, Entity,
-    InteractiveElement, IntoElement, ParentElement, Render, SharedString,
-    StatefulInteractiveElement as _, Styled, Window,
+    black, div, green, prelude::FluentBuilder, px, rems, white, yellow, App, AppContext as _,
+    BorrowAppContext, Div, Entity, InteractiveElement, IntoElement, ParentElement, Render,
+    SharedString, StatefulInteractiveElement as _, Styled, Window,
 };
 use hacker_news_api::ArticleType;
 
@@ -21,32 +21,35 @@ impl Header {
     }
 }
 
+fn mk_button(label: impl Into<SharedString>) -> gpui::Stateful<Div> {
+    let shared_string_label = label.into();
+    div()
+        .border_1()
+        .shadow_md()
+        .border_color(black())
+        .id(shared_string_label.clone())
+        .child(shared_string_label)
+        .cursor_pointer()
+        .rounded(rems(0.75))
+        .hover(|style| style.opacity(0.5))
+}
+
 impl Render for Header {
     fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
         let article_selection = cx.global::<ArticleSelection>();
 
         let mk_article_type = |article_type: ArticleType| {
-            div()
-                .when(
+            mk_button(article_type.as_str())
+                .when_else(
                     article_type == article_selection.viewing_article_type,
-                    |div| {
-                        div.text_bg(yellow())
-                            .border_1()
-                            .text_color(black())
-                            .rounded(px(0.8))
-                    },
+                    |div| div.bg(green()).text_color(white()),
+                    |div| div.bg(yellow()).text_color(black()),
                 )
-                .child(
-                    div()
-                        .id(article_type.as_str())
-                        .child(article_type.as_str())
-                        .cursor_pointer()
-                        .on_click(move |_event, _window, app| {
-                            app.update_global(|state: &mut ArticleSelection, _cx| {
-                                state.viewing_article_type = article_type;
-                            });
-                        }),
-                )
+                .on_click(move |_event, _window, app| {
+                    app.update_global(|state: &mut ArticleSelection, _cx| {
+                        state.viewing_article_type = article_type;
+                    });
+                })
         };
 
         let col1 = [ArticleType::Top, ArticleType::Best, ArticleType::New]
@@ -62,19 +65,12 @@ impl Render for Header {
             .clone()
             .into_iter()
             .map(|(article_count, label)| {
-                div()
-                    .when(
+                mk_button(label.clone())
+                    .when_else(
                         article_count == article_selection.viewing_article_total,
-                        |div| {
-                            div.text_bg(yellow())
-                                .border_1()
-                                .text_color(black())
-                                .rounded(px(0.8))
-                        },
+                        |div| div.bg(green()).text_color(white()),
+                        |div| div.bg(yellow()).text_color(black()),
                     )
-                    .id(label.clone())
-                    .child(label)
-                    .cursor_pointer()
                     .on_click(move |_event, _window, app| {
                         app.update_global(|state: &mut ArticleSelection, _cx| {
                             state.viewing_article_total = article_count;
