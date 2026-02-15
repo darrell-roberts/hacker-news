@@ -2,7 +2,7 @@
 use crate::{
     comment::CommentView,
     common::{parse_date, COMMENT_IMAGE},
-    content::{Content, ContentEvent},
+    content::{ContentEvent, ContentView},
     theme::Theme,
     ApiClientState, UrlHover,
 };
@@ -29,14 +29,14 @@ pub struct ArticleView {
     rank: SharedString,
     comments: Vec<Entity<CommentView>>,
     comment_ids: Arc<Vec<u64>>,
-    content: Entity<Content>,
+    content: Entity<ContentView>,
     loading_comments: bool,
 }
 
 impl ArticleView {
     pub fn new(
         app: &mut AsyncApp,
-        content: Entity<Content>,
+        content: Entity<ContentView>,
         item: Item,
         order_change: i64,
         rank: usize,
@@ -155,7 +155,7 @@ impl Render for ArticleView {
                                 error!("Failed to set loading comments: {err}");
                             };
 
-                            content.update(app, |_content: &mut Content, cx| {
+                            content.update(app, |_content: &mut ContentView, cx| {
                                 cx.emit(ContentEvent::ViewingComments(true));
                             });
                         })
@@ -282,7 +282,7 @@ impl Render for ArticleView {
                                         });
                                     }
 
-                                    content_close.update(app, |_content: &mut Content, cx| {
+                                    content_close.update(app, |_content: &mut ContentView, cx| {
                                         cx.emit(ContentEvent::ViewingComments(false));
                                     })
                                 }),

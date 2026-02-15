@@ -1,5 +1,5 @@
 use crate::{
-    content::{Content, ContentEvent},
+    content::{ContentEvent, ContentView},
     theme::Theme,
     ArticleSelection, UrlHover,
 };
@@ -11,12 +11,12 @@ use gpui::{
 pub struct Footer {
     status_line: SharedString,
     url: Option<SharedString>,
-    content: Entity<Content>,
+    content: Entity<ContentView>,
     subscribed: bool,
 }
 
 impl Footer {
-    pub fn new(_cx: &mut Window, app: &mut App, content: Entity<Content>) -> Entity<Self> {
+    pub fn new(_cx: &mut Window, app: &mut App, content: Entity<ContentView>) -> Entity<Self> {
         app.new(|cx| {
             cx.observe_global::<ArticleSelection>(move |footer: &mut Footer, cx| {
                 footer.status_line = "Fetching...".into();
@@ -80,7 +80,7 @@ impl Render for Footer {
                             .id("resume")
                             .cursor_pointer()
                             .on_click(move |_event, _window, app| {
-                                content.update(app, |_content: &mut Content, cx| {
+                                content.update(app, |_content: &mut ContentView, cx| {
                                     cx.emit(ContentEvent::ViewingComments(subscribed));
                                 })
                             })

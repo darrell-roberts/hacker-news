@@ -1,10 +1,11 @@
 //! Simple hacker news view.
-use crate::theme::Theme;
-use content::Content;
+use crate::{header::Header, theme::Theme};
+use content::ContentView;
 use footer::Footer;
 use gpui::{
-    actions, div, point, prelude::*, px, size, App, Application, Bounds, Entity, Global, Menu,
-    MenuItem, SharedString, Window, WindowBounds, WindowDecorations, WindowKind, WindowOptions,
+    actions, div, point, prelude::*, px, size, App, AppContext, Application, Bounds, Entity,
+    Global, Menu, MenuItem, SharedString, Window, WindowBounds, WindowDecorations, WindowKind,
+    WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use log::info;
@@ -15,8 +16,8 @@ mod comment;
 mod common;
 mod content;
 mod footer;
+mod header;
 mod theme;
-// mod header;
 
 #[derive(Clone)]
 pub struct ApiClientState(Arc<ApiClient>);
@@ -31,6 +32,7 @@ impl Deref for ApiClientState {
 
 impl Global for ApiClientState {}
 
+#[derive(Debug)]
 pub struct ArticleSelection {
     pub viewing_article_type: ArticleType,
     pub viewing_article_total: usize,
@@ -48,20 +50,29 @@ impl Global for ArticleState {}
 
 struct MainWindow {
     // header: Entity<Header>,
-    content: Entity<Content>,
+    content: Entity<ContentView>,
     footer: Entity<Footer>,
 }
 
 impl MainWindow {
     fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
         // let header = Header::new(window, app);
-        let content = Content::new(window, app);
+        let content = ContentView::new(window, app);
         let footer = Footer::new(window, app, content.clone());
 
-        app.new(|_ctx| Self {
-            // header,
-            content,
-            footer,
+        app.new(|cx| {
+            cx.observe_global::<ArticleSelection>(|_main_window: &mut MainWindow, cx| {
+                let selection = cx.global::<ArticleSelection>();
+                info!("Restarting stream for {selection:?}");
+                // start_background_stream_subscription(cx, &main_window.content);
+            })
+            .detach();
+
+            Self {
+                // header,
+                content,
+                footer,
+            }
         })
     }
 }
@@ -78,7 +89,6 @@ impl Render for MainWindow {
 
         div()
             .font_family(".SystemUIFont")
-            // .font_family("Arial")
             .text_size(px(17.))
             .text_color(theme.text_color())
             .flex()
@@ -86,6 +96,7 @@ impl Render for MainWindow {
             .w_full()
             .h_full()
             .bg(theme.bg())
+            // .child(self.header.clone())
             .child(self.content.clone())
             .child(self.footer.clone())
     }
