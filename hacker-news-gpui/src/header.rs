@@ -1,9 +1,9 @@
 //! Header view.
-use crate::ArticleSelection;
+use crate::{theme::Theme, ArticleSelection};
 use gpui::{
-    black, div, green, prelude::FluentBuilder, px, rems, white, yellow, App, AppContext as _,
-    BorrowAppContext, Div, Entity, InteractiveElement, IntoElement, ParentElement, Render,
-    SharedString, StatefulInteractiveElement as _, Styled, Window,
+    black, div, point, prelude::FluentBuilder, px, rems, rgb, white, yellow, App, AppContext as _,
+    BorrowAppContext, BoxShadow, Div, Entity, InteractiveElement, IntoElement, ParentElement,
+    Render, SharedString, Stateful, StatefulInteractiveElement as _, Styled, Window,
 };
 use hacker_news_api::ArticleType;
 
@@ -21,29 +21,39 @@ impl Header {
     }
 }
 
-fn mk_button(label: impl Into<SharedString>) -> gpui::Stateful<Div> {
+/// Create a button with the given label.
+fn mk_button(label: impl Into<SharedString>) -> Stateful<Div> {
     let shared_string_label = label.into();
     div()
-        .border_1()
-        .shadow_md()
-        .border_color(black())
+        .bg(rgb(0x404040))
+        .shadow(vec![BoxShadow {
+            color: black().opacity(0.75),
+            offset: point(px(2.0), px(2.0)),
+            blur_radius: px(2.0),
+            spread_radius: px(2.0),
+        }])
         .id(shared_string_label.clone())
         .child(shared_string_label)
         .cursor_pointer()
         .rounded(rems(0.75))
-        .hover(|style| style.opacity(0.5))
+        .hover(|style| style.opacity(1.0))
+        .active(|style| style.shadow_none())
+        .opacity(0.75)
+        .p_1()
 }
 
 impl Render for Header {
-    fn render(&mut self, _window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
         let article_selection = cx.global::<ArticleSelection>();
+
+        let theme: Theme = window.appearance().into();
 
         let mk_article_type = |article_type: ArticleType| {
             mk_button(article_type.as_str())
                 .when_else(
                     article_type == article_selection.viewing_article_type,
-                    |div| div.bg(green()).text_color(white()),
-                    |div| div.bg(yellow()).text_color(black()),
+                    |div| div.bg(theme.button_active()).text_color(white()),
+                    |div| div.bg(theme.button_inactive()).text_color(black()),
                 )
                 .on_click(move |_event, _window, app| {
                     app.update_global(|state: &mut ArticleSelection, _cx| {
@@ -68,8 +78,8 @@ impl Render for Header {
                 mk_button(label.clone())
                     .when_else(
                         article_count == article_selection.viewing_article_total,
-                        |div| div.bg(green()).text_color(white()),
-                        |div| div.bg(yellow()).text_color(black()),
+                        |div| div.bg(theme.button_active()).text_color(white()),
+                        |div| div.bg(theme.button_inactive()).text_color(black()),
                     )
                     .on_click(move |_event, _window, app| {
                         app.update_global(|state: &mut ArticleSelection, _cx| {
@@ -81,12 +91,12 @@ impl Render for Header {
         div()
             .flex()
             .flex_row()
-            .font_family("Roboto, sans-serif")
-            .text_size(px(24.0))
+            .text_size(px(20.0))
             .text_color(yellow())
             .gap_x(px(10.0))
             .w_full()
             .justify_center()
+            .m_1()
             .children(col1)
             .child(div().border_4())
             .children(col2)
