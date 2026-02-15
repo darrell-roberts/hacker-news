@@ -295,6 +295,9 @@ struct ParsedComment {
     urls: Vec<String>,
 }
 
+/// Parses the list of simplified html [`Element`]'s into a single String and a list
+/// of [`TextLayout`]'s that track what text style to apply based on the length of
+/// the characters in the [`Element`].
 fn parse_layout(elements: Vec<Element<'_>>) -> ParsedComment {
     let mut layout = Vec::new();
     let mut buffer = String::new();
