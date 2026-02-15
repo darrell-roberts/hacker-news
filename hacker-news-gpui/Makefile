@@ -23,7 +23,7 @@ bundle-mac: clean-dist build
 	cp ../target/release/hacker-news-dashboard "dist/Hacker News Dashboard.app/Contents/MacOS"
 	chmod +x "dist/Hacker News Dashboard.app/Contents/MacOS/hacker-news-dashboard"
 
-	codesign --sign "MyApps" "dist/Hacker News Dashboard.app"
+	# codesign --sign "MyApps" "dist/Hacker News Dashboard.app"
 
 	# Copy app to DMG staging area
 	cp -r "dist/Hacker News Dashboard.app" "dist/dmg"

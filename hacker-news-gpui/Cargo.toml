@@ -21,6 +21,10 @@ log.workspace = true
 platform-settings = { path = "../platform-settings" }
 tokio = "1"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+# Temporary workaround https://github.com/zed-industries/zed/issues/47168#issuecomment-3770291644
+core-text = "=21.0.0"
+
 [package.metadata.deb]
 name = "hacker-news-dashboard"
 maintainer = "Darrell Roberts"
