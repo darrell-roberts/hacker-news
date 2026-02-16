@@ -27,7 +27,7 @@ mod styles;
 async fn main() -> Result<(), Box<dyn Error>> {
     color_eyre::install()?;
 
-    init_logger()?;
+    init_logger("hacker-news-tui")?;
 
     #[cfg(target_family = "unix")]
     check_nofiles_limit();

@@ -3117,6 +3117,7 @@ dependencies = [
  "futures",
  "gpui",
  "hacker-news-api",
+ "hacker-news-config",
  "html-sanitizer",
  "log",
  "platform-settings",
