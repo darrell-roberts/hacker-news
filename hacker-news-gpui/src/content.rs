@@ -20,12 +20,14 @@ pub struct ContentView {
     pub stream_paused: bool,
     pub background_task: Option<gpui::Task<()>>,
     pub article_sender: Option<channel::mpsc::Sender<Vec<Item>>>,
-    background_refresh_count: usize,
+    /// The number of times we have refresh due to an http server side event.
+    pub background_refresh_count: usize,
 }
 
 pub enum ContentEvent {
     TotalArticles(usize),
     ViewingComments(bool),
+    TotalRefreshes(usize),
 }
 
 impl EventEmitter<ContentEvent> for ContentView {}
@@ -36,6 +38,7 @@ impl ContentView {
         let entity_content = app.new(|cx: &mut Context<Self>| {
             cx.subscribe_self(|content, event, _cx| match event {
                 ContentEvent::TotalArticles(_) => (),
+                ContentEvent::TotalRefreshes(_) => (),
                 ContentEvent::ViewingComments(b) => {
                     content.stream_paused = *b;
                 }
@@ -154,6 +157,9 @@ fn start_background_subscriptions(
                 content.article_comment_counts = current_comment_counts;
                 content.background_refresh_count += 1;
                 cx.emit(ContentEvent::TotalArticles(content.articles.len()));
+                cx.emit(ContentEvent::TotalRefreshes(
+                    content.background_refresh_count,
+                ));
                 cx.notify();
             });
         }
