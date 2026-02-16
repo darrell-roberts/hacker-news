@@ -141,8 +141,14 @@ fn start_background_subscriptions(
                                     content.background_refresh_count
                                 });
 
-                            let comment_count_changed = background_refresh_count > 0
-                                && article.descendants != last_comment_count;
+                            let comment_count_changed = if background_refresh_count > 0 {
+                                article.descendants.unwrap_or(0) - last_comment_count.unwrap_or(0)
+                            } else {
+                                0
+                            };
+
+                            // let comment_count_changed = background_refresh_count > 0
+                            //     && article.descendants != last_comment_count;
 
                             ArticleView::new(
                                 app,
@@ -221,6 +227,7 @@ pub(crate) fn start_background_article_list_subscription(
         }
 
         log::warn!("Background events have terminated");
+
         if let Err(err) = handle.await {
             error!("Subscription close failed {err}");
             if let Err(err) = tx.send(Err("Background event source closed".into())).await {

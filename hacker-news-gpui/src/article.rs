@@ -31,7 +31,7 @@ pub struct ArticleView {
     comment_ids: Arc<Vec<u64>>,
     content: Entity<ContentView>,
     loading_comments: bool,
-    comment_count_changed: bool,
+    comment_count_changed: Option<SharedString>,
 }
 
 impl ArticleView {
@@ -41,7 +41,7 @@ impl ArticleView {
         item: Item,
         order_change: i64,
         rank: usize,
-        comment_count_changed: bool,
+        comment_count_changed: i64,
     ) -> Entity<Self> {
         app.new(move |_cx| Self {
             title: item.title.unwrap_or_default().into(),
@@ -65,7 +65,9 @@ impl ArticleView {
             comment_ids: Arc::new(item.kids),
             content,
             loading_comments: false,
-            comment_count_changed,
+            comment_count_changed: comment_count_changed
+                .gt(&0)
+                .then(|| format!("+{comment_count_changed}").into()),
         })
     }
 }
@@ -186,11 +188,11 @@ impl Render for ArticleView {
                     ))
             })
             .map(|div| {
-                if self.comment_count_changed {
+                if let Some(new_comments_added) = self.comment_count_changed.clone() {
                     div.with_animation(
                         "comment_col",
                         Animation::new(Duration::from_secs(2)).with_easing(quadratic),
-                        |div, n| div.opacity(n),
+                        move |div, n| div.opacity(n),
                     )
                     .into_any()
                 } else {
