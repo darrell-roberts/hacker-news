@@ -14,6 +14,7 @@ pub struct Footer {
     url: Option<SharedString>,
     content: Entity<ContentView>,
     subscribed: bool,
+    total_refreshes: SharedString,
 }
 
 impl Footer {
@@ -35,6 +36,9 @@ impl Footer {
                     ContentEvent::ViewingComments(viewing) => {
                         footer.subscribed = !viewing;
                     }
+                    ContentEvent::TotalRefreshes(refresh_count) => {
+                        footer.total_refreshes = format!("Refresh count: {refresh_count}").into();
+                    }
                 },
             )
             .detach();
@@ -50,6 +54,7 @@ impl Footer {
                 url: None,
                 content,
                 subscribed: true,
+                total_refreshes: Default::default(),
             }
         })
     }
@@ -79,17 +84,27 @@ impl Render for Footer {
                     .child(self.status_line.clone())
                     .child(
                         div()
-                            .id("resume")
-                            .cursor_pointer()
-                            .tooltip(move |window, app| {
-                                Tooltip::new(window, app, content_tooltip.clone()).into()
-                            })
-                            .on_click(move |_event, _window, app| {
-                                content.update(app, |_content: &mut ContentView, cx| {
-                                    cx.emit(ContentEvent::ViewingComments(subscribed));
-                                })
-                            })
-                            .when_else(!subscribed, |el| el.child("[*]"), |el| el.child("[~]")),
+                            .flex()
+                            .flex_row()
+                            .child(
+                                div()
+                                    .id("resume")
+                                    .cursor_pointer()
+                                    .tooltip(move |window, app| {
+                                        Tooltip::new(window, app, content_tooltip.clone()).into()
+                                    })
+                                    .on_click(move |_event, _window, app| {
+                                        content.update(app, |_content: &mut ContentView, cx| {
+                                            cx.emit(ContentEvent::ViewingComments(subscribed));
+                                        })
+                                    })
+                                    .when_else(
+                                        subscribed,
+                                        |el| el.child("[online]"),
+                                        |el| el.child("[paused]"),
+                                    ),
+                            )
+                            .child(self.total_refreshes.clone()),
                     ),
             )
     }

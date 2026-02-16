@@ -11,15 +11,23 @@ use std::collections::HashMap;
 pub struct ContentView {
     articles: Vec<Entity<ArticleView>>,
     list_state: ListState,
+    /// Tracks the ranking of each article so that if it moves up
+    /// or down we can show by how much.
     article_ranks: HashMap<u64, usize>,
+    /// Tracks the number of comments for an article so that when it
+    /// changes we can show a visual indicator.
+    article_comment_counts: HashMap<u64, u64>,
     pub stream_paused: bool,
     pub background_task: Option<gpui::Task<()>>,
     pub article_sender: Option<channel::mpsc::Sender<Vec<Item>>>,
+    /// The number of times we have refresh due to an http server side event.
+    pub background_refresh_count: usize,
 }
 
 pub enum ContentEvent {
     TotalArticles(usize),
     ViewingComments(bool),
+    TotalRefreshes(usize),
 }
 
 impl EventEmitter<ContentEvent> for ContentView {}
@@ -30,6 +38,7 @@ impl ContentView {
         let entity_content = app.new(|cx: &mut Context<Self>| {
             cx.subscribe_self(|content, event, _cx| match event {
                 ContentEvent::TotalArticles(_) => (),
+                ContentEvent::TotalRefreshes(_) => (),
                 ContentEvent::ViewingComments(b) => {
                     content.stream_paused = *b;
                 }
@@ -39,12 +48,14 @@ impl ContentView {
             let list_state = ListState::new(0, gpui::ListAlignment::Top, px(5.0));
 
             Self {
-                articles: Default::default(),
                 list_state,
+                articles: Default::default(),
                 article_ranks: Default::default(),
                 stream_paused: false,
                 background_task: None,
                 article_sender: None,
+                article_comment_counts: Default::default(),
+                background_refresh_count: 0,
             }
         });
 
@@ -93,12 +104,18 @@ fn start_background_subscriptions(
                 continue;
             }
 
-            let ranking_map = items
+            let current_ranking_map = items
                 .iter()
                 .enumerate()
                 .map(|(index, item)| (item.id, index))
                 .collect::<HashMap<_, _>>();
 
+            let current_comment_counts = items
+                .iter()
+                .map(|item| (item.id, item.descendants.unwrap_or(0)))
+                .collect::<HashMap<_, _>>();
+
+            // Create an ArticleView for each item.
             let views = items
                 .into_iter()
                 .enumerate()
@@ -110,12 +127,25 @@ fn start_background_subscriptions(
                         }
                     });
 
+                    let last_comment_count = app.read_entity(&entity_content, |content, _app| {
+                        content.article_comment_counts.get(&article.id).cloned()
+                    });
+
+                    let background_refresh_count = app
+                        .read_entity(&entity_content, |content, _app| {
+                            content.background_refresh_count
+                        });
+
+                    let comment_count_changed =
+                        background_refresh_count > 0 && article.descendants != last_comment_count;
+
                     ArticleView::new(
                         app,
                         entity_content.clone(),
                         article,
                         order_change,
                         index + 1,
+                        comment_count_changed,
                     )
                 })
                 .collect::<Vec<_>>();
@@ -123,8 +153,13 @@ fn start_background_subscriptions(
             app.update_entity(&entity_content, |content, cx| {
                 content.articles = views;
                 content.list_state.reset(content.articles.len());
-                content.article_ranks = ranking_map;
+                content.article_ranks = current_ranking_map;
+                content.article_comment_counts = current_comment_counts;
+                content.background_refresh_count += 1;
                 cx.emit(ContentEvent::TotalArticles(content.articles.len()));
+                cx.emit(ContentEvent::TotalRefreshes(
+                    content.background_refresh_count,
+                ));
                 cx.notify();
             });
         }
