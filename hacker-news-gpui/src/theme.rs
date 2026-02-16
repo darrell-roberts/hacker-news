@@ -9,7 +9,9 @@ mod light {
     pub const TEXT_DECREASING: u32 = 0xd70000;
     pub const SURFACE: u32 = 0xeeeeee;
     pub const BORDER: u32 = 0xb5bfc9;
-    pub const COMMENT_BORDER: u32 = 0xff9900;
+    pub const COMMENT_BORDER: u32 = 0x8a9aa8;
+    pub const BUTTON_ACTIVE: u32 = 0x3b82f6;
+    pub const BUTTON_INACTIVE: u32 = 0x9ca3af;
 }
 
 mod dark {
@@ -21,6 +23,8 @@ mod dark {
     pub const SURFACE: u32 = 0x1e1e1e;
     pub const BORDER: u32 = 0x3a3a3a;
     pub const COMMENT_BORDER: u32 = 0xb36b00;
+    pub const BUTTON_ACTIVE: u32 = 0x60a5fa;
+    pub const BUTTON_INACTIVE: u32 = 0x6b7280;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -83,6 +87,20 @@ impl Theme {
         rgb(match self {
             Theme::Dark => dark::COMMENT_BORDER,
             Theme::Light => light::COMMENT_BORDER,
+        })
+    }
+
+    pub fn button_active(&self) -> gpui::Rgba {
+        rgb(match self {
+            Theme::Dark => dark::BUTTON_ACTIVE,
+            Theme::Light => light::BUTTON_ACTIVE,
+        })
+    }
+
+    pub fn button_inactive(&self) -> gpui::Rgba {
+        rgb(match self {
+            Theme::Dark => dark::BUTTON_INACTIVE,
+            Theme::Light => light::BUTTON_INACTIVE,
         })
     }
 }

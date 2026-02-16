@@ -5,7 +5,8 @@ use crate::{
 };
 use chrono::Local;
 use gpui::{
-    div, prelude::*, rems, App, Entity, ParentElement, Render, SharedString, Styled, Window,
+    black, div, prelude::*, rems, white, App, Entity, ParentElement, Render, SharedString, Styled,
+    Window,
 };
 
 pub struct Footer {
@@ -62,6 +63,7 @@ impl Render for Footer {
     ) -> impl gpui::IntoElement {
         let theme: Theme = window.appearance().into();
         let content = self.content.clone();
+        let content_tooltip = content.clone();
         let subscribed = self.subscribed;
 
         div()
@@ -79,6 +81,9 @@ impl Render for Footer {
                         div()
                             .id("resume")
                             .cursor_pointer()
+                            .tooltip(move |window, app| {
+                                Tooltip::new(window, app, content_tooltip.clone()).into()
+                            })
                             .on_click(move |_event, _window, app| {
                                 content.update(app, |_content: &mut ContentView, cx| {
                                     cx.emit(ContentEvent::ViewingComments(subscribed));
@@ -87,5 +92,31 @@ impl Render for Footer {
                             .when_else(!subscribed, |el| el.child("[*]"), |el| el.child("[~]")),
                     ),
             )
+    }
+}
+
+struct Tooltip {
+    content: Entity<ContentView>,
+}
+
+impl Tooltip {
+    fn new(_window: &mut Window, cx: &mut App, content: Entity<ContentView>) -> Entity<Self> {
+        cx.new(|_cx| Self { content })
+    }
+}
+
+impl Render for Tooltip {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let content_view = self.content.read(cx);
+        div()
+            .bg(black())
+            .text_color(white())
+            .rounded(rems(0.75))
+            .p_1()
+            .child(if content_view.stream_paused {
+                "Resume"
+            } else {
+                "Pause"
+            })
     }
 }

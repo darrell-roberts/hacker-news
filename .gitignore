@@ -1,7 +1,6 @@
 target/
 node_modules/
 .idea/
-.DS_store
 dist/
 .stamp
 .flatpak-builder
@@ -9,3 +8,4 @@ dist/
 repo/
 *.flatpak
 cargo-sources.json
+.DS_Store

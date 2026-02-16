@@ -113,8 +113,8 @@ pub enum AppMsg {
     NextInput,
     PrevInput,
     FocusPane(widget::pane_grid::Pane),
-    // Forward,
     Back,
+    #[cfg_attr(not(target_os = "linux"), expect(unused))]
     SystemFontScale(f32),
 }
 
