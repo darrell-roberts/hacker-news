@@ -12,7 +12,7 @@ pub struct ContentView {
     articles: Vec<Entity<ArticleView>>,
     list_state: ListState,
     article_ranks: HashMap<u64, usize>,
-    viewing_comment: bool,
+    pub stream_paused: bool,
     pub background_task: Option<gpui::Task<()>>,
     pub article_sender: Option<channel::mpsc::Sender<Vec<Item>>>,
 }
@@ -31,7 +31,7 @@ impl ContentView {
             cx.subscribe_self(|content, event, _cx| match event {
                 ContentEvent::TotalArticles(_) => (),
                 ContentEvent::ViewingComments(b) => {
-                    content.viewing_comment = *b;
+                    content.stream_paused = *b;
                 }
             })
             .detach();
@@ -42,7 +42,7 @@ impl ContentView {
                 articles: Default::default(),
                 list_state,
                 article_ranks: Default::default(),
-                viewing_comment: false,
+                stream_paused: false,
                 background_task: None,
                 article_sender: None,
             }
@@ -86,8 +86,8 @@ fn start_background_subscriptions(
 
     app.spawn(async move |app| {
         while let Some(items) = rx.next().await {
-            let viewing_comment = entity_content
-                .read_with(app, |content: &ContentView, _app| content.viewing_comment);
+            let viewing_comment =
+                entity_content.read_with(app, |content: &ContentView, _app| content.stream_paused);
 
             if viewing_comment {
                 continue;
