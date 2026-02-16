@@ -81,20 +81,20 @@ impl Render for FooterView {
             .p_1()
             .bg(theme.surface())
             .text_size(rems(0.85))
+            .when_some(self.error.as_ref(), |div, error| {
+                div.child(
+                    gpui::div()
+                        .text_color(gpui::red())
+                        .font_weight(gpui::FontWeight::BOLD)
+                        .child(error.clone()),
+                )
+            })
             .child(self.url.clone().unwrap_or_default())
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .justify_between()
-                    .when_some(self.error.as_ref(), |div, error| {
-                        div.child(
-                            gpui::div()
-                                .text_color(gpui::red())
-                                .font_weight(gpui::FontWeight::BOLD)
-                                .child(error.clone()),
-                        )
-                    })
                     .child(self.status_line.clone())
                     .child(
                         div()

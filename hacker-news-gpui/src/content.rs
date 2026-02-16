@@ -170,8 +170,10 @@ fn start_background_subscriptions(
                     });
                 }
                 Err(error) => {
+                    error!("Received error from event source channel: {error}");
                     app.update_entity(&entity_content, |_, cx| {
                         cx.emit(ContentEvent::Error(Some(error)));
+                        cx.notify();
                     });
                 }
             }
@@ -209,7 +211,7 @@ pub(crate) fn start_background_article_list_subscription(
                 .items(&article_ids)
                 .try_collect::<Vec<_>>()
                 .await
-                .map_err(|err| err.to_string());
+                .map_err(|err| format!("Failed to fetch updated items: {err}"));
 
             if let Err(err) = tx.send(result).await {
                 error!("UI foreground send channel is closed: {err}");
