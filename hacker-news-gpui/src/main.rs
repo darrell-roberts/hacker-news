@@ -2,7 +2,7 @@
 use crate::{content::start_background_article_list_subscription, header::Header, theme::Theme};
 use content::ContentView;
 use flexi_logger::colored_detailed_format;
-use footer::Footer;
+use footer::FooterView;
 use gpui::{
     actions, div, point, prelude::*, px, size, App, AppContext, Application, Bounds, Entity,
     Global, Menu, MenuItem, SharedString, Window, WindowBounds, WindowDecorations, WindowKind,
@@ -52,14 +52,14 @@ impl Global for ArticleState {}
 struct MainWindow {
     header: Entity<Header>,
     content: Entity<ContentView>,
-    footer: Entity<Footer>,
+    footer: Entity<FooterView>,
 }
 
 impl MainWindow {
     fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
         let header = Header::new(window, app);
         let content = ContentView::new(window, app);
-        let footer = Footer::new(window, app, content.clone());
+        let footer = FooterView::new(window, app, content.clone());
 
         let content_update = content.clone();
         app.new(move |cx| {

@@ -19,7 +19,7 @@ pub struct ContentView {
     article_comment_counts: HashMap<u64, u64>,
     pub stream_paused: bool,
     pub background_task: Option<gpui::Task<()>>,
-    pub article_sender: Option<channel::mpsc::Sender<Vec<Item>>>,
+    pub article_sender: Option<channel::mpsc::Sender<Result<Vec<Item>, String>>>,
     /// The number of times we have refresh due to an http server side event.
     pub background_refresh_count: usize,
 }
@@ -28,6 +28,7 @@ pub enum ContentEvent {
     TotalArticles(usize),
     ViewingComments(bool),
     TotalRefreshes(usize),
+    Error(Option<String>),
 }
 
 impl EventEmitter<ContentEvent> for ContentView {}
@@ -42,6 +43,7 @@ impl ContentView {
                 ContentEvent::ViewingComments(b) => {
                     content.stream_paused = *b;
                 }
+                ContentEvent::Error(_) => (),
             })
             .detach();
 
@@ -89,7 +91,7 @@ fn start_background_subscriptions(
     entity_content: &Entity<ContentView>,
 ) -> gpui::Task<()> {
     let entity_content = entity_content.clone();
-    let (tx, mut rx) = channel::mpsc::channel::<Vec<Item>>(10);
+    let (tx, mut rx) = channel::mpsc::channel::<Result<Vec<Item>, String>>(10);
 
     entity_content.update(app, |entity_view, _cx| {
         entity_view.article_sender.replace(tx.clone());
@@ -97,71 +99,82 @@ fn start_background_subscriptions(
 
     app.spawn(async move |app| {
         while let Some(items) = rx.next().await {
-            let updates_paused =
-                entity_content.read_with(app, |content: &ContentView, _app| content.stream_paused);
+            match items {
+                Ok(items) => {
+                    let updates_paused = entity_content
+                        .read_with(app, |content: &ContentView, _app| content.stream_paused);
 
-            if updates_paused {
-                continue;
+                    if updates_paused {
+                        continue;
+                    }
+
+                    let current_ranking_map = items
+                        .iter()
+                        .enumerate()
+                        .map(|(index, item)| (item.id, index))
+                        .collect::<HashMap<_, _>>();
+
+                    let current_comment_counts = items
+                        .iter()
+                        .map(|item| (item.id, item.descendants.unwrap_or(0)))
+                        .collect::<HashMap<_, _>>();
+
+                    // Create an ArticleView for each item.
+                    let views = items
+                        .into_iter()
+                        .enumerate()
+                        .map(|(index, article)| {
+                            let order_change = app.read_entity(&entity_content, |content, _app| {
+                                match content.article_ranks.get(&article.id) {
+                                    Some(rank) => (*rank as i64) - (index as i64),
+                                    None => 0,
+                                }
+                            });
+
+                            let last_comment_count =
+                                app.read_entity(&entity_content, |content, _app| {
+                                    content.article_comment_counts.get(&article.id).cloned()
+                                });
+
+                            let background_refresh_count = app
+                                .read_entity(&entity_content, |content, _app| {
+                                    content.background_refresh_count
+                                });
+
+                            let comment_count_changed = background_refresh_count > 0
+                                && article.descendants != last_comment_count;
+
+                            ArticleView::new(
+                                app,
+                                entity_content.clone(),
+                                article,
+                                order_change,
+                                index + 1,
+                                comment_count_changed,
+                            )
+                        })
+                        .collect::<Vec<_>>();
+
+                    app.update_entity(&entity_content, |content, cx| {
+                        content.articles = views;
+                        content.list_state.reset(content.articles.len());
+                        content.article_ranks = current_ranking_map;
+                        content.article_comment_counts = current_comment_counts;
+                        content.background_refresh_count += 1;
+                        cx.emit(ContentEvent::TotalArticles(content.articles.len()));
+                        cx.emit(ContentEvent::TotalRefreshes(
+                            content.background_refresh_count,
+                        ));
+                        cx.emit(ContentEvent::Error(None));
+                        cx.notify();
+                    });
+                }
+                Err(error) => {
+                    app.update_entity(&entity_content, |_, cx| {
+                        cx.emit(ContentEvent::Error(Some(error)));
+                    });
+                }
             }
-
-            let current_ranking_map = items
-                .iter()
-                .enumerate()
-                .map(|(index, item)| (item.id, index))
-                .collect::<HashMap<_, _>>();
-
-            let current_comment_counts = items
-                .iter()
-                .map(|item| (item.id, item.descendants.unwrap_or(0)))
-                .collect::<HashMap<_, _>>();
-
-            // Create an ArticleView for each item.
-            let views = items
-                .into_iter()
-                .enumerate()
-                .map(|(index, article)| {
-                    let order_change = app.read_entity(&entity_content, |content, _app| {
-                        match content.article_ranks.get(&article.id) {
-                            Some(rank) => (*rank as i64) - (index as i64),
-                            None => 0,
-                        }
-                    });
-
-                    let last_comment_count = app.read_entity(&entity_content, |content, _app| {
-                        content.article_comment_counts.get(&article.id).cloned()
-                    });
-
-                    let background_refresh_count = app
-                        .read_entity(&entity_content, |content, _app| {
-                            content.background_refresh_count
-                        });
-
-                    let comment_count_changed =
-                        background_refresh_count > 0 && article.descendants != last_comment_count;
-
-                    ArticleView::new(
-                        app,
-                        entity_content.clone(),
-                        article,
-                        order_change,
-                        index + 1,
-                        comment_count_changed,
-                    )
-                })
-                .collect::<Vec<_>>();
-
-            app.update_entity(&entity_content, |content, cx| {
-                content.articles = views;
-                content.list_state.reset(content.articles.len());
-                content.article_ranks = current_ranking_map;
-                content.article_comment_counts = current_comment_counts;
-                content.background_refresh_count += 1;
-                cx.emit(ContentEvent::TotalArticles(content.articles.len()));
-                cx.emit(ContentEvent::TotalRefreshes(
-                    content.background_refresh_count,
-                ));
-                cx.notify();
-            });
         }
     })
     .detach();
@@ -173,7 +186,7 @@ fn start_background_subscriptions(
 // and spawns a task to send articles to the foreground.
 pub(crate) fn start_background_article_list_subscription(
     app: &mut App,
-    mut tx: channel::mpsc::Sender<Vec<Item>>,
+    mut tx: channel::mpsc::Sender<Result<Vec<Item>, String>>,
 ) -> gpui::Task<()> {
     let ArticleSelection {
         viewing_article_type,
@@ -191,25 +204,24 @@ pub(crate) fn start_background_article_list_subscription(
                 .into_iter()
                 .take(viewing_article_total)
                 .collect::<Vec<_>>();
-            // TODO: Would be good to see if we can compare the last article_ids with the
-            // current so we only fetch items and send to the foreground when we have changes
-            // in the subset.
-            let articles = client.items(&article_ids).try_collect::<Vec<_>>().await;
-            match articles {
-                Ok(articles) => {
-                    if let Err(err) = tx.send(articles).await {
-                        error!("UI foreground send channel is closed: {err}");
-                        break;
-                    }
-                }
-                Err(err) => {
-                    error!("Failed to collect updated items: {err}");
-                }
+
+            let result = client
+                .items(&article_ids)
+                .try_collect::<Vec<_>>()
+                .await
+                .map_err(|err| err.to_string());
+
+            if let Err(err) = tx.send(result).await {
+                error!("UI foreground send channel is closed: {err}");
+                break;
             }
         }
 
         if let Err(err) = handle.await {
             error!("Subscription close failed {err}");
+            if let Err(err) = tx.send(Err("Background event source closed".into())).await {
+                error!("Failed to send error {err}");
+            }
         };
     }))
 }
