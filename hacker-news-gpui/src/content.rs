@@ -11,7 +11,12 @@ use std::collections::HashMap;
 pub struct ContentView {
     articles: Vec<Entity<ArticleView>>,
     list_state: ListState,
+    /// Tracks the ranking of each article so that if it moves up
+    /// or down we can show by how much.
     article_ranks: HashMap<u64, usize>,
+    /// Tracks the number of comments for an article so that when it
+    /// changes we can show a visual indicator.
+    article_comment_counts: HashMap<u64, u64>,
     pub stream_paused: bool,
     pub background_task: Option<gpui::Task<()>>,
     pub article_sender: Option<channel::mpsc::Sender<Vec<Item>>>,
@@ -39,12 +44,13 @@ impl ContentView {
             let list_state = ListState::new(0, gpui::ListAlignment::Top, px(5.0));
 
             Self {
-                articles: Default::default(),
                 list_state,
+                articles: Default::default(),
                 article_ranks: Default::default(),
                 stream_paused: false,
                 background_task: None,
                 article_sender: None,
+                article_comment_counts: Default::default(),
             }
         });
 
@@ -93,12 +99,18 @@ fn start_background_subscriptions(
                 continue;
             }
 
-            let ranking_map = items
+            let current_ranking_map = items
                 .iter()
                 .enumerate()
                 .map(|(index, item)| (item.id, index))
                 .collect::<HashMap<_, _>>();
 
+            let current_comment_counts = items
+                .iter()
+                .map(|item| (item.id, item.descendants.unwrap_or(0)))
+                .collect::<HashMap<_, _>>();
+
+            // Create an ArticleView for each item.
             let views = items
                 .into_iter()
                 .enumerate()
@@ -110,12 +122,19 @@ fn start_background_subscriptions(
                         }
                     });
 
+                    let last_comment_count = app.read_entity(&entity_content, |content, _app| {
+                        content.article_comment_counts.get(&article.id).cloned()
+                    });
+
+                    let comment_count_changed = article.descendants != last_comment_count;
+
                     ArticleView::new(
                         app,
                         entity_content.clone(),
                         article,
                         order_change,
                         index + 1,
+                        comment_count_changed,
                     )
                 })
                 .collect::<Vec<_>>();
@@ -123,7 +142,8 @@ fn start_background_subscriptions(
             app.update_entity(&entity_content, |content, cx| {
                 content.articles = views;
                 content.list_state.reset(content.articles.len());
-                content.article_ranks = ranking_map;
+                content.article_ranks = current_ranking_map;
+                content.article_comment_counts = current_comment_counts;
                 cx.emit(ContentEvent::TotalArticles(content.articles.len()));
                 cx.notify();
             });

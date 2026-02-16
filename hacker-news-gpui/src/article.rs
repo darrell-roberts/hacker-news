@@ -8,9 +8,9 @@ use crate::{
 };
 use futures::TryStreamExt;
 use gpui::{
-    div, img, prelude::*, pulsating_between, px, rems, solid_background, Animation, AnimationExt,
-    AppContext, AsyncApp, Entity, Fill, FontWeight, ImageSource, SharedString, StyleRefinement,
-    Window,
+    div, img, prelude::*, pulsating_between, px, quadratic, rems, solid_background, Animation,
+    AnimationExt, AppContext, AsyncApp, Entity, Fill, FontWeight, ImageSource, SharedString,
+    StyleRefinement, Window,
 };
 use hacker_news_api::Item;
 use log::error;
@@ -31,6 +31,7 @@ pub struct ArticleView {
     comment_ids: Arc<Vec<u64>>,
     content: Entity<ContentView>,
     loading_comments: bool,
+    comment_count_changed: bool,
 }
 
 impl ArticleView {
@@ -40,6 +41,7 @@ impl ArticleView {
         item: Item,
         order_change: i64,
         rank: usize,
+        comment_count_changed: bool,
     ) -> Entity<Self> {
         app.new(move |_cx| Self {
             title: item.title.unwrap_or_default().into(),
@@ -63,6 +65,7 @@ impl ArticleView {
             comment_ids: Arc::new(item.kids),
             content,
             loading_comments: false,
+            comment_count_changed,
         })
     }
 }
@@ -105,9 +108,11 @@ impl Render for ArticleView {
         let article = cx.weak_entity().upgrade();
         let close_comment = cx.weak_entity();
 
-        let comments_col = div().w(rems(4.)).justify_end().id("comments").when_some(
-            self.comment_count.as_ref(),
-            |div, comments| {
+        let comments_col = div()
+            .w(rems(4.))
+            .justify_end()
+            .id("comments")
+            .when_some(self.comment_count.as_ref(), |div, comments| {
                 div.flex()
                     .cursor_pointer()
                     .rounded_md()
@@ -179,8 +184,19 @@ impl Render for ArticleView {
                             )
                         },
                     ))
-            },
-        );
+            })
+            .map(|div| {
+                if self.comment_count_changed {
+                    div.with_animation(
+                        "comment_col",
+                        Animation::new(Duration::from_secs(2)).with_easing(quadratic),
+                        |div, n| div.opacity(n),
+                    )
+                    .into_any()
+                } else {
+                    div.into_any()
+                }
+            });
 
         let url = self.url.clone();
 
