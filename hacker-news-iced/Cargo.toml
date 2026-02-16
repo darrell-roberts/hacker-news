@@ -42,7 +42,7 @@ iced = { version = "0.14", features = [
 ] }
 log.workspace = true
 open = "5"
-opentelemetry = { version = "0.26", features = ["trace"], optional = true }
+opentelemetry = { version = "0.31", features = ["trace"], optional = true }
 opentelemetry-otlp = { version = "0.26", features = [
   "grpc-tonic",
   "trace",
