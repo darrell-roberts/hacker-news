@@ -86,10 +86,10 @@ fn start_background_subscriptions(
 
     app.spawn(async move |app| {
         while let Some(items) = rx.next().await {
-            let viewing_comment =
+            let updates_paused =
                 entity_content.read_with(app, |content: &ContentView, _app| content.stream_paused);
 
-            if viewing_comment {
+            if updates_paused {
                 continue;
             }
 
@@ -134,9 +134,8 @@ fn start_background_subscriptions(
     start_background_article_list_subscription(app, tx)
 }
 
-// The following function starts a background subscription to the article list
-// and spawns a task to process incoming article updates.
-//
+// Starts a background subscription to the article list
+// and spawns a task to send articles to the foreground.
 pub(crate) fn start_background_article_list_subscription(
     app: &mut App,
     mut tx: channel::mpsc::Sender<Vec<Item>>,
