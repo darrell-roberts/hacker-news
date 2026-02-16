@@ -12,9 +12,11 @@ use crate::{
     types::{Item, ItemEventData, ResultExt, StoriesEventData, User},
     ArticleType,
 };
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use bytes::Bytes;
-use futures::{future, stream::FuturesOrdered, TryFutureExt, TryStream, TryStreamExt};
+use futures::{
+    future, stream::FuturesOrdered, FutureExt as _, TryFutureExt, TryStream, TryStreamExt,
+};
 use log::{error, info};
 use reqwest::{header, IntoUrl};
 use serde::Deserialize;
@@ -130,16 +132,21 @@ impl ApiClient {
         // The firebase api only provides the option to get each item one by
         // one.
         ids.iter()
+            .copied()
             .map(|id| {
                 let client = &self.client;
                 client
                     .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
                     .send()
-                    .and_then(|resp| resp.json::<Item>())
+                    .map(move |result| result.with_context(|| format!("Failed to fetch item {id}")))
+                    .and_then(move |resp| {
+                        resp.json::<Item>().map(move |result| {
+                            result.with_context(|| format!("Invalid item json {id}"))
+                        })
+                    })
             })
             .collect::<FuturesOrdered<_>>()
             .try_filter(|item| future::ready(!(item.dead || item.deleted)))
-            .map_err(anyhow::Error::new)
             .into_stream()
     }
 
