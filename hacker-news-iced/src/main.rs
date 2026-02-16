@@ -52,7 +52,7 @@ const ROBOTO_MONO: Font = Font::with_name("Roboto Mono");
 fn start() -> anyhow::Result<()> {
     let _ = api_client();
 
-    init_logger()?;
+    init_logger("hacker-news-reader")?;
 
     #[cfg(target_family = "unix")]
     check_nofiles_limit();

@@ -1,7 +1,6 @@
 //! Simple hacker news view.
 use crate::{content::start_background_article_list_subscription, header::Header, theme::Theme};
 use content::ContentView;
-use flexi_logger::colored_detailed_format;
 use footer::FooterView;
 use gpui::{
     actions, div, point, prelude::*, px, size, App, AppContext, Application, Bounds, Entity,
@@ -9,6 +8,7 @@ use gpui::{
     WindowOptions,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
+use hacker_news_config::init_logger;
 use log::info;
 use std::{ops::Deref, sync::Arc};
 
@@ -127,11 +127,7 @@ impl Render for MainWindow {
 }
 
 fn main() {
-    flexi_logger::Logger::try_with_env()
-        .unwrap()
-        .format(colored_detailed_format)
-        .start()
-        .expect("Application logger");
+    init_logger("hacker-news-dashboard").expect("Failed to setup logger");
 
     Application::new().run(|app| {
         let client = Arc::new(hacker_news_api::ApiClient::new().expect("No API Client"));
