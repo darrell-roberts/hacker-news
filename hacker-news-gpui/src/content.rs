@@ -20,6 +20,7 @@ pub struct ContentView {
     pub stream_paused: bool,
     pub background_task: Option<gpui::Task<()>>,
     pub article_sender: Option<channel::mpsc::Sender<Vec<Item>>>,
+    background_refresh_count: usize,
 }
 
 pub enum ContentEvent {
@@ -51,6 +52,7 @@ impl ContentView {
                 background_task: None,
                 article_sender: None,
                 article_comment_counts: Default::default(),
+                background_refresh_count: 0,
             }
         });
 
@@ -126,7 +128,13 @@ fn start_background_subscriptions(
                         content.article_comment_counts.get(&article.id).cloned()
                     });
 
-                    let comment_count_changed = article.descendants != last_comment_count;
+                    let background_refresh_count = app
+                        .read_entity(&entity_content, |content, _app| {
+                            content.background_refresh_count
+                        });
+
+                    let comment_count_changed =
+                        background_refresh_count > 0 && article.descendants != last_comment_count;
 
                     ArticleView::new(
                         app,
@@ -144,6 +152,7 @@ fn start_background_subscriptions(
                 content.list_state.reset(content.articles.len());
                 content.article_ranks = current_ranking_map;
                 content.article_comment_counts = current_comment_counts;
+                content.background_refresh_count += 1;
                 cx.emit(ContentEvent::TotalArticles(content.articles.len()));
                 cx.notify();
             });
