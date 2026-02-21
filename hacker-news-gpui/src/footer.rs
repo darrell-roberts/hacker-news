@@ -10,6 +10,7 @@ use gpui::{
     Window,
 };
 
+/// Footer view and state.
 pub struct FooterView {
     status_line: SharedString,
     url: Option<SharedString>,
@@ -20,7 +21,23 @@ pub struct FooterView {
 }
 
 impl FooterView {
-    pub fn new(_cx: &mut Window, app: &mut App, content: Entity<ContentView>) -> Entity<Self> {
+    /// Create a new footer view entity.
+    ///
+    ///
+    /// # Arguments
+    ///
+    /// * `_cx` - A mutable reference to the Window context.
+    /// * `app` - A mutable reference to the App.
+    /// * `content_entity` - An Entity representing the ContentView.
+    ///
+    /// # Returns
+    ///
+    /// Returns an Entity of FooterView.
+    pub fn new(
+        _cx: &mut Window,
+        app: &mut App,
+        content_entity: Entity<ContentView>,
+    ) -> Entity<Self> {
         app.new(|cx| {
             cx.observe_global::<ArticleSelection>(move |footer: &mut FooterView, cx| {
                 footer.status_line = "Fetching...".into();
@@ -29,8 +46,8 @@ impl FooterView {
             .detach();
 
             cx.subscribe(
-                &content,
-                |footer: &mut FooterView, _content, event, _cx| match event {
+                &content_entity,
+                |footer: &mut FooterView, _content_entity, event, _cx| match event {
                     ContentEvent::TotalArticles(n) => {
                         footer.status_line =
                             format!("Updated: {}, total {n}", Local::now().format("%D %T"),).into();
@@ -57,7 +74,7 @@ impl FooterView {
             Self {
                 status_line: Default::default(),
                 url: None,
-                content,
+                content: content_entity,
                 subscribed: true,
                 total_refreshes: Default::default(),
                 error: None,
@@ -73,8 +90,7 @@ impl Render for FooterView {
         _cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
         let theme: Theme = window.appearance().into();
-        let content = self.content.clone();
-        let content_tooltip = content.clone();
+        let content_entity = self.content.clone();
         let subscribed = self.subscribed;
 
         div()
@@ -104,13 +120,19 @@ impl Render for FooterView {
                                 div()
                                     .id("resume")
                                     .cursor_pointer()
-                                    .tooltip(move |window, app| {
-                                        Tooltip::new(window, app, content_tooltip.clone()).into()
+                                    .tooltip({
+                                        let content_entity = content_entity.clone();
+                                        move |window, app| {
+                                            Tooltip::new(window, app, content_entity.clone()).into()
+                                        }
                                     })
                                     .on_click(move |_event, _window, app| {
-                                        content.update(app, |_content: &mut ContentView, cx| {
-                                            cx.emit(ContentEvent::ViewingComments(subscribed));
-                                        })
+                                        content_entity.update(
+                                            app,
+                                            |_content: &mut ContentView, cx| {
+                                                cx.emit(ContentEvent::ViewingComments(subscribed));
+                                            },
+                                        )
                                     })
                                     .when_else(
                                         subscribed,
@@ -124,28 +146,40 @@ impl Render for FooterView {
     }
 }
 
+/// A simple tooltip
 struct Tooltip {
-    content: Entity<ContentView>,
+    content_entity: Entity<ContentView>,
 }
 
 impl Tooltip {
-    fn new(_window: &mut Window, cx: &mut App, content: Entity<ContentView>) -> Entity<Self> {
-        cx.new(|_cx| Self { content })
+    /// Create a new tooltip entity.
+    ///
+    /// # Arguments
+    ///
+    /// * `_window` - A mutable reference to the Window.
+    /// * `cx` - A mutable reference to the App.
+    /// * `content` - An Entity representing the ContentView.
+    ///
+    /// # Returns
+    ///
+    /// Returns an Entity of Tooltip.
+    fn new(
+        _window: &mut Window,
+        cx: &mut App,
+        content_entity: Entity<ContentView>,
+    ) -> Entity<Self> {
+        cx.new(|_cx| Self { content_entity })
     }
 }
 
 impl Render for Tooltip {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let content_view = self.content.read(cx);
+        let stream_paused = self.content_entity.read(cx).stream_paused;
         div()
             .bg(black())
             .text_color(white())
             .rounded(rems(0.75))
             .p_1()
-            .child(if content_view.stream_paused {
-                "Resume"
-            } else {
-                "Pause"
-            })
+            .child(if stream_paused { "Resume" } else { "Pause" })
     }
 }
