@@ -178,6 +178,7 @@ fn start_background_subscriptions(
                 }
             }
         }
+        log::warn!("Foreground events have terminated");
     })
     .detach();
 
@@ -219,6 +220,7 @@ pub(crate) fn start_background_article_list_subscription(
             }
         }
 
+        log::warn!("Background events have terminated");
         if let Err(err) = handle.await {
             error!("Subscription close failed {err}");
             if let Err(err) = tx.send(Err("Background event source closed".into())).await {

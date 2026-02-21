@@ -17,7 +17,7 @@ use bytes::Bytes;
 use futures::{
     future, stream::FuturesOrdered, FutureExt as _, TryFutureExt, TryStream, TryStreamExt,
 };
-use log::{error, info};
+use log::{error, info, warn};
 use reqwest::{header, IntoUrl};
 use serde::Deserialize;
 use std::{
@@ -260,16 +260,19 @@ pub fn subscribe_to_article_list(
             match ApiClient::new() {
                 Ok(client) => {
                     if let Err(err) = client.articles_list_stream(article_type, tx.clone()).await {
-                        error!("Event stream for {article_type:?} severed {err}");
+                        warn!("Event stream for {article_type:?} severed {err}");
+                        // The task running this may have been dropped/cancelled. As a result we don't
+                        // need to restart this event subscription.
                         break;
                     }
                     info!("Started article list subscription");
                 }
                 Err(err) => {
+                    // If we can not connect we will retry every minute.
                     error!("Failed to create client {err}");
                 }
             }
-            tokio::time::sleep(Duration::from_secs(60 * 5)).await;
+            tokio::time::sleep(Duration::from_mins(1)).await;
             info!("Restarting article list subscription");
         }
     });

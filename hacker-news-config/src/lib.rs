@@ -66,12 +66,12 @@ pub fn log_dir() -> anyhow::Result<PathBuf> {
         .context("Failed to get app logs directory")
 }
 
-pub fn init_logger() -> anyhow::Result<()> {
+pub fn init_logger(base_name: &str) -> anyhow::Result<()> {
     let _logger = flexi_logger::Logger::try_with_env_or_str("info")?
         .log_to_file(
             FileSpec::default()
                 .directory(log_dir()?)
-                .basename("hacker-news"),
+                .basename(base_name),
         )
         .rotate(
             Criterion::Age(Age::Day),
