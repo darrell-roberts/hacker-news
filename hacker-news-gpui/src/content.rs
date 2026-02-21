@@ -35,6 +35,11 @@ impl EventEmitter<ContentEvent> for ContentView {}
 
 impl ContentView {
     /// Create a new content view.
+    ///
+    /// # Arguments
+    ///
+    /// * `_window` - A mutable reference to the window instance.
+    /// * `app` - A mutable reference to the application instance.
     pub fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
         let entity_content = app.new(|cx: &mut Context<Self>| {
             cx.subscribe_self(|content, event, _cx| match event {
@@ -141,9 +146,9 @@ fn start_background_subscriptions(
                                     content.background_refresh_count
                                 });
 
-                            let comment_count_changed = if background_refresh_count > 0 {
-                                let last_comment_count = last_comment_count.unwrap_or(0);
-                                let current_comment_count = article.descendants.unwrap_or(0);
+                            let comment_count_changed: i64 = if background_refresh_count > 0 {
+                                let last_comment_count = last_comment_count.unwrap_or(0) as i64;
+                                let current_comment_count = article.descendants.unwrap_or(0) as i64;
 
                                 if last_comment_count > 0 && current_comment_count > 0 {
                                     current_comment_count - last_comment_count

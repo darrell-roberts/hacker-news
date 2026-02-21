@@ -13,7 +13,6 @@ use gpui::{
     StyleRefinement, Window,
 };
 use hacker_news_api::Item;
-use log::error;
 use std::{sync::Arc, time::Duration};
 
 // An article view is rendered for each article item.
@@ -35,6 +34,20 @@ pub struct ArticleView {
 }
 
 impl ArticleView {
+    /// Creates a new `ArticleView` entity for the given article item.
+    ///
+    /// # Arguments
+    ///
+    /// * `app` - The mutable reference to the async application context.
+    /// * `content` - The entity representing the content view.
+    /// * `item` - The Hacker News article item to render.
+    /// * `order_change` - The change in article order/rank.
+    /// * `rank` - The current rank of the article.
+    /// * `comment_count_changed` - The delta in comment count since last update.
+    ///
+    /// # Returns
+    ///
+    /// An entity representing the newly created `ArticleView`.
     pub fn new(
         app: &mut AsyncApp,
         content: Entity<ContentView>,
@@ -44,9 +57,14 @@ impl ArticleView {
         comment_count_changed: i64,
     ) -> Entity<Self> {
         let article_entity = app.new(|_cx| {
-            let changed = comment_count_changed
-                .gt(&0)
-                .then(|| format!("+{comment_count_changed}").into());
+            let changed = if comment_count_changed.is_negative() {
+                Some(format!("{comment_count_changed}"))
+            } else if comment_count_changed > 0 {
+                Some(format!("+{comment_count_changed}"))
+            } else {
+                None
+            }
+            .map(Into::into);
 
             Self {
                 title: item.title.unwrap_or_default().into(),
@@ -91,6 +109,112 @@ impl ArticleView {
 
         article_entity
     }
+
+    /// Render the comments cell when we have a new total comments delta.
+    ///
+    /// # Arguments
+    ///
+    /// * `div` - The div element to render the new comments cell into.
+    /// * `new_comments_added` - The shared string representing the number of new comments added.
+    fn render_new_comments_cell(
+        &self,
+        div: gpui::Stateful<gpui::Div>,
+        new_comments_added: &SharedString,
+    ) -> gpui::Stateful<gpui::Div> {
+        div.flex().flex_row().child(
+            gpui::div()
+                .flex()
+                .flex_row()
+                .child(
+                    gpui::div()
+                        .bg(Fill::Color(rgb(0xFF69B4).into()))
+                        .text_align(gpui::TextAlign::Center)
+                        .rounded(rems(0.25))
+                        .child(new_comments_added.clone())
+                        .with_animation(
+                            "comment-count-changed-fade",
+                            Animation::new(Duration::from_secs(5)).with_easing(quadratic),
+                            |el, n| el.opacity(1.0 - n),
+                        ),
+                )
+                .child(gpui::div().child(img(self.comment_image.clone()))),
+        )
+    }
+
+    /// Render the comments cell. This shows the total number of comments next
+    /// to an actionable comment icon.
+    ///
+    /// # Arguments
+    ///
+    /// * `hover_element` - A function that takes a `StyleRefinement` and returns a refined style, used for hover effects.
+    /// * `article_entity` - The entity representing the article view.
+    /// * `div` - The div element to render the comments cell into.
+    /// * `comments` - The shared string representing the number of comments.
+    ///
+    /// This shows the total number of comments next to an actionable comment icon.
+    fn render_comments_cell(
+        &self,
+        hover_element: impl Fn(StyleRefinement) -> StyleRefinement,
+        article_entity: Entity<ArticleView>,
+        div: gpui::Stateful<gpui::Div>,
+        comments: &SharedString,
+    ) -> gpui::Stateful<gpui::Div> {
+        let ids = self.comment_ids.clone();
+        let content = self.content.clone();
+
+        div.flex()
+            .cursor_pointer()
+            .rounded_md()
+            .on_click(move |_, _, app| {
+                article_entity.update(app, |article: &mut ArticleView, _cx| {
+                    article.loading_comments = true;
+                });
+
+                let article_entity = article_entity.clone();
+                let content = content.clone();
+                let ids = ids.clone();
+
+                app.spawn(async move |app: &mut AsyncApp| {
+                    let client = app.read_global(|client: &ApiClientState, _| client.0.clone());
+                    let items =
+                        async_compat::Compat::new(client.items(&ids).try_collect::<Vec<_>>())
+                            .await
+                            .unwrap_or_default();
+
+                    let comments = items
+                        .into_iter()
+                        .map(|comment| CommentView::new(app, comment, article_entity.clone()))
+                        .collect();
+
+                    article_entity.update(app, |this: &mut ArticleView, _cx| {
+                        this.comments = comments;
+                        this.loading_comments = false;
+                    });
+
+                    content.update(app, |_content: &mut ContentView, cx| {
+                        cx.emit(ContentEvent::ViewingComments(true));
+                    });
+                })
+                .detach();
+            })
+            .hover(hover_element)
+            .flex_row()
+            .child(comments.clone())
+            .child(gpui::div().child(img(self.comment_image.clone())).when(
+                self.loading_comments,
+                |el| {
+                    gpui::div().child(
+                        el.with_animation(
+                            "comment-loading",
+                            Animation::new(Duration::from_secs(1))
+                                .repeat()
+                                .with_easing(pulsating_between(0.1, 0.8)),
+                            |label, delta| label.opacity(delta),
+                        ),
+                    )
+                },
+            ))
+    }
 }
 
 impl Render for ArticleView {
@@ -123,98 +247,21 @@ impl Render for ArticleView {
                 .bg(Fill::Color(solid_background(theme.hover())))
         };
 
-        let ids = self.comment_ids.clone();
-        let entity = cx.weak_entity();
-        let content = self.content.clone();
-        let content_close = self.content.clone();
-
-        let article = cx.weak_entity().upgrade();
-        let close_comment = cx.weak_entity();
+        let article_entity = cx.entity();
 
         let comments_col = div().w(rems(4.)).justify_end().id("comments").map(|div| {
             if let Some(new_comments_added) = self.comment_count_changed.as_ref() {
                 self.render_new_comments_cell(div, new_comments_added)
             } else if let Some(comments) = self.comment_count.as_ref() {
-                div.flex()
-                    .cursor_pointer()
-                    .rounded_md()
-                    .on_click(move |_, _, app| {
-                        let article = article.clone();
-                        if let Err(err) = entity.update(app, |article: &mut ArticleView, _cx| {
-                            article.loading_comments = true;
-                        }) {
-                            error!("Failed to set loading flag: {err}");
-                        };
-
-                        let entity = entity.clone();
-                        let content = content.clone();
-                        let ids = ids.clone();
-
-                        app.spawn(async move |app: &mut AsyncApp| {
-                            let client =
-                                app.read_global(|client: &ApiClientState, _| client.0.clone());
-                            let items = async_compat::Compat::new(
-                                client.items(&ids).try_collect::<Vec<_>>(),
-                            )
-                            .await
-                            .unwrap_or_default();
-
-                            let comments = items
-                                .into_iter()
-                                .filter_map(|comment| {
-                                    article.clone().map(|article| {
-                                        CommentView::new(app, comment, article.clone())
-                                    })
-                                })
-                                .collect();
-
-                            if let Err(err) = entity.update(app, |this: &mut ArticleView, _cx| {
-                                this.comments = comments;
-                            }) {
-                                error!("Failed to update comments: {err}");
-                            };
-
-                            if let Err(err) =
-                                entity.update(app, |article: &mut ArticleView, _cx| {
-                                    article.loading_comments = false;
-                                })
-                            {
-                                error!("Failed to set loading comments: {err}");
-                            };
-
-                            content.update(app, |_content: &mut ContentView, cx| {
-                                cx.emit(ContentEvent::ViewingComments(true));
-                            });
-                        })
-                        .detach();
-                    })
-                    .hover(hover_element)
-                    .flex()
-                    .flex_row()
-                    .child(comments.clone())
-                    .child(gpui::div().child(img(self.comment_image.clone())).when(
-                        self.loading_comments,
-                        |el| {
-                            gpui::div().child(
-                                el.with_animation(
-                                    "comment-loading",
-                                    Animation::new(Duration::from_secs(1))
-                                        .repeat()
-                                        .with_easing(pulsating_between(0.1, 0.8)),
-                                    |label, delta| label.opacity(delta),
-                                ),
-                            )
-                        },
-                    ))
-                    .into_any()
+                self.render_comments_cell(hover_element, article_entity, div, comments)
             } else {
                 div
             }
         });
 
         let url = self.url.clone();
+        let article_entity = cx.entity();
 
-        let weak_entity = cx.weak_entity();
         let title_col = div()
             .flex()
             .flex_row()
@@ -233,8 +280,9 @@ impl Render for ArticleView {
                         .on_hover(move |hover, _window, app| {
                             if !hover {
                                 app.set_global::<UrlHover>(UrlHover(None));
-                            } else if let Some(entity) = weak_entity.upgrade() {
-                                let view = entity.read(app);
+                            // } else if let Some(entity) = weak_entity.upgrade() {
+                            } else {
+                                let view = article_entity.read(app);
                                 app.set_global::<UrlHover>(UrlHover(view.url.clone()));
                             }
                         })
@@ -253,6 +301,9 @@ impl Render for ArticleView {
                     .gap_x(px(5.0)),
             )
             .gap_x(px(5.0));
+
+        let article_entity = cx.entity();
+        let content_close = self.content.clone();
 
         div()
             .child(
@@ -306,11 +357,9 @@ impl Render for ArticleView {
                                 .cursor_pointer()
                                 .id("close-comments")
                                 .on_click(move |_event, _window, app| {
-                                    if let Some(this) = close_comment.upgrade() {
-                                        this.update(app, |article, _cx| {
-                                            article.comments.clear();
-                                        });
-                                    }
+                                    article_entity.update(app, |article, _cx| {
+                                        article.comments.clear();
+                                    });
 
                                     content_close.update(app, |_content: &mut ContentView, cx| {
                                         cx.emit(ContentEvent::ViewingComments(false));
