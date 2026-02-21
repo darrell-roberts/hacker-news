@@ -14,6 +14,16 @@ pub struct Header {
 
 impl Header {
     /// Create a new header view.
+    ///
+    ///
+    /// # Arguments
+    ///
+    /// * `_cx` - A mutable reference to the current window context.
+    /// * `app` - A mutable reference to the application instance.
+    ///
+    /// # Returns
+    ///
+    /// Returns an `Entity<Self>` representing the newly created header view.
     pub fn new(_cx: &mut Window, app: &mut App) -> Entity<Self> {
         app.new(|_cx| Self {
             counts: [25, 50, 75, 100, 500].map(|n| (n, format!("{n}").into())),

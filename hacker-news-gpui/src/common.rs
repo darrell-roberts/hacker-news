@@ -2,8 +2,11 @@
 //!
 
 use chrono::{DateTime, Utc};
-use gpui::Image;
+use futures::TryStreamExt as _;
+use gpui::{AsyncApp, Entity, Image};
 use std::sync::{Arc, LazyLock};
+
+use crate::{article::ArticleView, comment::CommentView, ApiClientState};
 
 /// An embedded SVG comment image.
 pub static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
@@ -32,4 +35,30 @@ pub fn parse_date(time: u64) -> Option<String> {
         (d, _, _) => format!("{d} days ago"),
     }
     .into()
+}
+
+/// Create comment entities by fetching the remote comments and
+/// creating a comment entity for each.
+///
+/// # Arguments
+///
+/// * `app` - A mutable reference to the asynchronous application.
+/// * `article_entity` - The entity representing the article to which the comments belong.
+/// * `comment_ids` - A slice of comment IDs to fetch and create entities for.
+///
+pub async fn comment_entities(
+    app: &mut AsyncApp,
+    article_entity: Entity<ArticleView>,
+    comment_ids: &[u64],
+) -> Vec<Entity<CommentView>> {
+    let client = app.read_global(|client: &ApiClientState, _| client.0.clone());
+    let comment_items =
+        async_compat::Compat::new(client.items(comment_ids).try_collect::<Vec<_>>())
+            .await
+            .unwrap_or_default();
+
+    comment_items
+        .into_iter()
+        .map(|comment| CommentView::new(app, comment, article_entity.clone()))
+        .collect()
 }

@@ -1,12 +1,11 @@
 //! Article view.
 use crate::{
     comment::CommentView,
-    common::{parse_date, COMMENT_IMAGE},
+    common::{comment_entities, parse_date, COMMENT_IMAGE},
     content::{ContentEvent, ContentView},
     theme::Theme,
-    ApiClientState, UrlHover,
+    UrlHover,
 };
-use futures::TryStreamExt;
 use gpui::{
     div, img, prelude::*, pulsating_between, px, quadratic, rems, rgb, solid_background, Animation,
     AnimationExt, AppContext, AsyncApp, Entity, Fill, FontWeight, ImageSource, SharedString,
@@ -26,9 +25,9 @@ pub struct ArticleView {
     age: SharedString,
     comment_image: ImageSource,
     rank: SharedString,
-    comments: Vec<Entity<CommentView>>,
+    comment_entities: Vec<Entity<CommentView>>,
     comment_ids: Arc<Vec<u64>>,
-    content: Entity<ContentView>,
+    content_entity: Entity<ContentView>,
     loading_comments: bool,
     comment_count_changed: Option<SharedString>,
 }
@@ -84,9 +83,9 @@ impl ArticleView {
                 age: parse_date(item.time).unwrap_or_default().into(),
                 comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
                 rank: format!("{rank}").into(),
-                comments: Vec::new(),
+                comment_entities: Vec::new(),
                 comment_ids: Arc::new(item.kids),
-                content,
+                content_entity: content,
                 loading_comments: false,
                 comment_count_changed: changed,
             }
@@ -160,7 +159,7 @@ impl ArticleView {
         comments: &SharedString,
     ) -> gpui::Stateful<gpui::Div> {
         let ids = self.comment_ids.clone();
-        let content = self.content.clone();
+        let content_entity = self.content_entity.clone();
 
         div.flex()
             .cursor_pointer()
@@ -171,27 +170,18 @@ impl ArticleView {
                 });
 
                 let article_entity = article_entity.clone();
-                let content = content.clone();
+                let content_entity = content_entity.clone();
                 let ids = ids.clone();
 
                 app.spawn(async move |app: &mut AsyncApp| {
-                    let client = app.read_global(|client: &ApiClientState, _| client.0.clone());
-                    let items =
-                        async_compat::Compat::new(client.items(&ids).try_collect::<Vec<_>>())
-                            .await
-                            .unwrap_or_default();
-
-                    let comments = items
-                        .into_iter()
-                        .map(|comment| CommentView::new(app, comment, article_entity.clone()))
-                        .collect();
-
-                    article_entity.update(app, |this: &mut ArticleView, _cx| {
-                        this.comments = comments;
-                        this.loading_comments = false;
+                    let comment_entities =
+                        comment_entities(app, article_entity.clone(), &ids).await;
+                    article_entity.update(app, |article_view: &mut ArticleView, _cx| {
+                        article_view.comment_entities = comment_entities;
+                        article_view.loading_comments = false;
                     });
 
-                    content.update(app, |_content: &mut ContentView, cx| {
+                    content_entity.update(app, |_content_view: &mut ContentView, cx| {
                         cx.emit(ContentEvent::ViewingComments(true));
                     });
                 })
@@ -224,13 +214,13 @@ impl ArticleView {
     ///
     /// * `theme` - The current theme to use for styling.
     /// * `article_entity` - The entity representing the article view.
-    /// * `content_close` - The entity representing the content view to close comments.
+    /// * `content_entity` - The entity representing the content view to close comments.
     /// * `el` - The div element to render the comments into.
     fn render_comments(
         &mut self,
         theme: Theme,
         article_entity: Entity<ArticleView>,
-        content_close: Entity<ContentView>,
+        content_entity: Entity<ContentView>,
         el: gpui::Div,
     ) -> gpui::Div {
         el.child(
@@ -251,15 +241,15 @@ impl ArticleView {
                         .id("close-comments")
                         .on_click(move |_event, _window, app| {
                             article_entity.update(app, |article, _cx| {
-                                article.comments.clear();
+                                article.comment_entities.clear();
                             });
 
-                            content_close.update(app, |_content: &mut ContentView, cx| {
+                            content_entity.update(app, |_content_view: &mut ContentView, cx| {
                                 cx.emit(ContentEvent::ViewingComments(false));
                             })
                         }),
                 )
-                .children(self.comments.clone()),
+                .children(self.comment_entities.clone()),
         )
     }
 }
@@ -328,8 +318,8 @@ impl Render for ArticleView {
                             if !hover {
                                 app.set_global::<UrlHover>(UrlHover(None));
                             } else {
-                                let view = article_entity.read(app);
-                                app.set_global::<UrlHover>(UrlHover(view.url.clone()));
+                                let url = article_entity.read(app).url.clone();
+                                app.set_global::<UrlHover>(UrlHover(url));
                             }
                         })
                         .hover(hover_element),
@@ -349,7 +339,7 @@ impl Render for ArticleView {
             .gap_x(px(5.0));
 
         let article_entity = cx.entity();
-        let content_close = self.content.clone();
+        let content_entity = self.content_entity.clone();
 
         div()
             .child(
@@ -385,8 +375,8 @@ impl Render for ArticleView {
                         ),
                     ),
             )
-            .when(!self.comments.is_empty(), |el| {
-                self.render_comments(theme, article_entity, content_close, el)
+            .when(!self.comment_entities.is_empty(), |div| {
+                self.render_comments(theme, article_entity, content_entity, div)
             })
     }
 }

@@ -1,11 +1,9 @@
 //! Render comment
 use crate::{
     article::ArticleView,
-    common::{parse_date, COMMENT_IMAGE},
+    common::{comment_entities, parse_date, COMMENT_IMAGE},
     theme::Theme,
-    ApiClientState,
 };
-use futures::TryStreamExt as _;
 use gpui::{
     div, img, prelude::FluentBuilder as _, pulsating_between, px, rems, Animation,
     AnimationExt as _, AppContext as _, AsyncApp, Entity, Font, FontWeight, ImageSource,
@@ -25,7 +23,7 @@ pub struct CommentView {
     comment_image: ImageSource,
     total_comments: SharedString,
     loading_comments: bool,
-    article: Entity<ArticleView>,
+    article_entity: Entity<ArticleView>,
     text_layout: Vec<TextLayout>,
     age: SharedString,
     urls: Vec<String>,
@@ -38,8 +36,8 @@ impl CommentView {
     ///
     /// * `cx` - The async application context used to create new entities.
     /// * `item` - The Hacker News API item representing the comment.
-    /// * `article` - The entity representing the parent article view.
-    pub fn new(cx: &mut AsyncApp, item: Item, article: Entity<ArticleView>) -> Entity<Self> {
+    /// * `article_entity` - The entity representing the parent article view.
+    pub fn new(cx: &mut AsyncApp, item: Item, article_entity: Entity<ArticleView>) -> Entity<Self> {
         let ParsedComment { text, layout, urls } = item
             .text
             .as_deref()
@@ -55,7 +53,7 @@ impl CommentView {
             comment_ids: Arc::new(item.kids),
             comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
             loading_comments: false,
-            article,
+            article_entity,
             text_layout: layout,
             urls,
             age: parse_date(item.time).unwrap_or_default().into(),
@@ -90,12 +88,12 @@ impl CommentView {
     /// # Arguments
     ///
     /// * `theme` - The current theme used for styling.
-    /// * `ids` - The list of child comment IDs.
+    /// * `comment_ids` - The list of child comment IDs.
     /// * `comment_entity` - The entity representing this comment view.
     fn render_comment_footer(
         &self,
         theme: Theme,
-        ids: Arc<Vec<u64>>,
+        comment_ids: Arc<Vec<u64>>,
         comment_entity: Entity<CommentView>,
     ) -> gpui::Div {
         gpui::div()
@@ -110,7 +108,7 @@ impl CommentView {
             .child(self.author.clone())
             .child(self.age.clone())
             .when(!self.comment_ids.is_empty(), |div| {
-                self.render_child_comments(ids, comment_entity, div)
+                self.render_child_comments(comment_ids, comment_entity, div)
             })
     }
 
@@ -120,16 +118,16 @@ impl CommentView {
     ///
     /// # Arguments
     ///
-    /// * `ids` - The list of child comment IDs.
+    /// * `comment_ids` - The list of child comment IDs.
     /// * `comment_entity` - The entity representing this comment view.
     /// * `el` - The parent Div element to which child comments UI will be attached.
     fn render_child_comments(
         &self,
-        ids: Arc<Vec<u64>>,
+        comment_ids: Arc<Vec<u64>>,
         comment_entity: Entity<CommentView>,
         el: gpui::Div,
     ) -> gpui::Div {
-        let article_entity = self.article.clone();
+        let article_entity = self.article_entity.clone();
 
         el.child(
             div()
@@ -140,23 +138,15 @@ impl CommentView {
                         this.loading_comments = true;
                     });
 
-                    let ids = ids.clone();
+                    let comment_ids = comment_ids.clone();
                     let comment_entity = comment_entity.clone();
                     let article_entity = article_entity.clone();
 
                     app.spawn(async move |async_app| {
-                        let client =
-                            async_app.read_global(|client: &ApiClientState, _| client.0.clone());
-                        let items =
-                            async_compat::Compat::new(client.items(&ids).try_collect::<Vec<_>>())
-                                .await
-                                .unwrap_or_default();
-                        let children = items
-                            .into_iter()
-                            .map(|item| CommentView::new(async_app, item, article_entity.clone()))
-                            .collect::<Vec<_>>();
+                        let comment_entities =
+                            comment_entities(async_app, article_entity, &comment_ids).await;
                         comment_entity.update(async_app, |this, _cx| {
-                            this.children = children;
+                            this.children = comment_entities;
                             this.loading_comments = false;
                         });
                     })
@@ -191,7 +181,7 @@ impl Render for CommentView {
     ) -> impl gpui::IntoElement {
         let theme: Theme = window.appearance().into();
 
-        let ids = self.comment_ids.clone();
+        let comment_ids = self.comment_ids.clone();
         let comment_entity = cx.entity();
 
         div()
@@ -199,7 +189,7 @@ impl Render for CommentView {
             .rounded_tl_md()
             .mt_1()
             .child(self.render_text_area(theme, comment_entity.clone()))
-            .child(self.render_comment_footer(theme, ids, comment_entity.clone()))
+            .child(self.render_comment_footer(theme, comment_ids, comment_entity.clone()))
             .when(!self.children.is_empty(), |el| {
                 el.child(
                     div()
