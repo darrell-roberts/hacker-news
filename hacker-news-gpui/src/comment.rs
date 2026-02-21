@@ -98,8 +98,6 @@ impl CommentView {
         ids: Arc<Vec<u64>>,
         comment_entity: Entity<CommentView>,
     ) -> gpui::Div {
-        let article_entity = self.article.clone();
-
         gpui::div()
             .flex()
             .flex_row()
@@ -111,60 +109,77 @@ impl CommentView {
             .text_size(rems(0.75))
             .child(self.author.clone())
             .child(self.age.clone())
-            .when(!self.comment_ids.is_empty(), |el| {
-                el.child(
-                    div()
-                        .id("child-comments")
-                        .cursor_pointer()
-                        .on_click(move |_event, _window, app| {
-                            comment_entity.update(app, |this, _cx| {
-                                this.loading_comments = true;
-                            });
+            .when(!self.comment_ids.is_empty(), |div| {
+                self.render_child_comments(ids, comment_entity, div)
+            })
+    }
 
-                            let ids = ids.clone();
-                            let comment_entity = comment_entity.clone();
-                            let article_entity = article_entity.clone();
+    /// Render child comments that have opened.
+    ///
+    /// Render child comments that have opened.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids` - The list of child comment IDs.
+    /// * `comment_entity` - The entity representing this comment view.
+    /// * `el` - The parent Div element to which child comments UI will be attached.
+    fn render_child_comments(
+        &self,
+        ids: Arc<Vec<u64>>,
+        comment_entity: Entity<CommentView>,
+        el: gpui::Div,
+    ) -> gpui::Div {
+        let article_entity = self.article.clone();
 
-                            app.spawn(async move |async_app| {
-                                let client = async_app
-                                    .read_global(|client: &ApiClientState, _| client.0.clone());
-                                let items = async_compat::Compat::new(
-                                    client.items(&ids).try_collect::<Vec<_>>(),
-                                )
+        el.child(
+            div()
+                .id("child-comments")
+                .cursor_pointer()
+                .on_click(move |_event, _window, app| {
+                    comment_entity.update(app, |this, _cx| {
+                        this.loading_comments = true;
+                    });
+
+                    let ids = ids.clone();
+                    let comment_entity = comment_entity.clone();
+                    let article_entity = article_entity.clone();
+
+                    app.spawn(async move |async_app| {
+                        let client =
+                            async_app.read_global(|client: &ApiClientState, _| client.0.clone());
+                        let items =
+                            async_compat::Compat::new(client.items(&ids).try_collect::<Vec<_>>())
                                 .await
                                 .unwrap_or_default();
-                                let children = items
-                                    .into_iter()
-                                    .map(|item| {
-                                        CommentView::new(async_app, item, article_entity.clone())
-                                    })
-                                    .collect::<Vec<_>>();
-                                comment_entity.update(async_app, |this, _cx| {
-                                    this.children = children;
-                                    this.loading_comments = false;
-                                });
-                            })
-                            .detach();
-                        })
-                        .flex()
-                        .flex_row()
-                        .child(self.total_comments.clone())
-                        .child(div().child(img(self.comment_image.clone())).when(
-                            self.loading_comments,
-                            |el| {
-                                gpui::div().child(
-                                    el.with_animation(
-                                        "comment-loading",
-                                        Animation::new(Duration::from_secs(1))
-                                            .repeat()
-                                            .with_easing(pulsating_between(0.1, 0.8)),
-                                        |label, delta| label.opacity(delta),
-                                    ),
-                                )
-                            },
-                        )),
-                )
-            })
+                        let children = items
+                            .into_iter()
+                            .map(|item| CommentView::new(async_app, item, article_entity.clone()))
+                            .collect::<Vec<_>>();
+                        comment_entity.update(async_app, |this, _cx| {
+                            this.children = children;
+                            this.loading_comments = false;
+                        });
+                    })
+                    .detach();
+                })
+                .flex()
+                .flex_row()
+                .child(self.total_comments.clone())
+                .child(div().child(img(self.comment_image.clone())).when(
+                    self.loading_comments,
+                    |el| {
+                        gpui::div().child(
+                            el.with_animation(
+                                "comment-loading",
+                                Animation::new(Duration::from_secs(1))
+                                    .repeat()
+                                    .with_easing(pulsating_between(0.1, 0.8)),
+                                |label, delta| label.opacity(delta),
+                            ),
+                        )
+                    },
+                )),
+        )
     }
 }
 
