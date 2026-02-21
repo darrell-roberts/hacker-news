@@ -35,7 +35,12 @@ impl EventEmitter<ContentEvent> for ContentView {}
 
 impl ContentView {
     /// Create a new content view.
-    pub fn new(_cx: &mut Window, app: &mut App) -> Entity<Self> {
+    ///
+    /// # Arguments
+    ///
+    /// * `_window` - A mutable reference to the window instance.
+    /// * `app` - A mutable reference to the application instance.
+    pub fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
         let entity_content = app.new(|cx: &mut Context<Self>| {
             cx.subscribe_self(|content, event, _cx| match event {
                 ContentEvent::TotalArticles(_) => (),
@@ -141,8 +146,21 @@ fn start_background_subscriptions(
                                     content.background_refresh_count
                                 });
 
-                            let comment_count_changed = background_refresh_count > 0
-                                && article.descendants != last_comment_count;
+                            let comment_count_changed: i64 = if background_refresh_count > 0 {
+                                let last_comment_count = last_comment_count.unwrap_or(0) as i64;
+                                let current_comment_count = article.descendants.unwrap_or(0) as i64;
+
+                                if last_comment_count > 0 && current_comment_count > 0 {
+                                    current_comment_count - last_comment_count
+                                } else {
+                                    0
+                                }
+                            } else {
+                                0
+                            };
+
+                            // let comment_count_changed = background_refresh_count > 0
+                            //     && article.descendants != last_comment_count;
 
                             ArticleView::new(
                                 app,
@@ -221,6 +239,7 @@ pub(crate) fn start_background_article_list_subscription(
         }
 
         log::warn!("Background events have terminated");
+
         if let Err(err) = handle.await {
             error!("Subscription close failed {err}");
             if let Err(err) = tx.send(Err("Background event source closed".into())).await {
