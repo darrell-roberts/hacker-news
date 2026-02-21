@@ -35,7 +35,7 @@ impl EventEmitter<ContentEvent> for ContentView {}
 
 impl ContentView {
     /// Create a new content view.
-    pub fn new(_cx: &mut Window, app: &mut App) -> Entity<Self> {
+    pub fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
         let entity_content = app.new(|cx: &mut Context<Self>| {
             cx.subscribe_self(|content, event, _cx| match event {
                 ContentEvent::TotalArticles(_) => (),
@@ -142,7 +142,14 @@ fn start_background_subscriptions(
                                 });
 
                             let comment_count_changed = if background_refresh_count > 0 {
-                                article.descendants.unwrap_or(0) - last_comment_count.unwrap_or(0)
+                                let last_comment_count = last_comment_count.unwrap_or(0);
+                                let current_comment_count = article.descendants.unwrap_or(0);
+
+                                if last_comment_count > 0 && current_comment_count > 0 {
+                                    current_comment_count - last_comment_count
+                                } else {
+                                    0
+                                }
                             } else {
                                 0
                             };

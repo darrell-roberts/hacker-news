@@ -8,7 +8,7 @@ use crate::{
 };
 use futures::TryStreamExt;
 use gpui::{
-    div, img, prelude::*, pulsating_between, px, quadratic, rems, solid_background, Animation,
+    div, img, prelude::*, pulsating_between, px, quadratic, rems, rgb, solid_background, Animation,
     AnimationExt, AppContext, AsyncApp, Entity, Fill, FontWeight, ImageSource, SharedString,
     StyleRefinement, Window,
 };
@@ -43,32 +43,53 @@ impl ArticleView {
         rank: usize,
         comment_count_changed: i64,
     ) -> Entity<Self> {
-        app.new(move |_cx| Self {
-            title: item.title.unwrap_or_default().into(),
-            author: format!("by {}", item.by.clone()).into(),
-            comment_count: item
-                .descendants
-                .filter(|&n| n > 0)
-                .map(|n| format!("{n}"))
-                .map(Into::into),
-            url: item.url.map(Into::into),
-            order_change_label: if order_change == 0 {
-                Default::default()
-            } else {
-                format!("{order_change}").into()
-            },
-            order_change,
-            age: parse_date(item.time).unwrap_or_default().into(),
-            comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
-            rank: format!("{rank}").into(),
-            comments: Vec::new(),
-            comment_ids: Arc::new(item.kids),
-            content,
-            loading_comments: false,
-            comment_count_changed: comment_count_changed
+        let article_entity = app.new(|_cx| {
+            let changed = comment_count_changed
                 .gt(&0)
-                .then(|| format!("+{comment_count_changed}").into()),
-        })
+                .then(|| format!("+{comment_count_changed}").into());
+
+            Self {
+                title: item.title.unwrap_or_default().into(),
+                author: format!("by {}", item.by.clone()).into(),
+                comment_count: item
+                    .descendants
+                    .filter(|&n| n > 0)
+                    .map(|n| format!("{n}"))
+                    .map(Into::into),
+                url: item.url.map(Into::into),
+                order_change_label: if order_change == 0 {
+                    Default::default()
+                } else {
+                    format!("{order_change}").into()
+                },
+                order_change,
+                age: parse_date(item.time).unwrap_or_default().into(),
+                comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
+                rank: format!("{rank}").into(),
+                comments: Vec::new(),
+                comment_ids: Arc::new(item.kids),
+                content,
+                loading_comments: false,
+                comment_count_changed: changed,
+            }
+        });
+
+        let entity = article_entity.downgrade();
+        if comment_count_changed > 0 {
+            app.spawn(async move |app: &mut AsyncApp| {
+                app.background_executor()
+                    .timer(Duration::from_secs(5))
+                    .await;
+                if let Some(entity) = entity.upgrade() {
+                    entity.update(app, |article: &mut ArticleView, _| {
+                        article.comment_count_changed = None;
+                    });
+                }
+            })
+            .detach();
+        }
+
+        article_entity
     }
 }
 
@@ -110,11 +131,10 @@ impl Render for ArticleView {
         let article = cx.weak_entity().upgrade();
         let close_comment = cx.weak_entity();
 
-        let comments_col = div()
-            .w(rems(4.))
-            .justify_end()
-            .id("comments")
-            .when_some(self.comment_count.as_ref(), |div, comments| {
+        let comments_col = div().w(rems(4.)).justify_end().id("comments").map(|div| {
+            if let Some(new_comments_added) = self.comment_count_changed.as_ref() {
+                self.render_new_comments_cell(div, new_comments_added)
+            } else if let Some(comments) = self.comment_count.as_ref() {
                 div.flex()
                     .cursor_pointer()
                     .rounded_md()
@@ -186,19 +206,11 @@ impl Render for ArticleView {
                             )
                         },
                     ))
-            })
-            .map(|div| {
-                if let Some(new_comments_added) = self.comment_count_changed.clone() {
-                    div.with_animation(
-                        "comment_col",
-                        Animation::new(Duration::from_secs(2)).with_easing(quadratic),
-                        move |div, n| div.opacity(n),
-                    )
                     .into_any()
-                } else {
-                    div.into_any()
-                }
-            });
+            } else {
+                div
+            }
+        });
 
         let url = self.url.clone();
 
