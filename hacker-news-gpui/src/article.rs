@@ -215,6 +215,53 @@ impl ArticleView {
                 },
             ))
     }
+
+    /// Renders opened comments.
+    ///
+    /// Renders opened comments.
+    ///
+    /// # Arguments
+    ///
+    /// * `theme` - The current theme to use for styling.
+    /// * `article_entity` - The entity representing the article view.
+    /// * `content_close` - The entity representing the content view to close comments.
+    /// * `el` - The div element to render the comments into.
+    fn render_comments(
+        &mut self,
+        theme: Theme,
+        article_entity: Entity<ArticleView>,
+        content_close: Entity<ContentView>,
+        el: gpui::Div,
+    ) -> gpui::Div {
+        el.child(
+            div()
+                .bg(theme.comment_border())
+                .mt_1()
+                .ml_1()
+                .pl_1()
+                .rounded_tl_md()
+                .child(
+                    div()
+                        .flex()
+                        .flex_grow()
+                        .flex_row()
+                        .text_size(rems(0.75))
+                        .child("[X]")
+                        .cursor_pointer()
+                        .id("close-comments")
+                        .on_click(move |_event, _window, app| {
+                            article_entity.update(app, |article, _cx| {
+                                article.comments.clear();
+                            });
+
+                            content_close.update(app, |_content: &mut ContentView, cx| {
+                                cx.emit(ContentEvent::ViewingComments(false));
+                            })
+                        }),
+                )
+                .children(self.comments.clone()),
+        )
+    }
 }
 
 impl Render for ArticleView {
@@ -280,7 +327,6 @@ impl Render for ArticleView {
                         .on_hover(move |hover, _window, app| {
                             if !hover {
                                 app.set_global::<UrlHover>(UrlHover(None));
-                            // } else if let Some(entity) = weak_entity.upgrade() {
                             } else {
                                 let view = article_entity.read(app);
                                 app.set_global::<UrlHover>(UrlHover(view.url.clone()));
@@ -340,34 +386,7 @@ impl Render for ArticleView {
                     ),
             )
             .when(!self.comments.is_empty(), |el| {
-                el.child(
-                    div()
-                        .bg(theme.comment_border())
-                        .mt_1()
-                        .ml_1()
-                        .pl_1()
-                        .rounded_tl_md()
-                        .child(
-                            div()
-                                .flex()
-                                .flex_grow()
-                                .flex_row()
-                                .text_size(rems(0.75))
-                                .child("[X]")
-                                .cursor_pointer()
-                                .id("close-comments")
-                                .on_click(move |_event, _window, app| {
-                                    article_entity.update(app, |article, _cx| {
-                                        article.comments.clear();
-                                    });
-
-                                    content_close.update(app, |_content: &mut ContentView, cx| {
-                                        cx.emit(ContentEvent::ViewingComments(false));
-                                    })
-                                }),
-                        )
-                        .children(self.comments.clone()),
-                )
+                self.render_comments(theme, article_entity, content_close, el)
             })
     }
 }

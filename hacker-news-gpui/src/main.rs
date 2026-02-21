@@ -21,6 +21,7 @@ mod header;
 mod theme;
 
 #[derive(Clone)]
+/// Wrapper for ApiClient so we can put it in global gpui app state.
 pub struct ApiClientState(Arc<ApiClient>);
 
 impl Deref for ApiClientState {
@@ -34,21 +35,27 @@ impl Deref for ApiClientState {
 impl Global for ApiClientState {}
 
 #[derive(Debug, Copy, Clone)]
+/// The current selection for article category and total
 pub struct ArticleSelection {
+    /// Article category.
     pub viewing_article_type: ArticleType,
+    /// Total articles to view.
     pub viewing_article_total: usize,
 }
 
 impl Global for ArticleSelection {}
 
+/// Global state of url hover.
 pub struct UrlHover(pub Option<SharedString>);
 
 impl Global for UrlHover {}
 
+/// Global state for articles.
 pub struct ArticleState(pub Vec<Item>);
 
 impl Global for ArticleState {}
 
+/// The main window view.
 struct MainWindow {
     header: Entity<Header>,
     content: Entity<ContentView>,
@@ -56,6 +63,13 @@ struct MainWindow {
 }
 
 impl MainWindow {
+    /// Create the main window.
+    ///
+    /// # Arguments
+    ///
+    /// * `window` - A mutable reference to the Window in which the main UI will be created.
+    /// * `app` - A mutable reference to the App, used for managing application state and actions.
+    ///
     fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
         let header = Header::new(window, app);
         let content = ContentView::new(window, app);
