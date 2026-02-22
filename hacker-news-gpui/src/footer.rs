@@ -1,13 +1,13 @@
 //! The footer view.
 use crate::{
+    ArticleSelection, UrlHover,
     content::{ContentEvent, ContentView},
     theme::Theme,
-    ArticleSelection, UrlHover,
 };
 use chrono::Local;
 use gpui::{
-    black, div, prelude::*, rems, white, App, Entity, ParentElement, Render, SharedString, Styled,
-    Window,
+    App, Entity, ParentElement, Render, SharedString, Styled, Window, black, div, prelude::*, rems,
+    rgb, white,
 };
 
 /// Footer view and state.
@@ -18,8 +18,8 @@ pub struct FooterView {
     url: Option<SharedString>,
     /// Reference to the ContentView entity.
     content: Entity<ContentView>,
-    /// Whether the stream is subscribed (online) or paused.
-    subscribed: bool,
+    /// Whether the stream is online or paused.
+    online: bool,
     /// The total number of refreshes resulting from a server side event, as a string.
     total_refreshes: SharedString,
     /// Any error message to display, if present.
@@ -58,8 +58,8 @@ impl FooterView {
                         footer.status_line =
                             format!("Updated: {}, total {n}", Local::now().format("%D %T"),).into();
                     }
-                    ContentEvent::ViewingComments(viewing) => {
-                        footer.subscribed = !viewing;
+                    ContentEvent::OnlineToggle(enabled) => {
+                        footer.online = *enabled;
                     }
                     ContentEvent::TotalRefreshes(refresh_count) => {
                         footer.total_refreshes = format!("Refresh count: {refresh_count}").into();
@@ -68,7 +68,7 @@ impl FooterView {
                         footer.error = error.as_ref().map(Into::into);
                     }
                     ContentEvent::Terminated(_) => {
-                        footer.subscribed = false;
+                        footer.online = false;
                     }
                 },
             )
@@ -84,7 +84,7 @@ impl FooterView {
                 status_line: Default::default(),
                 url: None,
                 content: content_entity,
-                subscribed: true,
+                online: true,
                 total_refreshes: Default::default(),
                 error: None,
             }
@@ -100,7 +100,7 @@ impl Render for FooterView {
     ) -> impl gpui::IntoElement {
         let theme: Theme = window.appearance().into();
         let content_entity = self.content.clone();
-        let subscribed = self.subscribed;
+        let online = self.online;
 
         div()
             .p_1()
@@ -127,7 +127,7 @@ impl Render for FooterView {
                             .flex_row()
                             .child(
                                 div()
-                                    .id("resume")
+                                    .id("toggle_online")
                                     .cursor_pointer()
                                     .tooltip({
                                         let content_entity = content_entity.clone();
@@ -139,14 +139,16 @@ impl Render for FooterView {
                                         content_entity.update(
                                             app,
                                             |_content: &mut ContentView, cx| {
-                                                cx.emit(ContentEvent::ViewingComments(subscribed));
+                                                cx.emit(ContentEvent::OnlineToggle(!online));
                                             },
                                         )
                                     })
                                     .when_else(
-                                        subscribed,
-                                        |el| el.child("[online]"),
-                                        |el| el.child("[paused]"),
+                                        online,
+                                        |el| el.text_color(rgb(0x26a269)).child("[online]"),
+                                        |el| {
+                                            el.text_color(rgb(0xcc3300)).italic().child("[offline]")
+                                        },
                                     ),
                             )
                             .child(self.total_refreshes.clone()),
@@ -183,12 +185,12 @@ impl Tooltip {
 
 impl Render for Tooltip {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let stream_paused = self.content_entity.read(cx).stream_paused;
+        let online = self.content_entity.read(cx).online;
         div()
             .bg(black())
             .text_color(white())
             .rounded(rems(0.75))
             .p_1()
-            .child(if stream_paused { "Resume" } else { "Pause" })
+            .child(if online { "Pause" } else { "Resume" })
     }
 }

@@ -19,28 +19,32 @@ pub struct ContentView {
     /// Tracks the number of comments for an article so that when it
     /// changes we can show a visual indicator.
     article_comment_counts: HashMap<u64, u64>,
-    /// Whether the article stream is currently paused (e.g., when viewing comments).
-    pub stream_paused: bool,
+    /// Subscription to server side events is online.
+    pub online: bool,
     /// Handle to the background task that updates articles.
     pub background_task: Option<gpui::Task<()>>,
     /// Sender channel for pushing article updates from background to foreground.
     pub article_sender: Option<channel::mpsc::Sender<Result<Vec<Item>, BackGroundError>>>,
     /// The number of times we have refresh due to an http server side event.
     pub background_refresh_count: usize,
+    // We are viewing comments.
+    // pub viewing_comments: bool,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
 pub enum ContentEvent {
     /// Indicates the total number of articles currently displayed.
     TotalArticles(usize),
-    /// Indicates whether the user is currently viewing article comments.
-    ViewingComments(bool),
+    // Indicates whether the user is currently viewing article comments.
+    // ViewingComments(bool),
     /// Indicates the total number of refreshes due to background updates.
     TotalRefreshes(usize),
     /// Indicates an error, optionally containing an error message.
     Error(Option<String>),
     /// Check if we need to restart background.
     Terminated(ArticleType),
+    /// Toggle online status
+    OnlineToggle(bool),
 }
 
 impl EventEmitter<ContentEvent> for ContentView {}
@@ -59,8 +63,18 @@ impl ContentView {
     pub fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
         let entity_content = app.new(|cx: &mut Context<Self>| {
             cx.subscribe_self(|content_view, event, cx| match event {
-                ContentEvent::ViewingComments(b) => {
-                    content_view.stream_paused = *b;
+                ContentEvent::OnlineToggle(enable) => {
+                    // There is no change here.
+                    if content_view.online == *enable {
+                        return;
+                    }
+
+                    if *enable {
+                        restart_background_task(content_view, cx);
+                    } else if let Some(task) = content_view.background_task.take() {
+                        drop(task);
+                        content_view.online = false;
+                    }
                 }
                 ContentEvent::Terminated(terminated_category) => {
                     let current_category = cx.global::<ArticleSelection>().viewing_article_type;
@@ -68,12 +82,7 @@ impl ContentView {
                     if terminated_category == &current_category {
                         // We need to restart.
                         info!("Restarting background subscription for {terminated_category}");
-                        if let Some(tx) = content_view.article_sender.as_ref()
-                            && !tx.is_closed()
-                        {
-                            let task = start_background_article_list_subscription(cx, tx.clone());
-                            content_view.background_task.replace(task);
-                        }
+                        restart_background_task(content_view, cx);
                     }
                 }
                 ContentEvent::Error(_)
@@ -88,19 +97,32 @@ impl ContentView {
                 list_state,
                 articles: Default::default(),
                 article_ranks: Default::default(),
-                stream_paused: false,
+                online: false,
                 background_task: None,
                 article_sender: None,
                 article_comment_counts: Default::default(),
                 background_refresh_count: 0,
+                // viewing_comments: false,
             }
         });
 
         let background_task = start_background_subscriptions(app, &entity_content);
         entity_content.update(app, |content_view, _ctx| {
             content_view.background_task = Some(background_task);
+            content_view.online = true;
         });
         entity_content
+    }
+}
+
+/// Restarts the background task by dropping the current task and replacing it with a new one.
+fn restart_background_task(content_view: &mut ContentView, cx: &mut Context<'_, ContentView>) {
+    if let Some(tx) = content_view.article_sender.as_ref()
+        && !tx.is_closed()
+    {
+        let task = start_background_article_list_subscription(cx, tx.clone());
+        content_view.background_task.replace(task);
+        content_view.online = true;
     }
 }
 
@@ -141,6 +163,8 @@ fn start_background_subscriptions(
     let entity_content = entity_content.clone();
     let (tx, mut rx) = channel::mpsc::channel::<Result<Vec<Item>, BackGroundError>>(10);
 
+    // Keep a reference to the send channel so we can restart the background
+    // if we lose connection.
     entity_content.update(app, |entity_view, _cx| {
         entity_view.article_sender.replace(tx.clone());
     });
@@ -149,10 +173,10 @@ fn start_background_subscriptions(
         while let Some(items) = rx.next().await {
             match items {
                 Ok(items) => {
-                    let updates_paused = entity_content
-                        .read_with(app, |content: &ContentView, _app| content.stream_paused);
+                    let viewing_comments = entity_content
+                        .read_with(app, |content: &ContentView, _app| !content.online);
 
-                    if updates_paused {
+                    if viewing_comments {
                         continue;
                     }
 
@@ -272,6 +296,8 @@ pub(crate) fn start_background_article_list_subscription(
         viewing_article_type,
         viewing_article_total,
     } = app.read_global(|selection: &ArticleSelection, _app| *selection);
+
+    info!("Starting background task for category {viewing_article_type} {viewing_article_total}");
 
     let client = app.read_global(|client: &ApiClientState, _app| client.0.clone());
 

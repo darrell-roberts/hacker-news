@@ -1,15 +1,15 @@
 //! Article view.
 use crate::{
+    UrlHover,
     comment::CommentView,
-    common::{comment_entities, parse_date, COMMENT_IMAGE},
+    common::{COMMENT_IMAGE, comment_entities, parse_date},
     content::{ContentEvent, ContentView},
     theme::Theme,
-    UrlHover,
 };
 use gpui::{
-    div, img, prelude::*, pulsating_between, px, quadratic, rems, rgb, solid_background, Animation,
-    AnimationExt, AppContext, AsyncApp, Entity, Fill, FontWeight, ImageSource, SharedString,
-    StyleRefinement, Window,
+    Animation, AnimationExt, AppContext, AsyncApp, Entity, Fill, FontWeight, ImageSource,
+    SharedString, StyleRefinement, Window, div, img, prelude::*, pulsating_between, px, quadratic,
+    rems, rgb, solid_background,
 };
 use hacker_news_api::Item;
 use std::{sync::Arc, time::Duration};
@@ -201,8 +201,9 @@ impl ArticleView {
                         article_view.loading_comments = false;
                     });
 
+                    // Take events offline
                     content_entity.update(app, |_content_view: &mut ContentView, cx| {
-                        cx.emit(ContentEvent::ViewingComments(true));
+                        cx.emit(ContentEvent::OnlineToggle(false));
                     });
                 })
                 .detach();
@@ -266,8 +267,9 @@ impl ArticleView {
                                 article.comment_entities.clear();
                             });
 
+                            // Take events online.
                             content_entity.update(app, |_content_view: &mut ContentView, cx| {
-                                cx.emit(ContentEvent::ViewingComments(false));
+                                cx.emit(ContentEvent::OnlineToggle(true));
                             })
                         }),
                 )
