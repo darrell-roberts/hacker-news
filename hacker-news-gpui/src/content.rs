@@ -9,7 +9,9 @@ use std::collections::HashMap;
 
 // Main content view.
 pub struct ContentView {
+    /// List of article view entities currently displayed.
     articles: Vec<Entity<ArticleView>>,
+    /// State for scrolling and alignment of the article list.
     list_state: ListState,
     /// Tracks the ranking of each article so that if it moves up
     /// or down we can show by how much.
@@ -17,17 +19,25 @@ pub struct ContentView {
     /// Tracks the number of comments for an article so that when it
     /// changes we can show a visual indicator.
     article_comment_counts: HashMap<u64, u64>,
+    /// Whether the article stream is currently paused (e.g., when viewing comments).
     pub stream_paused: bool,
+    /// Handle to the background task that updates articles.
     pub background_task: Option<gpui::Task<()>>,
+    /// Sender channel for pushing article updates from background to foreground.
     pub article_sender: Option<channel::mpsc::Sender<Result<Vec<Item>, String>>>,
     /// The number of times we have refresh due to an http server side event.
     pub background_refresh_count: usize,
 }
 
+/// Events emitted by the ContentView to signal UI updates or errors.
 pub enum ContentEvent {
+    /// Indicates the total number of articles currently displayed.
     TotalArticles(usize),
+    /// Indicates whether the user is currently viewing article comments.
     ViewingComments(bool),
+    /// Indicates the total number of refreshes due to background updates.
     TotalRefreshes(usize),
+    /// Indicates an error, optionally containing an error message.
     Error(Option<String>),
 }
 
@@ -40,6 +50,10 @@ impl ContentView {
     ///
     /// * `_window` - A mutable reference to the window instance.
     /// * `app` - A mutable reference to the application instance.
+    ///
+    /// # Returns
+    ///
+    /// Returns an `Entity<Self>` representing the newly created content view.
     pub fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
         let entity_content = app.new(|cx: &mut Context<Self>| {
             cx.subscribe_self(|content, event, _cx| match event {
@@ -77,6 +91,8 @@ impl ContentView {
 /// Starts a background task that subscribes to the top stories stream,
 /// fetches article data, and updates the Content entity accordingly.
 ///
+/// This function is intended to be called once when initializing the Content view.
+///
 /// This function sets up two asynchronous tasks:
 /// 1. One task listens for new batches of articles from a channel and updates
 ///    the Content entity's articles, list state, and ranking map, unless the
@@ -90,7 +106,9 @@ impl ContentView {
 /// * `app` - A mutable reference to the application instance.
 /// * `entity_content` - The entity representing the Content view to be updated.
 ///
-/// This function is intended to be called once when initializing the Content view.
+/// # Returns
+///
+/// Returns a `gpui::Task<()>` representing the spawned background task.
 fn start_background_subscriptions(
     app: &mut App,
     entity_content: &Entity<ContentView>,
@@ -159,9 +177,6 @@ fn start_background_subscriptions(
                                 0
                             };
 
-                            // let comment_count_changed = background_refresh_count > 0
-                            //     && article.descendants != last_comment_count;
-
                             ArticleView::new(
                                 app,
                                 entity_content.clone(),
@@ -203,8 +218,17 @@ fn start_background_subscriptions(
     start_background_article_list_subscription(app, tx)
 }
 
-// Starts a background subscription to the article list
-// and spawns a task to send articles to the foreground.
+/// Starts a background subscription to the article list
+/// and spawns a task to send articles to the foreground.
+///
+/// # Arguments
+///
+/// * `app` - A mutable reference to the application instance.
+/// * `tx` - A sender channel for pushing article updates from background to foreground.
+///
+/// # Returns
+///
+/// Returns a `gpui::Task<()>` representing the spawned background task.
 pub(crate) fn start_background_article_list_subscription(
     app: &mut App,
     mut tx: channel::mpsc::Sender<Result<Vec<Item>, String>>,

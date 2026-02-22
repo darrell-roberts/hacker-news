@@ -16,19 +16,33 @@ use std::{sync::Arc, time::Duration};
 
 // An article view is rendered for each article item.
 pub struct ArticleView {
+    /// The title of the article.
     title: SharedString,
+    /// The author of the article, formatted as "by {author}".
     author: SharedString,
+    /// The number of comments on the article, if available.
     comment_count: Option<SharedString>,
+    /// The URL of the article, if available.
     url: Option<SharedString>,
+    /// The label indicating the change in article order/rank.
     order_change_label: SharedString,
+    /// The change in article order/rank.
     order_change: i64,
+    /// The age of the article, formatted as a string.
     age: SharedString,
+    /// The image source for the comment icon.
     comment_image: ImageSource,
+    /// The rank of the article, formatted as a string.
     rank: SharedString,
+    /// The entities representing the comments for this article.
     comment_entities: Vec<Entity<CommentView>>,
+    /// The IDs of the comments for this article.
     comment_ids: Arc<Vec<u64>>,
+    /// The entity representing the content view associated with this article.
     content_entity: Entity<ContentView>,
+    /// Whether the comments are currently loading.
     loading_comments: bool,
+    /// The delta in comment count since the last update, if available.
     comment_count_changed: Option<SharedString>,
 }
 
@@ -38,7 +52,7 @@ impl ArticleView {
     /// # Arguments
     ///
     /// * `app` - The mutable reference to the async application context.
-    /// * `content` - The entity representing the content view.
+    /// * `content_entity` - The entity representing the content view.
     /// * `item` - The Hacker News article item to render.
     /// * `order_change` - The change in article order/rank.
     /// * `rank` - The current rank of the article.
@@ -49,7 +63,7 @@ impl ArticleView {
     /// An entity representing the newly created `ArticleView`.
     pub fn new(
         app: &mut AsyncApp,
-        content: Entity<ContentView>,
+        content_entity: Entity<ContentView>,
         item: Item,
         order_change: i64,
         rank: usize,
@@ -85,7 +99,7 @@ impl ArticleView {
                 rank: format!("{rank}").into(),
                 comment_entities: Vec::new(),
                 comment_ids: Arc::new(item.kids),
-                content_entity: content,
+                content_entity,
                 loading_comments: false,
                 comment_count_changed: changed,
             }
@@ -115,6 +129,10 @@ impl ArticleView {
     ///
     /// * `div` - The div element to render the new comments cell into.
     /// * `new_comments_added` - The shared string representing the number of new comments added.
+    ///
+    /// # Returns
+    ///
+    /// Returns a [`gpui::Stateful<gpui::Div>`] containing the rendered new comments cell.
     fn render_new_comments_cell(
         &self,
         div: gpui::Stateful<gpui::Div>,
@@ -150,7 +168,9 @@ impl ArticleView {
     /// * `div` - The div element to render the comments cell into.
     /// * `comments` - The shared string representing the number of comments.
     ///
-    /// This shows the total number of comments next to an actionable comment icon.
+    /// # Returns
+    ///
+    /// Returns a [`gpui::Stateful<gpui::Div>`] containing the rendered comments cell.
     fn render_comments_cell(
         &self,
         hover_element: impl Fn(StyleRefinement) -> StyleRefinement,
@@ -208,14 +228,16 @@ impl ArticleView {
 
     /// Renders opened comments.
     ///
-    /// Renders opened comments.
-    ///
     /// # Arguments
     ///
     /// * `theme` - The current theme to use for styling.
     /// * `article_entity` - The entity representing the article view.
     /// * `content_entity` - The entity representing the content view to close comments.
     /// * `el` - The div element to render the comments into.
+    ///
+    /// # Returns
+    ///
+    /// Returns a [`gpui::Div`] containing the rendered comments section.
     fn render_comments(
         &mut self,
         theme: Theme,

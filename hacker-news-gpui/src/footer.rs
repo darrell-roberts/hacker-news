@@ -12,11 +12,17 @@ use gpui::{
 
 /// Footer view and state.
 pub struct FooterView {
+    /// The current status line displayed in the footer.
     status_line: SharedString,
+    /// The currently hovered URL, if any.
     url: Option<SharedString>,
+    /// Reference to the ContentView entity.
     content: Entity<ContentView>,
+    /// Whether the stream is subscribed (online) or paused.
     subscribed: bool,
+    /// The total number of refreshes resulting from a server side event, as a string.
     total_refreshes: SharedString,
+    /// Any error message to display, if present.
     error: Option<SharedString>,
 }
 
