@@ -18,6 +18,15 @@ pub static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
 
 /// Extract the duration from a UNIX time and convert duration into a human
 /// friendly sentence.
+///
+/// # Arguments
+///
+/// * `time` - A UNIX timestamp as a `u64`.
+///
+/// # Returns
+///
+/// An `Option<String>` containing a human-friendly sentence representing the duration
+/// since the given UNIX time, or `None` if the timestamp is invalid.
 pub fn parse_date(time: u64) -> Option<String> {
     let duration =
         DateTime::<Utc>::from_timestamp(time.try_into().ok()?, 0).map(|then| Utc::now() - then)?;
@@ -45,6 +54,10 @@ pub fn parse_date(time: u64) -> Option<String> {
 /// * `app` - A mutable reference to the asynchronous application.
 /// * `article_entity` - The entity representing the article to which the comments belong.
 /// * `comment_ids` - A slice of comment IDs to fetch and create entities for.
+///
+/// # Returns
+///
+/// A vector of `Entity<CommentView>` representing the created comment entities.
 ///
 pub async fn comment_entities(
     app: &mut AsyncApp,

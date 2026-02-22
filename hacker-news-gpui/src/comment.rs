@@ -17,15 +17,25 @@ use std::{ops::Range, sync::Arc, time::Duration};
 /// Comment view with state.
 pub struct CommentView {
     text: SharedString,
+    /// The author of the article, formatted as "by {author}".
     author: SharedString,
+    /// The entities representing the child comments for this comment.
     children: Vec<Entity<CommentView>>,
-    comment_ids: Arc<Vec<u64>>,
+    /// The ids of child comments.
+    comment_child_ids: Arc<Vec<u64>>,
+    /// The image source for the comment icon.
     comment_image: ImageSource,
-    total_comments: SharedString,
+    /// The number of comments on the comment, if available.
+    comment_count: SharedString,
+    /// Whether the comments are currently loading.
     loading_comments: bool,
+    /// The top level article entity this comment is a descendant of.
     article_entity: Entity<ArticleView>,
+    /// Text layout structure of the comment body for rendering as [`StyledText`].
     text_layout: Vec<TextLayout>,
+    /// The age of the comment, formatted as a string.
     age: SharedString,
+    /// Any urls that are in the comment body.
     urls: Vec<String>,
 }
 
@@ -49,8 +59,8 @@ impl CommentView {
             text: text.into(),
             author: format!("by: {} ({})", item.by, item.id).into(),
             children: Vec::new(),
-            total_comments: format!("{}", item.kids.len()).into(),
-            comment_ids: Arc::new(item.kids),
+            comment_count: format!("{}", item.kids.len()).into(),
+            comment_child_ids: Arc::new(item.kids),
             comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
             loading_comments: false,
             article_entity,
@@ -66,6 +76,10 @@ impl CommentView {
     ///
     /// * `theme` - The current theme used for styling.
     /// * `comment_entity` - The entity representing this comment view.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `gpui::Div` element containing the rendered comment text area UI.
     fn render_text_area(&self, theme: Theme, comment_entity: Entity<CommentView>) -> gpui::Div {
         div().p_1().child(
             InteractiveText::new(
@@ -90,6 +104,10 @@ impl CommentView {
     /// * `theme` - The current theme used for styling.
     /// * `comment_ids` - The list of child comment IDs.
     /// * `comment_entity` - The entity representing this comment view.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `gpui::Div` element containing the comment footer UI.
     fn render_comment_footer(
         &self,
         theme: Theme,
@@ -107,13 +125,11 @@ impl CommentView {
             .text_size(rems(0.75))
             .child(self.author.clone())
             .child(self.age.clone())
-            .when(!self.comment_ids.is_empty(), |div| {
+            .when(!self.comment_child_ids.is_empty(), |div| {
                 self.render_child_comments(comment_ids, comment_entity, div)
             })
     }
 
-    /// Render child comments that have opened.
-    ///
     /// Render child comments that have opened.
     ///
     /// # Arguments
@@ -121,6 +137,10 @@ impl CommentView {
     /// * `comment_ids` - The list of child comment IDs.
     /// * `comment_entity` - The entity representing this comment view.
     /// * `el` - The parent Div element to which child comments UI will be attached.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `gpui::Div` element containing the child comments UI.
     fn render_child_comments(
         &self,
         comment_ids: Arc<Vec<u64>>,
@@ -154,7 +174,7 @@ impl CommentView {
                 })
                 .flex()
                 .flex_row()
-                .child(self.total_comments.clone())
+                .child(self.comment_count.clone())
                 .child(div().child(img(self.comment_image.clone())).when(
                     self.loading_comments,
                     |el| {
@@ -181,7 +201,7 @@ impl Render for CommentView {
     ) -> impl gpui::IntoElement {
         let theme: Theme = window.appearance().into();
 
-        let comment_ids = self.comment_ids.clone();
+        let comment_ids = self.comment_child_ids.clone();
         let comment_entity = cx.entity();
 
         div()
@@ -218,6 +238,17 @@ impl Render for CommentView {
     }
 }
 
+/// Creates a `TextRun` representing normal text with the given length.
+/// It uses the system UI font and the current theme's text color.
+///
+/// # Arguments:
+///
+///   * theme: The current theme used for styling.
+///   * len: The length of the text run.
+///
+/// # Returns:
+///
+///   A `TextRun` configured for normal text.
 fn normal(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
@@ -308,9 +339,14 @@ fn link(theme: Theme, len: usize) -> TextRun {
 }
 
 #[derive(Default)]
+/// A comment body with layout and url properties
+/// for formatting as [`StyledText`].
 struct ParsedComment {
+    /// Full comment body as text
     text: String,
+    /// Layouts to format the comment body by character index.
     layout: Vec<TextLayout>,
+    /// Url strings for rendering links.
     urls: Vec<String>,
 }
 

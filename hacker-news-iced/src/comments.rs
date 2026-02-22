@@ -510,11 +510,10 @@ impl CommentState {
 
                 // Check if this is a top level comment.
                 while let Some(stack_item) = self.nav_stack.pop() {
-                    if let Some(c) = stack_item.comment {
-                        if c.id == comment_id {
+                    if let Some(c) = stack_item.comment
+                        && c.id == comment_id {
                             break;
                         }
-                    }
                 }
 
                 self.parent_id = self
