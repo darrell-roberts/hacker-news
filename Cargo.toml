@@ -13,7 +13,7 @@ resolver = "2"
 
 [workspace.package]
 license = "MIT"
-edition = "2021"
+edition = "2024"
 
 [workspace.dependencies]
 anyhow = "1"

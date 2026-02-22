@@ -67,6 +67,9 @@ impl FooterView {
                     ContentEvent::Error(error) => {
                         footer.error = error.as_ref().map(Into::into);
                     }
+                    ContentEvent::Terminated(_) => {
+                        footer.subscribed = false;
+                    }
                 },
             )
             .detach();
