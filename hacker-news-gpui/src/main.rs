@@ -3,9 +3,9 @@ use crate::{content::start_background_article_list_subscription, header::Header,
 use content::ContentView;
 use footer::FooterView;
 use gpui::{
-    actions, div, point, prelude::*, px, size, App, AppContext, Application, Bounds, Entity,
-    Global, Menu, MenuItem, SharedString, Window, WindowBounds, WindowDecorations, WindowKind,
-    WindowOptions,
+    App, AppContext, Application, Bounds, Entity, Global, Menu, MenuItem, SharedString, Window,
+    WindowBounds, WindowDecorations, WindowKind, WindowOptions, actions, div, point, prelude::*,
+    px, size,
 };
 use hacker_news_api::{ApiClient, ArticleType, Item};
 use hacker_news_config::init_logger;
@@ -173,9 +173,10 @@ fn main() {
                 window_decorations: Some(WindowDecorations::Server),
                 window_min_size: Some(size(px(400.), px(800.))),
                 is_movable: true,
-                window_bounds: Some(WindowBounds::Windowed(Bounds::centered_at(
-                    point(px(0.), px(0.)),
+                window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
+                    None,
                     size(px(1000.), px(1200.)),
+                    app,
                 ))),
                 show: true,
                 focus: true,
