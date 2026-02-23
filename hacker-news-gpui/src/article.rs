@@ -112,8 +112,9 @@ impl ArticleView {
                     .timer(Duration::from_secs(5))
                     .await;
                 if let Some(entity) = entity.upgrade() {
-                    entity.update(app, |article: &mut ArticleView, _| {
+                    entity.update(app, |article: &mut ArticleView, cx| {
                         article.comment_count_changed = None;
+                        cx.notify();
                     });
                 }
             })
@@ -147,6 +148,7 @@ impl ArticleView {
                         .bg(Fill::Color(rgb(0xFF69B4).into()))
                         .text_align(gpui::TextAlign::Center)
                         .rounded(rems(0.25))
+                        .px(px(4.0))
                         .child(new_comments_added.clone())
                         .with_animation(
                             "comment-count-changed-fade",

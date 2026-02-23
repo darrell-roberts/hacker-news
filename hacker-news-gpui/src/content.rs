@@ -27,16 +27,12 @@ pub struct ContentView {
     pub article_sender: Option<channel::mpsc::Sender<Result<Vec<Item>, BackGroundError>>>,
     /// The number of times we have refresh due to an http server side event.
     pub background_refresh_count: usize,
-    // We are viewing comments.
-    // pub viewing_comments: bool,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
 pub enum ContentEvent {
     /// Indicates the total number of articles currently displayed.
     TotalArticles(usize),
-    // Indicates whether the user is currently viewing article comments.
-    // ViewingComments(bool),
     /// Indicates the total number of refreshes due to background updates.
     TotalRefreshes(usize),
     /// Indicates an error, optionally containing an error message.
