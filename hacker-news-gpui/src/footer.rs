@@ -17,7 +17,7 @@ pub struct FooterView {
     /// The currently hovered URL, if any.
     url: Option<SharedString>,
     /// Reference to the ContentView entity.
-    content: Entity<ContentView>,
+    content_entity: Entity<ContentView>,
     /// Whether the stream is online or paused.
     online: bool,
     /// The total number of refreshes resulting from a server side event, as a string.
@@ -83,7 +83,7 @@ impl FooterView {
             Self {
                 status_line: Default::default(),
                 url: None,
-                content: content_entity,
+                content_entity,
                 online: true,
                 total_refreshes: Default::default(),
                 error: None,
@@ -99,7 +99,7 @@ impl Render for FooterView {
         _cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
         let theme: Theme = window.appearance().into();
-        let content_entity = self.content.clone();
+        let content_entity = self.content_entity.clone();
         let online = self.online;
 
         div()
