@@ -105,18 +105,18 @@ impl ArticleView {
             }
         });
 
-        let entity = article_entity.downgrade();
+        // Set a timer to allow the comment count to return
+        // after the the animation has completed.
         if comment_count_changed > 0 {
+            let article_entity = article_entity.clone();
             app.spawn(async move |app: &mut AsyncApp| {
                 app.background_executor()
                     .timer(Duration::from_secs(5))
                     .await;
-                if let Some(entity) = entity.upgrade() {
-                    entity.update(app, |article: &mut ArticleView, cx| {
-                        article.comment_count_changed = None;
-                        cx.notify();
-                    });
-                }
+                article_entity.update(app, |article: &mut ArticleView, cx| {
+                    article.comment_count_changed = None;
+                    cx.notify();
+                });
             })
             .detach();
         }
