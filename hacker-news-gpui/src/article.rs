@@ -107,7 +107,7 @@ impl ArticleView {
 
         // Set a timer to allow the comment count to return
         // after the the animation has completed.
-        if comment_count_changed > 0 {
+        if comment_count_changed != 0 {
             let article_entity = article_entity.clone();
             app.spawn(async move |app: &mut AsyncApp| {
                 app.background_executor()
