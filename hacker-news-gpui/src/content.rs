@@ -103,9 +103,10 @@ impl ContentView {
         });
 
         let background_task = start_background_subscriptions(app, &entity_content);
-        entity_content.update(app, |content_view, _ctx| {
+        entity_content.update(app, |content_view, ctx| {
             content_view.background_task = Some(background_task);
             content_view.online = true;
+            ctx.emit(ContentEvent::OnlineToggle(true));
         });
         entity_content
     }
@@ -119,6 +120,7 @@ fn restart_background_task(content_view: &mut ContentView, cx: &mut Context<'_, 
         let task = start_background_article_list_subscription(cx, tx.clone());
         content_view.background_task.replace(task);
         content_view.online = true;
+        cx.emit(ContentEvent::OnlineToggle(true));
     }
 }
 
