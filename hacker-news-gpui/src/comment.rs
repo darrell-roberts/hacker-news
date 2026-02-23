@@ -1,17 +1,17 @@
 //! Render comment
 use crate::{
     article::ArticleView,
-    common::{comment_entities, parse_date, COMMENT_IMAGE},
+    common::{COMMENT_IMAGE, comment_entities, parse_date},
     theme::Theme,
 };
 use gpui::{
-    div, img, prelude::FluentBuilder as _, pulsating_between, px, rems, Animation,
-    AnimationExt as _, AppContext as _, AsyncApp, Entity, Font, FontWeight, ImageSource,
+    Animation, AnimationExt as _, AppContext as _, AsyncApp, Entity, Font, FontWeight, ImageSource,
     InteractiveElement, InteractiveText, ParentElement, Render, SharedString,
-    StatefulInteractiveElement, Styled, StyledText, TextRun, UnderlineStyle, Window,
+    StatefulInteractiveElement, Styled, StyledText, TextRun, UnderlineStyle, Window, div, img,
+    prelude::FluentBuilder as _, pulsating_between, px, rems,
 };
 use hacker_news_api::Item;
-use html_sanitizer::{parse_elements, Element};
+use html_sanitizer::{Element, parse_elements};
 use std::{ops::Range, sync::Arc, time::Duration};
 
 /// Comment view with state.
@@ -266,6 +266,17 @@ fn normal(theme: Theme, len: usize) -> TextRun {
     }
 }
 
+/// Creates a `TextRun` representing italic text with the given length.
+/// It uses the system UI font with italic style and the current theme's text color.
+///
+/// # Arguments:
+///
+///   * theme: The current theme used for styling.
+///   * len: The length of the text run.
+///
+/// # Returns:
+///
+///   A `TextRun` configured for italic text.
 fn italic(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
@@ -283,6 +294,17 @@ fn italic(theme: Theme, len: usize) -> TextRun {
     }
 }
 
+/// Creates a `TextRun` representing bold text with the given length.
+/// It uses the system UI font with bold weight and the current theme's text color.
+///
+/// # Arguments:
+///
+///   * theme: The current theme used for styling.
+///   * len: The length of the text run.
+///
+/// # Returns:
+///
+///   A `TextRun` configured for bold text.
 fn bold(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
@@ -300,6 +322,17 @@ fn bold(theme: Theme, len: usize) -> TextRun {
     }
 }
 
+/// Creates a `TextRun` representing monospaced code text with the given length.
+/// It uses the Menlo font and the current theme's text color.
+///
+/// # Arguments:
+///
+///   * theme: The current theme used for styling.
+///   * len: The length of the text run.
+///
+/// # Returns:
+///
+///   A `TextRun` configured for code text.
 fn code(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
@@ -317,6 +350,17 @@ fn code(theme: Theme, len: usize) -> TextRun {
     }
 }
 
+/// Creates a `TextRun` representing a clickable link with the given length.
+/// It uses the system UI font with a wavy underline and the current theme's text color.
+///
+/// # Arguments:
+///
+///   * theme: The current theme used for styling.
+///   * len: The length of the text run.
+///
+/// # Returns:
+///
+///   A `TextRun` configured for link text.
 fn link(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
@@ -350,16 +394,39 @@ struct ParsedComment {
     urls: Vec<String>,
 }
 
+/// Parses a list of HTML [`Element`]s into a [`ParsedComment`], extracting
+/// the plain text content, text layout information for rich formatting,
+/// and any URLs found in link elements.
+///
+/// # Arguments
+///
+/// * `elements` - A vector of parsed HTML elements representing the comment body.
+///
+/// # Returns
+///
+/// A [`ParsedComment`] containing the extracted text, layout metadata, and URLs.
 fn parse_layout(elements: Vec<Element<'_>>) -> ParsedComment {
-    let mut layout = Vec::new();
-    let mut buffer = String::new();
-    let mut urls = Vec::new();
+    let mut parsed = ParsedComment::default();
+    collect_elements(&elements, &mut parsed, None);
+    parsed
+}
 
+/// Recursively collects elements into the shared `ParsedComment` accumulator.
+/// When `wrapper` is `Some`, the inner text segments are wrapped in that
+/// layout style (e.g. `Italic` or `Bold`) instead of their own default.
+/// Links inside a wrapper still produce `Link` layout entries so that URLs
+/// are never lost.
+fn collect_elements(
+    elements: &[Element<'_>],
+    parsed: &mut ParsedComment,
+    wrapper: Option<fn(usize) -> TextLayout>,
+) {
     for element in elements {
         match element {
             Element::Text(s) => {
-                layout.push(TextLayout::Normal(s.len()));
-                buffer.push_str(s);
+                let layout_fn = wrapper.unwrap_or(TextLayout::Normal);
+                push_or_merge(&mut parsed.layout, layout_fn, s.len());
+                parsed.text.push_str(s);
             }
             Element::Link(anchor) => {
                 let link = anchor
@@ -375,52 +442,90 @@ fn parse_layout(elements: Vec<Element<'_>>) -> ParsedComment {
                     });
 
                 if let Some((text, url)) = link {
-                    layout.push(TextLayout::Link(text.len()));
-                    buffer.push_str(text);
-                    urls.push(url.to_string());
+                    parsed.layout.push(TextLayout::Link(text.len()));
+                    parsed.text.push_str(text);
+                    parsed.urls.push(url.to_string());
                 }
             }
             Element::Escaped(c) => {
-                layout.push(TextLayout::Normal(1));
-                buffer.push(c);
+                let layout_fn = wrapper.unwrap_or(TextLayout::Normal);
+                push_or_merge(&mut parsed.layout, layout_fn, 1);
+                parsed.text.push(*c);
             }
             Element::Paragraph => {
-                layout.push(TextLayout::Normal(1));
-                buffer.push('\n');
+                push_or_merge(&mut parsed.layout, TextLayout::Normal, 1);
+                parsed.text.push('\n');
             }
             Element::Code(s) => {
-                layout.push(TextLayout::Code(s.len()));
-                buffer.push_str(&s);
+                parsed.layout.push(TextLayout::Code(s.len()));
+                parsed.text.push_str(s);
             }
-            Element::Italic(elements) => {
-                let ParsedComment { text, .. } = parse_layout(elements);
-                layout.push(TextLayout::Italic(text.len()));
-                buffer.push_str(&text);
+            Element::Italic(children) => {
+                collect_elements(children, parsed, Some(TextLayout::Italic));
             }
-            Element::Bold(elements) => {
-                let ParsedComment { text, .. } = parse_layout(elements);
-                layout.push(TextLayout::Bold(text.len()));
-                buffer.push_str(&text);
+            Element::Bold(children) => {
+                collect_elements(children, parsed, Some(TextLayout::Bold));
             }
         }
     }
-
-    ParsedComment {
-        text: buffer,
-        layout,
-        urls,
-    }
 }
 
+/// Pushes a new layout entry or extends the last one if it is the same variant,
+/// reducing fragmentation from many small adjacent segments of the same style.
+fn push_or_merge(layout: &mut Vec<TextLayout>, ctor: fn(usize) -> TextLayout, len: usize) {
+    // Check if the last entry is the same variant so we can merge.
+    if let Some(last) = layout.last_mut() {
+        // Build a dummy to compare discriminants.
+        let candidate = ctor(0);
+        if std::mem::discriminant(last) == std::mem::discriminant(&candidate) {
+            *last = ctor(last.len() + len);
+            return;
+        }
+    }
+    layout.push(ctor(len));
+}
+
+/// Represents the different text formatting styles used in comment body layout.
+/// Each variant holds the length (in characters) of the text segment it applies to.
 #[derive(Copy, Clone)]
 enum TextLayout {
+    /// Normal, unstyled text.
     Normal(usize),
+    /// Bold text.
     Bold(usize),
+    /// Italic text.
     Italic(usize),
+    /// A clickable link.
     Link(usize),
+    /// Monospaced code text.
     Code(usize),
 }
 
+impl TextLayout {
+    /// Returns the character length of this text layout segment.
+    fn len(&self) -> usize {
+        match self {
+            TextLayout::Normal(n)
+            | TextLayout::Bold(n)
+            | TextLayout::Italic(n)
+            | TextLayout::Link(n)
+            | TextLayout::Code(n) => *n,
+        }
+    }
+}
+
+/// Converts a slice of `TextLayout` elements into an iterator of `TextRun` items,
+/// applying the appropriate text styling (normal, bold, italic, link, or code)
+/// based on each layout element's variant.
+///
+/// # Arguments
+///
+///   * theme: The current theme used for styling the text runs.
+///   * layout: A slice of `TextLayout` elements describing the formatting of each text segment.
+///
+/// # Returns
+///
+///   An iterator of `TextRun` items corresponding to the styled text segments.
 fn rich_text_runs(theme: Theme, layout: &[TextLayout]) -> impl Iterator<Item = TextRun> + use<'_> {
     layout.iter().map(move |element| match element {
         TextLayout::Normal(n) => normal(theme, *n),
@@ -431,28 +536,25 @@ fn rich_text_runs(theme: Theme, layout: &[TextLayout]) -> impl Iterator<Item = T
     })
 }
 
-fn url_ranges(layout: &[TextLayout]) -> Vec<Range<usize>> {
+/// Computes the character ranges of all link segments within the given text layouts.
+/// These ranges are used to identify clickable regions in the rendered comment text.
+///
+/// # Arguments
+///
+///   * layouts: A slice of `TextLayout` elements describing the formatting of each text segment.
+///
+/// # Returns
+///
+///   A vector of `Range<usize>` values, each representing the character range of a link segment.
+fn url_ranges(layouts: &[TextLayout]) -> Vec<Range<usize>> {
     let mut ranges = Vec::new();
     let mut total_chars = 0;
-    for l in layout {
-        match l {
-            TextLayout::Normal(n) => {
-                total_chars += n;
-            }
-            TextLayout::Bold(n) => {
-                total_chars += n;
-            }
-            TextLayout::Italic(n) => {
-                total_chars += n;
-            }
-            TextLayout::Link(n) => {
-                ranges.push(total_chars..(total_chars + n));
-                total_chars += n;
-            }
-            TextLayout::Code(n) => {
-                total_chars += n;
-            }
+    for layout in layouts {
+        let n = layout.len();
+        if matches!(layout, TextLayout::Link(_)) {
+            ranges.push(total_chars..(total_chars + n));
         }
+        total_chars += n;
     }
     ranges
 }
