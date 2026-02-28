@@ -148,7 +148,7 @@ fn main() {
         app.set_global(ApiClientState(client));
         app.set_global(ArticleSelection {
             viewing_article_type: ArticleType::Top,
-            viewing_article_total: 25,
+            viewing_article_total: 50,
         });
         app.set_global(UrlHover(None));
 
