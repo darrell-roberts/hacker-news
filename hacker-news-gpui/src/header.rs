@@ -1,9 +1,9 @@
 //! Header view.
-use crate::{theme::Theme, ArticleSelection};
+use crate::{ArticleSelection, theme::Theme};
 use gpui::{
-    black, div, point, prelude::FluentBuilder, px, rems, rgb, white, yellow, App, AppContext as _,
-    BorrowAppContext, BoxShadow, Div, Entity, InteractiveElement, IntoElement, ParentElement,
-    Render, SharedString, Stateful, StatefulInteractiveElement as _, Styled, Window,
+    App, AppContext as _, BorrowAppContext, BoxShadow, Div, Entity, InteractiveElement,
+    IntoElement, ParentElement, Render, SharedString, Stateful, StatefulInteractiveElement as _,
+    Styled, Window, black, div, point, prelude::FluentBuilder, px, rems, rgb, white, yellow,
 };
 use hacker_news_api::ArticleType;
 
@@ -107,6 +107,7 @@ impl Render for Header {
             .w_full()
             .justify_center()
             .m_1()
+            .pb_1()
             .children(col1)
             .child(div().border_4())
             .children(col2)

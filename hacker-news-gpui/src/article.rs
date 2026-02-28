@@ -327,7 +327,7 @@ impl Render for ArticleView {
                 })
                 .when(self.viewing_comments, |div| div.opacity(0.75))
                 .child(
-                    div().m_1().child(
+                    div().mb_1().child(
                         div()
                             .flex()
                             .flex_row()

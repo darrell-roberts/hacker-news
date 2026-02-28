@@ -442,8 +442,8 @@ impl Render for ContentView {
                     .w(DefiniteLength::Absolute(gpui::AbsoluteLength::Pixels(
                         self.articles_width,
                     )))
-                    .p_1()
-                    .m_1()
+                    .pr_1()
+                    .mr_1()
                     .children(
                         self.articles
                             .iter()
@@ -455,6 +455,7 @@ impl Render for ContentView {
                     .id("divider")
                     .h_full()
                     .w(px(1.0))
+                    .mt_4()
                     .flex_shrink_0()
                     .cursor_col_resize()
                     .bg(theme.border())
@@ -487,8 +488,8 @@ impl Render for ContentView {
                     .min_w_0()
                     .overflow_y_scroll()
                     .flex_1()
-                    .p_1()
-                    .m_1()
+                    .pb_2()
+                    .ml_1()
                     .when(self.fetching_comments, |div| {
                         div.child("Fetching comments...")
                     })
@@ -523,18 +524,18 @@ impl ContentView {
 
         el.child(
             div()
-                .bg(theme.comment_border())
-                .mt_1()
-                .ml_1()
-                .pl_1()
+                .bg(theme.bg())
                 .rounded_tl_md()
+                .pb_2()
                 .child(
                     div()
                         .flex()
                         .flex_grow()
                         .flex_row()
                         .text_size(rems(0.75))
-                        .child("[X]")
+                        .bg(theme.comment_border())
+                        .rounded_tl_md()
+                        .child(div().pl_1().child("[X]"))
                         .cursor_pointer()
                         .id("close-comments")
                         .on_click(move |_event, _window, app| {
