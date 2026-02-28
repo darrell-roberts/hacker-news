@@ -70,6 +70,7 @@ impl FooterView {
                     ContentEvent::Terminated(_) => {
                         footer.online = false;
                     }
+                    ContentEvent::OpenComments(_) => {}
                 },
             )
             .detach();

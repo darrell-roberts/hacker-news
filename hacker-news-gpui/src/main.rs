@@ -128,7 +128,7 @@ impl Render for MainWindow {
             .h_full()
             .bg(theme.bg())
             .child(self.header.clone())
-            .child(self.content.clone())
+            .child(div().flex_1().min_h_0().child(self.content.clone()))
             .child(
                 div()
                     .flex()
@@ -148,7 +148,7 @@ fn main() {
         app.set_global(ApiClientState(client));
         app.set_global(ArticleSelection {
             viewing_article_type: ArticleType::Top,
-            viewing_article_total: 25,
+            viewing_article_total: 50,
         });
         app.set_global(UrlHover(None));
 
@@ -175,7 +175,7 @@ fn main() {
                 is_movable: true,
                 window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
                     None,
-                    size(px(1000.), px(1200.)),
+                    size(px(1900.), px(1200.)),
                     app,
                 ))),
                 show: true,

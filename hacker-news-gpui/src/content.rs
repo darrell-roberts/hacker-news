@@ -1,8 +1,14 @@
 //! Main content view
-use crate::{ApiClientState, ArticleSelection, article::ArticleView};
+use crate::{
+    ApiClientState, ArticleSelection, article::ArticleView, comment::CommentView,
+    common::comment_entities, theme::Theme,
+};
 use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
-use gpui::{App, AppContext, Entity, EventEmitter, ListState, Window, div, prelude::*, px};
+use gpui::{
+    App, AppContext, DefiniteLength, Entity, EventEmitter, ListState, MouseButton, MouseMoveEvent,
+    Pixels, Window, div, prelude::*, px, rems,
+};
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
 use std::collections::HashMap;
@@ -27,6 +33,14 @@ pub struct ContentView {
     pub article_sender: Option<channel::mpsc::Sender<Result<Vec<Item>, BackGroundError>>>,
     /// The number of times we have refresh due to an http server side event.
     pub background_refresh_count: usize,
+    /// The entities representing the comments for this article.
+    pub comment_entities: Vec<Entity<CommentView>>,
+    /// The width of the article column, user adjustable.
+    articles_width: Pixels,
+    /// True when the user is adjusting the article column width using the divider.
+    is_dragging_divider: bool,
+    /// Fetching comments.
+    fetching_comments: bool,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
@@ -41,6 +55,8 @@ pub enum ContentEvent {
     Terminated(ArticleType),
     /// Toggle online status
     OnlineToggle(bool),
+    /// Open Comments
+    OpenComments(Entity<ArticleView>),
 }
 
 impl EventEmitter<ContentEvent> for ContentView {}
@@ -81,6 +97,40 @@ impl ContentView {
                         restart_background_task(content_view, cx);
                     }
                 }
+                ContentEvent::OpenComments(article_entity) => {
+                    content_view.fetching_comments = true;
+                    let id = article_entity.read(cx).id;
+                    let article_entity = article_entity.clone();
+                    let comment_ids = article_entity.read(cx).comment_ids.clone();
+
+                    // Toggle viewing for articles that are no longer viewing comments.
+                    for article in &content_view.articles {
+                        let viewing = article.read(cx).viewing_comments;
+                        let article_id = article.read(cx).id;
+
+                        if viewing && (article_id != id) {
+                            article.update(cx, |article_view, _cx| {
+                                article_view.viewing_comments = false;
+                            });
+                        }
+                    }
+
+                    cx.spawn(async move |weak_content_view_entity, async_app| {
+                        let comment_entities =
+                            comment_entities(async_app, article_entity, &comment_ids).await;
+                        async_app.update(|app| {
+                            if let Err(err) =
+                                weak_content_view_entity.update(app, |content_view, _cx| {
+                                    content_view.comment_entities = comment_entities;
+                                    content_view.fetching_comments = false;
+                                })
+                            {
+                                error!("Content view is gone: {err}");
+                            }
+                        });
+                    })
+                    .detach();
+                }
                 ContentEvent::Error(_)
                 | ContentEvent::TotalArticles(_)
                 | ContentEvent::TotalRefreshes(_) => (),
@@ -98,7 +148,10 @@ impl ContentView {
                 article_sender: None,
                 article_comment_counts: Default::default(),
                 background_refresh_count: 0,
-                // viewing_comments: false,
+                comment_entities: Vec::new(),
+                articles_width: px(800.0),
+                is_dragging_divider: false,
+                fetching_comments: false,
             }
         });
 
@@ -171,12 +224,12 @@ fn start_background_subscriptions(
         while let Some(items) = rx.next().await {
             match items {
                 Ok(items) => {
-                    let viewing_comments = entity_content
-                        .read_with(app, |content: &ContentView, _app| !content.online);
-
-                    if viewing_comments {
-                        continue;
-                    }
+                    let viewing_id = app.read_entity(&entity_content, |content_view, app| {
+                        content_view.articles.iter().find_map(|article_entity| {
+                            let article_view = article_entity.read(app);
+                            article_view.viewing_comments.then_some(article_view.id)
+                        })
+                    });
 
                     let current_ranking_map = items
                         .iter()
@@ -224,6 +277,9 @@ fn start_background_subscriptions(
                                 0
                             };
 
+                            let viewing_comments =
+                                viewing_id.map(|id| id == article.id).unwrap_or(false);
+
                             ArticleView::new(
                                 app,
                                 entity_content.clone(),
@@ -231,11 +287,24 @@ fn start_background_subscriptions(
                                 order_change,
                                 index + 1,
                                 comment_count_changed,
+                                viewing_comments,
                             )
                         })
                         .collect::<Vec<_>>();
 
+                    // Check if we were viewing comments for an article but that article is
+                    // not in the update anymore.
+                    let viewing_comments = views.iter().any(|article_entity| {
+                        app.read_entity(article_entity, |article_view, _cx| {
+                            article_view.viewing_comments
+                        })
+                    });
+
                     app.update_entity(&entity_content, |content, cx| {
+                        if viewing_id.is_some() && !viewing_comments {
+                            content.comment_entities.clear();
+                        }
+
                         content.articles = views;
                         content.list_state.reset(content.articles.len());
                         content.article_ranks = current_ranking_map;
@@ -336,12 +405,153 @@ pub(crate) fn start_background_article_list_subscription(
     }))
 }
 
+const MARGIN: Pixels = px(10.0);
+
 impl Render for ContentView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        div().id("articles").overflow_scroll().p_1().m_1().children(
-            self.articles
-                .iter()
-                .map(|article| div().m_1().child(article.clone())),
+    fn render(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
+        let theme: Theme = window.appearance().into();
+
+        div()
+            .id("content")
+            .flex()
+            .flex_row()
+            .flex_shrink_0()
+            .h_full()
+            .min_h_0()
+            // Only listen to move/up at the container level when actively dragging
+            .when(self.is_dragging_divider, |div| {
+                div.on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
+                    this.articles_width = (event.position.x - MARGIN).max(px(100.0));
+                    cx.notify();
+                }))
+                .on_mouse_up(
+                    MouseButton::Left,
+                    cx.listener(|this, _event, _window, cx| {
+                        this.is_dragging_divider = false;
+                        cx.notify();
+                    }),
+                )
+                .cursor_col_resize()
+            })
+            .child(
+                div()
+                    .id("articles")
+                    .h_full()
+                    .overflow_y_scroll()
+                    .flex_col()
+                    .w(DefiniteLength::Absolute(gpui::AbsoluteLength::Pixels(
+                        self.articles_width,
+                    )))
+                    .pr_1()
+                    .mr_1()
+                    .children(
+                        self.articles
+                            .iter()
+                            .map(|article| div().w_full().m_1().child(article.clone())),
+                    ),
+            )
+            .child(
+                div()
+                    .id("divider")
+                    .h_full()
+                    .w(px(1.0))
+                    .mt_4()
+                    .flex_shrink_0()
+                    .cursor_col_resize()
+                    .bg(theme.border())
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _event, _window, cx| {
+                            this.is_dragging_divider = true;
+                            cx.notify();
+                        }),
+                    )
+                    .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
+                        if this.is_dragging_divider {
+                            this.articles_width = event.position.x;
+                            cx.notify();
+                        }
+                    }))
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _event, _window, cx| {
+                            this.is_dragging_divider = false;
+                            cx.notify();
+                        }),
+                    ),
+            )
+            .child(
+                div()
+                    .id("comments")
+                    .h_full()
+                    .flex_col()
+                    .min_w_0()
+                    .overflow_y_scroll()
+                    .flex_1()
+                    .pb_2()
+                    .ml_1()
+                    .when(self.fetching_comments, |div| {
+                        div.child("Fetching comments...")
+                    })
+                    .when(
+                        !self.comment_entities.is_empty() && !self.fetching_comments,
+                        |div| self.render_comments(cx, theme, div),
+                    ),
+            )
+    }
+}
+
+impl ContentView {
+    /// Renders opened comments.
+    ///
+    /// # Arguments
+    ///
+    /// * `cx` - Content view context.
+    /// * `theme` - The current theme to use for styling.
+    /// * `el` - The div element to render the comments into.
+    ///
+    /// # Returns
+    ///
+    /// Returns a [`gpui::Stateful<gpui::Div>`] containing the rendered comments section.
+    fn render_comments(
+        &self,
+        cx: &mut gpui::Context<ContentView>,
+        theme: Theme,
+        el: gpui::Stateful<gpui::Div>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let comment_entities = self.comment_entities.clone();
+        let content_entity = cx.entity();
+
+        el.child(
+            div()
+                .bg(theme.bg())
+                .rounded_tl_md()
+                .pb_2()
+                .child(
+                    div()
+                        .flex()
+                        .flex_grow()
+                        .flex_row()
+                        .text_size(rems(0.75))
+                        .bg(theme.comment_border())
+                        .rounded_tl_md()
+                        .child(div().pl_1().child("[X]"))
+                        .cursor_pointer()
+                        .id("close-comments")
+                        .on_click(move |_event, _window, app| {
+                            // Clear any open comments for another article
+                            content_entity.update(app, |content, cx| {
+                                content.comment_entities.clear();
+
+                                for article_entity in &content.articles {
+                                    article_entity.update(cx, |article_entity, _cx| {
+                                        article_entity.viewing_comments = false;
+                                    });
+                                }
+                            });
+                        }),
+                )
+                .children(comment_entities.clone()),
         )
     }
 }

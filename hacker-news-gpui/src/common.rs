@@ -1,12 +1,10 @@
 //! Common functions.
-//!
-
 use chrono::{DateTime, Utc};
 use futures::TryStreamExt as _;
 use gpui::{AsyncApp, Entity, Image};
 use std::sync::{Arc, LazyLock};
 
-use crate::{article::ArticleView, comment::CommentView, ApiClientState};
+use crate::{ApiClientState, article::ArticleView, comment::CommentView};
 
 /// An embedded SVG comment image.
 pub static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
@@ -53,7 +51,6 @@ pub fn parse_date(time: u64) -> Option<String> {
 ///
 /// * `app` - A mutable reference to the asynchronous application.
 /// * `article_entity` - The entity representing the article to which the comments belong.
-/// * `comment_ids` - A slice of comment IDs to fetch and create entities for.
 ///
 /// # Returns
 ///
