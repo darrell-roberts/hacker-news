@@ -6,8 +6,8 @@ use crate::{
 use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
 use gpui::{
-    App, AppContext, DefiniteLength, Entity, EventEmitter, ListState, MouseButton, MouseMoveEvent,
-    Pixels, Window, div, prelude::*, px, rems,
+    App, AppContext, DefiniteLength, Entity, EventEmitter, FocusHandle, ListState, MouseButton,
+    MouseMoveEvent, Pixels, ScrollHandle, Window, div, prelude::*, px, rems,
 };
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
@@ -41,6 +41,14 @@ pub struct ContentView {
     is_dragging_divider: bool,
     /// Fetching comments.
     fetching_comments: bool,
+    /// Scroll handle for articles column.
+    articles_scroll_handle: ScrollHandle,
+    /// Scroll handle for comments column.
+    comments_scroll_handle: ScrollHandle,
+    /// Focus handle for articles
+    articles_focus_handle: FocusHandle,
+    /// Focus handle for comments
+    comments_focus_handle: FocusHandle,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
@@ -73,6 +81,9 @@ impl ContentView {
     ///
     /// Returns an `Entity<Self>` representing the newly created content view.
     pub fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
+        let articles_focus_handle = app.focus_handle();
+        let comments_focus_handle = app.focus_handle();
+
         let entity_content = app.new(|cx: &mut Context<Self>| {
             cx.subscribe_self(|content_view, event, cx| match event {
                 ContentEvent::OnlineToggle(enable) => {
@@ -139,6 +150,70 @@ impl ContentView {
 
             let list_state = ListState::new(0, gpui::ListAlignment::Top, px(5.0));
 
+            cx.observe_keystrokes(|content_view, event, window, cx| {
+                let articles_active = content_view.articles_focus_handle.is_focused(window);
+                let comments_active = content_view.comments_focus_handle.is_focused(window);
+                if articles_active {
+                    info!("articles focused");
+                }
+                if comments_active {
+                    info!("comments focused");
+                }
+
+                if articles_active || comments_active {
+                    match event.keystroke.key.as_str() {
+                        "home" => {
+                            if articles_active {
+                                let top_item = content_view.articles_scroll_handle.top_item();
+                                content_view.articles_scroll_handle.scroll_to_item(top_item);
+                            } else {
+                                let top_item = content_view.comments_scroll_handle.top_item();
+                                content_view.comments_scroll_handle.scroll_to_item(top_item);
+                            }
+                            cx.notify();
+                        }
+                        "end" => {
+                            if articles_active {
+                                content_view.articles_scroll_handle.scroll_to_bottom();
+                            } else {
+                                content_view.comments_scroll_handle.scroll_to_bottom();
+                            }
+                            cx.notify();
+                        }
+                        "pageup" => {
+                            if articles_active {
+                                scroll_articles(content_view, cx, Direction::Up, px(100.0));
+                            } else {
+                                scroll_comments(content_view, cx, Direction::Up, px(100.0));
+                            }
+                        }
+                        "pagedown" => {
+                            if articles_active {
+                                scroll_articles(content_view, cx, Direction::Down, px(100.0));
+                            } else {
+                                scroll_comments(content_view, cx, Direction::Down, px(100.0));
+                            }
+                        }
+                        "up" => {
+                            if articles_active {
+                                scroll_articles(content_view, cx, Direction::Up, px(10.0));
+                            } else {
+                                scroll_comments(content_view, cx, Direction::Up, px(10.0));
+                            }
+                        }
+                        "down" => {
+                            if articles_active {
+                                scroll_articles(content_view, cx, Direction::Down, px(10.0));
+                            } else {
+                                scroll_comments(content_view, cx, Direction::Down, px(10.0));
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            })
+            .detach();
+
             Self {
                 list_state,
                 articles: Default::default(),
@@ -152,6 +227,10 @@ impl ContentView {
                 articles_width: px(800.0),
                 is_dragging_divider: false,
                 fetching_comments: false,
+                articles_scroll_handle: ScrollHandle::new(),
+                comments_scroll_handle: ScrollHandle::new(),
+                articles_focus_handle,
+                comments_focus_handle,
             }
         });
 
@@ -163,6 +242,42 @@ impl ContentView {
         });
         entity_content
     }
+}
+
+#[derive(Copy, Clone)]
+enum Direction {
+    Up,
+    Down,
+}
+
+fn scroll_comments(
+    content_view: &mut ContentView,
+    cx: &mut Context<'_, ContentView>,
+    direction: Direction,
+    distance: Pixels,
+) {
+    let mut offset = content_view.comments_scroll_handle.offset();
+    offset.y = match direction {
+        Direction::Up => offset.y + distance,
+        Direction::Down => offset.y - distance,
+    };
+    content_view.comments_scroll_handle.set_offset(offset);
+    cx.notify();
+}
+
+fn scroll_articles(
+    content_view: &mut ContentView,
+    cx: &mut Context<'_, ContentView>,
+    direction: Direction,
+    distance: Pixels,
+) {
+    let mut offset = content_view.articles_scroll_handle.offset();
+    offset.y = match direction {
+        Direction::Up => offset.y + distance,
+        Direction::Down => offset.y - distance,
+    };
+    content_view.articles_scroll_handle.set_offset(offset);
+    cx.notify();
 }
 
 /// Restarts the background task by dropping the current task and replacing it with a new one.
@@ -411,6 +526,9 @@ impl Render for ContentView {
     fn render(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
         let theme: Theme = window.appearance().into();
 
+        let content_entity_1 = cx.entity();
+        let content_entity_2 = cx.entity();
+
         div()
             .id("content")
             .flex()
@@ -436,6 +554,19 @@ impl Render for ContentView {
             .child(
                 div()
                     .id("articles")
+                    .track_focus(&self.articles_focus_handle)
+                    .track_scroll(&self.articles_scroll_handle)
+                    .on_hover(move |hover, window, cx| {
+                        let focus_handle = cx
+                            .read_entity(&content_entity_1, |content_view, _cx| {
+                                content_view.articles_focus_handle.clone()
+                            });
+                        if *hover {
+                            window.focus(&focus_handle, cx);
+                        } else {
+                            window.blur()
+                        }
+                    })
                     .h_full()
                     .overflow_y_scroll()
                     .flex_col()
@@ -483,6 +614,19 @@ impl Render for ContentView {
             .child(
                 div()
                     .id("comments")
+                    .track_focus(&self.comments_focus_handle)
+                    .track_scroll(&self.comments_scroll_handle)
+                    .on_hover(move |hover, window, cx| {
+                        let focus_handle = cx
+                            .read_entity(&content_entity_2, |content_view, _cx| {
+                                content_view.comments_focus_handle.clone()
+                            });
+                        if *hover {
+                            window.focus(&focus_handle, cx);
+                        } else {
+                            window.blur();
+                        }
+                    })
                     .h_full()
                     .flex_col()
                     .min_w_0()
@@ -490,6 +634,7 @@ impl Render for ContentView {
                     .flex_1()
                     .pb_2()
                     .ml_1()
+                    .pr(px(8.0))
                     .when(self.fetching_comments, |div| {
                         div.child("Fetching comments...")
                     })
