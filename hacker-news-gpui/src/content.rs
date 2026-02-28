@@ -11,7 +11,7 @@ use gpui::{
 };
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
-use std::collections::HashMap;
+use std::{collections::HashMap, f32};
 
 // Main content view.
 pub struct ContentView {
@@ -153,60 +153,34 @@ impl ContentView {
             cx.observe_keystrokes(|content_view, event, window, cx| {
                 let articles_active = content_view.articles_focus_handle.is_focused(window);
                 let comments_active = content_view.comments_focus_handle.is_focused(window);
-                if articles_active {
-                    info!("articles focused");
-                }
-                if comments_active {
-                    info!("comments focused");
-                }
 
                 if articles_active || comments_active {
+                    let handle = if articles_active {
+                        &mut content_view.articles_scroll_handle
+                    } else {
+                        &mut content_view.comments_scroll_handle
+                    };
+
                     match event.keystroke.key.as_str() {
                         "home" => {
-                            if articles_active {
-                                let top_item = content_view.articles_scroll_handle.top_item();
-                                content_view.articles_scroll_handle.scroll_to_item(top_item);
-                            } else {
-                                let top_item = content_view.comments_scroll_handle.top_item();
-                                content_view.comments_scroll_handle.scroll_to_item(top_item);
-                            }
+                            scroll_handle(handle, cx, Direction::Up, px(f32::MAX));
                             cx.notify();
                         }
                         "end" => {
-                            if articles_active {
-                                content_view.articles_scroll_handle.scroll_to_bottom();
-                            } else {
-                                content_view.comments_scroll_handle.scroll_to_bottom();
-                            }
+                            scroll_handle(handle, cx, Direction::Down, px(f32::MAX));
                             cx.notify();
                         }
                         "pageup" => {
-                            if articles_active {
-                                scroll_articles(content_view, cx, Direction::Up, px(100.0));
-                            } else {
-                                scroll_comments(content_view, cx, Direction::Up, px(100.0));
-                            }
+                            scroll_handle(handle, cx, Direction::Up, px(100.0));
                         }
                         "pagedown" => {
-                            if articles_active {
-                                scroll_articles(content_view, cx, Direction::Down, px(100.0));
-                            } else {
-                                scroll_comments(content_view, cx, Direction::Down, px(100.0));
-                            }
+                            scroll_handle(handle, cx, Direction::Down, px(100.0));
                         }
                         "up" => {
-                            if articles_active {
-                                scroll_articles(content_view, cx, Direction::Up, px(10.0));
-                            } else {
-                                scroll_comments(content_view, cx, Direction::Up, px(10.0));
-                            }
+                            scroll_handle(handle, cx, Direction::Up, px(10.0));
                         }
                         "down" => {
-                            if articles_active {
-                                scroll_articles(content_view, cx, Direction::Down, px(10.0));
-                            } else {
-                                scroll_comments(content_view, cx, Direction::Down, px(10.0));
-                            }
+                            scroll_handle(handle, cx, Direction::Down, px(10.0));
                         }
                         _ => {}
                     }
@@ -250,33 +224,18 @@ enum Direction {
     Down,
 }
 
-fn scroll_comments(
-    content_view: &mut ContentView,
+fn scroll_handle(
+    handle: &mut ScrollHandle,
     cx: &mut Context<'_, ContentView>,
     direction: Direction,
     distance: Pixels,
 ) {
-    let mut offset = content_view.comments_scroll_handle.offset();
+    let mut offset = handle.offset();
     offset.y = match direction {
         Direction::Up => offset.y + distance,
         Direction::Down => offset.y - distance,
     };
-    content_view.comments_scroll_handle.set_offset(offset);
-    cx.notify();
-}
-
-fn scroll_articles(
-    content_view: &mut ContentView,
-    cx: &mut Context<'_, ContentView>,
-    direction: Direction,
-    distance: Pixels,
-) {
-    let mut offset = content_view.articles_scroll_handle.offset();
-    offset.y = match direction {
-        Direction::Up => offset.y + distance,
-        Direction::Down => offset.y - distance,
-    };
-    content_view.articles_scroll_handle.set_offset(offset);
+    handle.set_offset(offset);
     cx.notify();
 }
 
