@@ -6,9 +6,9 @@ use crate::{
     theme::Theme,
 };
 use gpui::{
-    Animation, AnimationExt, AppContext, AsyncApp, Entity, Fill, FontWeight, ImageSource,
-    SharedString, StyleRefinement, Window, div, img, prelude::*, pulsating_between, px, quadratic,
-    rems, rgb, solid_background,
+    Animation, AnimationExt, AppContext, AsyncApp, Entity, Fill, ImageSource, SharedString,
+    StyleRefinement, Window, div, img, prelude::*, pulsating_between, px, quadratic, rems, rgb,
+    solid_background,
 };
 use hacker_news_api::Item;
 use std::{sync::Arc, time::Duration};
@@ -250,11 +250,8 @@ impl Render for ArticleView {
             .items_center()
             .child(self.order_change_label.clone());
 
-        let hover_element = |style: StyleRefinement| {
-            style
-                .font_weight(FontWeight::BOLD)
-                .bg(Fill::Color(solid_background(theme.hover())))
-        };
+        let hover_element =
+            |style: StyleRefinement| style.bg(Fill::Color(solid_background(theme.hover())));
 
         let article_entity = cx.entity();
 
@@ -274,7 +271,10 @@ impl Render for ArticleView {
         let title_col = div()
             .flex()
             .flex_row()
-            .flex_grow()
+            // .flex_col()
+            // .flex_grow()
+            .flex_1()
+            .min_w_0()
             .child(
                 div().rounded_md().child(
                     div()
@@ -310,7 +310,7 @@ impl Render for ArticleView {
             )
             .gap_x(px(5.0));
 
-        div().child(
+        div().w_full().child(
             div()
                 .flex()
                 .flex_row()

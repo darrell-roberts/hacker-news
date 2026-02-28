@@ -7,7 +7,7 @@ use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
 use gpui::{
     App, AppContext, DefiniteLength, Entity, EventEmitter, ListState, MouseButton, MouseMoveEvent,
-    Pixels, Window, black, div, prelude::*, px, rems,
+    Pixels, Window, div, prelude::*, px, rems,
 };
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
@@ -35,8 +35,12 @@ pub struct ContentView {
     pub background_refresh_count: usize,
     /// The entities representing the comments for this article.
     pub comment_entities: Vec<Entity<CommentView>>,
+    /// The width of the article column, user adjustable.
     articles_width: Pixels,
+    /// True when the user is adjusting the article column width using the divider.
     is_dragging_divider: bool,
+    /// Fetching comments.
+    fetching_comments: bool,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
@@ -94,6 +98,7 @@ impl ContentView {
                     }
                 }
                 ContentEvent::OpenComments(article_entity) => {
+                    content_view.fetching_comments = true;
                     let article_entity = article_entity.clone();
                     let comment_ids = article_entity.read(cx).comment_ids.clone();
                     cx.spawn(async move |weak_content_view_entity, async_app| {
@@ -103,6 +108,7 @@ impl ContentView {
                             if let Err(err) =
                                 weak_content_view_entity.update(app, |content_view, _cx| {
                                     content_view.comment_entities = comment_entities;
+                                    content_view.fetching_comments = false;
                                 })
                             {
                                 error!("Content view is gone: {err}");
@@ -129,8 +135,9 @@ impl ContentView {
                 article_comment_counts: Default::default(),
                 background_refresh_count: 0,
                 comment_entities: Vec::new(),
-                articles_width: px(300.0),
+                articles_width: px(800.0),
                 is_dragging_divider: false,
+                fetching_comments: false,
             }
         });
 
@@ -378,8 +385,9 @@ impl Render for ContentView {
             .id("content")
             .flex()
             .flex_row()
-            .w_full()
+            .flex_shrink_0()
             .h_full()
+            .min_h_0()
             // Only listen to move/up at the container level when actively dragging
             .when(self.is_dragging_divider, |div| {
                 div.on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
@@ -409,17 +417,17 @@ impl Render for ContentView {
                     .children(
                         self.articles
                             .iter()
-                            .map(|article| div().m_1().child(article.clone())),
+                            .map(|article| div().w_full().m_1().child(article.clone())),
                     ),
             )
             .child(
                 div()
                     .id("divider")
                     .h_full()
-                    .w(px(2.0))
+                    .w(px(1.0))
                     .flex_shrink_0()
                     .cursor_col_resize()
-                    .bg(black())
+                    .bg(theme.border())
                     .on_mouse_down(
                         MouseButton::Left,
                         cx.listener(|this, _event, _window, cx| {
@@ -446,14 +454,18 @@ impl Render for ContentView {
                     .id("comments")
                     .h_full()
                     .flex_col()
+                    .min_w_0()
                     .overflow_y_scroll()
                     .flex_1()
                     .p_1()
                     .m_1()
-                    .child("Comments")
-                    .when(!self.comment_entities.is_empty(), |div| {
-                        self.render_comments(cx, theme, div)
-                    }),
+                    .when(self.fetching_comments, |div| {
+                        div.child("Fetching comments...")
+                    })
+                    .when(
+                        !self.comment_entities.is_empty() && !self.fetching_comments,
+                        |div| self.render_comments(cx, theme, div),
+                    ),
             )
     }
 }

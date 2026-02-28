@@ -207,6 +207,8 @@ impl Render for CommentView {
         div()
             .bg(theme.surface())
             .rounded_tl_md()
+            .flex_col()
+            .w_full()
             .mt_1()
             .child(self.render_text_area(theme, comment_entity.clone()))
             .child(self.render_comment_footer(theme, comment_ids, comment_entity.clone()))
@@ -216,6 +218,8 @@ impl Render for CommentView {
                         .bg(theme.comment_border())
                         .pl_1()
                         .ml_1()
+                        .w_full()
+                        .flex_col()
                         .rounded_tl_md()
                         .child(
                             div()
