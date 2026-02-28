@@ -6,8 +6,8 @@ use crate::{
 use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
 use gpui::{
-    App, AppContext, DefiniteLength, Entity, EventEmitter, ListState, Window, div, prelude::*, px,
-    rems,
+    App, AppContext, DefiniteLength, Entity, EventEmitter, ListState, MouseButton, MouseMoveEvent,
+    Pixels, Window, black, div, prelude::*, px, rems,
 };
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
@@ -35,6 +35,8 @@ pub struct ContentView {
     pub background_refresh_count: usize,
     /// The entities representing the comments for this article.
     pub comment_entities: Vec<Entity<CommentView>>,
+    articles_width: Pixels,
+    is_dragging_divider: bool,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
@@ -94,13 +96,15 @@ impl ContentView {
                 ContentEvent::OpenComments(article_entity) => {
                     let article_entity = article_entity.clone();
                     let comment_ids = article_entity.read(cx).comment_ids.clone();
-                    cx.spawn(async move |weak_entity, async_app| {
+                    cx.spawn(async move |weak_content_view_entity, async_app| {
                         let comment_entities =
                             comment_entities(async_app, article_entity, &comment_ids).await;
                         async_app.update(|app| {
-                            if let Err(err) = weak_entity.update(app, |content_view, _cx| {
-                                content_view.comment_entities = comment_entities;
-                            }) {
+                            if let Err(err) =
+                                weak_content_view_entity.update(app, |content_view, _cx| {
+                                    content_view.comment_entities = comment_entities;
+                                })
+                            {
                                 error!("Content view is gone: {err}");
                             }
                         });
@@ -125,6 +129,8 @@ impl ContentView {
                 article_comment_counts: Default::default(),
                 background_refresh_count: 0,
                 comment_entities: Vec::new(),
+                articles_width: px(300.0),
+                is_dragging_divider: false,
             }
         });
 
@@ -362,26 +368,42 @@ pub(crate) fn start_background_article_list_subscription(
     }))
 }
 
+const MARGIN: Pixels = px(10.0);
+
 impl Render for ContentView {
     fn render(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
         let theme: Theme = window.appearance().into();
-
-        // let article_with_comments = self.articles.iter().find_map(|article| {
-        //     let comments = &article.read(cx).comment_entities;
-        //     (!comments.is_empty()).then_some(article.clone())
-        // });
 
         div()
             .id("content")
             .flex()
             .flex_row()
             .w_full()
-            .overflow_scroll()
+            .h_full()
+            // Only listen to move/up at the container level when actively dragging
+            .when(self.is_dragging_divider, |div| {
+                div.on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
+                    this.articles_width = (event.position.x - MARGIN).max(px(100.0));
+                    cx.notify();
+                }))
+                .on_mouse_up(
+                    MouseButton::Left,
+                    cx.listener(|this, _event, _window, cx| {
+                        this.is_dragging_divider = false;
+                        cx.notify();
+                    }),
+                )
+                .cursor_col_resize()
+            })
             .child(
                 div()
                     .id("articles")
-                    .flex_1()
-                    .w(DefiniteLength::Fraction(0.5))
+                    .h_full()
+                    .overflow_y_scroll()
+                    .flex_col()
+                    .w(DefiniteLength::Absolute(gpui::AbsoluteLength::Pixels(
+                        self.articles_width,
+                    )))
                     .p_1()
                     .m_1()
                     .children(
@@ -392,9 +414,40 @@ impl Render for ContentView {
             )
             .child(
                 div()
-                    .id("comments")
+                    .id("divider")
+                    .h_full()
+                    .w(px(2.0))
                     .flex_shrink_0()
-                    .w(DefiniteLength::Fraction(0.5))
+                    .cursor_col_resize()
+                    .bg(black())
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _event, _window, cx| {
+                            this.is_dragging_divider = true;
+                            cx.notify();
+                        }),
+                    )
+                    .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
+                        if this.is_dragging_divider {
+                            this.articles_width = event.position.x;
+                            cx.notify();
+                        }
+                    }))
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _event, _window, cx| {
+                            this.is_dragging_divider = false;
+                            cx.notify();
+                        }),
+                    ),
+            )
+            .child(
+                div()
+                    .id("comments")
+                    .h_full()
+                    .flex_col()
+                    .overflow_y_scroll()
+                    .flex_1()
                     .p_1()
                     .m_1()
                     .child("Comments")
