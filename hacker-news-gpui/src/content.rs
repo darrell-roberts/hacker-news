@@ -1,8 +1,14 @@
 //! Main content view
-use crate::{ApiClientState, ArticleSelection, article::ArticleView};
+use crate::{
+    ApiClientState, ArticleSelection, article::ArticleView, comment::CommentView,
+    common::comment_entities, theme::Theme,
+};
 use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
-use gpui::{App, AppContext, Entity, EventEmitter, ListState, Window, div, prelude::*, px};
+use gpui::{
+    App, AppContext, DefiniteLength, Entity, EventEmitter, ListState, Window, div, prelude::*, px,
+    rems,
+};
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
 use std::collections::HashMap;
@@ -27,6 +33,8 @@ pub struct ContentView {
     pub article_sender: Option<channel::mpsc::Sender<Result<Vec<Item>, BackGroundError>>>,
     /// The number of times we have refresh due to an http server side event.
     pub background_refresh_count: usize,
+    /// The entities representing the comments for this article.
+    pub comment_entities: Vec<Entity<CommentView>>,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
@@ -41,6 +49,8 @@ pub enum ContentEvent {
     Terminated(ArticleType),
     /// Toggle online status
     OnlineToggle(bool),
+    /// Open Comments
+    OpenComments(Entity<ArticleView>),
 }
 
 impl EventEmitter<ContentEvent> for ContentView {}
@@ -81,6 +91,22 @@ impl ContentView {
                         restart_background_task(content_view, cx);
                     }
                 }
+                ContentEvent::OpenComments(article_entity) => {
+                    let article_entity = article_entity.clone();
+                    let comment_ids = article_entity.read(cx).comment_ids.clone();
+                    cx.spawn(async move |weak_entity, async_app| {
+                        let comment_entities =
+                            comment_entities(async_app, article_entity, &comment_ids).await;
+                        async_app.update(|app| {
+                            if let Err(err) = weak_entity.update(app, |content_view, _cx| {
+                                content_view.comment_entities = comment_entities;
+                            }) {
+                                error!("Content view is gone: {err}");
+                            }
+                        });
+                    })
+                    .detach();
+                }
                 ContentEvent::Error(_)
                 | ContentEvent::TotalArticles(_)
                 | ContentEvent::TotalRefreshes(_) => (),
@@ -98,7 +124,7 @@ impl ContentView {
                 article_sender: None,
                 article_comment_counts: Default::default(),
                 background_refresh_count: 0,
-                // viewing_comments: false,
+                comment_entities: Vec::new(),
             }
         });
 
@@ -337,11 +363,97 @@ pub(crate) fn start_background_article_list_subscription(
 }
 
 impl Render for ContentView {
-    fn render(&mut self, _window: &mut Window, _cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        div().id("articles").overflow_scroll().p_1().m_1().children(
-            self.articles
-                .iter()
-                .map(|article| div().m_1().child(article.clone())),
+    fn render(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
+        let theme: Theme = window.appearance().into();
+
+        // let article_with_comments = self.articles.iter().find_map(|article| {
+        //     let comments = &article.read(cx).comment_entities;
+        //     (!comments.is_empty()).then_some(article.clone())
+        // });
+
+        div()
+            .id("content")
+            .flex()
+            .flex_row()
+            .w_full()
+            .overflow_scroll()
+            .child(
+                div()
+                    .id("articles")
+                    .flex_1()
+                    .w(DefiniteLength::Fraction(0.5))
+                    .p_1()
+                    .m_1()
+                    .children(
+                        self.articles
+                            .iter()
+                            .map(|article| div().m_1().child(article.clone())),
+                    ),
+            )
+            .child(
+                div()
+                    .id("comments")
+                    .flex_shrink_0()
+                    .w(DefiniteLength::Fraction(0.5))
+                    .p_1()
+                    .m_1()
+                    .child("Comments")
+                    .when(!self.comment_entities.is_empty(), |div| {
+                        self.render_comments(cx, theme, div)
+                    }),
+            )
+    }
+}
+
+impl ContentView {
+    /// Renders opened comments.
+    ///
+    /// # Arguments
+    ///
+    /// * `cx` - Content view context.
+    /// * `theme` - The current theme to use for styling.
+    /// * `el` - The div element to render the comments into.
+    ///
+    /// # Returns
+    ///
+    /// Returns a [`gpui::Stateful<gpui::Div>`] containing the rendered comments section.
+    fn render_comments(
+        &self,
+        cx: &mut gpui::Context<ContentView>,
+        theme: Theme,
+        el: gpui::Stateful<gpui::Div>,
+    ) -> gpui::Stateful<gpui::Div> {
+        let comment_entities = self.comment_entities.clone();
+        let content_entity = cx.entity();
+
+        el.child(
+            div()
+                .bg(theme.comment_border())
+                .mt_1()
+                .ml_1()
+                .pl_1()
+                .rounded_tl_md()
+                .child(
+                    div()
+                        .flex()
+                        .flex_grow()
+                        .flex_row()
+                        .text_size(rems(0.75))
+                        .child("[X]")
+                        .cursor_pointer()
+                        .id("close-comments")
+                        .on_click(move |_event, _window, app| {
+                            content_entity.update(app, |content, _cx| {
+                                content.comment_entities.clear();
+                            });
+
+                            // Take events online.
+                            content_entity.update(app, |_content_view: &mut ContentView, cx| {
+                                cx.emit(ContentEvent::OnlineToggle(true));
+                            })
+                        }),
+                )
+                .children(comment_entities.clone()),
         )
     }
 }

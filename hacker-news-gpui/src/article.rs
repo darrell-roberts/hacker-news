@@ -1,8 +1,7 @@
 //! Article view.
 use crate::{
     UrlHover,
-    comment::CommentView,
-    common::{COMMENT_IMAGE, comment_entities, parse_date},
+    common::{COMMENT_IMAGE, parse_date},
     content::{ContentEvent, ContentView},
     theme::Theme,
 };
@@ -34,10 +33,8 @@ pub struct ArticleView {
     comment_image: ImageSource,
     /// The rank of the article, formatted as a string.
     rank: SharedString,
-    /// The entities representing the comments for this article.
-    comment_entities: Vec<Entity<CommentView>>,
     /// The IDs of the comments for this article.
-    comment_ids: Arc<Vec<u64>>,
+    pub comment_ids: Arc<Vec<u64>>,
     /// The entity representing the content view associated with this article.
     content_entity: Entity<ContentView>,
     /// Whether the comments are currently loading.
@@ -97,7 +94,6 @@ impl ArticleView {
                 age: parse_date(item.time).unwrap_or_default().into(),
                 comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
                 rank: format!("{rank}").into(),
-                comment_entities: Vec::new(),
                 comment_ids: Arc::new(item.kids),
                 content_entity,
                 loading_comments: false,
@@ -180,7 +176,7 @@ impl ArticleView {
         div: gpui::Stateful<gpui::Div>,
         comments: &SharedString,
     ) -> gpui::Stateful<gpui::Div> {
-        let ids = self.comment_ids.clone();
+        // let ids = self.comment_ids.clone();
         let content_entity = self.content_entity.clone();
 
         div.flex()
@@ -193,19 +189,19 @@ impl ArticleView {
 
                 let article_entity = article_entity.clone();
                 let content_entity = content_entity.clone();
-                let ids = ids.clone();
 
                 app.spawn(async move |app: &mut AsyncApp| {
-                    let comment_entities =
-                        comment_entities(app, article_entity.clone(), &ids).await;
+                    // let comment_entities =
+                    //     comment_entities(app, article_entity.clone(), &ids).await;
                     article_entity.update(app, |article_view: &mut ArticleView, _cx| {
-                        article_view.comment_entities = comment_entities;
+                        // article_view.comment_entities = comment_entities;
                         article_view.loading_comments = false;
                     });
 
                     // Take events offline
                     content_entity.update(app, |_content_view: &mut ContentView, cx| {
-                        cx.emit(ContentEvent::OnlineToggle(false));
+                        // cx.emit(ContentEvent::OnlineToggle(false));
+                        cx.emit(ContentEvent::OpenComments(article_entity))
                     });
                 })
                 .detach();
@@ -227,56 +223,6 @@ impl ArticleView {
                     )
                 },
             ))
-    }
-
-    /// Renders opened comments.
-    ///
-    /// # Arguments
-    ///
-    /// * `theme` - The current theme to use for styling.
-    /// * `article_entity` - The entity representing the article view.
-    /// * `content_entity` - The entity representing the content view to close comments.
-    /// * `el` - The div element to render the comments into.
-    ///
-    /// # Returns
-    ///
-    /// Returns a [`gpui::Div`] containing the rendered comments section.
-    fn render_comments(
-        &mut self,
-        theme: Theme,
-        article_entity: Entity<ArticleView>,
-        content_entity: Entity<ContentView>,
-        el: gpui::Div,
-    ) -> gpui::Div {
-        el.child(
-            div()
-                .bg(theme.comment_border())
-                .mt_1()
-                .ml_1()
-                .pl_1()
-                .rounded_tl_md()
-                .child(
-                    div()
-                        .flex()
-                        .flex_grow()
-                        .flex_row()
-                        .text_size(rems(0.75))
-                        .child("[X]")
-                        .cursor_pointer()
-                        .id("close-comments")
-                        .on_click(move |_event, _window, app| {
-                            article_entity.update(app, |article, _cx| {
-                                article.comment_entities.clear();
-                            });
-
-                            // Take events online.
-                            content_entity.update(app, |_content_view: &mut ContentView, cx| {
-                                cx.emit(ContentEvent::OnlineToggle(true));
-                            })
-                        }),
-                )
-                .children(self.comment_entities.clone()),
-        )
     }
 }
 
@@ -364,45 +310,38 @@ impl Render for ArticleView {
             )
             .gap_x(px(5.0));
 
-        let article_entity = cx.entity();
-        let content_entity = self.content_entity.clone();
-
-        div()
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .rounded_md()
-                    .shadow_sm()
-                    .bg(theme.surface())
-                    .border_1()
-                    .border_color(theme.border())
-                    .when(self.order_change > 2, |div| {
-                        div.text_color(theme.text_increasing())
-                    })
-                    .when(self.order_change < -2, |div| {
-                        div.text_color(theme.text_decreasing())
-                    })
-                    .child(
-                        div().m_1().child(
-                            div()
-                                .flex()
-                                .flex_row()
-                                .children([
-                                    rank_change_col,
-                                    div()
-                                        .w(rems(2.))
-                                        .text_align(gpui::TextAlign::Right)
-                                        .child(self.rank.clone()),
-                                    div().child(comments_col),
-                                    title_col,
-                                ])
-                                .gap_1(),
-                        ),
+        div().child(
+            div()
+                .flex()
+                .flex_row()
+                .rounded_md()
+                .shadow_sm()
+                .bg(theme.surface())
+                .border_1()
+                .border_color(theme.border())
+                .when(self.order_change > 2, |div| {
+                    div.text_color(theme.text_increasing())
+                })
+                .when(self.order_change < -2, |div| {
+                    div.text_color(theme.text_decreasing())
+                })
+                .child(
+                    div().m_1().child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .children([
+                                rank_change_col,
+                                div()
+                                    .w(rems(2.))
+                                    .text_align(gpui::TextAlign::Right)
+                                    .child(self.rank.clone()),
+                                div().child(comments_col),
+                                title_col,
+                            ])
+                            .gap_1(),
                     ),
-            )
-            .when(!self.comment_entities.is_empty(), |div| {
-                self.render_comments(theme, article_entity, content_entity, div)
-            })
+                ),
+        )
     }
 }
