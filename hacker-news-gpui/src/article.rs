@@ -41,6 +41,10 @@ pub struct ArticleView {
     loading_comments: bool,
     /// The delta in comment count since the last update, if available.
     comment_count_changed: Option<SharedString>,
+    /// If we are viewing comments for this article.
+    pub viewing_comments: bool,
+    /// Article id
+    pub id: u64,
 }
 
 impl ArticleView {
@@ -65,6 +69,7 @@ impl ArticleView {
         order_change: i64,
         rank: usize,
         comment_count_changed: i64,
+        viewing_comments: bool,
     ) -> Entity<Self> {
         let article_entity = app.new(|_cx| {
             let changed = if comment_count_changed.is_negative() {
@@ -98,6 +103,8 @@ impl ArticleView {
                 content_entity,
                 loading_comments: false,
                 comment_count_changed: changed,
+                viewing_comments,
+                id: item.id,
             }
         });
 
@@ -176,7 +183,6 @@ impl ArticleView {
         div: gpui::Stateful<gpui::Div>,
         comments: &SharedString,
     ) -> gpui::Stateful<gpui::Div> {
-        // let ids = self.comment_ids.clone();
         let content_entity = self.content_entity.clone();
 
         div.flex()
@@ -191,16 +197,12 @@ impl ArticleView {
                 let content_entity = content_entity.clone();
 
                 app.spawn(async move |app: &mut AsyncApp| {
-                    // let comment_entities =
-                    //     comment_entities(app, article_entity.clone(), &ids).await;
                     article_entity.update(app, |article_view: &mut ArticleView, _cx| {
-                        // article_view.comment_entities = comment_entities;
                         article_view.loading_comments = false;
+                        article_view.viewing_comments = true;
                     });
 
-                    // Take events offline
                     content_entity.update(app, |_content_view: &mut ContentView, cx| {
-                        // cx.emit(ContentEvent::OnlineToggle(false));
                         cx.emit(ContentEvent::OpenComments(article_entity))
                     });
                 })
@@ -271,8 +273,6 @@ impl Render for ArticleView {
         let title_col = div()
             .flex()
             .flex_row()
-            // .flex_col()
-            // .flex_grow()
             .flex_1()
             .min_w_0()
             .child(
@@ -325,6 +325,7 @@ impl Render for ArticleView {
                 .when(self.order_change < -2, |div| {
                     div.text_color(theme.text_decreasing())
                 })
+                .when(self.viewing_comments, |div| div.opacity(0.75))
                 .child(
                     div().m_1().child(
                         div()

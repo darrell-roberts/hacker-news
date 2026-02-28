@@ -99,8 +99,22 @@ impl ContentView {
                 }
                 ContentEvent::OpenComments(article_entity) => {
                     content_view.fetching_comments = true;
+                    let id = article_entity.read(cx).id;
                     let article_entity = article_entity.clone();
                     let comment_ids = article_entity.read(cx).comment_ids.clone();
+
+                    // Toggle viewing for articles that are no longer viewing comments.
+                    for article in &content_view.articles {
+                        let viewing = article.read(cx).viewing_comments;
+                        let article_id = article.read(cx).id;
+
+                        if viewing && (article_id != id) {
+                            article.update(cx, |article_view, _cx| {
+                                article_view.viewing_comments = false;
+                            });
+                        }
+                    }
+
                     cx.spawn(async move |weak_content_view_entity, async_app| {
                         let comment_entities =
                             comment_entities(async_app, article_entity, &comment_ids).await;
@@ -210,12 +224,12 @@ fn start_background_subscriptions(
         while let Some(items) = rx.next().await {
             match items {
                 Ok(items) => {
-                    let viewing_comments = entity_content
-                        .read_with(app, |content: &ContentView, _app| !content.online);
-
-                    if viewing_comments {
-                        continue;
-                    }
+                    let viewing_id = app.read_entity(&entity_content, |content_view, app| {
+                        content_view.articles.iter().find_map(|article_entity| {
+                            let article_view = article_entity.read(app);
+                            article_view.viewing_comments.then_some(article_view.id)
+                        })
+                    });
 
                     let current_ranking_map = items
                         .iter()
@@ -263,6 +277,9 @@ fn start_background_subscriptions(
                                 0
                             };
 
+                            let viewing_comments =
+                                viewing_id.map(|id| id == article.id).unwrap_or(false);
+
                             ArticleView::new(
                                 app,
                                 entity_content.clone(),
@@ -270,11 +287,24 @@ fn start_background_subscriptions(
                                 order_change,
                                 index + 1,
                                 comment_count_changed,
+                                viewing_comments,
                             )
                         })
                         .collect::<Vec<_>>();
 
+                    // Check if we were viewing comments for an article but that article is
+                    // not in the update anymore.
+                    let viewing_comments = views.iter().any(|article_entity| {
+                        app.read_entity(article_entity, |article_view, _cx| {
+                            article_view.viewing_comments
+                        })
+                    });
+
                     app.update_entity(&entity_content, |content, cx| {
+                        if viewing_id.is_some() && !viewing_comments {
+                            content.comment_entities.clear();
+                        }
+
                         content.articles = views;
                         content.list_state.reset(content.articles.len());
                         content.article_ranks = current_ranking_map;
@@ -508,14 +538,16 @@ impl ContentView {
                         .cursor_pointer()
                         .id("close-comments")
                         .on_click(move |_event, _window, app| {
-                            content_entity.update(app, |content, _cx| {
+                            // Clear any open comments for another article
+                            content_entity.update(app, |content, cx| {
                                 content.comment_entities.clear();
-                            });
 
-                            // Take events online.
-                            content_entity.update(app, |_content_view: &mut ContentView, cx| {
-                                cx.emit(ContentEvent::OnlineToggle(true));
-                            })
+                                for article_entity in &content.articles {
+                                    article_entity.update(cx, |article_entity, _cx| {
+                                        article_entity.viewing_comments = false;
+                                    });
+                                }
+                            });
                         }),
                 )
                 .children(comment_entities.clone()),
