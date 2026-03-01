@@ -1,7 +1,11 @@
 //! Main content view
 use crate::{
-    ApiClientState, ArticleSelection, article::ArticleView, comment::CommentView,
-    common::comment_entities, theme::Theme,
+    ApiClientState, ArticleSelection,
+    article::ArticleView,
+    comment::CommentView,
+    common::comment_entities,
+    scrollbar::{Scrollbar, render_scrollbar},
+    theme::Theme,
 };
 use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
@@ -49,6 +53,10 @@ pub struct ContentView {
     articles_focus_handle: FocusHandle,
     /// Focus handle for comments
     comments_focus_handle: FocusHandle,
+    /// Scrollbar entity for articles column.
+    articles_scrollbar: Entity<Scrollbar>,
+    /// Scrollbar entity for comments column.
+    comments_scrollbar: Entity<Scrollbar>,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
@@ -188,6 +196,12 @@ impl ContentView {
             })
             .detach();
 
+            let articles_scroll_handle = ScrollHandle::new();
+            let comments_scroll_handle = ScrollHandle::new();
+
+            let articles_scrollbar = cx.new(|_| Scrollbar::new(articles_scroll_handle.clone()));
+            let comments_scrollbar = cx.new(|_| Scrollbar::new(comments_scroll_handle.clone()));
+
             Self {
                 list_state,
                 articles: Default::default(),
@@ -201,10 +215,12 @@ impl ContentView {
                 articles_width: px(800.0),
                 is_dragging_divider: false,
                 fetching_comments: false,
-                articles_scroll_handle: ScrollHandle::new(),
-                comments_scroll_handle: ScrollHandle::new(),
+                articles_scroll_handle,
+                comments_scroll_handle,
                 articles_focus_handle,
                 comments_focus_handle,
+                articles_scrollbar,
+                comments_scrollbar,
             }
         });
 
@@ -512,33 +528,46 @@ impl Render for ContentView {
             })
             .child(
                 div()
-                    .id("articles")
-                    .track_focus(&self.articles_focus_handle)
-                    .track_scroll(&self.articles_scroll_handle)
-                    .on_hover(move |hover, window, cx| {
-                        let focus_handle = cx
-                            .read_entity(&content_entity_1, |content_view, _cx| {
-                                content_view.articles_focus_handle.clone()
-                            });
-                        if *hover {
-                            window.focus(&focus_handle, cx);
-                        } else {
-                            window.blur()
-                        }
-                    })
+                    .flex()
+                    .flex_row()
                     .h_full()
-                    .overflow_y_scroll()
-                    .flex_col()
                     .w(DefiniteLength::Absolute(gpui::AbsoluteLength::Pixels(
                         self.articles_width,
                     )))
-                    .pr_1()
-                    .mr_1()
-                    .children(
-                        self.articles
-                            .iter()
-                            .map(|article| div().w_full().m_1().child(article.clone())),
-                    ),
+                    .child(
+                        div()
+                            .id("articles")
+                            .track_focus(&self.articles_focus_handle)
+                            .track_scroll(&self.articles_scroll_handle)
+                            .on_hover(move |hover, window, cx| {
+                                let focus_handle = cx
+                                    .read_entity(&content_entity_1, |content_view, _cx| {
+                                        content_view.articles_focus_handle.clone()
+                                    });
+                                if *hover {
+                                    window.focus(&focus_handle, cx);
+                                } else {
+                                    window.blur()
+                                }
+                            })
+                            .h_full()
+                            .overflow_y_scroll()
+                            .flex_col()
+                            .flex_1()
+                            .min_w_0()
+                            .pr_1()
+                            .children(
+                                self.articles
+                                    .iter()
+                                    .map(|article| div().w_full().m_1().child(article.clone())),
+                            ),
+                    )
+                    .child(render_scrollbar(
+                        "articles-scrollbar",
+                        &self.articles_scrollbar,
+                        theme,
+                        cx,
+                    )),
             )
             .child(
                 div()
@@ -572,35 +601,49 @@ impl Render for ContentView {
             )
             .child(
                 div()
-                    .id("comments")
-                    .track_focus(&self.comments_focus_handle)
-                    .track_scroll(&self.comments_scroll_handle)
-                    .on_hover(move |hover, window, cx| {
-                        let focus_handle = cx
-                            .read_entity(&content_entity_2, |content_view, _cx| {
-                                content_view.comments_focus_handle.clone()
-                            });
-                        if *hover {
-                            window.focus(&focus_handle, cx);
-                        } else {
-                            window.blur();
-                        }
-                    })
+                    .flex()
+                    .flex_row()
                     .h_full()
-                    .flex_col()
-                    .min_w_0()
-                    .overflow_y_scroll()
                     .flex_1()
-                    .pb_2()
-                    .ml_1()
-                    .pr(px(8.0))
-                    .when(self.fetching_comments, |div| {
-                        div.child("Fetching comments...")
-                    })
-                    .when(
-                        !self.comment_entities.is_empty() && !self.fetching_comments,
-                        |div| self.render_comments(cx, theme, div),
-                    ),
+                    .min_w_0()
+                    .child(
+                        div()
+                            .id("comments")
+                            .track_focus(&self.comments_focus_handle)
+                            .track_scroll(&self.comments_scroll_handle)
+                            .on_hover(move |hover, window, cx| {
+                                let focus_handle = cx
+                                    .read_entity(&content_entity_2, |content_view, _cx| {
+                                        content_view.comments_focus_handle.clone()
+                                    });
+                                if *hover {
+                                    window.focus(&focus_handle, cx);
+                                } else {
+                                    window.blur();
+                                }
+                            })
+                            .h_full()
+                            .flex_col()
+                            .min_w_0()
+                            .overflow_y_scroll()
+                            .flex_1()
+                            .pb_2()
+                            .ml_1()
+                            .pr(px(8.0))
+                            .when(self.fetching_comments, |div| {
+                                div.child("Fetching comments...")
+                            })
+                            .when(
+                                !self.comment_entities.is_empty() && !self.fetching_comments,
+                                |div| self.render_comments(cx, theme, div),
+                            ),
+                    )
+                    .child(render_scrollbar(
+                        "comments-scrollbar",
+                        &self.comments_scrollbar,
+                        theme,
+                        cx,
+                    )),
             )
     }
 }

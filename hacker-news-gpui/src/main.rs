@@ -18,6 +18,7 @@ mod common;
 mod content;
 mod footer;
 mod header;
+mod scrollbar;
 mod theme;
 
 #[derive(Clone)]
