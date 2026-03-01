@@ -272,7 +272,7 @@ impl Render for ArticleView {
 
         let title_col = div()
             .flex()
-            .flex_row()
+            .flex_col()
             .flex_1()
             .min_w_0()
             .child(
@@ -327,10 +327,12 @@ impl Render for ArticleView {
                 })
                 .when(self.viewing_comments, |div| div.opacity(0.75))
                 .child(
-                    div().mb_1().child(
+                    div().mb_1().w_full().overflow_hidden().child(
                         div()
                             .flex()
                             .flex_row()
+                            .w_full()
+                            .min_w_0()
                             .children([
                                 rank_change_col,
                                 div()

@@ -599,6 +599,7 @@ impl Render for ContentView {
                             .flex_1()
                             .min_w_0()
                             .pr_1()
+                            .mr_1()
                             .pb_2()
                             .children(
                                 self.articles
