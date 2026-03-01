@@ -4,9 +4,9 @@
 //! reflects and controls the scroll position of a [`ScrollHandle`].
 use crate::theme::Theme;
 use gpui::{
-    App, Div, ElementId, Entity, InteractiveElement, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, ParentElement, Pixels, ScrollHandle, Styled, Window, div, prelude::*, px,
-    relative,
+    App, Div, Entity, InteractiveElement, MouseButton, MouseDownEvent, MouseMoveEvent,
+    MouseUpEvent, ParentElement, Pixels, ScrollHandle, SharedString, Styled, Window, div,
+    prelude::*, px, relative,
 };
 
 const SCROLLBAR_WIDTH: Pixels = px(8.0);
@@ -28,14 +28,25 @@ struct DragState {
 pub struct Scrollbar {
     scroll_handle: ScrollHandle,
     drag_state: Option<DragState>,
+    id: SharedString,
 }
 
 impl Scrollbar {
-    pub fn new(scroll_handle: ScrollHandle) -> Self {
-        Self {
+    pub fn new(
+        app: &mut App,
+        id: impl Into<SharedString>,
+        scroll_handle: ScrollHandle,
+    ) -> Entity<Self> {
+        app.new(|_| Self {
+            id: id.into(),
             scroll_handle,
             drag_state: None,
-        }
+        })
+    }
+
+    /// Returns `true` when the user is actively dragging the scrollbar thumb.
+    pub fn is_dragging(&self) -> bool {
+        self.drag_state.is_some()
     }
 
     /// Compute the fraction of content visible in the viewport (0.0–1.0).
@@ -77,118 +88,120 @@ impl Scrollbar {
         offset.y = -(max.height.abs() * fraction);
         self.scroll_handle.set_offset(offset);
     }
+
+    /// Handle a mouse-move event during an active drag.
+    ///
+    /// This is intended to be called from a parent element's `on_mouse_move`
+    /// handler so that dragging continues even when the mouse leaves the
+    /// narrow scrollbar track.
+    pub fn handle_drag_move(&mut self, event: &MouseMoveEvent, cx: &mut gpui::Context<Self>) {
+        let Some(drag) = self.drag_state else {
+            return;
+        };
+        if !event.pressed_button.is_some_and(|b| b == MouseButton::Left) {
+            self.drag_state = None;
+            cx.notify();
+            return;
+        }
+        let bounds = self.scroll_handle.bounds();
+        let track_height = bounds.size.height;
+        if track_height <= px(0.) {
+            return;
+        }
+        let thumb_height = (track_height * self.visible_fraction()).max(MIN_THUMB_HEIGHT);
+        let mouse_y = event.position.y - bounds.origin.y;
+        let fraction =
+            ((mouse_y - drag.thumb_offset_y) / (track_height - thumb_height)).clamp(0.0, 1.0);
+        self.set_scroll_fraction(fraction);
+        cx.notify();
+    }
+
+    /// Handle a mouse-up event to end an active drag.
+    ///
+    /// This is intended to be called from a parent element's `on_mouse_up`
+    /// handler so that the drag ends reliably even when the mouse is
+    /// outside the scrollbar track.
+    pub fn handle_drag_end(&mut self, cx: &mut gpui::Context<Self>) {
+        if self.drag_state.is_some() {
+            self.drag_state = None;
+            cx.notify();
+        }
+    }
 }
 
-/// Renders the scrollbar element.
-///
-/// The scrollbar is rendered as a narrow vertical track with a thumb
-/// whose size reflects the visible fraction of content and whose
-/// position reflects the current scroll offset.
-///
-/// # Arguments
-///
-/// * `id` - A unique element id for the scrollbar (e.g. `"articles-scrollbar"`).
-/// * `scrollbar_entity` - The entity wrapping the [`Scrollbar`] state.
-/// * `theme` - The current theme for styling.
-/// * `cx` - The rendering context.
-pub fn render_scrollbar<V: 'static>(
-    id: impl Into<ElementId>,
-    scrollbar_entity: &Entity<Scrollbar>,
-    theme: Theme,
-    cx: &mut gpui::Context<'_, V>,
-) -> gpui::Stateful<Div> {
-    let scrollbar = cx.read_entity(scrollbar_entity, |sb, _| {
-        (
-            sb.visible_fraction(),
-            sb.scroll_fraction(),
-            sb.is_scrollable(),
-        )
-    });
+impl Render for Scrollbar {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let theme: Theme = window.appearance().into();
 
-    let (visible_fraction, scroll_fraction, is_scrollable) = scrollbar;
-    let entity_for_down = scrollbar_entity.clone();
-    let entity_for_move = scrollbar_entity.clone();
-    let entity_for_up = scrollbar_entity.clone();
-    let entity_for_track = scrollbar_entity.clone();
+        let scrollbar_entity = cx.entity();
 
-    div()
-        .id(id.into())
-        .flex_shrink_0()
-        .w(SCROLLBAR_WIDTH)
-        .h_full()
-        .bg(theme.surface())
-        .rounded(TRACK_BORDER_RADIUS)
-        .when(!is_scrollable, |div| div.invisible())
-        .child(
-            div()
-                .id("scrollbar-track")
-                .w_full()
-                .h_full()
-                .relative()
-                // Click on track to jump to position
-                .on_mouse_down(
-                    MouseButton::Left,
-                    move |event: &MouseDownEvent, _window: &mut Window, app: &mut App| {
-                        entity_for_track.update(app, |scrollbar, _cx| {
-                            let bounds = scrollbar.scroll_handle.bounds();
-                            let track_height = bounds.size.height;
-                            if track_height <= px(0.) {
-                                return;
-                            }
-                            let thumb_height =
-                                (track_height * scrollbar.visible_fraction()).max(MIN_THUMB_HEIGHT);
-                            // Center the thumb on the click position
-                            let click_y = event.position.y - bounds.origin.y;
-                            let fraction = ((click_y - thumb_height / 2.0)
-                                / (track_height - thumb_height))
-                                .clamp(0.0, 1.0);
-                            scrollbar.set_scroll_fraction(fraction);
-                            scrollbar.drag_state = Some(DragState {
-                                thumb_offset_y: thumb_height / 2.0,
+        let entity_for_track = scrollbar_entity.clone();
+        let entity_for_move = scrollbar_entity.clone();
+        let entity_for_up = scrollbar_entity.clone();
+        let entity_for_down = scrollbar_entity.clone();
+
+        div()
+            .id(self.id.clone())
+            .flex_shrink_0()
+            .w(SCROLLBAR_WIDTH)
+            .h_full()
+            .bg(theme.surface())
+            .rounded(TRACK_BORDER_RADIUS)
+            .when(!self.is_scrollable(), |div| div.invisible())
+            .child(
+                div()
+                    .id("scrollbar-track")
+                    .w_full()
+                    .h_full()
+                    .relative()
+                    // Click on track to jump to position
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        move |event: &MouseDownEvent, _window: &mut Window, app: &mut App| {
+                            entity_for_track.update(app, |scrollbar, cx| {
+                                let bounds = scrollbar.scroll_handle.bounds();
+                                let track_height = bounds.size.height;
+                                if track_height <= px(0.) {
+                                    return;
+                                }
+                                let thumb_height = (track_height * scrollbar.visible_fraction())
+                                    .max(MIN_THUMB_HEIGHT);
+                                // Center the thumb on the click position
+                                let click_y = event.position.y - bounds.origin.y;
+                                let fraction = ((click_y - thumb_height / 2.0)
+                                    / (track_height - thumb_height))
+                                    .clamp(0.0, 1.0);
+                                scrollbar.set_scroll_fraction(fraction);
+                                scrollbar.drag_state = Some(DragState {
+                                    thumb_offset_y: thumb_height / 2.0,
+                                });
+                                cx.notify();
                             });
-                        });
-                    },
-                )
-                .on_mouse_move(
-                    move |event: &MouseMoveEvent, _window: &mut Window, app: &mut App| {
-                        entity_for_move.update(app, |scrollbar, _cx| {
-                            let Some(drag) = scrollbar.drag_state else {
-                                return;
-                            };
-                            if !event.pressed_button.is_some_and(|b| b == MouseButton::Left) {
-                                scrollbar.drag_state = None;
-                                return;
-                            }
-                            let bounds = scrollbar.scroll_handle.bounds();
-                            let track_height = bounds.size.height;
-                            if track_height <= px(0.) {
-                                return;
-                            }
-                            let thumb_height =
-                                (track_height * scrollbar.visible_fraction()).max(MIN_THUMB_HEIGHT);
-                            let mouse_y = event.position.y - bounds.origin.y;
-                            let fraction = ((mouse_y - drag.thumb_offset_y)
-                                / (track_height - thumb_height))
-                                .clamp(0.0, 1.0);
-                            scrollbar.set_scroll_fraction(fraction);
-                        });
-                    },
-                )
-                .on_mouse_up(
-                    MouseButton::Left,
-                    move |_event: &MouseUpEvent, _window: &mut Window, app: &mut App| {
-                        entity_for_up.update(app, |scrollbar, _cx| {
-                            scrollbar.drag_state = None;
-                        });
-                    },
-                )
-                .child(thumb_element(
-                    visible_fraction,
-                    scroll_fraction,
-                    theme,
-                    entity_for_down,
-                )),
-        )
+                        },
+                    )
+                    .on_mouse_move(
+                        move |event: &MouseMoveEvent, _window: &mut Window, app: &mut App| {
+                            entity_for_move.update(app, |scrollbar, cx| {
+                                scrollbar.handle_drag_move(event, cx);
+                            });
+                        },
+                    )
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        move |_event: &MouseUpEvent, _window: &mut Window, app: &mut App| {
+                            entity_for_up.update(app, |scrollbar, cx| {
+                                scrollbar.handle_drag_end(cx);
+                            });
+                        },
+                    )
+                    .child(thumb_element(
+                        self.visible_fraction(),
+                        self.scroll_fraction(),
+                        theme,
+                        entity_for_down,
+                    )),
+            )
+    }
 }
 
 /// Builds the thumb div, positioned absolutely within the track.
@@ -224,7 +237,7 @@ fn thumb_element(
         .on_mouse_down(
             MouseButton::Left,
             move |event: &MouseDownEvent, _window: &mut Window, app: &mut App| {
-                entity.update(app, |scrollbar, _cx| {
+                entity.update(app, |scrollbar, cx| {
                     let bounds = scrollbar.scroll_handle.bounds();
                     let track_height = bounds.size.height;
                     let thumb_height =
@@ -234,6 +247,7 @@ fn thumb_element(
                     scrollbar.drag_state = Some(DragState {
                         thumb_offset_y: mouse_y - thumb_top,
                     });
+                    cx.notify();
                 });
             },
         )

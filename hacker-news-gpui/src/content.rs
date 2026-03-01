@@ -1,17 +1,13 @@
 //! Main content view
 use crate::{
-    ApiClientState, ArticleSelection,
-    article::ArticleView,
-    comment::CommentView,
-    common::comment_entities,
-    scrollbar::{Scrollbar, render_scrollbar},
-    theme::Theme,
+    ApiClientState, ArticleSelection, article::ArticleView, comment::CommentView,
+    common::comment_entities, scrollbar::Scrollbar, theme::Theme,
 };
 use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
 use gpui::{
     App, AppContext, DefiniteLength, Entity, EventEmitter, FocusHandle, ListState, MouseButton,
-    MouseMoveEvent, Pixels, ScrollHandle, Window, div, prelude::*, px, rems,
+    MouseMoveEvent, MouseUpEvent, Pixels, ScrollHandle, Window, div, prelude::*, px, rems,
 };
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
@@ -91,6 +87,14 @@ impl ContentView {
     pub fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
         let articles_focus_handle = app.focus_handle();
         let comments_focus_handle = app.focus_handle();
+
+        let articles_scroll_handle = ScrollHandle::new();
+        let comments_scroll_handle = ScrollHandle::new();
+
+        let articles_scrollbar =
+            Scrollbar::new(app, "articles_scrollbar", articles_scroll_handle.clone());
+        let comments_scrollbar =
+            Scrollbar::new(app, "comments_scrollbar", comments_scroll_handle.clone());
 
         let entity_content = app.new(|cx: &mut Context<Self>| {
             cx.subscribe_self(|content_view, event, cx| match event {
@@ -195,12 +199,6 @@ impl ContentView {
                 }
             })
             .detach();
-
-            let articles_scroll_handle = ScrollHandle::new();
-            let comments_scroll_handle = ScrollHandle::new();
-
-            let articles_scrollbar = cx.new(|_| Scrollbar::new(articles_scroll_handle.clone()));
-            let comments_scrollbar = cx.new(|_| Scrollbar::new(comments_scroll_handle.clone()));
 
             Self {
                 list_state,
@@ -504,6 +502,17 @@ impl Render for ContentView {
         let content_entity_1 = cx.entity();
         let content_entity_2 = cx.entity();
 
+        let articles_scrollbar_dragging =
+            cx.read_entity(&self.articles_scrollbar, |sb, _| sb.is_dragging());
+        let comments_scrollbar_dragging =
+            cx.read_entity(&self.comments_scrollbar, |sb, _| sb.is_dragging());
+        let scrollbar_dragging = articles_scrollbar_dragging || comments_scrollbar_dragging;
+
+        let articles_scrollbar_for_move = self.articles_scrollbar.clone();
+        let comments_scrollbar_for_move = self.comments_scrollbar.clone();
+        let articles_scrollbar_for_up = self.articles_scrollbar.clone();
+        let comments_scrollbar_for_up = self.comments_scrollbar.clone();
+
         div()
             .id("content")
             .flex()
@@ -525,6 +534,39 @@ impl Render for ContentView {
                     }),
                 )
                 .cursor_col_resize()
+            })
+            // Handle scrollbar drags at the container level so they work
+            // even when the mouse leaves the narrow scrollbar track.
+            .when(scrollbar_dragging, |div| {
+                div.on_mouse_move(
+                    move |event: &MouseMoveEvent, _window: &mut Window, app: &mut App| {
+                        if articles_scrollbar_dragging {
+                            articles_scrollbar_for_move.update(app, |sb, cx| {
+                                sb.handle_drag_move(event, cx);
+                            });
+                        }
+                        if comments_scrollbar_dragging {
+                            comments_scrollbar_for_move.update(app, |sb, cx| {
+                                sb.handle_drag_move(event, cx);
+                            });
+                        }
+                    },
+                )
+                .on_mouse_up(
+                    MouseButton::Left,
+                    move |_event: &MouseUpEvent, _window: &mut Window, app: &mut App| {
+                        if articles_scrollbar_dragging {
+                            articles_scrollbar_for_up.update(app, |sb, cx| {
+                                sb.handle_drag_end(cx);
+                            });
+                        }
+                        if comments_scrollbar_dragging {
+                            comments_scrollbar_for_up.update(app, |sb, cx| {
+                                sb.handle_drag_end(cx);
+                            });
+                        }
+                    },
+                )
             })
             .child(
                 div()
@@ -562,12 +604,7 @@ impl Render for ContentView {
                                     .map(|article| div().w_full().m_1().child(article.clone())),
                             ),
                     )
-                    .child(render_scrollbar(
-                        "articles-scrollbar",
-                        &self.articles_scrollbar,
-                        theme,
-                        cx,
-                    )),
+                    .child(self.articles_scrollbar.clone()),
             )
             .child(
                 div()
@@ -638,12 +675,7 @@ impl Render for ContentView {
                                 |div| self.render_comments(cx, theme, div),
                             ),
                     )
-                    .child(render_scrollbar(
-                        "comments-scrollbar",
-                        &self.comments_scrollbar,
-                        theme,
-                        cx,
-                    )),
+                    .child(self.comments_scrollbar.clone()),
             )
     }
 }
