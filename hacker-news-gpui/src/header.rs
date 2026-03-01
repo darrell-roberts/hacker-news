@@ -82,8 +82,8 @@ impl Render for Header {
                 })
         };
 
-        let top_best_new = self.categories[0..3].into_iter().map(mk_article_type);
-        let ask_show_job = self.categories[3..].into_iter().map(mk_article_type);
+        let top_best_new = self.categories[0..3].iter().map(mk_article_type);
+        let ask_show_job = self.categories[3..].iter().map(mk_article_type);
         let article_limits = self.counts.iter().cloned().map(|(article_count, label)| {
             mk_button(label)
                 .when_else(
