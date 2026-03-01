@@ -7,11 +7,11 @@ use crate::{
     full_search::FullSearchMsg,
 };
 use hacker_news_api::ArticleType;
-use hacker_news_search::{rebuild_index, IndexStats, RebuildProgress, SearchContext};
+use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, rebuild_index};
 use iced::{
-    futures::channel::mpsc,
-    widget::{self, button, container, row, text, Column},
     Background, Element, Length, Task,
+    futures::channel::mpsc,
+    widget::{self, Column, button, container, row, text},
 };
 use std::{
     ops::Not,

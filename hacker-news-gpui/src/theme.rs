@@ -1,5 +1,5 @@
 //! Simple themes
-use gpui::{rgb, Global, WindowAppearance};
+use gpui::{Global, WindowAppearance, rgb};
 
 mod light {
     pub const TEXT_COLOR: u32 = 0x444444;

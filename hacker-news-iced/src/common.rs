@@ -1,18 +1,17 @@
 //! Common UI elements used by multiple views.
 use crate::{app::AppMsg, footer::FooterMsg};
-use hacker_news_search::{api::CommentStack, SearchContext};
+use hacker_news_search::{SearchContext, api::CommentStack};
 use iced::{
+    Background, Color, Element, Font, Length, Point, Rectangle, Renderer, Task, Theme,
     alignment::Vertical,
     font::{Style, Weight},
     mouse,
     widget::{
-        self,
+        self, Tooltip,
         canvas::{Frame, Geometry, Path, Stroke},
         text::{IntoFragment, Shaping},
         tooltip::Position,
-        Tooltip,
     },
-    Background, Color, Element, Font, Length, Point, Rectangle, Renderer, Task, Theme,
 };
 use std::sync::{Arc, RwLock};
 

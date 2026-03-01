@@ -1,10 +1,10 @@
 //! Macos system access.
 
 use crate::{SettingChange, Theme};
-use futures::{stream, Stream};
+use futures::{Stream, stream};
 use log::info;
 use objc2::rc::Retained;
-use objc2_foundation::{ns_string, NSString, NSUserDefaults};
+use objc2_foundation::{NSString, NSUserDefaults, ns_string};
 
 pub fn initial_theme() -> Theme {
     unsafe {
@@ -21,11 +21,7 @@ pub fn initial_theme() -> Theme {
         info!("Macos interface style: {style}");
         let dark_mode = style.isEqualToString(ns_string!("Dark"));
 
-        if dark_mode {
-            Theme::Dark
-        } else {
-            Theme::Light
-        }
+        if dark_mode { Theme::Dark } else { Theme::Light }
     }
 }
 

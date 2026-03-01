@@ -1,10 +1,10 @@
 //! Renders rich text from a simplified html string. Allows creating spans
 //! for search matches so search strings can be highlighted.
-use crate::{common::FontExt, ROBOTO_FONT, ROBOTO_MONO};
+use crate::{ROBOTO_FONT, ROBOTO_MONO, common::FontExt};
 use html_sanitizer::Anchor;
 use iced::{
-    widget::{span, text::Span},
     Color,
+    widget::{span, text::Span},
 };
 use std::ops::Not;
 

@@ -5,8 +5,8 @@ use std::{
 };
 
 use anyhow::Context as _;
-use app_dirs2::{get_app_dir, get_app_root, AppDataType, AppInfo};
-use flexi_logger::{opt_format, Age, Cleanup, Criterion, FileSpec, Naming};
+use app_dirs2::{AppDataType, AppInfo, get_app_dir, get_app_root};
+use flexi_logger::{Age, Cleanup, Criterion, FileSpec, Naming, opt_format};
 use hacker_news_api::ArticleType;
 use hacker_news_search::{IndexStats, SearchContext};
 use log::info;

@@ -1,21 +1,20 @@
 /// Full search view
 use crate::{
+    ROBOTO_FONT,
     app::AppMsg,
     comments::CommentMsg,
-    common::{self, error_task, FontExt as _, PaginatingView},
+    common::{self, FontExt as _, PaginatingView, error_task},
     header::HeaderMsg,
     parse_date,
     richtext::render_rich_text,
-    ROBOTO_FONT,
 };
 use hacker_news_search::{
-    api::{Comment, CommentStack},
     SearchContext, SearchError,
+    api::{Comment, CommentStack},
 };
 use iced::{
-    border, padding,
+    Color, Element, Length, Shadow, Task, border, padding,
     widget::{self, text::Shaping, tooltip::Position},
-    Color, Element, Length, Shadow, Task,
 };
 use std::sync::{Arc, RwLock};
 

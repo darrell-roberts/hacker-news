@@ -3,7 +3,7 @@ use anyhow::Context;
 use iced::Theme;
 use log::info;
 use objc2::rc::Retained;
-use objc2_foundation::{ns_string, NSString, NSUserDefaults};
+use objc2_foundation::{NSString, NSUserDefaults, ns_string};
 
 pub fn initial_theme() -> anyhow::Result<Theme> {
     unsafe {

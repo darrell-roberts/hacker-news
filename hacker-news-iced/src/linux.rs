@@ -1,8 +1,8 @@
 //! Linux specific settings.
 use crate::app::AppMsg;
 use futures::channel::mpsc;
-use gio::{prelude::*, Settings};
-use iced::{futures::Stream, Theme};
+use gio::{Settings, prelude::*};
+use iced::{Theme, futures::Stream};
 use log::{error, info};
 
 /// Listen to GSettings/dconf changes.

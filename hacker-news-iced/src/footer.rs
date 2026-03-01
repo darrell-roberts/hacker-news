@@ -1,14 +1,14 @@
 //! View for the footer.
-use crate::{app::AppMsg, common::FontExt as _, ROBOTO_FONT};
+use crate::{ROBOTO_FONT, app::AppMsg, common::FontExt as _};
 use chrono::{DateTime, Local, Utc};
 use chrono_tz::America::New_York;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{IndexStats, RebuildProgress};
 use iced::{
+    Background, Color, Element, Length, Task, Theme,
     alignment::Vertical,
     padding,
-    widget::{container, pick_list, progress_bar, stack, text, Column, Row},
-    Background, Color, Element, Length, Task, Theme,
+    widget::{Column, Row, container, pick_list, progress_bar, stack, text},
 };
 use log::error;
 use std::collections::HashMap;
