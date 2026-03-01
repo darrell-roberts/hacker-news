@@ -104,7 +104,6 @@ impl Render for FooterView {
         let online = self.online;
 
         div()
-            .p_1()
             .bg(theme.surface())
             .text_size(rems(0.85))
             .when_some(self.error.as_ref(), |div, error| {
@@ -126,6 +125,7 @@ impl Render for FooterView {
                         div()
                             .flex()
                             .flex_row()
+                            .gap_0p5()
                             .child(
                                 div()
                                     .id("toggle_online")
@@ -150,10 +150,9 @@ impl Render for FooterView {
                                         |el| {
                                             el.text_color(rgb(0xcc3300)).italic().child("[offline]")
                                         },
-                                    )
-                                    .mr_1(),
+                                    ),
                             )
-                            .child(self.total_refreshes.clone()),
+                            .child(div().mr_1().child(self.total_refreshes.clone())),
                     ),
             )
     }
