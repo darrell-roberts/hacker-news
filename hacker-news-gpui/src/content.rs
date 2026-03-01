@@ -183,10 +183,10 @@ impl ContentView {
                             cx.notify();
                         }
                         "pageup" => {
-                            scroll_handle(handle, cx, Direction::Up, px(100.0));
+                            scroll_handle(handle, cx, Direction::Up, handle.bounds().size.height);
                         }
                         "pagedown" => {
-                            scroll_handle(handle, cx, Direction::Down, px(100.0));
+                            scroll_handle(handle, cx, Direction::Down, handle.bounds().size.height);
                         }
                         "up" => {
                             scroll_handle(handle, cx, Direction::Up, px(10.0));
