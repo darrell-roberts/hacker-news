@@ -37,6 +37,8 @@ pub struct CommentView {
     age: SharedString,
     /// Any urls that are in the comment body.
     urls: Vec<String>,
+    /// Comment id.
+    id: u64,
 }
 
 impl CommentView {
@@ -67,6 +69,7 @@ impl CommentView {
             text_layout: layout,
             urls,
             age: parse_date(item.time).unwrap_or_default().into(),
+            id: item.id,
         })
     }
 
@@ -114,6 +117,7 @@ impl CommentView {
         comment_ids: Arc<Vec<u64>>,
         comment_entity: Entity<CommentView>,
     ) -> gpui::Div {
+        let id = self.id;
         gpui::div()
             .flex()
             .flex_row()
@@ -123,7 +127,15 @@ impl CommentView {
             .p_1()
             .border_color(theme.border())
             .text_size(rems(0.75))
-            .child(self.author.clone())
+            .child(
+                gpui::div()
+                    .id("comment_id")
+                    .child(self.author.clone())
+                    .cursor_pointer()
+                    .on_click(move |_event, _window, cx| {
+                        cx.open_url(&format!("https://news.ycombinator.com/item?id={id}"));
+                    }),
+            )
             .child(self.age.clone())
             .when(!self.comment_child_ids.is_empty(), |div| {
                 self.render_child_comments(comment_ids, comment_entity, div)
