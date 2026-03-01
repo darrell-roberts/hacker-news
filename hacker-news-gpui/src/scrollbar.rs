@@ -32,6 +32,7 @@ pub struct Scrollbar {
 }
 
 impl Scrollbar {
+    /// Create a new Scrollbar.
     pub fn new(
         app: &mut App,
         id: impl Into<SharedString>,
