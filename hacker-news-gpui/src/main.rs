@@ -7,9 +7,9 @@ use gpui::{
     WindowBounds, WindowDecorations, WindowKind, WindowOptions, actions, div, point, prelude::*,
     px, size,
 };
-use hacker_news_api::{ApiClient, ArticleType, Item};
+use hacker_news_api::{ApiClient, ArticleType};
 use hacker_news_config::init_logger;
-use log::info;
+use log::{error, info};
 use std::{ops::Deref, sync::Arc};
 
 mod article;
@@ -51,11 +51,6 @@ pub struct UrlHover(pub Option<SharedString>);
 
 impl Global for UrlHover {}
 
-/// Global state for articles.
-pub struct ArticleState(pub Vec<Item>);
-
-impl Global for ArticleState {}
-
 /// The main window view.
 struct MainWindow {
     header: Entity<Header>,
@@ -76,6 +71,12 @@ impl MainWindow {
         let content = ContentView::new(window, app);
         let footer = FooterView::new(window, app, content.clone());
 
+        window
+            .observe_window_appearance(|_window, app| {
+                app.refresh_windows();
+            })
+            .detach();
+
         let content_update = content.clone();
         app.new(move |cx| {
             cx.observe_global::<ArticleSelection>(move |_main_window: &mut MainWindow, cx| {
@@ -93,7 +94,7 @@ impl MainWindow {
                             }
                         }
                         None => {
-                            panic!("No article sender on content view");
+                            error!("No article sender on content view");
                         }
                     }
                 });
@@ -111,12 +112,6 @@ impl MainWindow {
 
 impl Render for MainWindow {
     fn render(&mut self, window: &mut Window, _cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        window
-            .observe_window_appearance(|_window, app| {
-                app.refresh_windows();
-            })
-            .detach();
-
         let theme: Theme = window.appearance().into();
 
         div()
