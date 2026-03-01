@@ -83,7 +83,7 @@ impl ContentView {
     ///
     /// # Returns
     ///
-    /// Returns an `Entity<Self>` representing the newly created content view.
+    /// Returns an [`Entity<ContentView>`] representing the newly created content view.
     pub fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
         let articles_focus_handle = app.focus_handle();
         let comments_focus_handle = app.focus_handle();
@@ -238,6 +238,7 @@ enum Direction {
     Down,
 }
 
+/// Apply scrolling to a scroll handle.
 fn scroll_handle(
     handle: &mut ScrollHandle,
     cx: &mut Context<'_, ContentView>,
@@ -294,7 +295,7 @@ pub enum BackGroundError {
 ///
 /// # Returns
 ///
-/// Returns a `gpui::Task<()>` representing the spawned background task.
+/// Returns a [`gpui::Task<()>`] representing the spawned background task.
 fn start_background_subscriptions(
     app: &mut App,
     entity_content: &Entity<ContentView>,
