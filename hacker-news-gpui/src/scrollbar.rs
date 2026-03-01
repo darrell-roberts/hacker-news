@@ -99,14 +99,17 @@ impl Scrollbar {
         let Some(drag) = self.drag_state else {
             return;
         };
-        if !event.pressed_button.is_some_and(|b| b == MouseButton::Left) {
+        if !event
+            .pressed_button
+            .is_some_and(|mouse_button| mouse_button == MouseButton::Left)
+        {
             self.drag_state = None;
             cx.notify();
             return;
         }
         let bounds = self.scroll_handle.bounds();
         let track_height = bounds.size.height;
-        if track_height <= px(0.) {
+        if track_height <= px(0.0) {
             return;
         }
         let thumb_height = (track_height * self.visible_fraction()).max(MIN_THUMB_HEIGHT);
@@ -162,7 +165,7 @@ impl Render for Scrollbar {
                             entity_for_track.update(app, |scrollbar, cx| {
                                 let bounds = scrollbar.scroll_handle.bounds();
                                 let track_height = bounds.size.height;
-                                if track_height <= px(0.) {
+                                if track_height <= px(0.0) {
                                     return;
                                 }
                                 let thumb_height = (track_height * scrollbar.visible_fraction())
@@ -219,7 +222,6 @@ fn thumb_element(
     // Since we can't know the exact track pixel height at render time for percentage math,
     // we express thumb_height as a fraction and compute top offset accordingly.
     // For the min height clamp we use a fixed pixel value.
-
     let thumb_height_fraction = visible_fraction.clamp(0.05, 1.0);
     let available_fraction = 1.0 - thumb_height_fraction;
     let thumb_top_fraction = scroll_fraction * available_fraction;

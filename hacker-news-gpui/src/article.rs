@@ -281,7 +281,7 @@ impl Render for ArticleView {
                         .id("title")
                         .child(self.title.clone())
                         .cursor_pointer()
-                        .on_click(move |_, _, app| {
+                        .on_click(move |_event, _window, app| {
                             if let Some(url) = url.as_deref() {
                                 app.open_url(url.as_ref());
                             }
