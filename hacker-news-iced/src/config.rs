@@ -7,11 +7,11 @@ use crate::{
     nav_history::Content,
     theme,
 };
-use hacker_news_config::{IndexConfig, INDEX_CONFIG};
+use hacker_news_config::{INDEX_CONFIG, IndexConfig};
 use hacker_news_search::SearchContext;
 use iced::{
-    widget::pane_grid::{self, Configuration},
     Size,
+    widget::pane_grid::{self, Configuration},
 };
 use serde::{Deserialize, Serialize};
 use std::{

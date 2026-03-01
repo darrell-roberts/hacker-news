@@ -94,7 +94,7 @@ impl Render for Header {
                     .on_click(move |_event, _window, app| {
                         app.update_global(|state: &mut ArticleSelection, _cx| {
                             state.viewing_article_total = article_count;
-                        })
+                        });
                     })
             });
 

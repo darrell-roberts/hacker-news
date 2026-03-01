@@ -1,9 +1,9 @@
 //! Create index.
 use crate::{
+    HackerNewsFields, ITEM_TYPE, SearchContext, SearchError, SearchResult,
     api::{Comment, Story},
-    HackerNewsFields, SearchContext, SearchError, SearchResult, ITEM_TYPE,
 };
-use futures::{channel::mpsc, SinkExt, Stream, StreamExt, TryFutureExt, TryStreamExt};
+use futures::{SinkExt, Stream, StreamExt, TryFutureExt, TryStreamExt, channel::mpsc};
 use futures_util::stream::FuturesUnordered;
 use hacker_news_api::{ApiClient, ArticleType, Item, ItemEventData};
 use log::{debug, error, info, warn};
@@ -17,12 +17,12 @@ use std::{
 };
 use tantivy::{IndexWriter, TantivyDocument, Term};
 use tokio::{
-    sync::mpsc::{channel, Receiver, Sender},
+    sync::mpsc::{Receiver, Sender, channel},
     task::AbortHandle,
     time::timeout,
 };
 #[cfg(feature = "trace")]
-use tracing::{instrument, Instrument as _};
+use tracing::{Instrument as _, instrument};
 
 /// Single api client for connection pooling re-use.
 static API: OnceLock<Arc<ApiClient>> = OnceLock::new();

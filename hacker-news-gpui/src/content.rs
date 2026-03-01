@@ -1,17 +1,17 @@
 //! Main content view
 use crate::{
     ApiClientState, ArticleSelection, article::ArticleView, comment::CommentView,
-    common::comment_entities, theme::Theme,
+    common::comment_entities, scrollbar::Scrollbar, theme::Theme,
 };
 use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
 use gpui::{
-    App, AppContext, DefiniteLength, Entity, EventEmitter, ListState, MouseButton, MouseMoveEvent,
-    Pixels, Window, div, prelude::*, px, rems,
+    App, AppContext, DefiniteLength, Entity, EventEmitter, FocusHandle, ListState, MouseButton,
+    MouseMoveEvent, MouseUpEvent, Pixels, ScrollHandle, Window, div, prelude::*, px, rems,
 };
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
-use std::collections::HashMap;
+use std::{collections::HashMap, f32};
 
 // Main content view.
 pub struct ContentView {
@@ -41,6 +41,18 @@ pub struct ContentView {
     is_dragging_divider: bool,
     /// Fetching comments.
     fetching_comments: bool,
+    /// Scroll handle for articles column.
+    articles_scroll_handle: ScrollHandle,
+    /// Scroll handle for comments column.
+    comments_scroll_handle: ScrollHandle,
+    /// Focus handle for articles
+    articles_focus_handle: FocusHandle,
+    /// Focus handle for comments
+    comments_focus_handle: FocusHandle,
+    /// Scrollbar entity for articles column.
+    articles_scrollbar: Entity<Scrollbar>,
+    /// Scrollbar entity for comments column.
+    comments_scrollbar: Entity<Scrollbar>,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
@@ -73,6 +85,17 @@ impl ContentView {
     ///
     /// Returns an `Entity<Self>` representing the newly created content view.
     pub fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
+        let articles_focus_handle = app.focus_handle();
+        let comments_focus_handle = app.focus_handle();
+
+        let articles_scroll_handle = ScrollHandle::new();
+        let comments_scroll_handle = ScrollHandle::new();
+
+        let articles_scrollbar =
+            Scrollbar::new(app, "articles_scrollbar", articles_scroll_handle.clone());
+        let comments_scrollbar =
+            Scrollbar::new(app, "comments_scrollbar", comments_scroll_handle.clone());
+
         let entity_content = app.new(|cx: &mut Context<Self>| {
             cx.subscribe_self(|content_view, event, cx| match event {
                 ContentEvent::OnlineToggle(enable) => {
@@ -139,6 +162,44 @@ impl ContentView {
 
             let list_state = ListState::new(0, gpui::ListAlignment::Top, px(5.0));
 
+            cx.observe_keystrokes(|content_view, event, window, cx| {
+                let articles_active = content_view.articles_focus_handle.is_focused(window);
+                let comments_active = content_view.comments_focus_handle.is_focused(window);
+
+                if articles_active || comments_active {
+                    let handle = if articles_active {
+                        &mut content_view.articles_scroll_handle
+                    } else {
+                        &mut content_view.comments_scroll_handle
+                    };
+
+                    match event.keystroke.key.as_str() {
+                        "home" => {
+                            scroll_handle(handle, cx, Direction::Up, px(f32::MAX));
+                            cx.notify();
+                        }
+                        "end" => {
+                            scroll_handle(handle, cx, Direction::Down, px(f32::MAX));
+                            cx.notify();
+                        }
+                        "pageup" => {
+                            scroll_handle(handle, cx, Direction::Up, px(100.0));
+                        }
+                        "pagedown" => {
+                            scroll_handle(handle, cx, Direction::Down, px(100.0));
+                        }
+                        "up" => {
+                            scroll_handle(handle, cx, Direction::Up, px(10.0));
+                        }
+                        "down" => {
+                            scroll_handle(handle, cx, Direction::Down, px(10.0));
+                        }
+                        _ => {}
+                    }
+                }
+            })
+            .detach();
+
             Self {
                 list_state,
                 articles: Default::default(),
@@ -152,6 +213,12 @@ impl ContentView {
                 articles_width: px(800.0),
                 is_dragging_divider: false,
                 fetching_comments: false,
+                articles_scroll_handle,
+                comments_scroll_handle,
+                articles_focus_handle,
+                comments_focus_handle,
+                articles_scrollbar,
+                comments_scrollbar,
             }
         });
 
@@ -163,6 +230,27 @@ impl ContentView {
         });
         entity_content
     }
+}
+
+#[derive(Copy, Clone)]
+enum Direction {
+    Up,
+    Down,
+}
+
+fn scroll_handle(
+    handle: &mut ScrollHandle,
+    cx: &mut Context<'_, ContentView>,
+    direction: Direction,
+    distance: Pixels,
+) {
+    let mut offset = handle.offset();
+    offset.y = match direction {
+        Direction::Up => offset.y + distance,
+        Direction::Down => offset.y - distance,
+    };
+    handle.set_offset(offset);
+    cx.notify();
 }
 
 /// Restarts the background task by dropping the current task and replacing it with a new one.
@@ -411,6 +499,20 @@ impl Render for ContentView {
     fn render(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
         let theme: Theme = window.appearance().into();
 
+        let content_entity_1 = cx.entity();
+        let content_entity_2 = cx.entity();
+
+        let articles_scrollbar_dragging =
+            cx.read_entity(&self.articles_scrollbar, |sb, _| sb.is_dragging());
+        let comments_scrollbar_dragging =
+            cx.read_entity(&self.comments_scrollbar, |sb, _| sb.is_dragging());
+        let scrollbar_dragging = articles_scrollbar_dragging || comments_scrollbar_dragging;
+
+        let articles_scrollbar_for_move = self.articles_scrollbar.clone();
+        let comments_scrollbar_for_move = self.comments_scrollbar.clone();
+        let articles_scrollbar_for_up = self.articles_scrollbar.clone();
+        let comments_scrollbar_for_up = self.comments_scrollbar.clone();
+
         div()
             .id("content")
             .flex()
@@ -433,22 +535,76 @@ impl Render for ContentView {
                 )
                 .cursor_col_resize()
             })
+            // Handle scrollbar drags at the container level so they work
+            // even when the mouse leaves the narrow scrollbar track.
+            .when(scrollbar_dragging, |div| {
+                div.on_mouse_move(
+                    move |event: &MouseMoveEvent, _window: &mut Window, app: &mut App| {
+                        if articles_scrollbar_dragging {
+                            articles_scrollbar_for_move.update(app, |sb, cx| {
+                                sb.handle_drag_move(event, cx);
+                            });
+                        }
+                        if comments_scrollbar_dragging {
+                            comments_scrollbar_for_move.update(app, |sb, cx| {
+                                sb.handle_drag_move(event, cx);
+                            });
+                        }
+                    },
+                )
+                .on_mouse_up(
+                    MouseButton::Left,
+                    move |_event: &MouseUpEvent, _window: &mut Window, app: &mut App| {
+                        if articles_scrollbar_dragging {
+                            articles_scrollbar_for_up.update(app, |sb, cx| {
+                                sb.handle_drag_end(cx);
+                            });
+                        }
+                        if comments_scrollbar_dragging {
+                            comments_scrollbar_for_up.update(app, |sb, cx| {
+                                sb.handle_drag_end(cx);
+                            });
+                        }
+                    },
+                )
+            })
             .child(
                 div()
-                    .id("articles")
+                    .flex()
+                    .flex_row()
                     .h_full()
-                    .overflow_y_scroll()
-                    .flex_col()
                     .w(DefiniteLength::Absolute(gpui::AbsoluteLength::Pixels(
                         self.articles_width,
                     )))
-                    .pr_1()
-                    .mr_1()
-                    .children(
-                        self.articles
-                            .iter()
-                            .map(|article| div().w_full().m_1().child(article.clone())),
-                    ),
+                    .child(
+                        div()
+                            .id("articles")
+                            .track_focus(&self.articles_focus_handle)
+                            .track_scroll(&self.articles_scroll_handle)
+                            .on_hover(move |hover, window, cx| {
+                                let focus_handle = cx
+                                    .read_entity(&content_entity_1, |content_view, _cx| {
+                                        content_view.articles_focus_handle.clone()
+                                    });
+                                if *hover {
+                                    window.focus(&focus_handle, cx);
+                                } else {
+                                    window.blur()
+                                }
+                            })
+                            .h_full()
+                            .overflow_y_scroll()
+                            .flex_col()
+                            .flex_1()
+                            .min_w_0()
+                            .pr_1()
+                            .children(
+                                self.articles
+                                    .iter()
+                                    .map(|article| div().w_full().m_1().child(article.clone())),
+                            ),
+                    )
+                    .child(self.articles_scrollbar.clone()),
             )
             .child(
                 div()
@@ -482,21 +638,44 @@ impl Render for ContentView {
             )
             .child(
                 div()
-                    .id("comments")
+                    .flex()
+                    .flex_row()
                     .h_full()
-                    .flex_col()
-                    .min_w_0()
-                    .overflow_y_scroll()
                     .flex_1()
-                    .pb_2()
-                    .ml_1()
-                    .when(self.fetching_comments, |div| {
-                        div.child("Fetching comments...")
-                    })
-                    .when(
-                        !self.comment_entities.is_empty() && !self.fetching_comments,
-                        |div| self.render_comments(cx, theme, div),
-                    ),
+                    .min_w_0()
+                    .child(
+                        div()
+                            .id("comments")
+                            .track_focus(&self.comments_focus_handle)
+                            .track_scroll(&self.comments_scroll_handle)
+                            .on_hover(move |hover, window, cx| {
+                                let focus_handle = cx
+                                    .read_entity(&content_entity_2, |content_view, _cx| {
+                                        content_view.comments_focus_handle.clone()
+                                    });
+                                if *hover {
+                                    window.focus(&focus_handle, cx);
+                                } else {
+                                    window.blur();
+                                }
+                            })
+                            .h_full()
+                            .flex_col()
+                            .min_w_0()
+                            .overflow_y_scroll()
+                            .flex_1()
+                            .pb_2()
+                            .ml_1()
+                            .pr(px(8.0))
+                            .when(self.fetching_comments, |div| {
+                                div.child("Fetching comments...")
+                            })
+                            .when(
+                                !self.comment_entities.is_empty() && !self.fetching_comments,
+                                |div| self.render_comments(cx, theme, div),
+                            ),
+                    )
+                    .child(self.comments_scrollbar.clone()),
             )
     }
 }

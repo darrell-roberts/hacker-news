@@ -3,13 +3,13 @@ use hacker_news_api::ArticleType;
 use log::info;
 use std::{fs::create_dir_all, path::Path};
 use tantivy::{
-    directory::{error::OpenDirectoryError, MmapDirectory},
+    Index, IndexReader, Searcher, TantivyError,
+    directory::{MmapDirectory, error::OpenDirectoryError},
     query::{QueryParser, QueryParserError},
     schema::{
-        Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, FAST, INDEXED, STORED,
-        STRING, TEXT,
+        FAST, Field, INDEXED, IndexRecordOption, STORED, STRING, Schema, TEXT, TextFieldIndexing,
+        TextOptions,
     },
-    Index, IndexReader, Searcher, TantivyError,
 };
 use thiserror::Error;
 

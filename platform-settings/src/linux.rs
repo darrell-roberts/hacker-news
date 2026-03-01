@@ -1,7 +1,7 @@
 //! Linux specific settings.
 use crate::{SettingChange, Theme};
-use futures::{channel::mpsc, Stream};
-use gio::{prelude::*, Settings};
+use futures::{Stream, channel::mpsc};
+use gio::{Settings, prelude::*};
 use log::{error, info};
 
 /// Listen to GSettings/dconf changes.

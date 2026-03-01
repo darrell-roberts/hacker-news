@@ -1,35 +1,34 @@
 //! Application top level state and view.
 use crate::{
+    ROBOTO_FONT,
     articles::{self, ArticleMsg, ArticleState},
     comments::{self, CommentMsg, CommentState, NavStack},
-    common::{self, error_task, FontExt as _},
-    config::{save_config, Config, GuiConfig},
+    common::{self, FontExt as _, error_task},
+    config::{Config, GuiConfig, save_config},
     footer::{self, FooterMsg, FooterState},
     full_search::{FullSearchMsg, FullSearchState, SearchCriteria},
     header::{self, HeaderMsg, HeaderState},
     nav_history::{Content, History, HistoryElement},
-    ROBOTO_FONT,
 };
 use hacker_news_api::ArticleType;
 use hacker_news_config::IndexConfig;
 use hacker_news_search::{
-    api::{Comment, Story},
     SearchContext,
+    api::{Comment, Story},
 };
 use iced::{
-    widget::{
-        self, button, container,
-        operation::{focus_next, focus_previous},
-        pane_grid,
-        scrollable::AbsoluteOffset,
-        text::Shaping,
-        Column,
-    },
     // clipboard,
     Length,
     Size,
     Task,
     Theme,
+    widget::{
+        self, Column, button, container,
+        operation::{focus_next, focus_previous},
+        pane_grid,
+        scrollable::AbsoluteOffset,
+        text::Shaping,
+    },
 };
 use log::error;
 use std::{

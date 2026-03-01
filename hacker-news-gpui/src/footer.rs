@@ -150,7 +150,8 @@ impl Render for FooterView {
                                         |el| {
                                             el.text_color(rgb(0xcc3300)).italic().child("[offline]")
                                         },
-                                    ),
+                                    )
+                                    .mr_1(),
                             )
                             .child(self.total_refreshes.clone()),
                     ),

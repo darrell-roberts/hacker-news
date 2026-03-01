@@ -1,12 +1,12 @@
 //! Search API for user comments.
 use super::{Comment, Story};
-use crate::{SearchContext, SearchError, SearchResult, ITEM_RANK, ITEM_TIME};
+use crate::{ITEM_RANK, ITEM_TIME, SearchContext, SearchError, SearchResult};
 use std::{ops::Bound, time::SystemTime};
 use tantivy::{
+    Order, Searcher, Term,
     collector::{Count, MultiCollector, TopDocs},
     query::{BooleanQuery, Occur, Query, RangeQuery, TermQuery},
     schema::IndexRecordOption,
-    Order, Searcher, Term,
 };
 
 impl SearchContext {

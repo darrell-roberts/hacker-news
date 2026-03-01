@@ -1,12 +1,12 @@
 //! Search API for top stories.
 use super::Story;
-use crate::{SearchContext, SearchError, SearchResult, ITEM_RANK};
+use crate::{ITEM_RANK, SearchContext, SearchError, SearchResult};
 use std::sync::OnceLock;
 use tantivy::{
+    Order, TantivyDocument, Term,
     collector::TopDocs,
     query::{BooleanQuery, Occur, Query, TermQuery},
     schema::{Field, IndexRecordOption},
-    Order, TantivyDocument, Term,
 };
 
 static STORY_OR_JOB_OR_POLL: OnceLock<BooleanQuery> = OnceLock::new();

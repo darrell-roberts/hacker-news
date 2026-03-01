@@ -1,5 +1,5 @@
 use anyhow::Context;
-use app::{update, view, App, AppMsg, PaneState, ScrollBy};
+use app::{App, AppMsg, PaneState, ScrollBy, update, view};
 use articles::{ArticleMsg, ArticleState};
 use chrono::{DateTime, Utc};
 use footer::FooterState;
@@ -7,16 +7,16 @@ use hacker_news_api::ArticleType;
 #[cfg(target_family = "unix")]
 use hacker_news_config::limits::check_nofiles_limit;
 use hacker_news_config::{init_logger, search_context};
-use hacker_news_search::{api_client, SearchContext};
+use hacker_news_search::{SearchContext, api_client};
 use header::{HeaderMsg, HeaderState};
 use iced::{
+    Font, Size, Subscription, Task, Theme,
     advanced::graphics::core::window,
     event::listen_with,
-    keyboard::{key::Named, Key, Modifiers},
+    keyboard::{Key, Modifiers, key::Named},
     time::every,
     widget::pane_grid::{self, Configuration},
     window::{close_requests, resize_events},
-    Font, Size, Subscription, Task, Theme,
 };
 use log::error;
 use nav_history::Content;

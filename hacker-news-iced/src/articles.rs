@@ -1,22 +1,22 @@
 //! View and state for viewing top level stories.
 use crate::{
+    ROBOTO_FONT,
     app::AppMsg,
-    common::{self, error_task, tooltip, FontExt as _},
+    common::{self, FontExt as _, error_task, tooltip},
     footer::FooterMsg,
     full_search::FullSearchMsg,
     header::HeaderMsg,
     parse_date,
     richtext::SearchSpanIter,
-    ROBOTO_FONT,
 };
-use hacker_news_search::{api::Story, update_story, watch_story, SearchContext, WatchState};
+use hacker_news_search::{SearchContext, WatchState, api::Story, update_story, watch_story};
 use iced::{
+    Background, Color, Element, Length, Shadow, Task, Theme,
     advanced::image::Handle,
     alignment::{Horizontal, Vertical},
     border::{self},
     padding,
-    widget::{self, text, Column, Row},
-    Background, Color, Element, Length, Shadow, Task, Theme,
+    widget::{self, Column, Row, text},
 };
 use log::info;
 use std::{

@@ -1,24 +1,23 @@
 //! State and view for viewing comments.
 use crate::{
+    ROBOTO_FONT,
     app::AppMsg,
     articles::ArticleMsg,
-    common::{self, error_task, FontExt as _, PaginatingView},
+    common::{self, FontExt as _, PaginatingView, error_task},
     full_search::FullSearchMsg,
     header::HeaderMsg,
     parse_date,
     richtext::render_rich_text,
-    ROBOTO_FONT,
 };
 use hacker_news_search::{
-    api::{Comment, Story},
     SearchContext,
+    api::{Comment, Story},
 };
 use iced::{
-    border, padding,
+    Border, Color, Element, Length, Shadow, Task, border, padding,
     widget::{
-        self, button, container, scrollable::AbsoluteOffset, text::Shaping, Column, Container,
+        self, Column, Container, button, container, scrollable::AbsoluteOffset, text::Shaping,
     },
-    Border, Color, Element, Length, Shadow, Task,
 };
 use std::sync::{Arc, RwLock};
 
@@ -511,9 +510,10 @@ impl CommentState {
                 // Check if this is a top level comment.
                 while let Some(stack_item) = self.nav_stack.pop() {
                     if let Some(c) = stack_item.comment
-                        && c.id == comment_id {
-                            break;
-                        }
+                        && c.id == comment_id
+                    {
+                        break;
+                    }
                 }
 
                 self.parent_id = self

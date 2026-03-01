@@ -1,13 +1,13 @@
 //! Setup open telemetry tracing to export to Jaeger.
-use opentelemetry::{trace::TracerProvider as _, KeyValue};
+use opentelemetry::{KeyValue, trace::TracerProvider as _};
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{
-    trace::{BatchConfigBuilder, RandomIdGenerator, Sampler, Tracer, TracerProvider},
     Resource,
+    trace::{BatchConfigBuilder, RandomIdGenerator, Sampler, Tracer, TracerProvider},
 };
 use std::{future::pending, sync::OnceLock};
 use tracing_opentelemetry::OpenTelemetryLayer;
-use tracing_subscriber::{layer::SubscriberExt, Registry};
+use tracing_subscriber::{Registry, layer::SubscriberExt};
 
 #[derive(Debug)]
 struct LogHandle {

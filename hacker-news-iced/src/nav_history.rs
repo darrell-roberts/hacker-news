@@ -5,7 +5,7 @@ use crate::{
 };
 use anyhow::Context;
 use hacker_news_api::ArticleType;
-use hacker_news_search::{api::CommentStack, SearchContext};
+use hacker_news_search::{SearchContext, api::CommentStack};
 use std::{
     fmt::Display,
     sync::{Arc, RwLock},

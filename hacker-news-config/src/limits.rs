@@ -1,5 +1,5 @@
 //! Unix number of open files limits
-use libc::{getrlimit, rlimit, setrlimit, RLIMIT_NOFILE};
+use libc::{RLIMIT_NOFILE, getrlimit, rlimit, setrlimit};
 use log::{error, info};
 
 /// Increase the number open files limit on unix.
