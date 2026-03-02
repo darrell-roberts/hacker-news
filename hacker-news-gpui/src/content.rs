@@ -681,7 +681,7 @@ impl Render for ContentView {
                                 div.flex()
                                     .justify_center()
                                     .items_center()
-                                    .text_size(rems(3.0))
+                                    .text_size(rems(1.5))
                                     .child("Fetching comments...")
                             })
                             .when(
