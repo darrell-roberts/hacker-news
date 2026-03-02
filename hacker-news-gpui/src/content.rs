@@ -678,7 +678,11 @@ impl Render for ContentView {
                             .ml_1()
                             .pr(px(8.0))
                             .when(self.fetching_comments, |div| {
-                                div.child("Fetching comments...")
+                                div.flex()
+                                    .justify_center()
+                                    .items_center()
+                                    .text_size(rems(1.5))
+                                    .child("Fetching comments...")
                             })
                             .when(
                                 !self.comment_entities.is_empty() && !self.fetching_comments,
