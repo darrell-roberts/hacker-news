@@ -1,10 +1,11 @@
 //! Common functions.
 use chrono::{DateTime, Utc};
-use futures::TryStreamExt as _;
-use gpui::{AsyncApp, Entity, Image};
+use futures::{StreamExt as _, TryStreamExt as _};
+use gpui::{AppContext, AsyncApp, Entity, Image};
+use log::error;
 use std::sync::{Arc, LazyLock};
 
-use crate::{ApiClientState, article::ArticleView, comment::CommentView};
+use crate::{ApiClientState, article::ArticleView, comment::CommentView, content::ContentEvent};
 
 /// An embedded SVG comment image.
 pub static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
@@ -61,11 +62,28 @@ pub async fn comment_entities(
     article_entity: Entity<ArticleView>,
     comment_ids: &[u64],
 ) -> Vec<Entity<CommentView>> {
+    let content_entity = app.read_entity(&article_entity, |article_view, _cx| {
+        article_view.content_entity.clone()
+    });
+    app.update_entity(&content_entity, |_content_view, cx| {
+        cx.emit(ContentEvent::Error(None));
+    });
     let client = app.read_global(|client: &ApiClientState, _| client.0.clone());
-    let comment_items =
-        async_compat::Compat::new(client.items(comment_ids).try_collect::<Vec<_>>())
-            .await
-            .unwrap_or_default();
+    let item_stream = client
+        .items(comment_ids)
+        .into_stream()
+        .filter_map(|comment_result| async move {
+            match comment_result {
+                Ok(comment) => Some(comment),
+                Err(err) => {
+                    error!("Failed to fetch comment: {err}");
+                    None
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let comment_items = async_compat::Compat::new(item_stream).await;
 
     comment_items
         .into_iter()
