@@ -336,10 +336,12 @@ impl Render for ArticleView {
                             .children([
                                 rank_change_col,
                                 div()
+                                    .flex()
+                                    .items_center()
                                     .w(rems(2.))
                                     .text_align(gpui::TextAlign::Right)
                                     .child(self.rank.clone()),
-                                div().child(comments_col),
+                                div().flex().items_center().child(comments_col),
                                 title_col,
                             ])
                             .gap_1(),
