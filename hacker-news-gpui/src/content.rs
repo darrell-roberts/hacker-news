@@ -7,7 +7,8 @@ use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
 use gpui::{
     App, AppContext, DefiniteLength, Entity, EventEmitter, FocusHandle, ListState, MouseButton,
-    MouseMoveEvent, MouseUpEvent, Pixels, ScrollHandle, Window, div, prelude::*, px, rems,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, ScrollHandle, Window, div, prelude::*,
+    px, rems,
 };
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
@@ -39,6 +40,10 @@ pub struct ContentView {
     articles_width: Pixels,
     /// True when the user is adjusting the article column width using the divider.
     is_dragging_divider: bool,
+    /// The offset between the mouse x position and the articles_width when
+    /// the divider drag started. Applied during the drag so the divider
+    /// stays exactly under the cursor.
+    divider_drag_offset: Pixels,
     /// Fetching comments.
     fetching_comments: bool,
     /// Scroll handle for articles column.
@@ -212,6 +217,7 @@ impl ContentView {
                 comment_entities: Vec::new(),
                 articles_width: px(800.0),
                 is_dragging_divider: false,
+                divider_drag_offset: px(0.0),
                 fetching_comments: false,
                 articles_scroll_handle,
                 comments_scroll_handle,
@@ -494,8 +500,6 @@ pub(crate) fn start_background_article_list_subscription(
     }))
 }
 
-const MARGIN: Pixels = px(10.0);
-
 impl Render for ContentView {
     fn render(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
         let theme: Theme = window.appearance().into();
@@ -524,7 +528,8 @@ impl Render for ContentView {
             // Only listen to move/up at the container level when actively dragging
             .when(self.is_dragging_divider, |div| {
                 div.on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
-                    this.articles_width = (event.position.x - MARGIN).max(px(100.0));
+                    this.articles_width =
+                        (event.position.x - this.divider_drag_offset).max(px(100.0));
                     cx.notify();
                 }))
                 .on_mouse_up(
@@ -599,6 +604,7 @@ impl Render for ContentView {
                             .flex_1()
                             .min_w_0()
                             .pr_1()
+                            .mr_1()
                             .pb_2()
                             .children(
                                 self.articles
@@ -619,14 +625,16 @@ impl Render for ContentView {
                     .bg(theme.border())
                     .on_mouse_down(
                         MouseButton::Left,
-                        cx.listener(|this, _event, _window, cx| {
+                        cx.listener(|this, event: &MouseDownEvent, _window, cx| {
+                            this.divider_drag_offset = event.position.x - this.articles_width;
                             this.is_dragging_divider = true;
                             cx.notify();
                         }),
                     )
                     .on_mouse_move(cx.listener(|this, event: &MouseMoveEvent, _window, cx| {
                         if this.is_dragging_divider {
-                            this.articles_width = event.position.x;
+                            this.articles_width =
+                                (event.position.x - this.divider_drag_offset).max(px(100.0));
                             cx.notify();
                         }
                     }))
