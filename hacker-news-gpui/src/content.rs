@@ -22,7 +22,7 @@ pub struct ContentView {
     list_state: ListState,
     /// Tracks the ranking of each article so that if it moves up
     /// or down we can show by how much.
-    article_ranks: HashMap<u64, usize>,
+    pub article_ranks: HashMap<u64, usize>,
     /// Tracks the number of comments for an article so that when it
     /// changes we can show a visual indicator.
     article_comment_counts: HashMap<u64, u64>,
