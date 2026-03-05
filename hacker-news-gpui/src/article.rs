@@ -36,7 +36,7 @@ pub struct ArticleView {
     /// The IDs of the comments for this article.
     pub comment_ids: Arc<Vec<u64>>,
     /// The entity representing the content view associated with this article.
-    content_entity: Entity<ContentView>,
+    pub content_entity: Entity<ContentView>,
     /// Whether the comments are currently loading.
     loading_comments: bool,
     /// The delta in comment count since the last update, if available.
