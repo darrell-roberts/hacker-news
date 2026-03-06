@@ -319,7 +319,7 @@ impl Render for ArticleView {
                 .flex()
                 .flex_row()
                 .rounded_md()
-                .shadow_sm()
+                .shadow_md()
                 .bg(theme.surface())
                 .border_1()
                 .border_color(theme.border())

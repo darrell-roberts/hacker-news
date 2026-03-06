@@ -222,6 +222,7 @@ impl Render for CommentView {
             .flex_col()
             .w_full()
             .mb_2()
+            .shadow_md()
             .child(self.render_text_area(theme, comment_entity.clone()))
             .child(self.render_comment_footer(theme, comment_ids, comment_entity.clone()))
             .when(!self.children.is_empty(), |el| {
