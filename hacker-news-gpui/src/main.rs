@@ -79,8 +79,13 @@ impl MainWindow {
 
         let content_update = content.clone();
         app.new(move |cx| {
-            cx.observe_global::<ArticleSelection>(move |_main_window: &mut MainWindow, cx| {
+            cx.observe_global::<ArticleSelection>(move |main_window: &mut MainWindow, cx| {
                 let selection = *cx.global::<ArticleSelection>();
+                // Reset ranks when we change selection.
+                main_window.content.update(cx, |content, cx| {
+                    content.article_ranks.clear();
+                    cx.notify();
+                });
                 content_update.update(cx, |content_view, cx| {
                     match content_view.article_sender.as_ref() {
                         Some(tx) => {
