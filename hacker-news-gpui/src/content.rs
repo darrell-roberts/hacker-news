@@ -145,7 +145,8 @@ impl ContentView {
 
                     cx.spawn(async move |weak_content_view_entity, async_app| {
                         let comment_entities =
-                            comment_entities(async_app, article_entity, &comment_ids).await;
+                            comment_entities(async_app, article_entity.clone(), &comment_ids).await;
+
                         async_app.update(|app| {
                             if let Err(err) =
                                 weak_content_view_entity.update(app, |content_view, _cx| {
@@ -155,6 +156,9 @@ impl ContentView {
                             {
                                 error!("Content view is gone: {err}");
                             }
+                            article_entity.update(app, |article_view, _cx| {
+                                article_view.loading_comments = false;
+                            });
                         });
                     })
                     .detach();

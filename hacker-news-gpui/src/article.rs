@@ -38,7 +38,7 @@ pub struct ArticleView {
     /// The entity representing the content view associated with this article.
     pub content_entity: Entity<ContentView>,
     /// Whether the comments are currently loading.
-    loading_comments: bool,
+    pub loading_comments: bool,
     /// The delta in comment count since the last update, if available.
     comment_count_changed: Option<SharedString>,
     /// If we are viewing comments for this article.
@@ -218,24 +218,16 @@ impl ArticleView {
         let content_entity = self.content_entity.clone();
 
         move |_, _, app| {
-            article_entity.update(app, |article: &mut ArticleView, _cx| {
-                article.loading_comments = true;
+            let article_entity = article_entity.clone();
+
+            article_entity.update(app, |article_view: &mut ArticleView, _cx| {
+                article_view.loading_comments = true;
+                article_view.viewing_comments = true;
             });
 
-            let article_entity = article_entity.clone();
-            let content_entity = content_entity.clone();
-
-            app.spawn(async move |app: &mut AsyncApp| {
-                article_entity.update(app, |article_view: &mut ArticleView, _cx| {
-                    article_view.loading_comments = false;
-                    article_view.viewing_comments = true;
-                });
-
-                content_entity.update(app, |_content_view: &mut ContentView, cx| {
-                    cx.emit(ContentEvent::OpenComments(article_entity))
-                });
-            })
-            .detach();
+            content_entity.update(app, |_content_view: &mut ContentView, cx| {
+                cx.emit(ContentEvent::OpenComments(article_entity))
+            });
         }
     }
 }
