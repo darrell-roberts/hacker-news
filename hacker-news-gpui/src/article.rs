@@ -141,26 +141,31 @@ impl ArticleView {
         &self,
         div: gpui::Stateful<gpui::Div>,
         new_comments_added: &SharedString,
+        article_entity: Entity<ArticleView>,
     ) -> gpui::Stateful<gpui::Div> {
-        div.flex().flex_row().child(
-            gpui::div()
-                .flex()
-                .flex_row()
-                .child(
-                    gpui::div()
-                        .bg(Fill::Color(rgb(0xFF69B4).into()))
-                        .text_align(gpui::TextAlign::Center)
-                        .rounded(rems(0.25))
-                        .px(px(4.0))
-                        .child(new_comments_added.clone())
-                        .with_animation(
-                            "comment-count-changed-fade",
-                            Animation::new(Duration::from_secs(5)).with_easing(quadratic),
-                            |el, n| el.opacity(1.0 - n),
-                        ),
-                )
-                .child(gpui::div().child(img(self.comment_image.clone()))),
-        )
+        div.cursor_pointer()
+            .on_click(self.fetch_comments_call_back(article_entity))
+            .flex()
+            .flex_row()
+            .child(
+                gpui::div()
+                    .flex()
+                    .flex_row()
+                    .child(
+                        gpui::div()
+                            .bg(Fill::Color(rgb(0xFF69B4).into()))
+                            .text_align(gpui::TextAlign::Center)
+                            .rounded(rems(0.25))
+                            .px(px(4.0))
+                            .child(new_comments_added.clone())
+                            .with_animation(
+                                "comment-count-changed-fade",
+                                Animation::new(Duration::from_secs(5)).with_easing(quadratic),
+                                |el, n| el.opacity(1.0 - n),
+                            ),
+                    )
+                    .child(gpui::div().child(img(self.comment_image.clone()))),
+            )
     }
 
     /// Render the comments cell. This shows the total number of comments next
@@ -183,31 +188,10 @@ impl ArticleView {
         div: gpui::Stateful<gpui::Div>,
         comments: &SharedString,
     ) -> gpui::Stateful<gpui::Div> {
-        let content_entity = self.content_entity.clone();
-
         div.flex()
             .cursor_pointer()
             .rounded_md()
-            .on_click(move |_, _, app| {
-                article_entity.update(app, |article: &mut ArticleView, _cx| {
-                    article.loading_comments = true;
-                });
-
-                let article_entity = article_entity.clone();
-                let content_entity = content_entity.clone();
-
-                app.spawn(async move |app: &mut AsyncApp| {
-                    article_entity.update(app, |article_view: &mut ArticleView, _cx| {
-                        article_view.loading_comments = false;
-                        article_view.viewing_comments = true;
-                    });
-
-                    content_entity.update(app, |_content_view: &mut ContentView, cx| {
-                        cx.emit(ContentEvent::OpenComments(article_entity))
-                    });
-                })
-                .detach();
-            })
+            .on_click(self.fetch_comments_call_back(article_entity))
             .hover(hover_element)
             .flex_row()
             .child(comments.clone())
@@ -225,6 +209,34 @@ impl ArticleView {
                     )
                 },
             ))
+    }
+
+    fn fetch_comments_call_back(
+        &self,
+        article_entity: Entity<ArticleView>,
+    ) -> impl Fn(&gpui::ClickEvent, &mut Window, &mut gpui::App) + 'static {
+        let content_entity = self.content_entity.clone();
+
+        move |_, _, app| {
+            article_entity.update(app, |article: &mut ArticleView, _cx| {
+                article.loading_comments = true;
+            });
+
+            let article_entity = article_entity.clone();
+            let content_entity = content_entity.clone();
+
+            app.spawn(async move |app: &mut AsyncApp| {
+                article_entity.update(app, |article_view: &mut ArticleView, _cx| {
+                    article_view.loading_comments = false;
+                    article_view.viewing_comments = true;
+                });
+
+                content_entity.update(app, |_content_view: &mut ContentView, cx| {
+                    cx.emit(ContentEvent::OpenComments(article_entity))
+                });
+            })
+            .detach();
+        }
     }
 }
 
@@ -259,7 +271,7 @@ impl Render for ArticleView {
 
         let comments_col = div().w(rems(4.)).justify_end().id("comments").map(|div| {
             if let Some(new_comments_added) = self.comment_count_changed.as_ref() {
-                self.render_new_comments_cell(div, new_comments_added)
+                self.render_new_comments_cell(div, new_comments_added, article_entity)
             } else if let Some(comments) = self.comment_count.as_ref() {
                 self.render_comments_cell(hover_element, article_entity, div, comments)
             } else {

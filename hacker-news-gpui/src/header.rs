@@ -3,7 +3,7 @@ use crate::{ArticleSelection, theme::Theme};
 use gpui::{
     App, AppContext as _, BorrowAppContext, BoxShadow, Div, Entity, InteractiveElement,
     IntoElement, ParentElement, Render, SharedString, Stateful, StatefulInteractiveElement as _,
-    Styled, Window, black, div, point, prelude::FluentBuilder, px, rgb, white, yellow,
+    Styled, Window, black, div, point, prelude::FluentBuilder, px, rems, rgb, white, yellow,
 };
 use hacker_news_api::ArticleType;
 
@@ -101,7 +101,7 @@ impl Render for Header {
         div()
             .flex()
             .flex_row()
-            .text_size(px(16.0))
+            .text_size(rems(1.1))
             .text_color(yellow())
             .gap_x(px(10.0))
             .w_full()
