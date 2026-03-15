@@ -3,9 +3,9 @@ use crate::{content::start_background_article_list_subscription, header::Header,
 use content::ContentView;
 use footer::FooterView;
 use gpui::{
-    App, AppContext, Application, Bounds, Entity, Global, Menu, MenuItem, SharedString, Window,
-    WindowBounds, WindowDecorations, WindowKind, WindowOptions, actions, div, point, prelude::*,
-    px, size,
+    App, AppContext, Application, Bounds, Entity, Global, Menu, MenuItem, Pixels, SharedString,
+    Window, WindowBounds, WindowDecorations, WindowKind, WindowOptions, actions, div, point,
+    prelude::*, px, size,
 };
 use hacker_news_api::{ApiClient, ArticleType};
 use hacker_news_config::init_logger;
@@ -56,6 +56,7 @@ struct MainWindow {
     header: Entity<Header>,
     content: Entity<ContentView>,
     footer: Entity<FooterView>,
+    base_font_size: Pixels,
 }
 
 impl MainWindow {
@@ -106,10 +107,33 @@ impl MainWindow {
             })
             .detach();
 
+            cx.observe_keystrokes(|main_window, event, window, cx| {
+                let mut adjust_text_size = |val| {
+                    main_window.base_font_size =
+                        (main_window.base_font_size + px(val)).clamp(px(10.), px(35.));
+                    window.set_rem_size(main_window.base_font_size);
+                    cx.notify();
+                };
+
+                if event.keystroke.modifiers.control {
+                    match event.keystroke.key.as_str() {
+                        "add" => {
+                            adjust_text_size(1.);
+                        }
+                        "subtract" => {
+                            adjust_text_size(-1.);
+                        }
+                        _ => {}
+                    }
+                }
+            })
+            .detach();
+
             Self {
                 header,
                 content,
                 footer,
+                base_font_size: px(15.),
             }
         })
     }
@@ -120,8 +144,9 @@ impl Render for MainWindow {
         let theme: Theme = window.appearance().into();
 
         div()
+            .id("main_window")
             .font_family(".SystemUIFont")
-            .text_size(px(15.))
+            .text_size(self.base_font_size)
             .text_color(theme.text_color())
             .flex()
             .flex_col()
