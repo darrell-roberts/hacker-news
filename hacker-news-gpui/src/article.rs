@@ -3,6 +3,7 @@ use crate::{
     UrlHover,
     common::{COMMENT_IMAGE, parse_date},
     content::{ContentEvent, ContentView},
+    rich_text::{ViewStyledText, parse_layout},
     theme::Theme,
 };
 use gpui::{
@@ -11,7 +12,8 @@ use gpui::{
     solid_background,
 };
 use hacker_news_api::Item;
-use std::{sync::Arc, time::Duration};
+use html_sanitizer::parse_elements;
+use std::{rc::Rc, sync::Arc, time::Duration};
 
 // An article view is rendered for each article item.
 pub struct ArticleView {
@@ -45,6 +47,8 @@ pub struct ArticleView {
     pub viewing_comments: bool,
     /// Article id
     pub id: u64,
+    /// Article body.
+    pub article_text: Option<Rc<ViewStyledText>>,
 }
 
 impl ArticleView {
@@ -105,6 +109,13 @@ impl ArticleView {
                 comment_count_changed: changed,
                 viewing_comments,
                 id: item.id,
+                article_text: item
+                    .text
+                    .as_deref()
+                    .map(parse_elements)
+                    .map(parse_layout)
+                    .map(Into::into)
+                    .map(Rc::new),
             }
         });
 

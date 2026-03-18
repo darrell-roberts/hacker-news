@@ -18,6 +18,7 @@ mod common;
 mod content;
 mod footer;
 mod header;
+mod rich_text;
 mod scrollbar;
 mod theme;
 

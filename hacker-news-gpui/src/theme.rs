@@ -12,6 +12,7 @@ mod light {
     pub const COMMENT_BORDER: u32 = 0x8a9aa8;
     pub const BUTTON_ACTIVE: u32 = 0x3b82f6;
     pub const BUTTON_INACTIVE: u32 = 0x9ca3af;
+    pub const ARTICLE_TEXT: u32 = 0xc6ebd9;
 }
 
 mod dark {
@@ -25,6 +26,7 @@ mod dark {
     pub const COMMENT_BORDER: u32 = 0xb36b00;
     pub const BUTTON_ACTIVE: u32 = 0x60a5fa;
     pub const BUTTON_INACTIVE: u32 = 0x6b7280;
+    pub const ARTICLE_TEXT: u32 = 0x242424;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -101,6 +103,13 @@ impl Theme {
         rgb(match self {
             Theme::Dark => dark::BUTTON_INACTIVE,
             Theme::Light => light::BUTTON_INACTIVE,
+        })
+    }
+
+    pub fn article_text(&self) -> gpui::Rgba {
+        rgb(match self {
+            Theme::Dark => dark::ARTICLE_TEXT,
+            Theme::Light => light::ARTICLE_TEXT,
         })
     }
 }

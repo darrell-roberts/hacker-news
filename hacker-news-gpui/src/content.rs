@@ -1,14 +1,19 @@
 //! Main content view
 use crate::{
-    ApiClientState, ArticleSelection, article::ArticleView, comment::CommentView,
-    common::comment_entities, scrollbar::Scrollbar, theme::Theme,
+    ApiClientState, ArticleSelection,
+    article::ArticleView,
+    comment::CommentView,
+    common::comment_entities,
+    rich_text::{rich_text_runs, url_ranges},
+    scrollbar::Scrollbar,
+    theme::Theme,
 };
 use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
 use gpui::{
-    App, AppContext, DefiniteLength, Entity, EventEmitter, FocusHandle, ListState, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, ScrollHandle, Window, div, prelude::*,
-    px, rems,
+    App, AppContext, DefiniteLength, Entity, EventEmitter, FocusHandle, InteractiveText, ListState,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, ScrollHandle, StyledText,
+    Window, div, prelude::*, px, rems,
 };
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
@@ -719,6 +724,19 @@ impl ContentView {
         let comment_entities = self.comment_entities.clone();
         let content_entity = cx.entity();
 
+        let article_body_styled_text = self
+            .articles
+            .iter()
+            .filter_map(|article_view| {
+                article_view.read_with(cx, |article_view, _app| {
+                    article_view
+                        .viewing_comments
+                        .then(|| article_view.article_text.clone())
+                })
+            })
+            .flatten()
+            .next();
+
         el.child(
             div()
                 .bg(theme.bg())
@@ -748,6 +766,32 @@ impl ContentView {
                             });
                         }),
                 )
+                .when_some(article_body_styled_text, |div, view_styled_text| {
+                    div.child(
+                        gpui::div()
+                            .p_1()
+                            .mb_2()
+                            .border_1()
+                            .border_color(theme.border())
+                            .bg(theme.article_text())
+                            .child(
+                                InteractiveText::new(
+                                    "article_body",
+                                    StyledText::new(view_styled_text.text.clone()).with_runs(
+                                        rich_text_runs(theme, &view_styled_text.layout).collect(),
+                                    ),
+                                )
+                                .on_click(
+                                    url_ranges(&view_styled_text.layout),
+                                    move |index, _window, app| {
+                                        if let Some(url) = view_styled_text.urls.get(index) {
+                                            app.open_url(url);
+                                        }
+                                    },
+                                ),
+                            ),
+                    )
+                })
                 .children(comment_entities.clone()),
         )
     }
