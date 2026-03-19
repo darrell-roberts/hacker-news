@@ -18,6 +18,7 @@ mod common;
 mod content;
 mod footer;
 mod header;
+mod rich_text;
 mod scrollbar;
 mod theme;
 
@@ -115,12 +116,13 @@ impl MainWindow {
                     cx.notify();
                 };
 
+                info!("key: {event:?}");
                 if event.keystroke.modifiers.control {
                     match event.keystroke.key.as_str() {
-                        "add" => {
+                        "add" | "+" => {
                             adjust_text_size(1.);
                         }
-                        "subtract" => {
+                        "subtract" | "-" => {
                             adjust_text_size(-1.);
                         }
                         _ => {}
