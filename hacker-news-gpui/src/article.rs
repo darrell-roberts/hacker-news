@@ -275,10 +275,23 @@ impl Render for ArticleView {
         let comments_col = div().w(rems(4.)).justify_end().id("comments").map(|div| {
             if let Some(new_comments_added) = self.comment_count_changed.as_ref() {
                 self.render_new_comments_cell(div, new_comments_added, article_entity)
+                    .into_any()
             } else if let Some(comments) = self.comment_count.as_ref() {
                 self.render_comments_cell(hover_element, article_entity, div, comments)
+                    .into_any()
+            } else if self.article_text.is_some() {
+                // The article has a body but no comments. In place of the comment count
+                // we'll add a character and click handler.
+                div.id("text-open")
+                    .cursor_pointer()
+                    .hover(hover_element)
+                    .on_click(self.fetch_comments_call_back(article_entity))
+                    .text_align(gpui::TextAlign::Center)
+                    .rounded_md()
+                    .child("*")
+                    .into_any()
             } else {
-                div
+                div.into_any()
             }
         });
 

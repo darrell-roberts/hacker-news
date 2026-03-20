@@ -154,9 +154,10 @@ impl ContentView {
 
                         async_app.update(|app| {
                             if let Err(err) =
-                                weak_content_view_entity.update(app, |content_view, _cx| {
+                                weak_content_view_entity.update(app, |content_view, cx| {
                                     content_view.comment_entities = comment_entities;
                                     content_view.fetching_comments = false;
+                                    cx.notify();
                                 })
                             {
                                 error!("Content view is gone: {err}");
@@ -693,10 +694,9 @@ impl Render for ContentView {
                                     .text_size(rems(1.5))
                                     .child("Fetching comments...")
                             })
-                            .when(
-                                !self.comment_entities.is_empty() && !self.fetching_comments,
-                                |div| self.render_comments(cx, theme, div),
-                            ),
+                            .when(!self.fetching_comments, |div| {
+                                self.render_comments(cx, theme, div)
+                            }),
                     )
                     .child(self.comments_scrollbar.clone()),
             )
@@ -736,6 +736,12 @@ impl ContentView {
             })
             .flatten()
             .next();
+
+        // If we don't have either an article body or any comments to show then we have nothing
+        // to render.
+        if article_body_styled_text.is_none() && self.comment_entities.is_empty() {
+            return el;
+        }
 
         el.child(
             div()
