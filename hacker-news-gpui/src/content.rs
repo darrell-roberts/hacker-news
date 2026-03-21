@@ -1,19 +1,14 @@
 //! Main content view
 use crate::{
-    ApiClientState, ArticleSelection,
-    article::ArticleView,
-    comment::CommentView,
-    common::comment_entities,
-    rich_text::{rich_text_runs, url_ranges},
-    scrollbar::Scrollbar,
-    theme::Theme,
+    ApiClientState, ArticleSelection, article::ArticleView, article_body::ArticleBodyView,
+    comment::CommentView, common::comment_entities, scrollbar::Scrollbar, theme::Theme,
 };
 use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
 use gpui::{
-    App, AppContext, DefiniteLength, Entity, EventEmitter, FocusHandle, InteractiveText, ListState,
-    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, ScrollHandle, StyledText,
-    Window, div, prelude::*, px, rems,
+    App, AppContext, DefiniteLength, Entity, EventEmitter, FocusHandle, ListState, MouseButton,
+    MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, ScrollHandle, Window, div, prelude::*,
+    px, rems,
 };
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
@@ -27,20 +22,20 @@ pub struct ContentView {
     list_state: ListState,
     /// Tracks the ranking of each article so that if it moves up
     /// or down we can show by how much.
-    pub article_ranks: HashMap<u64, usize>,
+    article_ranks: HashMap<u64, usize>,
     /// Tracks the number of comments for an article so that when it
     /// changes we can show a visual indicator.
     article_comment_counts: HashMap<u64, u64>,
     /// Subscription to server side events is online.
     pub online: bool,
     /// Handle to the background task that updates articles.
-    pub background_task: Option<gpui::Task<()>>,
+    background_task: Option<gpui::Task<()>>,
     /// Sender channel for pushing article updates from background to foreground.
-    pub article_sender: Option<channel::mpsc::Sender<Result<Vec<Item>, BackGroundError>>>,
+    article_sender: Option<channel::mpsc::Sender<Result<Vec<Item>, BackGroundError>>>,
     /// The number of times we have refresh due to an http server side event.
-    pub background_refresh_count: usize,
+    background_refresh_count: usize,
     /// The entities representing the comments for this article.
-    pub comment_entities: Vec<Entity<CommentView>>,
+    comment_entities: Vec<Entity<CommentView>>,
     /// The width of the article column, user adjustable.
     articles_width: Pixels,
     /// True when the user is adjusting the article column width using the divider.
@@ -63,6 +58,8 @@ pub struct ContentView {
     articles_scrollbar: Entity<Scrollbar>,
     /// Scrollbar entity for comments column.
     comments_scrollbar: Entity<Scrollbar>,
+    /// Viewing Article text
+    article_body_view: Option<Entity<ArticleBodyView>>,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
@@ -135,6 +132,19 @@ impl ContentView {
                     let id = article_entity.read(cx).id;
                     let article_entity = article_entity.clone();
                     let comment_ids = article_entity.read(cx).comment_ids.clone();
+
+                    // Create the article body view.
+                    content_view.article_body_view =
+                        article_entity.update(cx, |article_view, cx| {
+                            article_view.article_text.as_ref().map(|styled_text| {
+                                ArticleBodyView::new(
+                                    cx,
+                                    styled_text.clone(),
+                                    article_view.author.clone(),
+                                    article_view.age.clone(),
+                                )
+                            })
+                        });
 
                     // Toggle viewing for articles that are no longer viewing comments.
                     for article in &content_view.articles {
@@ -215,6 +225,31 @@ impl ContentView {
             })
             .detach();
 
+            cx.observe_global::<ArticleSelection>(move |content_view, cx| {
+                let selection = *cx.global::<ArticleSelection>();
+                // Reset ranks when we change selection.
+                content_view.article_ranks.clear();
+                // Remove viewing article body.
+                content_view.article_body_view = None;
+                match content_view.article_sender.as_ref() {
+                    Some(tx) => {
+                        info!("Opening stream for {selection:?}");
+                        let old_task = content_view
+                            .background_task
+                            .replace(start_background_article_list_subscription(cx, tx.clone()));
+                        if let Some(old_task) = old_task {
+                            info!("dropping old task");
+                            drop(old_task);
+                        }
+                    }
+                    None => {
+                        error!("No article sender on content view");
+                    }
+                }
+                cx.notify();
+            })
+            .detach();
+
             Self {
                 list_state,
                 articles: Default::default(),
@@ -235,6 +270,7 @@ impl ContentView {
                 comments_focus_handle,
                 articles_scrollbar,
                 comments_scrollbar,
+                article_body_view: None,
             }
         });
 
@@ -724,22 +760,9 @@ impl ContentView {
         let comment_entities = self.comment_entities.clone();
         let content_entity = cx.entity();
 
-        let article_body_styled_text = self
-            .articles
-            .iter()
-            .filter_map(|article_view| {
-                article_view.read_with(cx, |article_view, _app| {
-                    article_view
-                        .viewing_comments
-                        .then(|| article_view.article_text.clone())
-                })
-            })
-            .flatten()
-            .next();
-
         // If we don't have either an article body or any comments to show then we have nothing
         // to render.
-        if article_body_styled_text.is_none() && self.comment_entities.is_empty() {
+        if self.article_body_view.is_none() && self.comment_entities.is_empty() {
             return el;
         }
 
@@ -772,31 +795,8 @@ impl ContentView {
                             });
                         }),
                 )
-                .when_some(article_body_styled_text, |div, view_styled_text| {
-                    div.child(
-                        gpui::div()
-                            .p_1()
-                            .mb_2()
-                            .border_1()
-                            .border_color(theme.border())
-                            .bg(theme.article_text())
-                            .child(
-                                InteractiveText::new(
-                                    "article_body",
-                                    StyledText::new(view_styled_text.text.clone()).with_runs(
-                                        rich_text_runs(theme, &view_styled_text.layout).collect(),
-                                    ),
-                                )
-                                .on_click(
-                                    url_ranges(&view_styled_text.layout),
-                                    move |index, _window, app| {
-                                        if let Some(url) = view_styled_text.urls.get(index) {
-                                            app.open_url(url);
-                                        }
-                                    },
-                                ),
-                            ),
-                    )
+                .when_some(self.article_body_view.as_ref(), |div, view_styled_text| {
+                    div.child(view_styled_text.clone())
                 })
                 .children(comment_entities.clone()),
         )

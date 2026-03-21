@@ -20,9 +20,9 @@ pub struct ArticleView {
     /// The title of the article.
     title: SharedString,
     /// The author of the article, formatted as "by {author}".
-    author: SharedString,
+    pub author: SharedString,
     /// The number of comments on the article, if available.
-    comment_count: Option<SharedString>,
+    pub comment_count: Option<SharedString>,
     /// The URL of the article, if available.
     url: Option<SharedString>,
     /// The label indicating the change in article order/rank.
@@ -30,7 +30,7 @@ pub struct ArticleView {
     /// The change in article order/rank.
     order_change: i64,
     /// The age of the article, formatted as a string.
-    age: SharedString,
+    pub age: SharedString,
     /// The image source for the comment icon.
     comment_image: ImageSource,
     /// The rank of the article, formatted as a string.

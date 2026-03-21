@@ -1,5 +1,5 @@
 //! Simple hacker news view.
-use crate::{content::start_background_article_list_subscription, header::Header, theme::Theme};
+use crate::{header::Header, theme::Theme};
 use content::ContentView;
 use footer::FooterView;
 use gpui::{
@@ -9,10 +9,11 @@ use gpui::{
 };
 use hacker_news_api::{ApiClient, ArticleType};
 use hacker_news_config::init_logger;
-use log::{error, info};
+use log::info;
 use std::{ops::Deref, sync::Arc};
 
 mod article;
+mod article_body;
 mod comment;
 mod common;
 mod content;
@@ -79,36 +80,8 @@ impl MainWindow {
             })
             .detach();
 
-        let content_update = content.clone();
         app.new(move |cx| {
-            cx.observe_global::<ArticleSelection>(move |main_window: &mut MainWindow, cx| {
-                let selection = *cx.global::<ArticleSelection>();
-                // Reset ranks when we change selection.
-                main_window.content.update(cx, |content, cx| {
-                    content.article_ranks.clear();
-                    cx.notify();
-                });
-                content_update.update(cx, |content_view, cx| {
-                    match content_view.article_sender.as_ref() {
-                        Some(tx) => {
-                            info!("Opening stream for {selection:?}");
-                            let old_task = content_view.background_task.replace(
-                                start_background_article_list_subscription(cx, tx.clone()),
-                            );
-                            if let Some(old_task) = old_task {
-                                info!("dropping old task");
-                                drop(old_task);
-                            }
-                        }
-                        None => {
-                            error!("No article sender on content view");
-                        }
-                    }
-                });
-            })
-            .detach();
-
-            cx.observe_keystrokes(|main_window, event, window, cx| {
+            cx.observe_keystrokes(|main_window: &mut MainWindow, event, window, cx| {
                 let mut adjust_text_size = |val| {
                     main_window.base_font_size =
                         (main_window.base_font_size + px(val)).clamp(px(10.), px(35.));
