@@ -116,15 +116,6 @@ impl Theme {
 
 impl Global for Theme {}
 
-impl From<platform_settings::Theme> for Theme {
-    fn from(theme: platform_settings::Theme) -> Self {
-        match theme {
-            platform_settings::Theme::Dark => Self::Dark,
-            platform_settings::Theme::Light => Self::Light,
-        }
-    }
-}
-
 impl From<WindowAppearance> for Theme {
     fn from(appearance: WindowAppearance) -> Self {
         match appearance {
