@@ -89,7 +89,6 @@ impl MainWindow {
                     cx.notify();
                 };
 
-                info!("key: {event:?}");
                 if event.keystroke.modifiers.control {
                     match event.keystroke.key.as_str() {
                         "add" | "+" => {

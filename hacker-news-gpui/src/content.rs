@@ -60,6 +60,8 @@ pub struct ContentView {
     comments_scrollbar: Entity<Scrollbar>,
     /// Viewing Article text
     article_body_view: Option<Entity<ArticleBodyView>>,
+    /// Viewing article id.
+    pub viewing_article_id: Option<u64>,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
@@ -146,17 +148,7 @@ impl ContentView {
                             })
                         });
 
-                    // Toggle viewing for articles that are no longer viewing comments.
-                    for article in &content_view.articles {
-                        let viewing = article.read(cx).viewing_comments;
-                        let article_id = article.read(cx).id;
-
-                        if viewing && (article_id != id) {
-                            article.update(cx, |article_view, _cx| {
-                                article_view.viewing_comments = false;
-                            });
-                        }
-                    }
+                    content_view.viewing_article_id = Some(id);
 
                     cx.spawn(async move |weak_content_view_entity, async_app| {
                         let comment_entities =
@@ -271,6 +263,7 @@ impl ContentView {
                 articles_scrollbar,
                 comments_scrollbar,
                 article_body_view: None,
+                viewing_article_id: None,
             }
         });
 
@@ -365,11 +358,8 @@ fn start_background_subscriptions(
         while let Some(items) = rx.next().await {
             match items {
                 Ok(items) => {
-                    let viewing_id = app.read_entity(&entity_content, |content_view, app| {
-                        content_view.articles.iter().find_map(|article_entity| {
-                            let article_view = article_entity.read(app);
-                            article_view.viewing_comments.then_some(article_view.id)
-                        })
+                    let viewing_id = app.read_entity(&entity_content, |content_view, _cx| {
+                        content_view.viewing_article_id
                     });
 
                     let current_ranking_map = items
@@ -382,6 +372,9 @@ fn start_background_subscriptions(
                         .iter()
                         .map(|item| (item.id, item.descendants.unwrap_or(0)))
                         .collect::<HashMap<_, _>>();
+
+                    let viewing_article_included =
+                        items.iter().any(|item| Some(item.id) == viewing_id);
 
                     // Create an ArticleView for each item.
                     let views = items
@@ -418,9 +411,6 @@ fn start_background_subscriptions(
                                 0
                             };
 
-                            let viewing_comments =
-                                viewing_id.map(|id| id == article.id).unwrap_or(false);
-
                             ArticleView::new(
                                 app,
                                 entity_content.clone(),
@@ -428,21 +418,12 @@ fn start_background_subscriptions(
                                 order_change,
                                 index + 1,
                                 comment_count_changed,
-                                viewing_comments,
                             )
                         })
                         .collect::<Vec<_>>();
 
-                    // Check if we were viewing comments for an article but that article is
-                    // not in the update anymore.
-                    let viewing_comments = views.iter().any(|article_entity| {
-                        app.read_entity(article_entity, |article_view, _cx| {
-                            article_view.viewing_comments
-                        })
-                    });
-
                     app.update_entity(&entity_content, |content, cx| {
-                        if viewing_id.is_some() && !viewing_comments {
+                        if !viewing_article_included {
                             content.comment_entities.clear();
                         }
 
@@ -784,14 +765,9 @@ impl ContentView {
                         .id("close-comments")
                         .on_click(move |_event, _window, app| {
                             // Clear any open comments for another article
-                            content_entity.update(app, |content, cx| {
-                                content.comment_entities.clear();
-
-                                for article_entity in &content.articles {
-                                    article_entity.update(cx, |article_entity, _cx| {
-                                        article_entity.viewing_comments = false;
-                                    });
-                                }
+                            content_entity.update(app, |content_view, _cx| {
+                                content_view.comment_entities.clear();
+                                content_view.viewing_article_id = None;
                             });
                         }),
                 )

@@ -43,8 +43,6 @@ pub struct ArticleView {
     pub loading_comments: bool,
     /// The delta in comment count since the last update, if available.
     comment_count_changed: Option<SharedString>,
-    /// If we are viewing comments for this article.
-    pub viewing_comments: bool,
     /// Article id
     pub id: u64,
     /// Article body.
@@ -73,7 +71,6 @@ impl ArticleView {
         order_change: i64,
         rank: usize,
         comment_count_changed: i64,
-        viewing_comments: bool,
     ) -> Entity<Self> {
         let article_entity = app.new(|_cx| {
             let changed = if comment_count_changed.is_negative() {
@@ -107,7 +104,6 @@ impl ArticleView {
                 content_entity,
                 loading_comments: false,
                 comment_count_changed: changed,
-                viewing_comments,
                 id: item.id,
                 article_text: item
                     .text
@@ -233,7 +229,6 @@ impl ArticleView {
 
             article_entity.update(app, |article_view: &mut ArticleView, _cx| {
                 article_view.loading_comments = true;
-                article_view.viewing_comments = true;
             });
 
             content_entity.update(app, |_content_view: &mut ContentView, cx| {
@@ -250,6 +245,12 @@ impl Render for ArticleView {
         cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
         let theme: Theme = window.appearance().into();
+        let viewing_article = self
+            .content_entity
+            .read(cx)
+            .viewing_article_id
+            .map(|id| id == self.id)
+            .unwrap_or(false);
 
         let rank_change_col = div()
             .flex()
@@ -353,7 +354,7 @@ impl Render for ArticleView {
                 .when(self.order_change < -2, |div| {
                     div.text_color(theme.text_decreasing())
                 })
-                .when(self.viewing_comments, |div| div.opacity(0.75))
+                .when(viewing_article, |div| div.opacity(0.75))
                 .child(
                     div().mb_1().w_full().overflow_hidden().child(
                         div()
