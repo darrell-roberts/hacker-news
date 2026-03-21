@@ -6,9 +6,11 @@ use crate::{
 };
 use chrono::Local;
 use gpui::{
-    App, Entity, ParentElement, Render, SharedString, Styled, Window, black, div, prelude::*, rems,
-    rgb, white,
+    App, Entity, ParentElement, Render, SharedString, Styled, Window, div, prelude::*, rems, rgb,
 };
+use tooltip::Tooltip;
+
+mod tooltip;
 
 /// Footer view and state.
 pub struct FooterView {
@@ -155,43 +157,5 @@ impl Render for FooterView {
                             .child(div().mr_1().child(self.total_refreshes.clone())),
                     ),
             )
-    }
-}
-
-/// A simple tooltip
-struct Tooltip {
-    content_entity: Entity<ContentView>,
-}
-
-impl Tooltip {
-    /// Create a new tooltip entity.
-    ///
-    /// # Arguments
-    ///
-    /// * `_window` - A mutable reference to the Window.
-    /// * `cx` - A mutable reference to the App.
-    /// * `content` - An Entity representing the ContentView.
-    ///
-    /// # Returns
-    ///
-    /// Returns an Entity of Tooltip.
-    fn new(
-        _window: &mut Window,
-        cx: &mut App,
-        content_entity: Entity<ContentView>,
-    ) -> Entity<Self> {
-        cx.new(|_cx| Self { content_entity })
-    }
-}
-
-impl Render for Tooltip {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let online = self.content_entity.read(cx).online;
-        div()
-            .bg(black())
-            .text_color(white())
-            .rounded(rems(0.75))
-            .p_1()
-            .child(if online { "Pause" } else { "Resume" })
     }
 }
