@@ -9,8 +9,9 @@ use gpui::{
 };
 use gpui_platform::application;
 use hacker_news_api::{ApiClient, ArticleType};
-use hacker_news_config::init_logger;
-use log::info;
+use hacker_news_config::{init_logger, load_config, save_config};
+use log::{error, info};
+use serde::{Deserialize, Serialize};
 use std::{ops::Deref, sync::Arc};
 
 mod article;
@@ -23,6 +24,8 @@ mod header;
 mod rich_text;
 mod scrollbar;
 mod theme;
+
+const CONFIG_FILE: &str = "hacker-news-dashboard.config";
 
 #[derive(Clone)]
 /// Wrapper for ApiClient so we can put it in global gpui app state.
@@ -75,6 +78,8 @@ impl MainWindow {
         let content = ContentView::new(window, app);
         let footer = FooterView::new(window, app, content.clone());
 
+        let font_size = app.global::<Config>().font_size;
+
         window
             .observe_window_appearance(|_window, app| {
                 app.refresh_windows();
@@ -87,6 +92,20 @@ impl MainWindow {
                     main_window.base_font_size =
                         (main_window.base_font_size + px(val)).clamp(px(10.), px(35.));
                     window.set_rem_size(main_window.base_font_size);
+                    let font_size = main_window.base_font_size.as_f32();
+
+                    cx.spawn(async move |_main_window, _app| {
+                        if let Err(err) = async_compat::Compat::new(save_config(
+                            Config { font_size },
+                            CONFIG_FILE,
+                        ))
+                        .await
+                        {
+                            error!("Failed to save config: {err}");
+                        }
+                    })
+                    .detach();
+
                     cx.notify();
                 };
 
@@ -108,7 +127,7 @@ impl MainWindow {
                 header,
                 content,
                 footer,
-                base_font_size: px(15.),
+                base_font_size: px(font_size),
             }
         })
     }
@@ -141,8 +160,23 @@ impl Render for MainWindow {
     }
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct Config {
+    font_size: f32,
+}
+
+impl Global for Config {}
+
 fn main() {
     init_logger("hacker-news-dashboard").expect("Failed to setup logger");
+
+    let config = match load_config::<Config>(CONFIG_FILE) {
+        Ok(config) => config,
+        Err(_) => {
+            info!("No config");
+            Config { font_size: 15.0 }
+        }
+    };
 
     application().run(|app| {
         let client = Arc::new(hacker_news_api::ApiClient::new().expect("No API Client"));
@@ -152,6 +186,7 @@ fn main() {
             viewing_article_total: 50,
         });
         app.set_global(UrlHover(None));
+        app.set_global(config);
 
         // Add menu items
         app.set_menus(vec![Menu {
