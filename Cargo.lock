@@ -3335,6 +3335,7 @@ dependencies = [
  "hacker-news-config",
  "html-sanitizer",
  "log",
+ "serde",
  "tokio",
 ]
 
