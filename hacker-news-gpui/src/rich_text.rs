@@ -1,9 +1,8 @@
-use std::ops::Range;
-
+//! Convert parsed hacker news rich text into gpui TextRun.
+use crate::theme::Theme;
 use gpui::{Font, FontWeight, SharedString, TextRun, UnderlineStyle, px};
 use html_sanitizer::Element;
-
-use crate::theme::Theme;
+use std::ops::Range;
 
 /// Creates a `TextRun` representing normal text with the given length.
 /// It uses the system UI font and the current theme's text color.

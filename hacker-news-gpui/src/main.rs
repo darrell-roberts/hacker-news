@@ -89,7 +89,6 @@ impl MainWindow {
                     cx.notify();
                 };
 
-                info!("key: {event:?}");
                 if event.keystroke.modifiers.control {
                     match event.keystroke.key.as_str() {
                         "add" | "+" => {
@@ -196,6 +195,6 @@ actions!(set_menus, [Quit]);
 
 // Define the quit function that is registered with the AppContext
 fn _quit(_: &Quit, cx: &mut App) {
-    info!("Gracefully quitting the application . . .");
+    info!("Gracefully quitting the application...");
     cx.quit();
 }
