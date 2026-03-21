@@ -3,10 +3,11 @@ use crate::{header::Header, theme::Theme};
 use content::ContentView;
 use footer::FooterView;
 use gpui::{
-    App, AppContext, Application, Bounds, Entity, Global, Menu, MenuItem, Pixels, SharedString,
-    Window, WindowBounds, WindowDecorations, WindowKind, WindowOptions, actions, div, point,
-    prelude::*, px, size,
+    App, AppContext, Bounds, Entity, Global, Menu, MenuItem, Pixels, SharedString, Window,
+    WindowBounds, WindowDecorations, WindowKind, WindowOptions, actions, div, point, prelude::*,
+    px, size,
 };
+use gpui_platform::application;
 use hacker_news_api::{ApiClient, ArticleType};
 use hacker_news_config::init_logger;
 use log::info;
@@ -143,7 +144,7 @@ impl Render for MainWindow {
 fn main() {
     init_logger("hacker-news-dashboard").expect("Failed to setup logger");
 
-    Application::new().run(|app| {
+    application().run(|app| {
         let client = Arc::new(hacker_news_api::ApiClient::new().expect("No API Client"));
         app.set_global(ApiClientState(client));
         app.set_global(ArticleSelection {
@@ -156,6 +157,7 @@ fn main() {
         app.set_menus(vec![Menu {
             name: SharedString::from("set_menus"),
             items: vec![MenuItem::action("Quit", Quit)],
+            disabled: false,
         }]);
 
         app.on_window_closed(|app| {
@@ -187,6 +189,8 @@ fn main() {
             MainWindow::new,
         )
         .expect("Could not open window");
+
+        app.activate(true);
     });
 }
 
