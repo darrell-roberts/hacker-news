@@ -1,7 +1,7 @@
 //! Convert parsed hacker news rich text into gpui TextRun.
 use crate::theme::Theme;
 use gpui::{Font, FontWeight, SharedString, TextRun, UnderlineStyle, px};
-use html_sanitizer::Element;
+use html_sanitizer::{Element, parse_elements};
 use std::{borrow::Cow, ops::Range};
 
 /// Creates a `TextRun` representing normal text with the given length.
@@ -190,9 +190,9 @@ impl From<ParsedStyledText> for ViewStyledText {
 /// # Returns
 ///
 /// A [`ParsedComment`] containing the extracted text, layout metadata, and URLs.
-pub fn parse_layout(elements: Vec<Element<'_>>) -> ParsedStyledText {
+pub fn parse_layout(text: &str) -> ParsedStyledText {
     let mut parsed = ParsedStyledText::default();
-    collect_elements(&elements, &mut parsed, None);
+    collect_elements(parse_elements(text), &mut parsed, None);
     parsed
 }
 
@@ -202,7 +202,7 @@ pub fn parse_layout(elements: Vec<Element<'_>>) -> ParsedStyledText {
 /// Links inside a wrapper still produce `Link` layout entries so that URLs
 /// are never lost.
 fn collect_elements(
-    elements: &[Element<'_>],
+    elements: Vec<Element<'_>>,
     parsed: &mut ParsedStyledText,
     wrapper: Option<fn(usize) -> TextLayout>,
 ) {
@@ -211,8 +211,8 @@ fn collect_elements(
             Element::Text(s) => {
                 // Remove newlines if they are anywhere except as the last character.
                 let newlines_removed = match s.bytes().filter(|&b| b == b'\n').count() {
-                    0 => Cow::Borrowed(*s),
-                    1 if s.ends_with('\n') => Cow::Borrowed(*s),
+                    0 => Cow::Borrowed(s),
+                    1 if s.ends_with('\n') => Cow::Borrowed(s),
                     _ => {
                         let mut owned = s.replace('\n', "");
                         if s.ends_with('\n') {
@@ -248,7 +248,7 @@ fn collect_elements(
             Element::Escaped(c) => {
                 let layout_fn = wrapper.unwrap_or(TextLayout::Normal);
                 push_or_merge(&mut parsed.layout, layout_fn, 1);
-                parsed.text.push(*c);
+                parsed.text.push(c);
             }
             Element::Paragraph => {
                 push_or_merge(&mut parsed.layout, TextLayout::Normal, 1);
@@ -256,7 +256,7 @@ fn collect_elements(
             }
             Element::Code(s) => {
                 parsed.layout.push(TextLayout::Code(s.len()));
-                parsed.text.push_str(s);
+                parsed.text.push_str(&s);
             }
             Element::Italic(children) => {
                 collect_elements(children, parsed, Some(TextLayout::Italic));

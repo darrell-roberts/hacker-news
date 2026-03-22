@@ -12,7 +12,6 @@ use gpui::{
     solid_background,
 };
 use hacker_news_api::Item;
-use html_sanitizer::parse_elements;
 use std::{rc::Rc, sync::Arc, time::Duration};
 
 // An article view is rendered for each article item.
@@ -108,7 +107,6 @@ impl ArticleView {
                 article_text: item
                     .text
                     .as_deref()
-                    .map(parse_elements)
                     .map(parse_layout)
                     .map(Into::into)
                     .map(Rc::new),

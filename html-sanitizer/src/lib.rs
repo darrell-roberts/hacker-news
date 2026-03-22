@@ -55,6 +55,6 @@ pub fn parse_elements(input: &str) -> Vec<Element<'_>> {
         .map(|(_, v)| v)
         .unwrap_or_else(|err| {
             error!("Failed to parse input: {err}");
-            vec![Element::Text(input)]
+            Vec::from(&[Element::Text(input)])
         })
 }
