@@ -2,7 +2,7 @@
 use crate::theme::Theme;
 use gpui::{Font, FontWeight, SharedString, TextRun, UnderlineStyle, px};
 use html_sanitizer::Element;
-use std::ops::Range;
+use std::{borrow::Cow, ops::Range};
 
 /// Creates a `TextRun` representing normal text with the given length.
 /// It uses the system UI font and the current theme's text color.
@@ -209,9 +209,22 @@ fn collect_elements(
     for element in elements {
         match element {
             Element::Text(s) => {
+                // Remove newlines if they are anywhere except as the last character.
+                let newlines_removed = match s.bytes().filter(|&b| b == b'\n').count() {
+                    0 => Cow::Borrowed(*s),
+                    1 if s.ends_with('\n') => Cow::Borrowed(*s),
+                    _ => {
+                        let mut owned = s.replace('\n', "");
+                        if s.ends_with('\n') {
+                            owned.push('\n');
+                        }
+                        Cow::Owned(owned)
+                    }
+                };
+
                 let layout_fn = wrapper.unwrap_or(TextLayout::Normal);
-                push_or_merge(&mut parsed.layout, layout_fn, s.len());
-                parsed.text.push_str(s);
+                push_or_merge(&mut parsed.layout, layout_fn, newlines_removed.len());
+                parsed.text.push_str(newlines_removed.as_ref());
             }
             Element::Link(anchor) => {
                 let link = anchor
