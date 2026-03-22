@@ -124,7 +124,7 @@ impl Render for ContentView {
                 div()
                     .id("divider")
                     .h_full()
-                    .w(px(1.0))
+                    .w(px(5.0))
                     .mt_4()
                     .flex_shrink_0()
                     .cursor_col_resize()
