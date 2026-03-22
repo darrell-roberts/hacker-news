@@ -7,12 +7,13 @@ mod light {
     pub const HOVER: u32 = 0xe0e4eb;
     pub const TEXT_INCREASING: u32 = 0x15803D;
     pub const TEXT_DECREASING: u32 = 0xd70000;
-    pub const SURFACE: u32 = 0xeeeeee;
+    pub const SURFACE: u32 = 0xf2f2f2;
     pub const BORDER: u32 = 0xb5bfc9;
     pub const COMMENT_BORDER: u32 = 0x8a9aa8;
     pub const BUTTON_ACTIVE: u32 = 0x3b82f6;
     pub const BUTTON_INACTIVE: u32 = 0x9ca3af;
     pub const ARTICLE_TEXT: u32 = 0xc6ebd9;
+    pub const DIVIDER: u32 = 0xc0c4c8;
 }
 
 mod dark {
@@ -27,6 +28,7 @@ mod dark {
     pub const BUTTON_ACTIVE: u32 = 0x60a5fa;
     pub const BUTTON_INACTIVE: u32 = 0x6b7280;
     pub const ARTICLE_TEXT: u32 = 0x204060;
+    pub const DIVIDER: u32 = 0x4f4f4f;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -110,6 +112,13 @@ impl Theme {
         rgb(match self {
             Theme::Dark => dark::ARTICLE_TEXT,
             Theme::Light => light::ARTICLE_TEXT,
+        })
+    }
+
+    pub fn divider(&self) -> gpui::Rgba {
+        rgb(match self {
+            Theme::Dark => dark::DIVIDER,
+            Theme::Light => light::DIVIDER,
         })
     }
 }

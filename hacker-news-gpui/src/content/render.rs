@@ -127,7 +127,7 @@ impl Render for ContentView {
                     .w(px(5.0))
                     .flex_shrink_0()
                     .cursor_col_resize()
-                    .bg(theme.border())
+                    .bg(theme.divider())
                     .on_mouse_down(
                         MouseButton::Left,
                         cx.listener(|this, event: &MouseDownEvent, _window, cx| {
@@ -193,7 +193,9 @@ impl Render for ContentView {
                                 self.render_comments(cx, theme, div)
                             }),
                     )
-                    .child(self.comments_scrollbar.clone()),
+                    .when(!self.comment_entities.is_empty(), |div| {
+                        div.child(self.comments_scrollbar.clone())
+                    }),
             )
     }
 }
@@ -243,9 +245,10 @@ impl ContentView {
                         .id("close-comments")
                         .on_click(move |_event, _window, app| {
                             // Clear any open comments for another article
-                            content_entity.update(app, |content_view, _cx| {
+                            content_entity.update(app, |content_view, cx| {
                                 content_view.comment_entities.clear();
                                 content_view.viewing_article_id = None;
+                                cx.notify();
                             });
                         }),
                 )
