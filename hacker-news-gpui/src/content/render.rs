@@ -127,7 +127,7 @@ impl Render for ContentView {
                     .w(px(5.0))
                     .flex_shrink_0()
                     .cursor_col_resize()
-                    .bg(theme.border())
+                    .bg(theme.divider())
                     .on_mouse_down(
                         MouseButton::Left,
                         cx.listener(|this, event: &MouseDownEvent, _window, cx| {
