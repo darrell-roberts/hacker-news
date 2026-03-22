@@ -44,9 +44,13 @@ impl Header {
 
     fn render_open(&self, cx: &gpui::Context<Self>, theme: Theme) -> Div {
         let article_selection = cx.global::<ArticleSelection>();
+
+        let header_entity = cx.entity();
+
         let mk_article_type = |(article_type, label): &(ArticleType, SharedString)| {
             let article_type = *article_type;
             let label = label.clone();
+            let header_entity = header_entity.clone();
             mk_button(label)
                 .when_else(
                     article_type == article_selection.viewing_article_type,
@@ -54,27 +58,42 @@ impl Header {
                     |div| div.bg(theme.button_inactive()).text_color(black()),
                 )
                 .on_click(move |_event, _window, app| {
-                    app.update_global(|state: &mut ArticleSelection, _cx| {
+                    app.update_global(|state: &mut ArticleSelection, cx| {
                         state.viewing_article_type = article_type;
+                        header_entity.update(cx, |header_view, cx| {
+                            header_view.open = false;
+                            cx.notify();
+                        })
                     });
                 })
         };
 
         let top_best_new = self.categories[0..3].iter().map(mk_article_type);
         let ask_show_job = self.categories[3..].iter().map(mk_article_type);
-        let article_limits = self.counts.iter().cloned().map(|(article_count, label)| {
-            mk_button(label)
-                .when_else(
-                    article_count == article_selection.viewing_article_total,
-                    |div| div.bg(theme.button_active()).text_color(white()),
-                    |div| div.bg(theme.button_inactive()).text_color(black()),
-                )
-                .on_click(move |_event, _window, app| {
-                    app.update_global(|state: &mut ArticleSelection, _cx| {
-                        state.viewing_article_total = article_count;
-                    });
-                })
-        });
+
+        let header_entity = cx.entity();
+        let article_limits = self
+            .counts
+            .iter()
+            .cloned()
+            .map(move |(article_count, label)| {
+                let header_entity = header_entity.clone();
+                mk_button(label)
+                    .when_else(
+                        article_count == article_selection.viewing_article_total,
+                        |div| div.bg(theme.button_active()).text_color(white()),
+                        |div| div.bg(theme.button_inactive()).text_color(black()),
+                    )
+                    .on_click(move |_event, _window, app| {
+                        app.update_global(|state: &mut ArticleSelection, cx| {
+                            state.viewing_article_total = article_count;
+                            header_entity.update(cx, |header_view, cx| {
+                                header_view.open = false;
+                                cx.notify();
+                            })
+                        });
+                    })
+            });
 
         let header_entity = cx.entity();
 
@@ -135,22 +154,27 @@ impl Render for Header {
         let theme: Theme = window.appearance().into();
         let header_entity = cx.entity();
 
+        let active = cx.global::<ArticleSelection>();
+
         if self.open {
-            self.render_open(cx, theme).into_any_element()
+            self.render_open(cx, theme)
         } else {
-            div()
-                .id("open")
-                .flex()
-                .w_full()
-                .child("[+]")
-                .cursor_pointer()
-                .on_click(move |_event, _window, app| {
-                    header_entity.update(app, |header_view, cx| {
-                        header_view.open = true;
-                        cx.notify();
-                    })
-                })
-                .into_any_element()
+            div().flex().w_full().child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap_1()
+                    .child(div().id("open").child("[+]").cursor_pointer().on_click(
+                        move |_event, _window, app| {
+                            header_entity.update(app, |header_view, cx| {
+                                header_view.open = true;
+                                cx.notify();
+                            })
+                        },
+                    ))
+                    .child("Viewing: ")
+                    .child(active.viewing_article_type.as_str()),
+            )
         }
     }
 }
