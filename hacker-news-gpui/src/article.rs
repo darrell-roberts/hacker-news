@@ -33,8 +33,8 @@ pub struct ArticleView {
     pub age: SharedString,
     /// The image source for the comment icon.
     comment_image: ImageSource,
-    /// The rank of the article, formatted as a string.
-    rank: SharedString,
+    // The rank of the article, formatted as a string.
+    // rank: SharedString,
     /// The IDs of the comments for this article.
     pub comment_ids: Arc<Vec<u64>>,
     /// The entity representing the content view associated with this article.
@@ -69,7 +69,7 @@ impl ArticleView {
         content_entity: Entity<ContentView>,
         item: Item,
         order_change: i64,
-        rank: usize,
+        // rank: usize,
         comment_count_changed: i64,
     ) -> Entity<Self> {
         let article_entity = app.new(|_cx| {
@@ -99,7 +99,7 @@ impl ArticleView {
                 order_change,
                 age: parse_date(item.time).unwrap_or_default().into(),
                 comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
-                rank: format!("{rank}").into(),
+                // rank: format!("{rank}").into(),
                 comment_ids: Arc::new(item.kids),
                 content_entity,
                 loading_comments: false,
@@ -201,7 +201,7 @@ impl ArticleView {
             .on_click(self.fetch_comments_call_back(article_entity))
             .hover(hover_element)
             .flex_row()
-            .child(comments.clone())
+            .child(gpui::div().text_size(rems(0.75)).child(comments.clone()))
             .child(gpui::div().child(img(self.comment_image.clone())).when(
                 self.loading_comments,
                 |el| {
@@ -273,7 +273,7 @@ impl Render for ArticleView {
 
         let article_entity = cx.entity();
 
-        let comments_col = div().w(rems(4.)).justify_end().id("comments").map(|div| {
+        let comments_col = div().w(rems(3.)).justify_end().id("comments").map(|div| {
             if let Some(new_comments_added) = self.comment_count_changed.as_ref() {
                 self.render_new_comments_cell(div, new_comments_added, article_entity)
                     .into_any()
@@ -369,12 +369,12 @@ impl Render for ArticleView {
                             .min_w_0()
                             .children([
                                 rank_change_col,
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .w(rems(2.))
-                                    .text_align(gpui::TextAlign::Right)
-                                    .child(self.rank.clone()),
+                                // div()
+                                //     .flex()
+                                //     .items_center()
+                                //     .w(rems(2.))
+                                //     .text_align(gpui::TextAlign::Right)
+                                //     .child(self.rank.clone()),
                                 div().flex().items_center().child(comments_col),
                                 title_col,
                             ])

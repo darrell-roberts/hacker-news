@@ -128,7 +128,7 @@ pub(super) fn start_background_subscriptions(
                                 entity_content.clone(),
                                 article,
                                 order_change,
-                                index + 1,
+                                // index + 1,
                                 comment_count_changed,
                             )
                         })

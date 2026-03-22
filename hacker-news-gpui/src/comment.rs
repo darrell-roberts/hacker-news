@@ -6,10 +6,10 @@ use crate::{
     theme::Theme,
 };
 use gpui::{
-    Animation, AnimationExt as _, AppContext as _, AsyncApp, Entity, ImageSource,
+    Animation, AnimationExt as _, AppContext as _, AsyncApp, Entity, Fill, ImageSource,
     InteractiveElement, InteractiveText, ParentElement, Render, SharedString,
-    StatefulInteractiveElement, Styled, StyledText, Window, div, img, prelude::FluentBuilder as _,
-    pulsating_between, rems,
+    StatefulInteractiveElement, StyleRefinement, Styled, StyledText, Window, div, img,
+    prelude::FluentBuilder as _, pulsating_between, rems, solid_background,
 };
 use hacker_news_api::Item;
 use html_sanitizer::parse_elements;
@@ -120,6 +120,9 @@ impl CommentView {
         comment_entity: Entity<CommentView>,
     ) -> gpui::Div {
         let id = self.id;
+        let hover_element =
+            |style: StyleRefinement| style.bg(Fill::Color(solid_background(theme.hover())));
+
         gpui::div()
             .flex()
             .flex_row()
@@ -134,13 +137,15 @@ impl CommentView {
                     .id("comment_id")
                     .child(self.author.clone())
                     .cursor_pointer()
+                    .rounded_md()
                     .on_click(move |_event, _window, cx| {
                         cx.open_url(&format!("https://news.ycombinator.com/item?id={id}"));
-                    }),
+                    })
+                    .hover(hover_element),
             )
             .child(self.age.clone())
             .when(!self.comment_child_ids.is_empty(), |div| {
-                self.render_child_comments(comment_ids, comment_entity, div)
+                self.render_child_comments(comment_ids, comment_entity, div, hover_element)
             })
     }
 
@@ -160,6 +165,7 @@ impl CommentView {
         comment_ids: Arc<Vec<u64>>,
         comment_entity: Entity<CommentView>,
         el: gpui::Div,
+        hover: impl Fn(StyleRefinement) -> StyleRefinement,
     ) -> gpui::Div {
         let article_entity = self.article_entity.clone();
 
@@ -167,6 +173,8 @@ impl CommentView {
             div()
                 .id("child-comments")
                 .cursor_pointer()
+                .rounded_md()
+                .hover(hover)
                 .on_click(move |_event, _window, app| {
                     comment_entity.update(app, |this, _cx| {
                         this.loading_comments = true;
