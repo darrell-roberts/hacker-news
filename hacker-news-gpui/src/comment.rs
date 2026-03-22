@@ -12,7 +12,6 @@ use gpui::{
     prelude::FluentBuilder as _, pulsating_between, rems, solid_background,
 };
 use hacker_news_api::Item;
-use html_sanitizer::parse_elements;
 use std::{sync::Arc, time::Duration};
 
 /// Comment view with state.
@@ -52,12 +51,8 @@ impl CommentView {
     /// * `item` - The Hacker News API item representing the comment.
     /// * `article_entity` - The entity representing the parent article view.
     pub fn new(cx: &mut AsyncApp, item: Item, article_entity: Entity<ArticleView>) -> Entity<Self> {
-        let ParsedStyledText { text, layout, urls } = item
-            .text
-            .as_deref()
-            .map(parse_elements)
-            .map(parse_layout)
-            .unwrap_or_default();
+        let ParsedStyledText { text, layout, urls } =
+            item.text.as_deref().map(parse_layout).unwrap_or_default();
 
         cx.new(|_cx| Self {
             text: text.into(),

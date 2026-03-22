@@ -1,7 +1,7 @@
 //! Convert parsed hacker news rich text into gpui TextRun.
 use crate::theme::Theme;
 use gpui::{Font, FontWeight, SharedString, TextRun, UnderlineStyle, px};
-use html_sanitizer::Element;
+use html_sanitizer::{Element, parse_elements};
 use std::{borrow::Cow, ops::Range};
 
 /// Creates a `TextRun` representing normal text with the given length.
@@ -190,9 +190,9 @@ impl From<ParsedStyledText> for ViewStyledText {
 /// # Returns
 ///
 /// A [`ParsedComment`] containing the extracted text, layout metadata, and URLs.
-pub fn parse_layout(elements: Vec<Element<'_>>) -> ParsedStyledText {
+pub fn parse_layout(text: &str) -> ParsedStyledText {
     let mut parsed = ParsedStyledText::default();
-    collect_elements(&elements, &mut parsed, None);
+    collect_elements(&parse_elements(text), &mut parsed, None);
     parsed
 }
 
