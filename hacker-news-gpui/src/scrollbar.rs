@@ -54,7 +54,7 @@ impl Scrollbar {
     fn visible_fraction(&self) -> f32 {
         let max = self.scroll_handle.max_offset();
         let viewport_height = self.scroll_handle.bounds().size.height;
-        let content_height = viewport_height + max.x.abs();
+        let content_height = viewport_height + max.y.abs();
         if content_height <= px(0.) {
             return 1.0;
         }
@@ -64,7 +64,7 @@ impl Scrollbar {
     /// Compute the scroll fraction (0.0 = top, 1.0 = fully scrolled).
     fn scroll_fraction(&self) -> f32 {
         let max = self.scroll_handle.max_offset();
-        if max.x.abs() <= px(0.) {
+        if max.y.abs() <= px(0.) {
             return 0.0;
         }
         let offset = self.scroll_handle.offset();
@@ -72,12 +72,12 @@ impl Scrollbar {
         if offset.y >= px(0.) {
             return 0.0;
         }
-        (offset.y.abs() / max.x.abs()).clamp(0.0, 1.0)
+        (offset.y.abs() / max.y.abs()).clamp(0.0, 1.0)
     }
 
     /// Whether there is enough content to scroll (and thus show the scrollbar).
     fn is_scrollable(&self) -> bool {
-        self.scroll_handle.max_offset().x.abs() > px(1.)
+        self.scroll_handle.max_offset().y.abs() > px(1.)
     }
 
     /// Set the scroll position from a fraction (0.0 = top, 1.0 = bottom).
@@ -86,7 +86,7 @@ impl Scrollbar {
         let max = self.scroll_handle.max_offset();
         let mut offset = self.scroll_handle.offset();
         // offset.y should be negative (scrolling down)
-        offset.y = -(max.x.abs() * fraction);
+        offset.y = -(max.y.abs() * fraction);
         self.scroll_handle.set_offset(offset);
     }
 

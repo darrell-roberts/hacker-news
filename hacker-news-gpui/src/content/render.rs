@@ -91,6 +91,7 @@ impl Render for ContentView {
                     .child(
                         div()
                             .id("articles")
+                            .mr_1()
                             .track_focus(&self.articles_focus_handle)
                             .track_scroll(&self.articles_scroll_handle)
                             .on_hover(move |hover, window, cx| {
@@ -109,7 +110,7 @@ impl Render for ContentView {
                             .flex_col()
                             .flex_1()
                             .min_w_0()
-                            .pb_2()
+                            .pb_1()
                             .children(
                                 self.articles
                                     .iter()
@@ -122,6 +123,7 @@ impl Render for ContentView {
                 div()
                     .id("divider")
                     .h_full()
+                    .ml_1()
                     .w(px(5.0))
                     .flex_shrink_0()
                     .cursor_col_resize()
@@ -177,7 +179,7 @@ impl Render for ContentView {
                             .min_w_0()
                             .overflow_y_scroll()
                             .flex_1()
-                            .pb_2()
+                            .pb_1()
                             .ml_1()
                             .pr(px(8.0))
                             .when(self.fetching_comments, |div| {
