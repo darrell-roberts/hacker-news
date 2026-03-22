@@ -11,6 +11,7 @@ use hacker_news_api::ArticleType;
 pub struct Header {
     counts: [(usize, SharedString); 5],
     categories: [(ArticleType, SharedString); 6],
+    open: bool,
 }
 
 impl Header {
@@ -37,7 +38,94 @@ impl Header {
                 ArticleType::Job,
             ]
             .map(|category| (category, category.as_str().into())),
+            open: false,
         })
+    }
+
+    fn render_open(&self, cx: &gpui::Context<Self>, theme: Theme) -> Div {
+        let article_selection = cx.global::<ArticleSelection>();
+
+        let header_entity = cx.entity();
+
+        let mk_article_type = |(article_type, label): &(ArticleType, SharedString)| {
+            let article_type = *article_type;
+            let label = label.clone();
+            let header_entity = header_entity.clone();
+            mk_button(label)
+                .when_else(
+                    article_type == article_selection.viewing_article_type,
+                    |div| div.bg(theme.button_active()).text_color(white()),
+                    |div| div.bg(theme.button_inactive()).text_color(black()),
+                )
+                .on_click(move |_event, _window, app| {
+                    app.update_global(|state: &mut ArticleSelection, cx| {
+                        state.viewing_article_type = article_type;
+                        header_entity.update(cx, |header_view, cx| {
+                            header_view.open = false;
+                            cx.notify();
+                        })
+                    });
+                })
+        };
+
+        let top_best_new = self.categories[0..3].iter().map(mk_article_type);
+        let ask_show_job = self.categories[3..].iter().map(mk_article_type);
+
+        let header_entity = cx.entity();
+        let article_limits = self
+            .counts
+            .iter()
+            .cloned()
+            .map(move |(article_count, label)| {
+                let header_entity = header_entity.clone();
+                mk_button(label)
+                    .when_else(
+                        article_count == article_selection.viewing_article_total,
+                        |div| div.bg(theme.button_active()).text_color(white()),
+                        |div| div.bg(theme.button_inactive()).text_color(black()),
+                    )
+                    .on_click(move |_event, _window, app| {
+                        app.update_global(|state: &mut ArticleSelection, cx| {
+                            state.viewing_article_total = article_count;
+                            header_entity.update(cx, |header_view, cx| {
+                                header_view.open = false;
+                                cx.notify();
+                            })
+                        });
+                    })
+            });
+
+        let header_entity = cx.entity();
+
+        div()
+            .flex()
+            .flex_row()
+            .child(div().id("close").child("[-]").cursor_pointer().on_click(
+                move |_event, _window, app| {
+                    header_entity.update(app, |header_view, cx| {
+                        header_view.open = false;
+                        cx.notify();
+                    })
+                },
+            ))
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .text_size(rems(1.1))
+                    .text_color(yellow())
+                    .gap_x(px(10.0))
+                    .w_full()
+                    .justify_center()
+                    .m_1()
+                    .pb_1()
+                    .children(top_best_new)
+                    .child(div().border_4())
+                    .children(ask_show_job)
+                    .child(div().border_4())
+                    .children(article_limits)
+                    .px_1(),
+            )
     }
 }
 
@@ -64,55 +152,29 @@ fn mk_button(label: SharedString) -> Stateful<Div> {
 impl Render for Header {
     fn render(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
         let theme: Theme = window.appearance().into();
+        let header_entity = cx.entity();
 
-        let article_selection = cx.global::<ArticleSelection>();
-        let mk_article_type = |(article_type, label): &(ArticleType, SharedString)| {
-            let article_type = *article_type;
-            let label = label.clone();
-            mk_button(label)
-                .when_else(
-                    article_type == article_selection.viewing_article_type,
-                    |div| div.bg(theme.button_active()).text_color(white()),
-                    |div| div.bg(theme.button_inactive()).text_color(black()),
-                )
-                .on_click(move |_event, _window, app| {
-                    app.update_global(|state: &mut ArticleSelection, _cx| {
-                        state.viewing_article_type = article_type;
-                    });
-                })
-        };
+        let active = cx.global::<ArticleSelection>();
 
-        let top_best_new = self.categories[0..3].iter().map(mk_article_type);
-        let ask_show_job = self.categories[3..].iter().map(mk_article_type);
-        let article_limits = self.counts.iter().cloned().map(|(article_count, label)| {
-            mk_button(label)
-                .when_else(
-                    article_count == article_selection.viewing_article_total,
-                    |div| div.bg(theme.button_active()).text_color(white()),
-                    |div| div.bg(theme.button_inactive()).text_color(black()),
-                )
-                .on_click(move |_event, _window, app| {
-                    app.update_global(|state: &mut ArticleSelection, _cx| {
-                        state.viewing_article_total = article_count;
-                    });
-                })
-        });
-
-        div()
-            .flex()
-            .flex_row()
-            .text_size(rems(1.1))
-            .text_color(yellow())
-            .gap_x(px(10.0))
-            .w_full()
-            .justify_center()
-            .m_1()
-            .pb_1()
-            .children(top_best_new)
-            .child(div().border_4())
-            .children(ask_show_job)
-            .child(div().border_4())
-            .children(article_limits)
-            .px_1()
+        if self.open {
+            self.render_open(cx, theme)
+        } else {
+            div().flex().w_full().child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .gap_1()
+                    .child(div().id("open").child("[+]").cursor_pointer().on_click(
+                        move |_event, _window, app| {
+                            header_entity.update(app, |header_view, cx| {
+                                header_view.open = true;
+                                cx.notify();
+                            })
+                        },
+                    ))
+                    .child("Viewing: ")
+                    .child(active.viewing_article_type.as_str()),
+            )
+        }
     }
 }

@@ -248,6 +248,7 @@ impl ContentView {
                             content_entity.update(app, |content_view, cx| {
                                 content_view.comment_entities.clear();
                                 content_view.viewing_article_id = None;
+                                content_view.article_body_view = None;
                                 cx.notify();
                             });
                         }),
