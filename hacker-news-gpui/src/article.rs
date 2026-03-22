@@ -309,28 +309,27 @@ impl Render for ArticleView {
             .flex_1()
             .min_w_0()
             .child(
-                div().rounded_md().child(
-                    div()
-                        .id("title")
-                        .child(self.title.clone())
-                        .cursor_pointer()
-                        .on_click(move |event, window, app| {
-                            if let Some(url) = url.as_deref() {
-                                app.open_url(url.as_ref());
-                            } else if let Some(cb) = &load_comments_cb {
-                                cb(event, window, app);
-                            };
-                        })
-                        .on_hover(move |hover, _window, app| {
-                            if !hover {
-                                app.set_global::<UrlHover>(UrlHover(None));
-                            } else {
-                                let url = article_entity.read(app).url.clone();
-                                app.set_global::<UrlHover>(UrlHover(url));
-                            }
-                        })
-                        .hover(hover_element),
-                ),
+                div()
+                    .id("title")
+                    .rounded_md()
+                    .child(self.title.clone())
+                    .cursor_pointer()
+                    .on_click(move |event, window, app| {
+                        if let Some(url) = url.as_deref() {
+                            app.open_url(url.as_ref());
+                        } else if let Some(cb) = &load_comments_cb {
+                            cb(event, window, app);
+                        };
+                    })
+                    .on_hover(move |hover, _window, app| {
+                        if !hover {
+                            app.set_global::<UrlHover>(UrlHover(None));
+                        } else {
+                            let url = article_entity.read(app).url.clone();
+                            app.set_global::<UrlHover>(UrlHover(url));
+                        }
+                    })
+                    .hover(hover_element),
             )
             .child(
                 div()
@@ -363,23 +362,12 @@ impl Render for ArticleView {
                 })
                 .when(viewing_article, |div| div.opacity(0.75))
                 .child(
-                    div().mb_1().w_full().overflow_hidden().child(
+                    div().mb_1().overflow_hidden().child(
                         div()
                             .flex()
                             .flex_row()
-                            .w_full()
                             .min_w_0()
-                            .children([
-                                rank_change_col,
-                                // div()
-                                //     .flex()
-                                //     .items_center()
-                                //     .w(rems(2.))
-                                //     .text_align(gpui::TextAlign::Right)
-                                //     .child(self.rank.clone()),
-                                // div().flex().items_center().child(comments_col),
-                                title_col,
-                            ])
+                            .children([rank_change_col, title_col])
                             .gap_1(),
                     ),
                 ),

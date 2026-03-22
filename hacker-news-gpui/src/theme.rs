@@ -7,7 +7,7 @@ mod light {
     pub const HOVER: u32 = 0xe0e4eb;
     pub const TEXT_INCREASING: u32 = 0x15803D;
     pub const TEXT_DECREASING: u32 = 0xd70000;
-    pub const SURFACE: u32 = 0xeeeeee;
+    pub const SURFACE: u32 = 0xf2f2f2;
     pub const BORDER: u32 = 0xb5bfc9;
     pub const COMMENT_BORDER: u32 = 0x8a9aa8;
     pub const BUTTON_ACTIVE: u32 = 0x3b82f6;
