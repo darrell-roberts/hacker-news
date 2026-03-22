@@ -154,23 +154,23 @@ impl ContentView {
                         });
 
                     content_view.viewing_article_id = Some(id);
+                    cx.notify();
 
-                    cx.spawn(async move |weak_content_view_entity, async_app| {
+                    cx.spawn(async move |content_entity, async_app| {
                         let comment_entities =
                             comment_entities(async_app, article_entity.clone(), &comment_ids).await;
 
                         async_app.update(|app| {
-                            article_entity.update(app, |article_view, _cx| {
+                            article_entity.update(app, |article_view, cx| {
                                 article_view.loading_comments = false;
+                                cx.notify();
                             });
 
-                            if let Err(err) =
-                                weak_content_view_entity.update(app, |content_view, cx| {
-                                    content_view.comment_entities = comment_entities;
-                                    content_view.fetching_comments = false;
-                                    cx.notify();
-                                })
-                            {
+                            if let Err(err) = content_entity.update(app, |content_view, cx| {
+                                content_view.comment_entities = comment_entities;
+                                content_view.fetching_comments = false;
+                                cx.notify();
+                            }) {
                                 error!("Content view is gone: {err}");
                             }
                         });
