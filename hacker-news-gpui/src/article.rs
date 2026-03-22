@@ -299,6 +299,9 @@ impl Render for ArticleView {
         let url = self.url.clone();
         let article_entity = cx.entity();
 
+        let load_comments_cb = (self.article_text.is_some() && url.is_none())
+            .then(|| self.fetch_comments_call_back(article_entity.clone()));
+
         let title_col = div()
             .flex()
             .flex_col()
@@ -310,10 +313,12 @@ impl Render for ArticleView {
                         .id("title")
                         .child(self.title.clone())
                         .cursor_pointer()
-                        .on_click(move |_event, _window, app| {
+                        .on_click(move |event, window, app| {
                             if let Some(url) = url.as_deref() {
                                 app.open_url(url.as_ref());
-                            }
+                            } else if let Some(cb) = &load_comments_cb {
+                                cb(event, window, app);
+                            };
                         })
                         .on_hover(move |hover, _window, app| {
                             if !hover {
