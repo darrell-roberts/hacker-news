@@ -11,6 +11,7 @@ use hacker_news_api::ArticleType;
 pub struct Header {
     counts: [(usize, SharedString); 5],
     categories: [(ArticleType, SharedString); 6],
+    open: bool,
 }
 
 impl Header {
@@ -37,34 +38,11 @@ impl Header {
                 ArticleType::Job,
             ]
             .map(|category| (category, category.as_str().into())),
+            open: false,
         })
     }
-}
 
-/// Create a button with the given label.
-fn mk_button(label: SharedString) -> Stateful<Div> {
-    div()
-        .bg(rgb(0x404040))
-        .shadow(vec![BoxShadow {
-            color: black().opacity(0.75),
-            offset: point(px(2.0), px(2.0)),
-            blur_radius: px(2.0),
-            spread_radius: px(2.0),
-        }])
-        .id(label.clone())
-        .child(label)
-        .cursor_pointer()
-        .rounded(px(8.0))
-        .hover(|style| style.opacity(1.0))
-        .active(|style| style.shadow_none())
-        .opacity(0.75)
-        .p_1()
-}
-
-impl Render for Header {
-    fn render(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        let theme: Theme = window.appearance().into();
-
+    fn render_open(&self, cx: &gpui::Context<Self>, theme: Theme) -> Div {
         let article_selection = cx.global::<ArticleSelection>();
         let mk_article_type = |(article_type, label): &(ArticleType, SharedString)| {
             let article_type = *article_type;
@@ -98,21 +76,81 @@ impl Render for Header {
                 })
         });
 
+        let header_entity = cx.entity();
+
         div()
             .flex()
             .flex_row()
-            .text_size(rems(1.1))
-            .text_color(yellow())
-            .gap_x(px(10.0))
-            .w_full()
-            .justify_center()
-            .m_1()
-            .pb_1()
-            .children(top_best_new)
-            .child(div().border_4())
-            .children(ask_show_job)
-            .child(div().border_4())
-            .children(article_limits)
-            .px_1()
+            .child(div().id("close").child("[-]").cursor_pointer().on_click(
+                move |_event, _window, app| {
+                    header_entity.update(app, |header_view, cx| {
+                        header_view.open = false;
+                        cx.notify();
+                    })
+                },
+            ))
+            .child(
+                div()
+                    .flex()
+                    .flex_row()
+                    .text_size(rems(1.1))
+                    .text_color(yellow())
+                    .gap_x(px(10.0))
+                    .w_full()
+                    .justify_center()
+                    .m_1()
+                    .pb_1()
+                    .children(top_best_new)
+                    .child(div().border_4())
+                    .children(ask_show_job)
+                    .child(div().border_4())
+                    .children(article_limits)
+                    .px_1(),
+            )
+    }
+}
+
+/// Create a button with the given label.
+fn mk_button(label: SharedString) -> Stateful<Div> {
+    div()
+        .bg(rgb(0x404040))
+        .shadow(vec![BoxShadow {
+            color: black().opacity(0.75),
+            offset: point(px(2.0), px(2.0)),
+            blur_radius: px(2.0),
+            spread_radius: px(2.0),
+        }])
+        .id(label.clone())
+        .child(label)
+        .cursor_pointer()
+        .rounded(px(8.0))
+        .hover(|style| style.opacity(1.0))
+        .active(|style| style.shadow_none())
+        .opacity(0.75)
+        .p_1()
+}
+
+impl Render for Header {
+    fn render(&mut self, window: &mut Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
+        let theme: Theme = window.appearance().into();
+        let header_entity = cx.entity();
+
+        if self.open {
+            self.render_open(cx, theme).into_any_element()
+        } else {
+            div()
+                .id("open")
+                .flex()
+                .w_full()
+                .child("[+]")
+                .cursor_pointer()
+                .on_click(move |_event, _window, app| {
+                    header_entity.update(app, |header_view, cx| {
+                        header_view.open = true;
+                        cx.notify();
+                    })
+                })
+                .into_any_element()
+        }
     }
 }
