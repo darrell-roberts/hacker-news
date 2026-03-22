@@ -109,8 +109,6 @@ impl Render for ContentView {
                             .flex_col()
                             .flex_1()
                             .min_w_0()
-                            .pr_1()
-                            .mr_1()
                             .pb_2()
                             .children(
                                 self.articles
@@ -125,7 +123,6 @@ impl Render for ContentView {
                     .id("divider")
                     .h_full()
                     .w(px(5.0))
-                    .mt_4()
                     .flex_shrink_0()
                     .cursor_col_resize()
                     .bg(theme.border())
