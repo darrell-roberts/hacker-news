@@ -164,6 +164,7 @@ impl ArticleView {
                             .text_align(gpui::TextAlign::Center)
                             .rounded(rems(0.25))
                             .px(px(4.0))
+                            .text_size(rems(0.75))
                             .child(new_comments_added.clone())
                             .with_animation(
                                 "comment-count-changed-fade",
@@ -273,7 +274,7 @@ impl Render for ArticleView {
 
         let article_entity = cx.entity();
 
-        let comments_col = div().w(rems(3.)).justify_end().id("comments").map(|div| {
+        let comments_col = div().id("comments").map(|div| {
             if let Some(new_comments_added) = self.comment_count_changed.as_ref() {
                 self.render_new_comments_cell(div, new_comments_added, article_entity)
                     .into_any()
@@ -340,6 +341,7 @@ impl Render for ArticleView {
                     .text_size(rems(0.75))
                     .child(self.author.clone())
                     .child(self.age.clone())
+                    .child(comments_col)
                     .gap_x(px(5.0)),
             )
             .gap_x(px(5.0));
@@ -375,7 +377,7 @@ impl Render for ArticleView {
                                 //     .w(rems(2.))
                                 //     .text_align(gpui::TextAlign::Right)
                                 //     .child(self.rank.clone()),
-                                div().flex().items_center().child(comments_col),
+                                // div().flex().items_center().child(comments_col),
                                 title_col,
                             ])
                             .gap_1(),
