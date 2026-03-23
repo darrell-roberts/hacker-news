@@ -41,7 +41,6 @@ impl Render for ArticleBodyView {
         _cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
         let theme: Theme = window.appearance().into();
-
         let view_styled_text = self.article_text.clone();
 
         gpui::div()
