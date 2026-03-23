@@ -16,7 +16,7 @@ chrono.workspace = true
 flexi_logger.workspace = true
 futures = "0.3"
 gpui = { git = "https://github.com/zed-industries/zed.git" }
-gpui_platform = { git = "https://github.com/zed-industries/zed.git" }
+gpui_platform = { git = "https://github.com/zed-industries/zed.git"}
 hacker-news-api.workspace = true
 hacker-news-config.workspace = true
 html-sanitizer.workspace = true
@@ -25,9 +25,8 @@ tokio = "1"
 serde.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
-# Temporary workaround https://github.com/zed-industries/zed/issues/47168#issuecomment-3770291644
-core-text = "=21.0.0"
 gpui_macos = { git = "https://github.com/zed-industries/zed.git" }
+gpui_platform = { git = "https://github.com/zed-industries/zed.git", features = ["font-kit"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gpui_linux = { git = "https://github.com/zed-industries/zed.git" }
