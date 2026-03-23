@@ -3134,6 +3134,7 @@ dependencies = [
  "strum 0.27.2",
  "util",
  "uuid",
+ "zed-font-kit",
 ]
 
 [[package]]
@@ -3323,7 +3324,6 @@ dependencies = [
  "anyhow",
  "async-compat",
  "chrono",
- "core-text",
  "flexi_logger",
  "futures",
  "gpui",
