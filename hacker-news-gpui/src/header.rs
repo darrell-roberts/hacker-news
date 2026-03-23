@@ -44,7 +44,6 @@ impl Header {
 
     fn render_open(&self, cx: &gpui::Context<Self>, theme: Theme) -> Div {
         let article_selection = cx.global::<ArticleSelection>();
-
         let header_entity = cx.entity();
 
         let mk_article_type = |(article_type, label): &(ArticleType, SharedString)| {

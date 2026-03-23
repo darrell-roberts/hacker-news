@@ -122,6 +122,7 @@ impl Render for FooterView {
                     .flex()
                     .flex_row()
                     .justify_between()
+                    .p_1()
                     .child(self.status_line.clone())
                     .child(
                         div()
