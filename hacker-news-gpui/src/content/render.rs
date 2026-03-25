@@ -124,7 +124,7 @@ impl Render for ContentView {
                     .id("divider")
                     .h_full()
                     .ml_1()
-                    .w(px(5.0))
+                    .w_1()
                     .flex_shrink_0()
                     .cursor_col_resize()
                     .bg(theme.divider())
@@ -181,7 +181,7 @@ impl Render for ContentView {
                             .flex_1()
                             .pb_1()
                             .ml_1()
-                            .pr(px(8.0))
+                            .pr_1()
                             .when(self.fetching_comments, |div| {
                                 div.flex()
                                     .justify_center()
