@@ -103,7 +103,7 @@ fn code(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: SharedString::new("Menlo"),
+            family: SharedString::new("Courier"),
             features: Default::default(),
             fallbacks: None,
             weight: Default::default(),

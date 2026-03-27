@@ -9,7 +9,7 @@ use crate::{
 };
 use gpui::{
     Animation, AnimationExt, AppContext, AsyncApp, Entity, Fill, ImageSource, SharedString,
-    StyleRefinement, Window, div, img, prelude::*, pulsating_between, px, quadratic, rems, rgb,
+    StyleRefinement, Window, div, img, prelude::*, pulsating_between, quadratic, rems, rgb,
 };
 use hacker_news_api::Item;
 use std::{rc::Rc, sync::Arc, time::Duration};
@@ -161,7 +161,7 @@ impl ArticleView {
                             .bg(Fill::Color(rgb(0xFF69B4).into()))
                             .text_align(gpui::TextAlign::Center)
                             .rounded(rems(0.25))
-                            .px(px(4.0))
+                            .px(rems(0.1))
                             .text_size(rems(0.75))
                             .child(new_comments_added.clone())
                             .with_animation(
@@ -200,7 +200,12 @@ impl ArticleView {
             .on_click(self.fetch_comments_call_back(article_entity))
             .hover(hover_element)
             .flex_row()
-            .child(gpui::div().text_size(rems(0.75)).child(comments.clone()))
+            .child(
+                gpui::div()
+                    .text_size(rems(0.75))
+                    .px(rems(0.1))
+                    .child(comments.clone()),
+            )
             .child(gpui::div().child(img(self.comment_image.clone())).when(
                 self.loading_comments,
                 |el| {
