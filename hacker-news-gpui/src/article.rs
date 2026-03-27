@@ -1,7 +1,7 @@
 //! Article view.
 use crate::{
     UrlHover,
-    common::{COMMENT_IMAGE, parse_date},
+    common::{COMMENT_IMAGE, parse_date, url_punycode},
     content::{ContentEvent, ContentView},
     rich_text::{ViewStyledText, parse_layout},
     theme::Theme,
@@ -89,7 +89,7 @@ impl ArticleView {
                     .filter(|&n| n > 0)
                     .map(|n| format!("{n}"))
                     .map(Into::into),
-                url: item.url.map(Into::into),
+                url: item.url.as_deref().map(url_punycode).map(Into::into),
                 order_change_label: if order_change == 0 {
                     Default::default()
                 } else {

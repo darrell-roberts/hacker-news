@@ -1,5 +1,5 @@
 //! Convert parsed hacker news rich text into gpui TextRun.
-use crate::theme::Theme;
+use crate::{common::url_punycode, theme::Theme};
 use gpui::{Font, FontWeight, SharedString, TextRun, UnderlineStyle, px};
 use html_sanitizer::{Element, parse_elements};
 use std::{borrow::Cow, ops::Range};
@@ -240,8 +240,9 @@ fn collect_elements(
                     });
 
                 if let Some((text, url)) = link {
-                    parsed.layout.push(TextLayout::Link(text.len()));
-                    parsed.text.push_str(text);
+                    let puny_code_parsed = url_punycode(text);
+                    parsed.layout.push(TextLayout::Link(puny_code_parsed.len()));
+                    parsed.text.push_str(&puny_code_parsed);
                     parsed.urls.push(url.to_string());
                 }
             }

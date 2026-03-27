@@ -1,9 +1,12 @@
 //! Common functions.
 use chrono::{DateTime, Utc};
 use futures::{StreamExt as _, TryStreamExt as _};
-use gpui::{AppContext, AsyncApp, Entity, Image};
+use gpui::{AppContext, AsyncApp, Entity, Image, http_client::Url};
 use log::error;
-use std::sync::{Arc, LazyLock};
+use std::{
+    borrow::Cow,
+    sync::{Arc, LazyLock},
+};
 
 use crate::{ApiClientState, article::ArticleView, comment::CommentView, content::ContentEvent};
 
@@ -89,4 +92,34 @@ pub async fn comment_entities(
         .into_iter()
         .map(|comment| CommentView::new(app, comment, article_entity.clone()))
         .collect()
+}
+
+/// Render the url with a unicode host if the url is using puny code.
+pub fn url_punycode(url: &str) -> String {
+    Url::parse(url)
+        .ok()
+        .and_then(|parsed_url| {
+            let host = parsed_url.host_str()?;
+            let (host, result) = idna::domain_to_unicode(host);
+            result.ok()?;
+
+            Some(format!(
+                "{}://{host}{}{}",
+                parsed_url.scheme(),
+                port_string(&parsed_url),
+                parsed_url.path()
+            ))
+        })
+        .unwrap_or_else(|| url.to_string())
+}
+
+/// Produce a port url part if the scheme and port combination are not standard.
+fn port_string(parsed_url: &Url) -> Cow<'_, str> {
+    let port: Cow<'_, str> = match parsed_url.port() {
+        Some(80) if parsed_url.scheme() == "http" => "".into(),
+        Some(443) if parsed_url.scheme() == "https" => "".into(),
+        Some(port) => format!(":{port}").into(),
+        None => "".into(),
+    };
+    port
 }
