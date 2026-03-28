@@ -1,14 +1,19 @@
 //! Common functions.
 use chrono::{DateTime, Utc};
 use futures::{StreamExt as _, TryStreamExt as _};
-use gpui::{AppContext, AsyncApp, Entity, Image, http_client::Url};
+use gpui::{
+    AppContext, AsyncApp, Entity, Fill, Image, StyleRefinement, Styled as _, http_client::Url,
+    solid_background,
+};
 use log::error;
 use std::{
     borrow::Cow,
     sync::{Arc, LazyLock},
 };
 
-use crate::{ApiClientState, article::ArticleView, comment::CommentView, content::ContentEvent};
+use crate::{
+    ApiClientState, article::ArticleView, comment::CommentView, content::ContentEvent, theme::Theme,
+};
 
 /// An embedded SVG comment image.
 pub static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
@@ -122,4 +127,13 @@ fn port_string(parsed_url: &Url) -> Cow<'_, str> {
         None => "".into(),
     };
     port
+}
+
+pub fn hover_element(theme: Theme) -> impl Fn(StyleRefinement) -> StyleRefinement {
+    move |style| {
+        style
+            .bg(Fill::Color(solid_background(theme.hover())))
+            .shadow_md()
+            .rounded_md()
+    }
 }

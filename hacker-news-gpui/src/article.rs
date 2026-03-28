@@ -1,6 +1,7 @@
 //! Article view.
 use crate::{
     UrlHover,
+    common::hover_element,
     common::{COMMENT_IMAGE, parse_date, url_punycode},
     content::{ContentEvent, ContentView},
     rich_text::{ViewStyledText, parse_layout},
@@ -8,8 +9,7 @@ use crate::{
 };
 use gpui::{
     Animation, AnimationExt, AppContext, AsyncApp, Entity, Fill, ImageSource, SharedString,
-    StyleRefinement, Window, div, img, prelude::*, pulsating_between, px, quadratic, rems, rgb,
-    solid_background,
+    StyleRefinement, Window, div, img, prelude::*, pulsating_between, quadratic, rems, rgb,
 };
 use hacker_news_api::Item;
 use std::{rc::Rc, sync::Arc, time::Duration};
@@ -161,7 +161,7 @@ impl ArticleView {
                             .bg(Fill::Color(rgb(0xFF69B4).into()))
                             .text_align(gpui::TextAlign::Center)
                             .rounded(rems(0.25))
-                            .px(px(4.0))
+                            .px(rems(0.1))
                             .text_size(rems(0.75))
                             .child(new_comments_added.clone())
                             .with_animation(
@@ -200,7 +200,12 @@ impl ArticleView {
             .on_click(self.fetch_comments_call_back(article_entity))
             .hover(hover_element)
             .flex_row()
-            .child(gpui::div().text_size(rems(0.75)).child(comments.clone()))
+            .child(
+                gpui::div()
+                    .text_size(rems(0.75))
+                    .px(rems(0.1))
+                    .child(comments.clone()),
+            )
             .child(gpui::div().child(img(self.comment_image.clone())).when(
                 self.loading_comments,
                 |el| {
@@ -267,9 +272,6 @@ impl Render for ArticleView {
             .items_center()
             .child(self.order_change_label.clone());
 
-        let hover_element =
-            |style: StyleRefinement| style.bg(Fill::Color(solid_background(theme.hover())));
-
         let article_entity = cx.entity();
 
         let comments_col = div().id("comments").map(|div| {
@@ -277,14 +279,14 @@ impl Render for ArticleView {
                 self.render_new_comments_cell(div, new_comments_added, article_entity)
                     .into_any()
             } else if let Some(comments) = self.comment_count.as_ref() {
-                self.render_comments_cell(hover_element, article_entity, div, comments)
+                self.render_comments_cell(hover_element(theme), article_entity, div, comments)
                     .into_any()
             } else if self.article_text.is_some() {
                 // The article has a body but no comments. In place of the comment count
                 // we'll add a character and click handler.
                 div.id("text-open")
                     .cursor_pointer()
-                    .hover(hover_element)
+                    .hover(hover_element(theme))
                     .on_click(self.fetch_comments_call_back(article_entity))
                     .text_align(gpui::TextAlign::Center)
                     .rounded_md()
@@ -309,7 +311,8 @@ impl Render for ArticleView {
             .child(
                 div()
                     .id("title")
-                    .rounded_md()
+                    .p_1()
+                    .w_full()
                     .child(self.title.clone())
                     .cursor_pointer()
                     .on_click(move |event, window, app| {
@@ -327,21 +330,20 @@ impl Render for ArticleView {
                             app.set_global::<UrlHover>(UrlHover(url));
                         }
                     })
-                    .hover(hover_element),
+                    .hover(hover_element(theme)),
             )
             .child(
                 div()
                     .flex()
                     .flex_row()
+                    .p_1()
                     .italic()
-                    .items_center()
                     .text_size(rems(0.75))
                     .child(self.author.clone())
                     .child(self.age.clone())
                     .child(comments_col)
-                    .gap_x(px(5.0)),
-            )
-            .gap_x(px(5.0));
+                    .gap_x(rems(0.1)),
+            );
 
         div().w_full().child(
             div()
@@ -360,13 +362,11 @@ impl Render for ArticleView {
                 })
                 .when(viewing_article, |div| div.opacity(0.75))
                 .child(
-                    div().mb_1().overflow_hidden().child(
+                    div().overflow_hidden().child(
                         div()
                             .flex()
                             .flex_row()
-                            .min_w_0()
-                            .children([rank_change_col, title_col])
-                            .gap_1(),
+                            .children([rank_change_col, title_col]),
                     ),
                 ),
         )

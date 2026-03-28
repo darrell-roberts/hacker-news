@@ -1,15 +1,15 @@
 //! Render comment
 use crate::{
     article::ArticleView,
-    common::{COMMENT_IMAGE, comment_entities, parse_date},
+    common::{COMMENT_IMAGE, comment_entities, hover_element, parse_date},
     rich_text::{ParsedStyledText, TextLayout, parse_layout, rich_text_runs, url_ranges},
     theme::Theme,
 };
 use gpui::{
-    Animation, AnimationExt as _, AppContext as _, AsyncApp, Entity, Fill, ImageSource,
+    Animation, AnimationExt as _, AppContext as _, AsyncApp, Entity, ImageSource,
     InteractiveElement, InteractiveText, ParentElement, Render, SharedString,
     StatefulInteractiveElement, StyleRefinement, Styled, StyledText, Window, div, img,
-    prelude::FluentBuilder as _, pulsating_between, rems, solid_background,
+    prelude::FluentBuilder as _, pulsating_between, rems,
 };
 use hacker_news_api::Item;
 use std::{sync::Arc, time::Duration};
@@ -115,8 +115,6 @@ impl CommentView {
         comment_entity: Entity<CommentView>,
     ) -> gpui::Div {
         let id = self.id;
-        let hover_element =
-            |style: StyleRefinement| style.bg(Fill::Color(solid_background(theme.hover())));
 
         gpui::div()
             .flex()
@@ -136,11 +134,11 @@ impl CommentView {
                     .on_click(move |_event, _window, cx| {
                         cx.open_url(&format!("https://news.ycombinator.com/item?id={id}"));
                     })
-                    .hover(hover_element),
+                    .hover(hover_element(theme)),
             )
             .child(self.age.clone())
             .when(!self.comment_child_ids.is_empty(), |div| {
-                self.render_child_comments(comment_ids, comment_entity, div, hover_element)
+                self.render_child_comments(comment_ids, comment_entity, div, hover_element(theme))
             })
     }
 
