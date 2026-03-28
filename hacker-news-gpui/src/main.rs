@@ -1,5 +1,5 @@
 //! Simple hacker news view.
-use crate::{header::Header, theme::Theme};
+use crate::{common::save_config, header::Header, theme::Theme};
 use content::ContentView;
 use footer::FooterView;
 use gpui::{
@@ -9,7 +9,7 @@ use gpui::{
 };
 use gpui_platform::application;
 use hacker_news_api::{ApiClient, ArticleType};
-use hacker_news_config::{init_logger, load_config, save_config};
+use hacker_news_config::{init_logger, load_config};
 use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::{ops::Deref, sync::Arc};
@@ -80,6 +80,7 @@ impl MainWindow {
 
         let font_size = app.global::<Config>().font_size;
 
+        // Listen to system theme changes.
         window
             .observe_window_appearance(|_window, app| {
                 app.refresh_windows();
@@ -87,6 +88,7 @@ impl MainWindow {
             .detach();
 
         app.new(move |cx| {
+            // Listen to font size increase/decrease key bindings.
             cx.observe_keystrokes(|main_window: &mut MainWindow, event, window, cx| {
                 let mut adjust_text_size = |val| {
                     main_window.base_font_size =
@@ -94,17 +96,9 @@ impl MainWindow {
                     window.set_rem_size(main_window.base_font_size);
                     let font_size = main_window.base_font_size.as_f32();
 
-                    cx.spawn(async move |_main_window, _app| {
-                        if let Err(err) = async_compat::Compat::new(save_config(
-                            Config { font_size },
-                            CONFIG_FILE,
-                        ))
-                        .await
-                        {
-                            error!("Failed to save config: {err}");
-                        }
-                    })
-                    .detach();
+                    cx.update_global::<Config, _>(|config, _cx| {
+                        config.font_size = font_size;
+                    });
 
                     cx.notify();
                 };
@@ -160,7 +154,7 @@ impl Render for MainWindow {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct Config {
     font_size: f32,
 }
@@ -178,7 +172,7 @@ fn main() {
         }
     };
 
-    application().run(|app| {
+    application().run(move |app| {
         let client = Arc::new(hacker_news_api::ApiClient::new().expect("No API Client"));
         app.set_global(ApiClientState(client));
         app.set_global(ArticleSelection {
@@ -197,6 +191,18 @@ fn main() {
 
         app.on_window_closed(|app| {
             app.quit();
+        })
+        .detach();
+
+        // Write back changes made to config to disk.
+        app.observe_global::<Config>(|cx| {
+            let config = *cx.global::<Config>();
+            cx.spawn(async move |_app| {
+                if let Err(err) = save_config(config).await {
+                    error!("Failed to save config: {err}");
+                }
+            })
+            .detach();
         })
         .detach();
 
