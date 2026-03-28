@@ -12,7 +12,8 @@ use std::{
 };
 
 use crate::{
-    ApiClientState, article::ArticleView, comment::CommentView, content::ContentEvent, theme::Theme,
+    ApiClientState, CONFIG_FILE, Config, article::ArticleView, comment::CommentView,
+    content::ContentEvent, theme::Theme,
 };
 
 /// An embedded SVG comment image.
@@ -136,4 +137,10 @@ pub fn hover_element(theme: Theme) -> impl Fn(StyleRefinement) -> StyleRefinemen
             .shadow_md()
             .rounded_md()
     }
+}
+
+pub fn save_config(
+    config: Config,
+) -> async_compat::Compat<impl Future<Output = Result<(), anyhow::Error>>> {
+    async_compat::Compat::new(hacker_news_config::save_config(config, CONFIG_FILE))
 }
