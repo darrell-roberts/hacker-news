@@ -1,4 +1,8 @@
 //! Common functions.
+use crate::{
+    ApiClientState, CONFIG_FILE, Config, article::ArticleView, comment::CommentView,
+    content::ContentEvent, theme::Theme,
+};
 use chrono::{DateTime, Utc};
 use futures::{StreamExt as _, TryStreamExt as _};
 use gpui::{
@@ -9,11 +13,6 @@ use log::error;
 use std::{
     borrow::Cow,
     sync::{Arc, LazyLock},
-};
-
-use crate::{
-    ApiClientState, CONFIG_FILE, Config, article::ArticleView, comment::CommentView,
-    content::ContentEvent, theme::Theme,
 };
 
 /// An embedded SVG comment image.
