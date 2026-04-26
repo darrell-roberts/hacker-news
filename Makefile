@@ -89,7 +89,7 @@ ifeq ($(PLATFORM), Darwin)
 	open "dist/HackerNews.dmg"
 else ifeq ($(PLATFORM), Linux)
 	@echo "Installing for Linux"
-	@$(MAKE) install-local-linux
+	# @$(MAKE) install-local-linux
 else
 	@echo "Unsupported platform for install: " $(PLATFORM)
 endif
