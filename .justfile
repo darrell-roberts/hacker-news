@@ -1,3 +1,5 @@
+set shell := ["fish", "-c"]
+
 clean-dist:
     rm -rf dist/
 
@@ -20,3 +22,21 @@ linux-debian: build
     mkdir -p dist
     tar zxvf assets/icons.tar.gz -C dist
     cargo deb -p hacker-news-iced
+
+install:
+    #!/usr/bin/env fish
+    switch {{ os() }}
+        case linux
+            echo "Installing for linux"
+            just install-linux
+        case macos
+            echo "Installing for macos"
+        case '*'
+            echo "Unsupported OS: {{ os() }}"
+    end
+
+deb := `ls target/debian/hacker-news-reader*.deb`
+
+install-linux: linux-debian
+    # deb := `ls target/debian/*.deb`
+    echo "Installing {{ deb }}"
