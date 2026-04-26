@@ -3,6 +3,9 @@ set shell := ["fish", "-c"]
 clean-dist:
     rm -rf dist/
 
+clean: clean-dist
+    cargo clean
+
 check:
     cargo clippy
 
@@ -40,9 +43,11 @@ install:
             echo "Unsupported OS: {{ os() }}"
     end
 
-install-linux *deb=`ls target/debian/hacker-news-reader*.deb`: clean-dist linux-debian
-    echo "Installing {{ deb }}"
-    sudo apt reinstall "./{{ deb }}"
+install-linux: clean-dist linux-debian
+    #!/usr/bin/env fish
+    set -l deb (ls target/debian/hacker-news-reader*.deb)
+    echo "Installing $deb"
+    sudo apt reinstall "./$deb"
 
 bundle-macos: clean-dist build
     # Create necessary directories

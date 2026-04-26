@@ -189,7 +189,7 @@ fn main() {
             disabled: false,
         }]);
 
-        app.on_window_closed(|app| {
+        app.on_window_closed(|app, _window_id| {
             app.quit();
         })
         .detach();
