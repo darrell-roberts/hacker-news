@@ -448,13 +448,11 @@ impl App {
                 }
             }
             // Rebuild the index.
-            (_, KeyCode::Char('r')) => {
-                if self.rebuild_progress.is_none() {
-                    self.event_manager.rebuild_index(
-                        self.search_context.clone(),
-                        self.articles_state.article_type,
-                    );
-                }
+            (_, KeyCode::Char('r')) if self.rebuild_progress.is_none() => {
+                self.event_manager.rebuild_index(
+                    self.search_context.clone(),
+                    self.articles_state.article_type,
+                );
             }
             // Open URL for story.
             (_, KeyCode::Char('o')) => {
@@ -621,19 +619,17 @@ impl App {
                 }
             }
             // Update the selected story in the stories view
-            (_, KeyCode::Char('u')) => {
-                if self.viewing_state.is_none() {
-                    let story = self
-                        .articles_state
-                        .list_state
-                        .selected()
-                        .and_then(|selected| self.articles_state.stories.get(selected))
-                        .cloned();
-                    if let Some(story) = story {
-                        self.event_manager
-                            .update_story(self.search_context.clone(), story);
-                    }
-                };
+            (_, KeyCode::Char('u')) if self.viewing_state.is_none() => {
+                let story = self
+                    .articles_state
+                    .list_state
+                    .selected()
+                    .and_then(|selected| self.articles_state.stories.get(selected))
+                    .cloned();
+                if let Some(story) = story {
+                    self.event_manager
+                        .update_story(self.search_context.clone(), story);
+                }
             }
             // Open search view
             (_, KeyCode::Char('/')) => {
