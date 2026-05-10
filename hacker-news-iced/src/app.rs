@@ -22,6 +22,7 @@ use iced::{
     Size,
     Task,
     Theme,
+    mouse::Interaction,
     widget::{
         self, Column, button, container,
         operation::{focus_next, focus_previous},
@@ -463,6 +464,7 @@ pub fn view(app: &App) -> iced::Element<'_, AppMsg> {
                         .style(button::text)
                         .padding(0),
                 )
+                .interaction(Interaction::Pointer)
                 .on_enter(AppMsg::Footer(FooterMsg::Url(url.to_string())))
                 .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
                 .into(),

@@ -15,6 +15,7 @@ use iced::{
     advanced::image::Handle,
     alignment::{Horizontal, Vertical},
     border::{self},
+    mouse::Interaction,
     padding,
     widget::{self, Column, Row, text},
 };
@@ -155,6 +156,7 @@ impl ArticleState {
 
         match story.url.as_deref() {
             Some(url) => widget::mouse_area(title)
+                .interaction(Interaction::Pointer)
                 .on_enter(AppMsg::Footer(FooterMsg::Url(url.to_string())))
                 .on_exit(AppMsg::Footer(FooterMsg::NoUrl))
                 .into(),
@@ -322,11 +324,13 @@ impl ArticleState {
         .padding([5, 15])
         .clip(false);
 
-        let clickable = widget::mouse_area(content).on_press(AppMsg::OpenComment {
-            article: story.clone(),
-            parent_id: story.id,
-            comment_stack: Vec::new(),
-        });
+        let clickable = widget::mouse_area(content)
+            .interaction(Interaction::Pointer)
+            .on_press(AppMsg::OpenComment {
+                article: story.clone(),
+                parent_id: story.id,
+                comment_stack: Vec::new(),
+            });
 
         widget::stack(
             [
@@ -377,7 +381,6 @@ impl ArticleState {
                 self.articles = articles;
                 widget::operation::scroll_to::<AppMsg>(
                     widget::Id::new("articles"),
-                    // Default::default(),
                     widget::operation::AbsoluteOffset { x: 0.0, y: 0.0 },
                 )
             }
