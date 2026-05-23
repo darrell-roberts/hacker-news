@@ -74,13 +74,13 @@ linux-debian: clean-dist build
 	tar zxvf assets/icons.tar.gz -C dist
 	cargo deb -p hacker-news-iced
 
-install-local-linux: build
-	echo "Installing for linux"
-	mkdir -p ~/.local/share/applications
-	mkdir -p ~/.local/bin
-	cp target/release/hacker-news-reader ~/.local/bin
-	cp assets/io.github.darrellroberts.hacker-news.desktop ~/.local/share/applications
-	tar zxvf assets/icons.tar.gz -C ~/.local/share
+# install-local-linux: build
+# 	echo "Installing for linux"
+# 	mkdir -p ~/.local/share/applications
+# 	mkdir -p ~/.local/bin
+# 	cp target/release/hacker-news-reader ~/.local/bin
+# 	cp assets/io.github.darrellroberts.hacker-news.desktop ~/.local/share/applications
+# 	tar zxvf assets/icons.tar.gz -C ~/.local/share
 
 install:
 ifeq ($(PLATFORM), Darwin)
@@ -89,6 +89,7 @@ ifeq ($(PLATFORM), Darwin)
 	open "dist/HackerNews.dmg"
 else ifeq ($(PLATFORM), Linux)
 	@echo "Installing for Linux"
+	$@(MAKE) linux-debian
 	# @$(MAKE) install-local-linux
 else
 	@echo "Unsupported platform for install: " $(PLATFORM)
