@@ -4,6 +4,7 @@ members = [
   "hacker-news-config",
   "hacker-news-gpui",
   "hacker-news-iced",
+  "hacker-news-relm4",
   "hacker-news-search",
   "hacker-news-tui",
   "html-sanitizer",
