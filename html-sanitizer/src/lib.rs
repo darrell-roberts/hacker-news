@@ -5,6 +5,8 @@
 //! - `<p>` paragraph
 //! - `<a>` anchor
 //! - `<pre><code></code></pre>` monospaced code
+use std::borrow::Cow;
+
 use log::{error, warn};
 
 mod parser;
@@ -57,4 +59,38 @@ pub fn parse_elements(input: &str) -> Vec<Element<'_>> {
             error!("Failed to parse input: {err}");
             Vec::from(&[Element::Text(input)])
         })
+}
+
+const ESCAPED_CHAR_MAP: &[(char, &str)] = &[
+    ('&', "&amp;"),
+    ('<', "&lt;"),
+    ('>', "&gt;"),
+    ('"', "&quot;"),
+    ('\'', "&apos;"),
+    ('©', "&copy;"),
+    ('®', "&reg;"),
+    ('™', "&trade;"),
+    ('£', "&pound;"),
+    ('€', "&euro;"),
+    ('°', "&deg;"),
+];
+
+pub fn escape_html<'a>(input: &'a str) -> Cow<'a, str> {
+    if input
+        .chars()
+        .any(|c| ESCAPED_CHAR_MAP.iter().any(|map| map.0 == c))
+    {
+        let mut modified_buffer = String::new();
+        for c in input.chars() {
+            if let Some(replacement) = ESCAPED_CHAR_MAP.iter().find(|map| map.0 == c) {
+                modified_buffer.push_str(replacement.1);
+            } else {
+                modified_buffer.push(c);
+            }
+        }
+
+        modified_buffer.into()
+    } else {
+        input.into()
+    }
 }

@@ -1,10 +1,12 @@
 //! Article model and factory component.
 use friendly_duration::parse_friendly_age;
 use hacker_news_search::api::Story;
+use html_sanitizer::escape_html;
 use relm4::{gtk::prelude::*, prelude::FactoryComponent, *};
 
 pub struct ArticleModel {
     article: Story,
+    title_markup: String,
     by_string: String,
     comment_count: String,
     age_string: String,
@@ -45,7 +47,7 @@ impl FactoryComponent for ArticleModel {
                 #[name(title)]
                 gtk::Label {
                     set_wrap: true,
-                    set_label: &self.article.title,
+                    set_markup: &self.title_markup
                 }
             },
 
@@ -81,6 +83,10 @@ impl FactoryComponent for ArticleModel {
             by_string: format!("by: {}", &article.by),
             comment_count: format!("{} ", &article.descendants),
             age_string: parse_friendly_age(article.time).unwrap_or_default(),
+            title_markup: match article.url.as_deref() {
+                Some(url) => format!("<a href=\"{url}\">{}</a>", escape_html(&article.title)),
+                None => article.title.clone(),
+            },
             article,
             active: false,
         }
