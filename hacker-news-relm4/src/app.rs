@@ -1,8 +1,11 @@
 //! Main application model and window.
 use articles::ArticleModel;
+use chrono::DateTime;
+use chrono_tz::America::New_York;
 use comments::CommentModel;
 use futures::{StreamExt, channel::mpsc};
 use hacker_news_api::ArticleType;
+use hacker_news_config::IndexConfig;
 use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, rebuild_index};
 use header::HeaderModel;
 use relm4::{
@@ -17,6 +20,8 @@ use relm4::{
     *,
 };
 use std::sync::{Arc, RwLock};
+
+use crate::Config;
 
 mod articles;
 mod comments;
@@ -35,6 +40,7 @@ pub struct AppModel {
     comment_page: u8,
     total_comment_pages: u8,
     active_comment_id: u64,
+    index_config: IndexConfig,
 }
 
 #[derive(Debug)]
@@ -52,7 +58,7 @@ pub enum AppMsg {
 
 #[relm4::component(pub)]
 impl Component for AppModel {
-    type Init = Arc<RwLock<SearchContext>>;
+    type Init = Config;
     type Input = AppMsg;
     type Output = ();
     type CommandOutput = ();
@@ -116,6 +122,7 @@ impl Component for AppModel {
                                     #[name(comment_prev)]
                                     gtk::Button {
                                         set_icon_name: "go-previous",
+                                        set_visible: false,
                                         connect_clicked[sender] => move |_| {
                                             sender.input_sender().emit(AppMsg::CommentPrev);
                                         }
@@ -129,6 +136,7 @@ impl Component for AppModel {
                                     #[name(comment_next)]
                                     gtk::Button {
                                         set_icon_name: "go-next",
+                                        set_visible: false,
                                         connect_clicked[sender] => move |_| {
                                             sender.input_sender().emit(AppMsg::CommentNext);
                                         }
@@ -187,11 +195,22 @@ impl Component for AppModel {
                 comments::CommentOutMsg::OpenComment(id) => AppMsg::OpenComment(id),
             });
 
+        let current_category = init.index_config.viewing_type;
+        if let Some(current_stats) = init
+            .index_config
+            .index_stats
+            .iter()
+            .copied()
+            .find(|stat| stat.category == current_category)
+        {
+            sender.input(AppMsg::IndexStatus(current_stats));
+        }
+
         let model = AppModel {
             header,
             articles,
             comments,
-            search_context: init,
+            search_context: init.search_context,
             updating: false,
             total_stories: 0,
             progress_received: 0,
@@ -200,6 +219,7 @@ impl Component for AppModel {
             active_comment_id: 0,
             comment_page: 0,
             total_comment_pages: 0,
+            index_config: init.index_config,
         };
 
         sender.input(AppMsg::Fetch);
@@ -225,6 +245,14 @@ impl Component for AppModel {
                     Ok(top_stories) => {
                         self.articles.guard().clear();
                         self.articles.extend(top_stories);
+                        if let Some(stats) =
+                            self.index_config.index_stats.iter().copied().find(|stat| {
+                                stat.category
+                                    == self.search_context.read().unwrap().active_category()
+                            })
+                        {
+                            sender.input(AppMsg::IndexStatus(stats));
+                        }
                     }
                     Err(err) => {
                         eprintln!("Failed to fetch {err}");
@@ -273,7 +301,9 @@ impl Component for AppModel {
                             "{} / {}",
                             self.comment_page, self.total_comment_pages
                         ));
+                        widgets.comment_prev.set_visible(true);
                         widgets.comment_prev.set_sensitive(self.comment_page != 1);
+                        widgets.comment_next.set_visible(true);
                         widgets
                             .comment_next
                             .set_sensitive(self.comment_page != self.total_comment_pages);
@@ -292,6 +322,12 @@ impl Component for AppModel {
                 }
                 if self.comment_stack.is_empty() {
                     self.comments.guard().clear();
+                    self.comment_page = 0;
+                    self.comment_page_offset = 0;
+                    self.total_comment_pages = 0;
+                    widgets.comments_footer.set_label("");
+                    widgets.comment_next.set_visible(false);
+                    widgets.comment_prev.set_visible(false);
                 }
             }
             AppMsg::CommentNext => {
@@ -331,12 +367,24 @@ impl Component for AppModel {
                 });
             }
             AppMsg::IndexStatus(stats) => {
+                if let Some(s) = self
+                    .index_config
+                    .index_stats
+                    .iter_mut()
+                    .find(|stat| stat.category == stats.category)
+                {
+                    *s = stats
+                }
+                let built_date = DateTime::from_timestamp(stats.built_on as i64, 0)
+                    .map(|dt| dt.with_timezone(&New_York))
+                    .map(|dt| dt.format("%d/%m/%y %H:%M"))
+                    .unwrap();
                 widgets.status_label.set_text(&format!(
-                    "{} docs {} build: {} on {}",
+                    "{}: {} docs {} on {}",
                     stats.category.as_str(),
                     stats.total_stories,
-                    stats.build_time.as_secs(),
-                    stats.built_on,
+                    friendly_duration::friendly_duration(stats.build_time),
+                    built_date,
                 ));
             }
             AppMsg::Progress(progress) => match progress {

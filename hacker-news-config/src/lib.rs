@@ -100,3 +100,7 @@ pub fn search_context() -> anyhow::Result<Arc<RwLock<SearchContext>>> {
 
     Ok(search_context)
 }
+
+pub fn index_config() -> anyhow::Result<IndexConfig> {
+    load_config(INDEX_CONFIG)
+}
