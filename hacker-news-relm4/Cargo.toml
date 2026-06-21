@@ -14,3 +14,5 @@ html-sanitizer.workspace = true
 anyhow.workspace = true
 futures = "0.3"
 friendly-duration.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true

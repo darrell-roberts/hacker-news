@@ -8,6 +8,7 @@ pub struct ArticleModel {
     by_string: String,
     comment_count: String,
     age_string: String,
+    active: bool,
 }
 
 #[derive(Debug)]
@@ -15,27 +16,26 @@ pub enum ArticleOutMsg {
     OpenComment(u64),
 }
 
+#[derive(Debug)]
+pub enum ArticleInMsg {
+    Active(bool),
+}
+
 #[relm4::factory(pub)]
 impl FactoryComponent for ArticleModel {
     type ParentWidget = gtk::Box;
     type CommandOutput = ();
-    type Input = ();
+    type Input = ArticleInMsg;
     type Output = ArticleOutMsg;
     type Init = Story;
 
     view! {
         #[root]
+        #[name(container)]
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
             set_spacing: 5,
             add_css_class: "article",
-            // add_controller = gtk::GestureClick {
-            //     connect_pressed[id = self.article.id] =>  move |_, _n_press, _, _| {
-            //         if let Err(err) = sender.output(ArticleOutMsg::OpenComment(id)) {
-            //             eprintln!("Failed to send open comment message: {err:?}");
-            //         }
-            //     }
-            // },
 
             gtk::Box {
                 set_orientation: gtk::Orientation::Horizontal,
@@ -65,6 +65,7 @@ impl FactoryComponent for ArticleModel {
                         if let Err(err) = sender.output(ArticleOutMsg::OpenComment(id)) {
                             eprintln!("Failed to send open comment message: {err:?}");
                         }
+                        sender.input(ArticleInMsg::Active(true));
                     }
                 },
 
@@ -73,7 +74,6 @@ impl FactoryComponent for ArticleModel {
                 }
             }
         }
-
     }
 
     fn init_model(article: Self::Init, _index: &Self::Index, _sender: FactorySender<Self>) -> Self {
@@ -82,6 +82,25 @@ impl FactoryComponent for ArticleModel {
             comment_count: format!("{} ", &article.descendants),
             age_string: parse_friendly_age(article.time).unwrap_or_default(),
             article,
+            active: false,
+        }
+    }
+
+    fn update_with_view(
+        &mut self,
+        widgets: &mut Self::Widgets,
+        message: Self::Input,
+        _sender: FactorySender<Self>,
+    ) {
+        match message {
+            ArticleInMsg::Active(active) => {
+                self.active = active;
+                if active {
+                    widgets.container.add_css_class("active");
+                } else {
+                    widgets.container.remove_css_class("active");
+                }
+            }
         }
     }
 }
