@@ -58,17 +58,14 @@ impl FactoryComponent for ArticleModel {
                     set_label: &self.by_string
                 },
 
-                if self.article.descendants > 0 {
-                    gtk::Button {
-                        set_label: &self.comment_count,
-                        connect_clicked[id = self.article.id, sender] => move |_| {
-                            if let Err(err) = sender.output(ArticleOutMsg::OpenComment(id)) {
-                                eprintln!("Failed to send open comment message: {err:?}");
-                            }
+                gtk::Button {
+                    set_label: &self.comment_count,
+                    set_visible: self.article.descendants > 0,
+                    connect_clicked[id = self.article.id, sender] => move |_| {
+                        if let Err(err) = sender.output(ArticleOutMsg::OpenComment(id)) {
+                            eprintln!("Failed to send open comment message: {err:?}");
                         }
                     }
-                } else {
-                    gtk::Box {}
                 },
 
                 gtk::Label {
