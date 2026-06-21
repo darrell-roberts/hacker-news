@@ -2487,6 +2487,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "friendly-duration"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+]
+
+[[package]]
 name = "fs4"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3441,6 +3448,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "chrono",
+ "friendly-duration",
  "futures",
  "gpui",
  "gpui_linux",
@@ -3464,6 +3472,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "chrono-tz",
+ "friendly-duration",
  "futures",
  "gio",
  "glib",
@@ -3493,6 +3502,15 @@ name = "hacker-news-relm4"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
+ "chrono-tz",
+ "friendly-duration",
+ "futures",
+ "hacker-news-api",
+ "hacker-news-config",
+ "hacker-news-search",
+ "html-sanitizer",
+ "log",
  "relm4",
  "relm4-components",
 ]
@@ -3788,9 +3806,9 @@ dependencies = [
 
 [[package]]
 name = "hyper-rustls"
-version = "0.27.9"
+version = "0.27.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33ca68d021ef39cf6463ab54c1d0f5daf03377b70561305bb89a8f83aab66e0f"
+checksum = "dfa8e654703247911e29c23fbeaa261834bd9bb74efba2f9acddc37bfb127f53"
 dependencies = [
  "http",
  "hyper",

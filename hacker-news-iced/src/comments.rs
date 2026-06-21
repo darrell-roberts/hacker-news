@@ -6,9 +6,9 @@ use crate::{
     common::{self, FontExt as _, PaginatingView, error_task},
     full_search::FullSearchMsg,
     header::HeaderMsg,
-    parse_date,
     richtext::render_rich_text,
 };
+use friendly_duration::parse_friendly_age;
 use hacker_news_search::{
     SearchContext,
     api::{Comment, Story},
@@ -317,9 +317,11 @@ impl CommentState {
                                         .font(ROBOTO_FONT.italic())
                                         .size(14),
                                     widget::span(" "),
-                                    widget::span(parse_date(comment.time).unwrap_or_default())
-                                        .font(ROBOTO_FONT.italic().weight_light())
-                                        .size(10),
+                                    widget::span(
+                                        parse_friendly_age(comment.time).unwrap_or_default()
+                                    )
+                                    .font(ROBOTO_FONT.italic().weight_light())
+                                    .size(10),
                                 ])
                                 .on_link_click(|by| AppMsg::Header(HeaderMsg::Search(by))),
                                 child_comments_button,

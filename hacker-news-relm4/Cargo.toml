@@ -5,6 +5,15 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+friendly-duration.workspace = true
+futures = "0.3"
+hacker-news-api.workspace = true
+hacker-news-config.workspace = true
+hacker-news-search.workspace = true
+html-sanitizer.workspace = true
+log.workspace = true
 relm4 = "0.11"
 relm4-components = "0.11"
-anyhow.workspace = true
