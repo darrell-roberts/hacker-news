@@ -255,7 +255,6 @@ impl Component for AppModel {
 
                 match comments {
                     Ok((comments, total)) => {
-                        println!("total comments: {total}");
                         self.comment_stack.push(id);
                         self.comments.guard().clear();
                         self.comments.extend(comments);

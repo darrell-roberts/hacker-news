@@ -13,3 +13,4 @@ hacker-news-api.workspace = true
 html-sanitizer.workspace = true
 anyhow.workspace = true
 futures = "0.3"
+friendly-duration.workspace = true

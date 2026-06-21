@@ -1,4 +1,5 @@
 //! Comment model and factory component.
+use friendly_duration::parse_friendly_age;
 use hacker_news_search::api::Comment;
 use relm4::{
     gtk::{
@@ -17,6 +18,7 @@ pub struct CommentModel {
     text_buffer: TextBuffer,
     by_string: String,
     comment_count: String,
+    age_string: String,
 }
 
 #[derive(Debug)]
@@ -70,6 +72,10 @@ impl FactoryComponent for CommentModel {
                     }
                 } else {
                     gtk::Box {}
+                },
+
+                gtk::Label {
+                    set_label: &self.age_string
                 }
             }
         }
@@ -84,6 +90,7 @@ impl FactoryComponent for CommentModel {
             text_buffer: create_text_view(&comment.body),
             by_string: format!("by: {}", comment.by),
             comment_count: format!("{} ", comment.kids.len()),
+            age_string: parse_friendly_age(comment.time).unwrap_or_default(),
             comment,
         }
     }

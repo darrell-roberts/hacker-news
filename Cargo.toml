@@ -1,5 +1,5 @@
 [workspace]
-members = [
+members = ["friendly-duration",
   "hacker-news-api",
   "hacker-news-config",
   "hacker-news-gpui",
@@ -36,6 +36,9 @@ path = "html-sanitizer"
 
 [workspace.dependencies.hacker-news-config]
 path = "hacker-news-config"
+
+[workspace.dependencies.friendly-duration]
+path = "friendly-duration"
 
 [workspace.dependencies.serde]
 version = "1"
