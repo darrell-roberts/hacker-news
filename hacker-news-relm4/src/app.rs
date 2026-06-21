@@ -1,4 +1,5 @@
 //! Main application model and window.
+use crate::Config;
 use articles::ArticleModel;
 use chrono::DateTime;
 use chrono_tz::America::New_York;
@@ -8,6 +9,7 @@ use hacker_news_api::ArticleType;
 use hacker_news_config::IndexConfig;
 use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, rebuild_index};
 use header::HeaderModel;
+use log::{debug, error, info};
 use relm4::{
     gtk::{
         glib::idle_add_local_once,
@@ -20,8 +22,6 @@ use relm4::{
     *,
 };
 use std::sync::{Arc, RwLock};
-
-use crate::Config;
 
 mod articles;
 mod comments;
@@ -264,7 +264,7 @@ impl Component for AppModel {
                         }
                     }
                     Err(err) => {
-                        eprintln!("Failed to fetch {err}");
+                        error!("Failed to fetch {err}");
                     }
                 }
             }
@@ -336,7 +336,7 @@ impl Component for AppModel {
                         widgets.comment_back.set_visible(true);
                     }
                     Err(err) => {
-                        eprintln!("Failed to fetch comments: {err}");
+                        error!("Failed to fetch comments: {err}");
                     }
                 }
             }
@@ -420,7 +420,7 @@ impl Component for AppModel {
             }
             AppMsg::Progress(progress) => match progress {
                 RebuildProgress::Started(total_stories) => {
-                    println!("Rebuilding {total_stories} stories");
+                    info!("Rebuilding {total_stories} stories");
                     self.updating = true;
                     self.total_stories = total_stories;
                     self.progress_received = 0;
@@ -430,6 +430,7 @@ impl Component for AppModel {
                 RebuildProgress::StoryCompleted => {
                     self.progress_received += 1;
                     let progress = self.progress_received as f64 / self.total_stories as f64;
+                    debug!("setting progress fraction: {progress:.2}");
                     widgets.progress_bar.set_fraction(progress);
                 }
                 RebuildProgress::Completed => {

@@ -1,5 +1,5 @@
 use crate::app::AppModel;
-use hacker_news_config::{IndexConfig, index_config, search_context};
+use hacker_news_config::{IndexConfig, index_config, init_logger, search_context};
 use hacker_news_search::SearchContext;
 use relm4::RelmApp;
 use std::sync::{Arc, RwLock};
@@ -16,7 +16,7 @@ fn main() -> anyhow::Result<()> {
     let search_context = search_context()?;
     relm4::set_global_css(include_str!("style.css"));
 
-    hacker_news_config::init_logger("hacker-news-relm4")?;
+    init_logger("hacker-news-relm4")?;
     let index_config = index_config()?;
 
     relm.run::<AppModel>(Config {

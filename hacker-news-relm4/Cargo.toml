@@ -15,5 +15,5 @@ hacker-news-config.workspace = true
 hacker-news-search.workspace = true
 html-sanitizer.workspace = true
 log.workspace = true
-relm4 = "0.11"
+relm4 = { version = "0.11", features = ["libadwaita"] }
 relm4-components = "0.11"

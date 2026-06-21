@@ -61,11 +61,12 @@ where
 }
 
 /// Get the shared log directory.
-pub fn log_dir() -> anyhow::Result<PathBuf> {
+fn log_dir() -> anyhow::Result<PathBuf> {
     get_app_dir(app_dirs2::AppDataType::UserData, &APP_INFO, "logs")
         .context("Failed to get app logs directory")
 }
 
+/// Setup the logger.
 pub fn init_logger(base_name: &str) -> anyhow::Result<()> {
     let _logger = flexi_logger::Logger::try_with_env_or_str("info")?
         .log_to_file(
