@@ -54,24 +54,20 @@ impl FactoryComponent for CommentModel {
             gtk::Box {
                 set_orientation: gtk::Orientation::Horizontal,
                 set_spacing: 5,
+                add_css_class: "by_author",
 
                 gtk::Label {
-                    add_css_class: "by_author",
                     set_label: &self.by_string
                 },
 
-                if !self.comment.kids.is_empty() {
-                    gtk::Button {
-                        add_css_class: "by_author",
-                        set_label: &self.comment_count,
-                        connect_clicked[sender, id = self.comment.id] => move |_| {
-                            if let Err(err) = sender.output(CommentOutMsg::OpenComment(id)) {
-                                eprintln!("Failed to send open comment message: {err:?}");
-                            }
+                gtk::Button {
+                    set_label: &self.comment_count,
+                    set_visible: !self.comment.kids.is_empty(),
+                    connect_clicked[sender, id = self.comment.id] => move |_| {
+                        if let Err(err) = sender.output(CommentOutMsg::OpenComment(id)) {
+                            eprintln!("Failed to send open comment message: {err:?}");
                         }
                     }
-                } else {
-                    gtk::Box {}
                 },
 
                 gtk::Label {
