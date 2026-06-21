@@ -24,19 +24,24 @@ pub struct CommentModel {
 #[derive(Debug)]
 pub enum CommentOutMsg {
     OpenComment(u64),
-    // Close(u64),
+}
+
+#[derive(Debug)]
+pub enum CommentInMsg {
+    Visited,
 }
 
 #[relm4::factory(pub)]
 impl FactoryComponent for CommentModel {
     type ParentWidget = gtk::Box;
     type CommandOutput = ();
-    type Input = ();
+    type Input = CommentInMsg;
     type Output = CommentOutMsg;
     type Init = Comment;
 
     view! {
         #[root]
+        #[name(container)]
         gtk::Box {
             set_orientation: gtk::Orientation::Vertical,
             set_spacing: 5,
@@ -67,6 +72,7 @@ impl FactoryComponent for CommentModel {
                         if let Err(err) = sender.output(CommentOutMsg::OpenComment(id)) {
                             eprintln!("Failed to send open comment message: {err:?}");
                         }
+                        // sender.input(CommentInMsg::Visited)
                     }
                 },
 
@@ -88,6 +94,19 @@ impl FactoryComponent for CommentModel {
             comment_count: format!("{} ", comment.kids.len()),
             age_string: parse_friendly_age(comment.time).unwrap_or_default(),
             comment,
+        }
+    }
+
+    fn update_with_view(
+        &mut self,
+        widgets: &mut Self::Widgets,
+        message: Self::Input,
+        _sender: FactorySender<Self>,
+    ) {
+        match message {
+            CommentInMsg::Visited => {
+                widgets.container.add_css_class("active");
+            }
         }
     }
 }

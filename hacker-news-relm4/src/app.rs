@@ -35,7 +35,7 @@ pub struct AppModel {
     updating: bool,
     total_stories: usize,
     progress_received: usize,
-    comment_stack: Vec<u64>,
+    comment_stack: Vec<CommentStackElement>,
     comment_page_offset: usize,
     comment_page: u8,
     total_comment_pages: u8,
@@ -43,11 +43,18 @@ pub struct AppModel {
     index_config: IndexConfig,
 }
 
+pub struct CommentStackElement {
+    id: u64,
+    comment_page_offset: usize,
+    comment_page: u8,
+    total_comment_pages: u8,
+}
+
 #[derive(Debug)]
 pub enum AppMsg {
     Fetch,
     Change(ArticleType),
-    OpenComment(u64),
+    OpenComment(u64, bool),
     CloseComment,
     Refresh,
     Progress(RebuildProgress),
@@ -99,8 +106,10 @@ impl Component for AppModel {
                             set_orientation: gtk::Orientation::Vertical,
 
                             gtk::Box {
+                                #[name(comment_back)]
                                 gtk::Button {
                                     set_icon_name: "go-previous",
+                                    set_visible: false,
                                     connect_clicked[sender] => move |_| {
                                         sender.input_sender().emit(AppMsg::CloseComment);
                                     }
@@ -186,13 +195,13 @@ impl Component for AppModel {
         let articles = FactoryVecDeque::builder()
             .launch(gtk::Box::default())
             .forward(sender.input_sender(), |msg| match msg {
-                articles::ArticleOutMsg::OpenComment(id) => AppMsg::OpenComment(id),
+                articles::ArticleOutMsg::OpenComment(id) => AppMsg::OpenComment(id, true),
             });
 
         let comments = FactoryVecDeque::builder()
             .launch(gtk::Box::default())
             .forward(sender.input_sender(), |msg| match msg {
-                comments::CommentOutMsg::OpenComment(id) => AppMsg::OpenComment(id),
+                comments::CommentOutMsg::OpenComment(id) => AppMsg::OpenComment(id, true),
             });
 
         let current_category = init.index_config.viewing_type;
@@ -268,22 +277,39 @@ impl Component for AppModel {
                     .unwrap()
                     .activate_index(ty)
                     .unwrap();
+                self.active_comment_id = 0;
+                self.comment_page = 0;
+                self.comment_page_offset = 0;
+                self.total_comment_pages = 0;
+                self.comment_stack.clear();
+
+                widgets.comment_next.set_visible(false);
+                widgets.comment_prev.set_visible(false);
+                widgets.comments_footer.set_text("");
+
                 sender.input(AppMsg::Fetch);
             }
-            AppMsg::OpenComment(id) => {
+            AppMsg::OpenComment(id, child_comment) => {
                 self.active_comment_id = id;
+                if self.comment_page_offset == 0 || child_comment {
+                    self.comment_page = 1;
+                    self.comment_page_offset = 0
+                }
+
                 let comments =
                     self.search_context
                         .read()
                         .unwrap()
                         .comments(id, 10, self.comment_page_offset);
-                if self.comment_page_offset == 0 {
-                    self.comment_page = 1;
-                }
 
                 match comments {
                     Ok((comments, total)) => {
-                        self.comment_stack.push(id);
+                        self.comment_stack.push(CommentStackElement {
+                            id,
+                            comment_page_offset: self.comment_page_offset,
+                            comment_page: self.comment_page,
+                            total_comment_pages: self.total_comment_pages,
+                        });
                         self.comments.guard().clear();
                         self.comments.extend(comments);
                         let adjustment = widgets.comment_scroll.vadjustment();
@@ -307,6 +333,7 @@ impl Component for AppModel {
                         widgets
                             .comment_next
                             .set_sensitive(self.comment_page != self.total_comment_pages);
+                        widgets.comment_back.set_visible(true);
                     }
                     Err(err) => {
                         eprintln!("Failed to fetch comments: {err}");
@@ -316,9 +343,12 @@ impl Component for AppModel {
             AppMsg::CloseComment => {
                 self.comment_stack.pop();
                 if let Some(last_comment) = self.comment_stack.pop() {
+                    self.comment_page = last_comment.comment_page;
+                    self.comment_page_offset = last_comment.comment_page_offset;
+                    self.total_comment_pages = last_comment.total_comment_pages;
                     sender
                         .input_sender()
-                        .emit(AppMsg::OpenComment(last_comment));
+                        .emit(AppMsg::OpenComment(last_comment.id, false));
                 }
                 if self.comment_stack.is_empty() {
                     self.comments.guard().clear();
@@ -328,17 +358,18 @@ impl Component for AppModel {
                     widgets.comments_footer.set_label("");
                     widgets.comment_next.set_visible(false);
                     widgets.comment_prev.set_visible(false);
+                    widgets.comment_back.set_visible(false);
                 }
             }
             AppMsg::CommentNext => {
                 self.comment_page_offset += 10;
                 self.comment_page += 1;
-                sender.input(AppMsg::OpenComment(self.active_comment_id));
+                sender.input(AppMsg::OpenComment(self.active_comment_id, false));
             }
             AppMsg::CommentPrev => {
                 self.comment_page_offset = self.comment_page_offset.saturating_sub(10);
                 self.comment_page = self.comment_page.saturating_sub(1);
-                sender.input(AppMsg::OpenComment(self.active_comment_id));
+                sender.input(AppMsg::OpenComment(self.active_comment_id, false));
             }
             AppMsg::Refresh => {
                 let category = self.search_context.read().unwrap().active_category();
