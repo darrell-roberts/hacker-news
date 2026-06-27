@@ -1,11 +1,8 @@
 //! Simple hacker news view.
-use crate::{common::save_config, header::Header, theme::Theme};
-use content::ContentView;
-use footer::FooterView;
+use crate::{common::save_config, main_window::WindowResize};
 use gpui::{
-    App, AppContext, Bounds, Entity, Global, Menu, MenuItem, Pixels, SharedString, Window,
-    WindowBounds, WindowDecorations, WindowKind, WindowOptions, actions, div, point, prelude::*,
-    px, size,
+    App, Bounds, Global, Menu, MenuItem, SharedString, WindowBounds, WindowDecorations, WindowKind,
+    WindowOptions, actions, point, px, size,
 };
 use gpui_platform::application;
 use hacker_news_api::{ApiClient, ArticleType};
@@ -21,9 +18,11 @@ mod common;
 mod content;
 mod footer;
 mod header;
+mod main_window;
 mod rich_text;
 mod scrollbar;
 mod theme;
+mod title_bar;
 
 const CONFIG_FILE: &str = "hacker-news-dashboard.config";
 
@@ -56,103 +55,6 @@ impl Global for ArticleSelection {}
 pub struct UrlHover(pub Option<SharedString>);
 
 impl Global for UrlHover {}
-
-/// The main window view.
-struct MainWindow {
-    header: Entity<Header>,
-    content: Entity<ContentView>,
-    footer: Entity<FooterView>,
-    base_font_size: Pixels,
-}
-
-impl MainWindow {
-    /// Create the main window.
-    ///
-    /// # Arguments
-    ///
-    /// * `window` - A mutable reference to the Window in which the main UI will be created.
-    /// * `app` - A mutable reference to the App, used for managing application state and actions.
-    ///
-    fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
-        let header = Header::new(window, app);
-        let content = ContentView::new(window, app);
-        let footer = FooterView::new(window, app, content.clone());
-
-        let font_size = app.global::<Config>().font_size;
-
-        // Listen to system theme changes.
-        window
-            .observe_window_appearance(|_window, app| {
-                app.refresh_windows();
-            })
-            .detach();
-
-        app.new(move |cx| {
-            // Listen to font size increase/decrease key bindings.
-            cx.observe_keystrokes(|main_window: &mut MainWindow, event, window, cx| {
-                let mut adjust_text_size = |val| {
-                    main_window.base_font_size =
-                        (main_window.base_font_size + px(val)).clamp(px(10.), px(35.));
-                    window.set_rem_size(main_window.base_font_size);
-                    let font_size = main_window.base_font_size.as_f32();
-
-                    cx.update_global::<Config, _>(|config, _cx| {
-                        config.font_size = font_size;
-                    });
-
-                    cx.notify();
-                };
-
-                if event.keystroke.modifiers.control {
-                    match event.keystroke.key.as_str() {
-                        "add" | "+" => {
-                            adjust_text_size(1.);
-                        }
-                        "subtract" | "-" => {
-                            adjust_text_size(-1.);
-                        }
-                        _ => {}
-                    }
-                }
-            })
-            .detach();
-
-            Self {
-                header,
-                content,
-                footer,
-                base_font_size: px(font_size),
-            }
-        })
-    }
-}
-
-impl Render for MainWindow {
-    fn render(&mut self, window: &mut Window, _cx: &mut gpui::Context<Self>) -> impl IntoElement {
-        let theme: Theme = window.appearance().into();
-
-        div()
-            .id("main_window")
-            .font_family(".SystemUIFont")
-            .text_size(self.base_font_size)
-            .text_color(theme.text_color())
-            .flex()
-            .flex_col()
-            .w_full()
-            .h_full()
-            .bg(theme.bg())
-            .child(self.header.clone())
-            .child(div().flex_1().min_h_0().child(self.content.clone()))
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .w_full()
-                    .mt_auto()
-                    .child(self.footer.clone()),
-            )
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct Config {
@@ -213,7 +115,7 @@ fn main() {
                     traffic_light_position: Some(point(px(9.), px(9.))),
                     appears_transparent: false,
                 }),
-                window_decorations: Some(WindowDecorations::Server),
+                window_decorations: Some(WindowDecorations::Client),
                 window_min_size: Some(size(px(400.), px(800.))),
                 is_movable: true,
                 window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
@@ -227,7 +129,7 @@ fn main() {
                 app_id: Some("io.github.darrellroberts.hacker-news-dashboard".into()),
                 ..Default::default()
             },
-            MainWindow::new,
+            WindowResize::new,
         )
         .expect("Could not open window");
 
