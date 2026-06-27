@@ -2,7 +2,6 @@
 use crate::{
     ArticleSelection, UrlHover,
     content::{ContentEvent, ContentView},
-    theme::Theme,
 };
 use chrono::Local;
 use gpui::{
@@ -98,15 +97,15 @@ impl FooterView {
 impl Render for FooterView {
     fn render(
         &mut self,
-        window: &mut Window,
+        _window: &mut Window,
         _cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
-        let theme: Theme = window.appearance().into();
+        // let theme: Theme = window.appearance().into();
         let content_entity = self.content_entity.clone();
         let online = self.online;
 
         div()
-            .bg(theme.surface())
+            // .bg(theme.surface())
             .text_size(rems(0.85))
             .when_some(self.error.as_ref(), |div, error| {
                 div.child(
@@ -116,7 +115,7 @@ impl Render for FooterView {
                         .child(error.clone()),
                 )
             })
-            .child(self.url.clone().unwrap_or_default())
+            .child(div().p_1().child(self.url.clone().unwrap_or_default()))
             .child(
                 div()
                     .flex()
