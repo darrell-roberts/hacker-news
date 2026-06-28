@@ -1,5 +1,5 @@
 //! Header view.
-use crate::{ArticleSelection, theme::Theme};
+use crate::{ArticleSelection, common::hover_element, theme::Theme};
 use gpui::{
     App, AppContext as _, BorrowAppContext, BoxShadow, Div, Entity, InteractiveElement,
     IntoElement, ParentElement, Render, SharedString, Stateful, StatefulInteractiveElement as _,
@@ -100,14 +100,19 @@ impl Header {
             .flex()
             .flex_row()
             .p_2()
-            .child(div().id("close").child("[-]").cursor_pointer().on_click(
-                move |_event, _window, app| {
-                    header_entity.update(app, |header_view, cx| {
-                        header_view.open = false;
-                        cx.notify();
-                    })
-                },
-            ))
+            .child(
+                div()
+                    .id("close")
+                    .child("[-]")
+                    .cursor_pointer()
+                    .hover(hover_element(theme))
+                    .on_click(move |_event, _window, app| {
+                        header_entity.update(app, |header_view, cx| {
+                            header_view.open = false;
+                            cx.notify();
+                        })
+                    }),
+            )
             .child(
                 div()
                     .flex()
@@ -168,14 +173,19 @@ impl Render for Header {
                         .flex()
                         .flex_row()
                         .gap_1()
-                        .child(div().id("open").child("[+]").cursor_pointer().on_click(
-                            move |_event, _window, app| {
-                                header_entity.update(app, |header_view, cx| {
-                                    header_view.open = true;
-                                    cx.notify();
-                                })
-                            },
-                        ))
+                        .child(
+                            div()
+                                .id("open")
+                                .child("[+]")
+                                .cursor_pointer()
+                                .hover(hover_element(theme))
+                                .on_click(move |_event, _window, app| {
+                                    header_entity.update(app, |header_view, cx| {
+                                        header_view.open = true;
+                                        cx.notify();
+                                    })
+                                }),
+                        )
                         .child("Viewing: ")
                         .child(active.viewing_article_type.as_str()),
                 )
