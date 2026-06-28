@@ -85,12 +85,11 @@ fn main() -> anyhow::Result<()> {
         app.set_global(UrlHover(None));
         app.set_global(config);
 
+        app.activate(true);
+        app.on_action(quit);
+
         // Add menu items
-        app.set_menus(vec![Menu {
-            name: SharedString::from("set_menus"),
-            items: vec![MenuItem::action("Quit", Quit)],
-            disabled: false,
-        }]);
+        app.set_menus([Menu::new("set_menus").items([MenuItem::action("Quit", Quit)])]);
 
         app.on_window_closed(|app, _window_id| {
             app.quit();
@@ -145,8 +144,6 @@ fn main() -> anyhow::Result<()> {
             WindowResize::new,
         )
         .expect("Could not open window");
-
-        app.activate(true);
     });
 
     Ok(())
@@ -156,7 +153,7 @@ fn main() -> anyhow::Result<()> {
 actions!(set_menus, [Quit]);
 
 // Define the quit function that is registered with the AppContext
-fn _quit(_: &Quit, cx: &mut App) {
+fn quit(_: &Quit, cx: &mut App) {
     info!("Gracefully quitting the application...");
     cx.quit();
 }

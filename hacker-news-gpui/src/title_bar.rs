@@ -28,6 +28,7 @@ impl Render for TitleBar {
         let reserve_traffic_lights = is_macos && !window.is_fullscreen();
 
         div()
+            .bg(theme.title_bar_bg())
             .h(px(32.))
             .p_2()
             // Inset the title so it clears the native traffic lights on macOS.
