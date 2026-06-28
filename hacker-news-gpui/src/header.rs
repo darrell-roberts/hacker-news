@@ -99,6 +99,7 @@ impl Header {
         div()
             .flex()
             .flex_row()
+            .p_2()
             .child(div().id("close").child("[-]").cursor_pointer().on_click(
                 move |_event, _window, app| {
                     header_entity.update(app, |header_view, cx| {
@@ -114,8 +115,8 @@ impl Header {
                     .text_size(rems(1.1))
                     .text_color(yellow())
                     .gap_x(px(10.0))
-                    .w_full()
-                    .justify_center()
+                    // .w_full()
+                    // .justify_center()
                     .m_1()
                     .pb_1()
                     .children(top_best_new)
@@ -158,22 +159,26 @@ impl Render for Header {
         if self.open {
             self.render_open(cx, theme)
         } else {
-            div().flex().w_full().child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .gap_1()
-                    .child(div().id("open").child("[+]").cursor_pointer().on_click(
-                        move |_event, _window, app| {
-                            header_entity.update(app, |header_view, cx| {
-                                header_view.open = true;
-                                cx.notify();
-                            })
-                        },
-                    ))
-                    .child("Viewing: ")
-                    .child(active.viewing_article_type.as_str()),
-            )
+            div()
+                .flex()
+                // . w_full()
+                .p_2()
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .gap_1()
+                        .child(div().id("open").child("[+]").cursor_pointer().on_click(
+                            move |_event, _window, app| {
+                                header_entity.update(app, |header_view, cx| {
+                                    header_view.open = true;
+                                    cx.notify();
+                                })
+                            },
+                        ))
+                        .child("Viewing: ")
+                        .child(active.viewing_article_type.as_str()),
+                )
         }
     }
 }
