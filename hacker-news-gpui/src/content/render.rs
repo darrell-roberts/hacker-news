@@ -157,6 +157,7 @@ impl Render for ContentView {
                     .flex_row()
                     .h_full()
                     .flex_1()
+                    .mr_1()
                     .min_w_0()
                     .child(
                         div()
