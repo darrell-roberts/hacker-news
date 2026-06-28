@@ -63,8 +63,8 @@ pub struct Config {
 
 impl Global for Config {}
 
-fn main() {
-    init_logger("hacker-news-dashboard").expect("Failed to setup logger");
+fn main() -> anyhow::Result<()> {
+    init_logger("hacker-news-dashboard")?;
 
     let config = match load_config::<Config>(CONFIG_FILE) {
         Ok(config) => config,
@@ -74,8 +74,9 @@ fn main() {
         }
     };
 
+    let client = Arc::new(hacker_news_api::ApiClient::new()?);
+
     application().run(move |app| {
-        let client = Arc::new(hacker_news_api::ApiClient::new().expect("No API Client"));
         app.set_global(ApiClientState(client));
         app.set_global(ArticleSelection {
             viewing_article_type: ArticleType::Top,
@@ -108,19 +109,31 @@ fn main() {
         })
         .detach();
 
+        // Clamp the preferred window size to the primary display so the window
+        // never opens larger than (and therefore partially outside of) the
+        // visible desktop.
+        let preferred = size(px(1900.), px(1200.));
+        let window_size = app.primary_display().map_or(preferred, |display| {
+            let available = display.bounds().size;
+            size(
+                preferred.width.min(available.width),
+                preferred.height.min(available.height),
+            )
+        });
+
         app.open_window(
             WindowOptions {
                 titlebar: Some(gpui::TitlebarOptions {
                     title: Some("Hacker News Live".into()),
                     traffic_light_position: Some(point(px(9.), px(9.))),
-                    appears_transparent: false,
+                    appears_transparent: true,
                 }),
                 window_decorations: Some(WindowDecorations::Client),
                 window_min_size: Some(size(px(400.), px(800.))),
                 is_movable: true,
                 window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
                     None,
-                    size(px(1900.), px(1200.)),
+                    window_size,
                     app,
                 ))),
                 show: true,
@@ -135,6 +148,8 @@ fn main() {
 
         app.activate(true);
     });
+
+    Ok(())
 }
 
 // Associate actions using the `actions!` macro (or `impl_actions!` macro)

@@ -22,7 +22,7 @@
     <key>CFBundleShortVersionString</key>
     <string>0.1.17</string>
     <key>LSApplicationCategoryType</key>
-    <string>public.app-category.games</string>
+    <string>public.app-category.news</string>
     <key>LSMinimumSystemVersion</key>
     <string>10.9</string>
     <key>CFBundleSupportedPlatforms</key>
