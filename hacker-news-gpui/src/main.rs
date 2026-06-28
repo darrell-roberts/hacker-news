@@ -1,8 +1,8 @@
 //! Simple hacker news view.
 use crate::{common::save_config, main_window::WindowResize};
 use gpui::{
-    App, Bounds, Global, Menu, MenuItem, SharedString, WindowBounds, WindowDecorations, WindowKind,
-    WindowOptions, actions, point, px, size,
+    App, BorrowAppContext, Bounds, Global, Menu, MenuItem, SharedString, WindowBounds,
+    WindowDecorations, WindowKind, WindowOptions, actions, point, px, size,
 };
 use gpui_platform::application;
 use hacker_news_api::{ApiClient, ArticleType};
@@ -86,10 +86,53 @@ fn main() -> anyhow::Result<()> {
         app.set_global(config);
 
         app.activate(true);
+
+        // Add menu action handlers.
         app.on_action(quit);
+        app.on_action(|TopTopic, app| {
+            app.update_global(|state: &mut ArticleSelection, _cx| {
+                state.viewing_article_type = ArticleType::Top;
+            });
+        });
+        app.on_action(|BestTopic, app| {
+            app.update_global(|state: &mut ArticleSelection, _cx| {
+                state.viewing_article_type = ArticleType::Best;
+            });
+        });
+        app.on_action(|NewTopic, app| {
+            app.update_global(|state: &mut ArticleSelection, _cx| {
+                state.viewing_article_type = ArticleType::New;
+            });
+        });
+        app.on_action(|AskTopic, app| {
+            app.update_global(|state: &mut ArticleSelection, _cx| {
+                state.viewing_article_type = ArticleType::Ask;
+            });
+        });
+        app.on_action(|ShowTopic, app| {
+            app.update_global(|state: &mut ArticleSelection, _cx| {
+                state.viewing_article_type = ArticleType::Show;
+            });
+        });
+        app.on_action(|JobTopic, app| {
+            app.update_global(|state: &mut ArticleSelection, _cx| {
+                state.viewing_article_type = ArticleType::Job;
+            });
+        });
 
         // Add menu items
-        app.set_menus([Menu::new("set_menus").items([MenuItem::action("Quit", Quit)])]);
+        app.set_menus([
+            Menu::new("Menu").items([MenuItem::action("Quit", Quit)]),
+            Menu::new("Topics").items([
+                MenuItem::action("Top", TopTopic),
+                MenuItem::action("Best", BestTopic),
+                MenuItem::action("New", NewTopic),
+                MenuItem::separator(),
+                MenuItem::action("Ask", AskTopic),
+                MenuItem::action("Show", ShowTopic),
+                MenuItem::action("Job", JobTopic),
+            ]),
+        ]);
 
         app.on_window_closed(|app, _window_id| {
             app.quit();
@@ -150,7 +193,12 @@ fn main() -> anyhow::Result<()> {
 }
 
 // Associate actions using the `actions!` macro (or `impl_actions!` macro)
-actions!(set_menus, [Quit]);
+actions!(
+    set_menus,
+    [
+        Quit, TopTopic, BestTopic, NewTopic, AskTopic, ShowTopic, JobTopic
+    ]
+);
 
 // Define the quit function that is registered with the AppContext
 fn quit(_: &Quit, cx: &mut App) {
