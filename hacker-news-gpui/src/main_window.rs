@@ -104,6 +104,7 @@ fn resize_handle(edge: ResizeEdge) -> Stateful<Div> {
 
 /// The main window view.
 pub struct MainWindow {
+    #[expect(dead_code)]
     header: Entity<Header>,
     content: Entity<ContentView>,
     footer: Entity<FooterView>,

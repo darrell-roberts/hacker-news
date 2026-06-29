@@ -1,7 +1,7 @@
 //! Simple hacker news view.
 use crate::{common::save_config, main_window::WindowResize};
 use gpui::{
-    App, BorrowAppContext, Bounds, Global, Menu, MenuItem, SharedString, WindowBounds,
+    App, BorrowAppContext, Bounds, Global, KeyBinding, Menu, MenuItem, SharedString, WindowBounds,
     WindowDecorations, WindowKind, WindowOptions, actions, point, px, size,
 };
 use gpui_platform::application;
@@ -120,17 +120,41 @@ fn main() -> anyhow::Result<()> {
             });
         });
 
+        // Bind hot keys to the actions. The menu items automatically display
+        // the matching keystroke for any action that has a binding.
+        #[cfg(target_os = "macos")]
+        app.bind_keys([
+            KeyBinding::new("cmd-q", Quit, None),
+            KeyBinding::new("cmd-1", TopTopic, None),
+            KeyBinding::new("cmd-2", BestTopic, None),
+            KeyBinding::new("cmd-3", NewTopic, None),
+            KeyBinding::new("cmd-4", AskTopic, None),
+            KeyBinding::new("cmd-5", ShowTopic, None),
+            KeyBinding::new("cmd-6", JobTopic, None),
+        ]);
+
+        #[cfg(not(target_os = "macos"))]
+        app.bind_keys([
+            KeyBinding::new("ctrl-q", Quit, None),
+            KeyBinding::new("ctrl-1", TopTopic, None),
+            KeyBinding::new("ctrl-2", BestTopic, None),
+            KeyBinding::new("ctrl-3", NewTopic, None),
+            KeyBinding::new("ctrl-4", AskTopic, None),
+            KeyBinding::new("ctrl-5", ShowTopic, None),
+            KeyBinding::new("ctrl-6", JobTopic, None),
+        ]);
+
         // Add menu items
         app.set_menus([
-            Menu::new("Menu").items([MenuItem::action("Quit", Quit)]),
+            Menu::new("☰").items([MenuItem::action("⏻  Quit", Quit)]),
             Menu::new("Topics").items([
-                MenuItem::action("Top", TopTopic),
-                MenuItem::action("Best", BestTopic),
-                MenuItem::action("New", NewTopic),
+                MenuItem::action("🔝  Top", TopTopic),
+                MenuItem::action("⭐  Best", BestTopic),
+                MenuItem::action("🆕  New", NewTopic),
                 MenuItem::separator(),
-                MenuItem::action("Ask", AskTopic),
-                MenuItem::action("Show", ShowTopic),
-                MenuItem::action("Job", JobTopic),
+                MenuItem::action("❓  Ask", AskTopic),
+                MenuItem::action("📺  Show", ShowTopic),
+                MenuItem::action("💼  Job", JobTopic),
             ]),
         ]);
 
