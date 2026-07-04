@@ -82,8 +82,11 @@ impl FooterView {
             .detach();
 
             cx.observe_global::<UrlHover>(|footer: &mut FooterView, cx| {
-                footer.url = cx.global::<UrlHover>().0.clone();
-                cx.notify();
+                let url = cx.global::<UrlHover>();
+                if url.0 != footer.url {
+                    footer.url = url.0.clone();
+                    cx.notify();
+                }
             })
             .detach();
 

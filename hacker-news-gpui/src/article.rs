@@ -1,8 +1,6 @@
 //! Article view.
 use crate::{
-    UrlHover,
-    common::hover_element,
-    common::{COMMENT_IMAGE, parse_date, url_punycode},
+    common::{COMMENT_IMAGE, hover_element, parse_date, update_url, url_punycode},
     content::{ContentEvent, ContentView},
     rich_text::{ViewStyledText, parse_layout},
     theme::Theme,
@@ -324,10 +322,10 @@ impl Render for ArticleView {
                     })
                     .on_hover(move |hover, _window, app| {
                         if !hover {
-                            app.set_global::<UrlHover>(UrlHover(None));
+                            update_url(app, None);
                         } else {
                             let url = article_entity.read(app).url.clone();
-                            app.set_global::<UrlHover>(UrlHover(url));
+                            update_url(app, url);
                         }
                     })
                     .hover(hover_element(theme)),

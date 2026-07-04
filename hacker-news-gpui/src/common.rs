@@ -2,8 +2,8 @@
 use chrono::{DateTime, Utc};
 use futures::{StreamExt as _, TryStreamExt as _};
 use gpui::{
-    AppContext, AsyncApp, Entity, Fill, Image, StyleRefinement, Styled as _, http_client::Url,
-    solid_background,
+    App, AppContext, AsyncApp, Entity, Fill, Image, SharedString, StyleRefinement, Styled as _,
+    http_client::Url, solid_background,
 };
 use log::error;
 use std::{
@@ -12,7 +12,7 @@ use std::{
 };
 
 use crate::{
-    ApiClientState, CONFIG_FILE, Config, article::ArticleView, comment::CommentView,
+    ApiClientState, CONFIG_FILE, Config, UrlHover, article::ArticleView, comment::CommentView,
     content::ContentEvent, theme::Theme,
 };
 
@@ -143,4 +143,12 @@ pub fn save_config(
     config: Config,
 ) -> async_compat::Compat<impl Future<Output = Result<(), anyhow::Error>>> {
     async_compat::Compat::new(hacker_news_config::save_config(config, CONFIG_FILE))
+}
+
+pub fn update_url(app: &mut App, url: Option<SharedString>) {
+    let current_url = app.global::<UrlHover>();
+
+    if url != current_url.0 {
+        app.set_global(UrlHover(url));
+    }
 }
