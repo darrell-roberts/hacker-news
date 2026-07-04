@@ -1,13 +1,13 @@
 //! Render comment
 use crate::{
     article::ArticleView,
-    common::{COMMENT_IMAGE, comment_entities, hover_element, parse_date},
+    common::{COMMENT_IMAGE, comment_entities, hover_element, parse_date, update_url},
     rich_text::{ParsedStyledText, TextLayout, parse_layout, rich_text_runs, url_ranges},
     theme::Theme,
 };
 use gpui::{
     Animation, AnimationExt as _, AppContext as _, AsyncApp, Entity, ImageSource,
-    InteractiveElement, InteractiveText, ParentElement, Render, SharedString,
+    InteractiveElement, InteractiveText, IntoElement, ParentElement, Render, SharedString,
     StatefulInteractiveElement, StyleRefinement, Styled, StyledText, Window, div, img,
     prelude::FluentBuilder as _, pulsating_between, rems,
 };
@@ -37,7 +37,7 @@ pub struct CommentView {
     /// The age of the comment, formatted as a string.
     age: SharedString,
     /// Any urls that are in the comment body.
-    urls: Vec<String>,
+    urls: Vec<SharedString>,
     /// Comment id.
     id: u64,
 }
@@ -64,7 +64,7 @@ impl CommentView {
             loading_comments: false,
             article_entity,
             text_layout: layout,
-            urls,
+            urls: urls.into_iter().map(Into::into).collect(),
             age: parse_date(item.time).unwrap_or_default().into(),
             id: item.id,
         })
@@ -80,21 +80,50 @@ impl CommentView {
     /// # Returns
     ///
     /// Returns a `gpui::Div` element containing the rendered comment text area UI.
-    fn render_text_area(&self, theme: Theme, comment_entity: Entity<CommentView>) -> gpui::Div {
-        div().p_1().child(
-            InteractiveText::new(
-                "comment_text",
-                StyledText::new(self.text.clone())
-                    .with_runs(rich_text_runs(theme, &self.text_layout).collect()),
-            )
-            .on_click(url_ranges(&self.text_layout), move |index, _window, app| {
-                comment_entity.read_with(app, |this: &CommentView, app| {
-                    if let Some(url) = this.urls.get(index) {
-                        app.open_url(url);
+    fn render_text_area(
+        &self,
+        theme: Theme,
+        comment_entity: Entity<CommentView>,
+    ) -> impl IntoElement {
+        let link_ranges = url_ranges(&self.text_layout);
+        div()
+            .id("comment_text")
+            .p_1()
+            .child(
+                InteractiveText::new(
+                    "comment_text",
+                    StyledText::new(self.text.clone())
+                        .with_runs(rich_text_runs(theme, &self.text_layout).collect()),
+                )
+                .on_hover({
+                    let comment_entity = comment_entity.clone();
+                    let link_ranges = link_ranges.clone();
+                    move |char_index, _event, _window, app| {
+                        if let Some(index) = char_index {
+                            let hovered_link =
+                                link_ranges.iter().position(|range| range.contains(&index));
+
+                            let url = hovered_link
+                                .and_then(|link| comment_entity.read(app).urls.get(link))
+                                .map(ToOwned::to_owned);
+
+                            update_url(app, url);
+                        }
                     }
                 })
-            }),
-        )
+                .on_click(link_ranges, move |index, _window, app| {
+                    comment_entity.read_with(app, |this: &CommentView, app| {
+                        if let Some(url) = this.urls.get(index) {
+                            app.open_url(url);
+                        }
+                    })
+                }),
+            )
+            .on_hover(|hovered, _window, app| {
+                if !hovered {
+                    update_url(app, None);
+                }
+            })
     }
 
     /// Renders the comment footer with child comment count, author and date/time.
