@@ -47,6 +47,7 @@ impl TitleBar {
         div()
             .id(menu.name.clone())
             .cursor_pointer()
+            .p_1()
             .on_click(cx.listener(move |title_bar, _, _window, cx| {
                 title_bar.opened_menu = Some(menu_name.clone());
                 cx.notify();
@@ -100,11 +101,11 @@ fn render_menu_items<'a>(
                 .into_any(),
 
             gpui::OwnedMenuItem::Submenu(owned_menu) => {
-                div().child(owned_menu.name.clone()).into_any()
+                div().p_1().child(owned_menu.name.clone()).into_any()
             }
 
             gpui::OwnedMenuItem::SystemMenu(owned_os_menu) => {
-                div().child(owned_os_menu.name.clone()).into_any()
+                div().p_1().child(owned_os_menu.name.clone()).into_any()
             }
 
             gpui::OwnedMenuItem::Action {
@@ -135,6 +136,7 @@ fn render_menu_items<'a>(
                     .id(name.clone())
                     .flex()
                     .flex_row()
+                    .p_1()
                     .w_full()
                     .justify_between()
                     .gap_4()
@@ -202,7 +204,6 @@ impl Render for TitleBar {
 
         div()
             .bg(theme.title_bar_bg())
-            .h(px(32.))
             .p_1()
             // Inset the title so it clears the native traffic lights on macOS.
             .when(reserve_traffic_lights, |this| this.pl(px(72.)))
@@ -210,6 +211,7 @@ impl Render for TitleBar {
             .flex()
             .items_center()
             .justify_between()
+            .text_size(rems(1.0))
             .when(!is_macos, |this| {
                 this.child(self.render_menus(window, cx, theme))
             })
