@@ -54,10 +54,15 @@ impl FooterView {
 
             cx.subscribe(
                 &content_entity,
-                |footer: &mut FooterView, _content_entity, event, _cx| match event {
+                |footer: &mut FooterView, _content_entity, event, cx| match event {
                     ContentEvent::TotalArticles(n) => {
-                        footer.status_line =
-                            format!("Updated: {}, total {n}", Local::now().format("%D %T"),).into();
+                        let article_selection = cx.global::<ArticleSelection>();
+                        footer.status_line = format!(
+                            "Topic {}, updated {}, total {n}",
+                            article_selection.viewing_article_type.as_str(),
+                            Local::now().format("%D %T"),
+                        )
+                        .into();
                     }
                     ContentEvent::OnlineToggle(enabled) => {
                         footer.online = *enabled;
@@ -105,6 +110,8 @@ impl Render for FooterView {
         let online = self.online;
 
         div()
+            .flex()
+            .flex_col()
             // .bg(theme.surface())
             .text_size(rems(0.85))
             .when_some(self.error.as_ref(), |div, error| {
@@ -115,13 +122,13 @@ impl Render for FooterView {
                         .child(error.clone()),
                 )
             })
-            .child(div().p_1().child(self.url.clone().unwrap_or_default()))
+            .child(div().ml_1().child(self.url.clone().unwrap_or_default()))
             .child(
                 div()
                     .flex()
                     .flex_row()
                     .justify_between()
-                    .p_1()
+                    .ml_1()
                     .child(self.status_line.clone())
                     .child(
                         div()

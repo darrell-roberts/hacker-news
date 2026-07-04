@@ -104,6 +104,7 @@ fn resize_handle(edge: ResizeEdge) -> Stateful<Div> {
 
 /// The main window view.
 pub struct MainWindow {
+    #[expect(dead_code)]
     header: Entity<Header>,
     content: Entity<ContentView>,
     footer: Entity<FooterView>,
@@ -190,7 +191,7 @@ impl Render for MainWindow {
             .h_full()
             .bg(theme.bg())
             .child(self.title_bar.clone())
-            .child(self.header.clone())
+            // .child(self.header.clone())
             .child(div().flex_1().min_h_0().child(self.content.clone()))
             .child(
                 div()

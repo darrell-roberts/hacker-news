@@ -1,5 +1,5 @@
 //! Header view.
-use crate::{ArticleSelection, theme::Theme};
+use crate::{ArticleSelection, common::hover_element, theme::Theme};
 use gpui::{
     App, AppContext as _, BorrowAppContext, BoxShadow, Div, Entity, InteractiveElement,
     IntoElement, ParentElement, Render, SharedString, Stateful, StatefulInteractiveElement as _,
@@ -99,14 +99,20 @@ impl Header {
         div()
             .flex()
             .flex_row()
-            .child(div().id("close").child("[-]").cursor_pointer().on_click(
-                move |_event, _window, app| {
-                    header_entity.update(app, |header_view, cx| {
-                        header_view.open = false;
-                        cx.notify();
-                    })
-                },
-            ))
+            .p_2()
+            .child(
+                div()
+                    .id("close")
+                    .child("[-]")
+                    .cursor_pointer()
+                    .hover(hover_element(theme))
+                    .on_click(move |_event, _window, app| {
+                        header_entity.update(app, |header_view, cx| {
+                            header_view.open = false;
+                            cx.notify();
+                        })
+                    }),
+            )
             .child(
                 div()
                     .flex()
@@ -114,8 +120,8 @@ impl Header {
                     .text_size(rems(1.1))
                     .text_color(yellow())
                     .gap_x(px(10.0))
-                    .w_full()
-                    .justify_center()
+                    // .w_full()
+                    // .justify_center()
                     .m_1()
                     .pb_1()
                     .children(top_best_new)
@@ -158,22 +164,31 @@ impl Render for Header {
         if self.open {
             self.render_open(cx, theme)
         } else {
-            div().flex().w_full().child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .gap_1()
-                    .child(div().id("open").child("[+]").cursor_pointer().on_click(
-                        move |_event, _window, app| {
-                            header_entity.update(app, |header_view, cx| {
-                                header_view.open = true;
-                                cx.notify();
-                            })
-                        },
-                    ))
-                    .child("Viewing: ")
-                    .child(active.viewing_article_type.as_str()),
-            )
+            div()
+                .flex()
+                // . w_full()
+                .p_2()
+                .child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .gap_1()
+                        .child(
+                            div()
+                                .id("open")
+                                .child("[+]")
+                                .cursor_pointer()
+                                .hover(hover_element(theme))
+                                .on_click(move |_event, _window, app| {
+                                    header_entity.update(app, |header_view, cx| {
+                                        header_view.open = true;
+                                        cx.notify();
+                                    })
+                                }),
+                        )
+                        .child("Viewing: ")
+                        .child(active.viewing_article_type.as_str()),
+                )
         }
     }
 }

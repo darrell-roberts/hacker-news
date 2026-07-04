@@ -14,6 +14,8 @@ mod light {
     pub const BUTTON_INACTIVE: u32 = 0x9ca3af;
     pub const ARTICLE_TEXT: u32 = 0xc6ebd9;
     pub const DIVIDER: u32 = 0xc0c4c8;
+    pub const TITLE_BAR_BG: u32 = 0xcccccc;
+    pub const POPOVER_BG: u32 = 0xffffff;
 }
 
 mod dark {
@@ -29,6 +31,8 @@ mod dark {
     pub const BUTTON_INACTIVE: u32 = 0x6b7280;
     pub const ARTICLE_TEXT: u32 = 0x204060;
     pub const DIVIDER: u32 = 0x4f4f4f;
+    pub const TITLE_BAR_BG: u32 = 0x262626;
+    pub const POPOVER_BG: u32 = 0x808080;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -119,6 +123,20 @@ impl Theme {
         rgb(match self {
             Theme::Dark => dark::DIVIDER,
             Theme::Light => light::DIVIDER,
+        })
+    }
+
+    pub fn title_bar_bg(&self) -> gpui::Rgba {
+        rgb(match self {
+            Theme::Dark => dark::TITLE_BAR_BG,
+            Theme::Light => light::TITLE_BAR_BG,
+        })
+    }
+
+    pub fn popover_bg(&self) -> gpui::Rgba {
+        rgb(match self {
+            Theme::Dark => dark::POPOVER_BG,
+            Theme::Light => light::POPOVER_BG,
         })
     }
 }

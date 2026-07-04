@@ -229,6 +229,7 @@ impl ContentView {
                 content_view.article_ranks.clear();
                 // Remove viewing article body.
                 content_view.article_body_view = None;
+                content_view.articles_scroll_handle.scroll_to_top_of_item(0);
                 match content_view.article_sender.as_ref() {
                     Some(tx) => {
                         info!("Opening stream for {selection:?}");
