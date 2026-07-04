@@ -6,9 +6,9 @@ use crate::{
     footer::FooterMsg,
     full_search::FullSearchMsg,
     header::HeaderMsg,
-    parse_date,
     richtext::SearchSpanIter,
 };
+use friendly_duration::parse_friendly_age;
 use hacker_news_search::{SearchContext, WatchState, api::Story, update_story, watch_story};
 use iced::{
     Background, Color, Element, Length, Shadow, Task, Theme,
@@ -173,7 +173,7 @@ impl ArticleState {
                 .size(14)
                 .color_maybe(widget::text::primary(theme).color),
             widget::span(" "),
-            widget::span(parse_date(story.time).unwrap_or_default())
+            widget::span(parse_friendly_age(story.time).unwrap_or_default())
                 .font(ROBOTO_FONT.weight_light().italic())
                 .size(10)
                 .color_maybe(widget::text::primary(theme).color),

@@ -1,0 +1,47 @@
+.by_author {
+    font-style: italic;
+    font-size: 0.8rem;
+}
+
+.article_index {
+    font-size: 0.8rem;
+}
+
+.status_line {
+    background-color: lightgray;
+    padding: 4px;
+}
+
+.article {
+    padding: 4px;
+    box-shadow: 2px 2px 2px black;
+    border-radius: 8px;
+    margin: 4px;
+    background-color: white;
+}
+
+.comment {
+    padding: 4px;
+    box-shadow: 2px 2px 2px black;
+    border-radius: 8px;
+    margin: 4px;
+    background-color: #dcdcdc;
+}
+
+.comment_text_view {
+    background-color: #dcdcdc;
+}
+
+.article_pane {
+    background-color: #dcdcdc;
+}
+
+.comment_pane {
+    background-color: white;
+}
+
+.active {
+    border-color: black;
+    border-width: 4px;
+    background-color: yellow;
+}

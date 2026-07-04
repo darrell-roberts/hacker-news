@@ -1,10 +1,11 @@
 //! Render comment
 use crate::{
     article::ArticleView,
-    common::{COMMENT_IMAGE, comment_entities, hover_element, parse_date},
+    common::{COMMENT_IMAGE, comment_entities, hover_element},
     rich_text::{ParsedStyledText, TextLayout, parse_layout, rich_text_runs, url_ranges},
     theme::Theme,
 };
+use friendly_duration::parse_friendly_age;
 use gpui::{
     Animation, AnimationExt as _, AppContext as _, AsyncApp, Entity, ImageSource,
     InteractiveElement, InteractiveText, ParentElement, Render, SharedString,
@@ -65,7 +66,7 @@ impl CommentView {
             article_entity,
             text_layout: layout,
             urls,
-            age: parse_date(item.time).unwrap_or_default().into(),
+            age: parse_friendly_age(item.time).unwrap_or_default().into(),
             id: item.id,
         })
     }

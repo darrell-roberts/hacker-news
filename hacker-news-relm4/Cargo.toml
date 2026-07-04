@@ -1,0 +1,19 @@
+[package]
+name = "hacker-news-relm4"
+version = "0.1.0"
+license.workspace = true
+edition.workspace = true
+
+[dependencies]
+relm4 = "0.10"
+relm4-components = "0.10"
+hacker-news-search.workspace = true
+hacker-news-config.workspace = true
+hacker-news-api.workspace = true
+html-sanitizer.workspace = true
+anyhow.workspace = true
+futures = "0.3"
+friendly-duration.workspace = true
+chrono.workspace = true
+chrono-tz.workspace = true
+log.workspace = true
