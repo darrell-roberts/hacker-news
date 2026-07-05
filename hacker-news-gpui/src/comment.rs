@@ -271,7 +271,7 @@ impl Render for CommentView {
                             div()
                                 .bg(theme.comment_border())
                                 .flex()
-                                .flex_grow()
+                                .flex_grow(1.0)
                                 .flex_row()
                                 .rounded_tl_md()
                                 .text_size(rems(0.75))

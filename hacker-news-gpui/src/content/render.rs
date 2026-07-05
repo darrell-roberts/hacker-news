@@ -236,7 +236,7 @@ impl ContentView {
                 .child(
                     div()
                         .flex()
-                        .flex_grow()
+                        .flex_grow(1.0)
                         .flex_row()
                         .text_size(rems(0.75))
                         .bg(theme.comment_border())

@@ -1,9 +1,9 @@
 //! Background tasks.
 use super::{ContentEvent, ContentView};
 use crate::{ApiClientState, ArticleSelection, article::ArticleView};
-use async_compat::Compat;
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
 use gpui::{App, AppContext, Context, Entity};
+use gpui_tokio::JoinError;
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
 use std::collections::HashMap;
@@ -56,7 +56,7 @@ pub(super) enum BackGroundError {
 pub(super) fn start_background_subscriptions(
     app: &mut App,
     entity_content: &Entity<ContentView>,
-) -> gpui::Task<()> {
+) -> gpui::Task<Result<(), JoinError>> {
     let entity_content = entity_content.clone();
     let (tx, mut rx) = channel::mpsc::channel::<Result<Vec<Item>, BackGroundError>>(10);
 
@@ -192,7 +192,7 @@ pub(super) fn start_background_subscriptions(
 pub(super) fn start_background_article_list_subscription(
     app: &mut App,
     mut tx: channel::mpsc::Sender<Result<Vec<Item>, BackGroundError>>,
-) -> gpui::Task<()> {
+) -> gpui::Task<Result<(), JoinError>> {
     let ArticleSelection {
         viewing_article_type,
         viewing_article_total,
@@ -202,7 +202,7 @@ pub(super) fn start_background_article_list_subscription(
 
     let client = app.read_global(|client: &ApiClientState, _app| client.0.clone());
 
-    app.background_executor().spawn(Compat::new(async move {
+    gpui_tokio::Tokio::spawn(app, async move {
         let (mut rx, handle) = subscribe_to_article_list(viewing_article_type);
 
         while let Some(event) = rx.recv().await {
@@ -236,5 +236,5 @@ pub(super) fn start_background_article_list_subscription(
         }
 
         handle.abort();
-    }))
+    })
 }
