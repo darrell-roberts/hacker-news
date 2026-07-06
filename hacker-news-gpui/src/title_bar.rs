@@ -204,7 +204,9 @@ impl Render for TitleBar {
 
         div()
             .bg(theme.title_bar_bg())
-            .when(cfg!(target_os = "macos"), |this| this.h(px(32.)))
+            // We only have traffic lights for macos and need to set a fixed height since
+            // macos will render the traffic lights.
+            .when(is_macos, |this| this.h(px(32.)))
             .p_1()
             // Inset the title so it clears the native traffic lights on macOS.
             .when(reserve_traffic_lights, |this| this.pl(px(72.)))
