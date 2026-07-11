@@ -359,7 +359,7 @@ impl Render for ArticleView {
                 div.text_color(theme.text_decreasing())
             })
             .when(viewing_article, |div| {
-                div.border_color(theme.selected()).border_4()
+                div.border_color(theme.comment_border()).border_4()
             })
             .child(
                 div().overflow_hidden().child(
