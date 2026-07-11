@@ -5,6 +5,7 @@ use gpui::{
     App, AppContext, AsyncApp, Entity, Fill, Image, SharedString, StyleRefinement, Styled as _,
     http_client::Url, solid_background,
 };
+use gpui_tokio::Tokio;
 use log::error;
 use std::{
     borrow::Cow,
@@ -78,6 +79,7 @@ pub async fn comment_entities(
         cx.emit(ContentEvent::Error(None));
     });
     let client = app.read_global(|client: &ApiClientState, _| client.0.clone());
+
     let item_stream = client
         .items(comment_ids)
         .into_stream()
@@ -92,7 +94,10 @@ pub async fn comment_entities(
         })
         .collect::<Vec<_>>();
 
-    let comment_items = async_compat::Compat::new(item_stream).await;
+    let comment_items = Tokio::spawn(app, item_stream)
+        .await
+        .inspect_err(|err| error!("Failed to spawn task to fetch comments: {err}"))
+        .unwrap_or_default();
 
     comment_items
         .into_iter()
@@ -139,10 +144,8 @@ pub fn hover_element(theme: Theme) -> impl Fn(StyleRefinement) -> StyleRefinemen
     }
 }
 
-pub fn save_config(
-    config: Config,
-) -> async_compat::Compat<impl Future<Output = Result<(), anyhow::Error>>> {
-    async_compat::Compat::new(hacker_news_config::save_config(config, CONFIG_FILE))
+pub fn save_config(config: Config) -> impl Future<Output = Result<(), anyhow::Error>> {
+    hacker_news_config::save_config(config, CONFIG_FILE)
 }
 
 pub fn update_url(app: &mut App, url: Option<SharedString>) {

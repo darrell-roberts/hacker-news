@@ -12,6 +12,7 @@ use gpui::{
     App, AppContext, Entity, EventEmitter, FocusHandle, ListState, Pixels, ScrollHandle, Window,
     prelude::*, px,
 };
+use gpui_tokio::JoinError;
 use hacker_news_api::{ArticleType, Item};
 use log::{error, info};
 use std::{collections::HashMap, f32};
@@ -34,7 +35,7 @@ pub struct ContentView {
     /// Subscription to server side events is online.
     pub online: bool,
     /// Handle to the background task that updates articles.
-    background_task: Option<gpui::Task<()>>,
+    background_task: Option<gpui::Task<Result<(), JoinError>>>,
     /// Sender channel for pushing article updates from background to foreground.
     article_sender: Option<channel::mpsc::Sender<Result<Vec<Item>, BackGroundError>>>,
     /// The number of times we have refresh due to an http server side event.

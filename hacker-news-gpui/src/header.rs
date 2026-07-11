@@ -143,6 +143,7 @@ fn mk_button(label: SharedString) -> Stateful<Div> {
             offset: point(px(2.0), px(2.0)),
             blur_radius: px(2.0),
             spread_radius: px(2.0),
+            inset: true,
         }])
         .id(label.clone())
         .child(label)

@@ -77,6 +77,8 @@ fn main() -> anyhow::Result<()> {
     let client = Arc::new(hacker_news_api::ApiClient::new()?);
 
     application().run(move |app| {
+        gpui_tokio::init(app);
+
         app.set_global(ApiClientState(client));
         app.set_global(ArticleSelection {
             viewing_article_type: ArticleType::Top,
