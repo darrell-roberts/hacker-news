@@ -5,6 +5,7 @@ use gpui::{
     WindowDecorations, WindowKind, WindowOptions, actions, point, px, size,
 };
 use gpui_platform::application;
+use gpui_tokio::Tokio;
 use hacker_news_api::{ApiClient, ArticleType};
 use hacker_news_config::{init_logger, load_config};
 use log::{error, info};
@@ -168,7 +169,7 @@ fn main() -> anyhow::Result<()> {
         // Write back changes made to config to disk.
         app.observe_global::<Config>(|cx| {
             let config = *cx.global::<Config>();
-            cx.spawn(async move |_app| {
+            Tokio::spawn(cx, async move {
                 if let Err(err) = save_config(config).await {
                     error!("Failed to save config: {err}");
                 }

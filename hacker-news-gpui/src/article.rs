@@ -343,30 +343,31 @@ impl Render for ArticleView {
                     .gap_x(rems(0.1)),
             );
 
-        div().w_full().child(
-            div()
-                .flex()
-                .flex_row()
-                .rounded_md()
-                .shadow_md()
-                .bg(theme.surface())
-                .border_1()
-                .border_color(theme.border())
-                .when(self.order_change > 2, |div| {
-                    div.text_color(theme.text_increasing())
-                })
-                .when(self.order_change < -2, |div| {
-                    div.text_color(theme.text_decreasing())
-                })
-                .when(viewing_article, |div| div.opacity(0.75))
-                .child(
-                    div().overflow_hidden().child(
-                        div()
-                            .flex()
-                            .flex_row()
-                            .children([rank_change_col, title_col]),
-                    ),
+        div()
+            .flex()
+            .flex_row()
+            .rounded_md()
+            .shadow_md()
+            .bg(theme.surface())
+            .border_1()
+            .mr_1()
+            .border_color(theme.border())
+            .when(self.order_change > 2, |div| {
+                div.text_color(theme.text_increasing())
+            })
+            .when(self.order_change < -2, |div| {
+                div.text_color(theme.text_decreasing())
+            })
+            .when(viewing_article, |div| {
+                div.border_color(theme.selected()).border_4()
+            })
+            .child(
+                div().overflow_hidden().child(
+                    div()
+                        .flex()
+                        .flex_row()
+                        .children([rank_change_col, title_col]),
                 ),
-        )
+            )
     }
 }

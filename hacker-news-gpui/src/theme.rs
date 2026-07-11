@@ -16,6 +16,7 @@ mod light {
     pub const DIVIDER: u32 = 0xc0c4c8;
     pub const TITLE_BAR_BG: u32 = 0xcccccc;
     pub const POPOVER_BG: u32 = 0xffffff;
+    pub const SELECTED: u32 = 0xffffcc;
 }
 
 mod dark {
@@ -33,6 +34,7 @@ mod dark {
     pub const DIVIDER: u32 = 0x4f4f4f;
     pub const TITLE_BAR_BG: u32 = 0x262626;
     pub const POPOVER_BG: u32 = 0x808080;
+    pub const SELECTED: u32 = 0x808080;
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -137,6 +139,13 @@ impl Theme {
         rgb(match self {
             Theme::Dark => dark::POPOVER_BG,
             Theme::Light => light::POPOVER_BG,
+        })
+    }
+
+    pub fn selected(&self) -> gpui::Rgba {
+        rgb(match self {
+            Theme::Dark => dark::SELECTED,
+            Theme::Light => light::SELECTED,
         })
     }
 }
