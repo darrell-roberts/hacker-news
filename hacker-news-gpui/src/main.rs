@@ -1,8 +1,8 @@
 //! Simple hacker news view.
 use crate::{common::save_config, main_window::WindowResize};
 use gpui::{
-    App, BorrowAppContext, Bounds, Global, KeyBinding, Menu, MenuItem, SharedString, WindowBounds,
-    WindowDecorations, WindowKind, WindowOptions, actions, point, px, size,
+    Action, App, BorrowAppContext, Bounds, Global, KeyBinding, Menu, MenuItem, SharedString,
+    WindowBounds, WindowDecorations, WindowKind, WindowOptions, actions, point, px, size,
 };
 use gpui_platform::application;
 use gpui_tokio::Tokio;
@@ -64,6 +64,22 @@ pub struct Config {
 
 impl Global for Config {}
 
+fn build_menus(action: &impl Action) -> impl IntoIterator<Item = Menu> {
+    [Menu::new("☰").items([
+        MenuItem::submenu(Menu::new("Topics").items([
+            MenuItem::action("🔝  Top", TopTopic).checked(TopTopic.partial_eq(action)),
+            MenuItem::action("⭐  Best", BestTopic).checked(BestTopic.partial_eq(action)),
+            MenuItem::action("🆕  New", NewTopic).checked(NewTopic.partial_eq(action)),
+            MenuItem::separator(),
+            MenuItem::action("❓  Ask", AskTopic).checked(AskTopic.partial_eq(action)),
+            MenuItem::action("📺  Show", ShowTopic).checked(ShowTopic.partial_eq(action)),
+            MenuItem::action("💼  Job", JobTopic).checked(JobTopic.partial_eq(action)),
+        ])),
+        MenuItem::Separator,
+        MenuItem::action("⏻  Quit", Quit),
+    ])]
+}
+
 fn main() -> anyhow::Result<()> {
     init_logger("hacker-news-dashboard")?;
 
@@ -92,74 +108,57 @@ fn main() -> anyhow::Result<()> {
 
         // Add menu action handlers.
         app.on_action(quit);
-        app.on_action(|TopTopic, app| {
+        app.on_action(|action: &TopTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::Top;
             });
+            app.set_menus(build_menus(action));
         });
-        app.on_action(|BestTopic, app| {
+        app.on_action(|action: &BestTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::Best;
             });
+            app.set_menus(build_menus(action));
         });
-        app.on_action(|NewTopic, app| {
+        app.on_action(|action: &NewTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::New;
             });
+            app.set_menus(build_menus(action));
         });
-        app.on_action(|AskTopic, app| {
+        app.on_action(|action: &AskTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::Ask;
             });
+            app.set_menus(build_menus(action));
         });
-        app.on_action(|ShowTopic, app| {
+        app.on_action(|action: &ShowTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::Show;
             });
+            app.set_menus(build_menus(action));
         });
-        app.on_action(|JobTopic, app| {
+        app.on_action(|action: &JobTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::Job;
             });
+            app.set_menus(build_menus(action));
         });
 
         // Bind hot keys to the actions. The menu items automatically display
         // the matching keystroke for any action that has a binding.
-        #[cfg(target_os = "macos")]
         app.bind_keys([
-            KeyBinding::new("cmd-q", Quit, None),
-            KeyBinding::new("cmd-1", TopTopic, None),
-            KeyBinding::new("cmd-2", BestTopic, None),
-            KeyBinding::new("cmd-3", NewTopic, None),
-            KeyBinding::new("cmd-4", AskTopic, None),
-            KeyBinding::new("cmd-5", ShowTopic, None),
-            KeyBinding::new("cmd-6", JobTopic, None),
-        ]);
-
-        #[cfg(not(target_os = "macos"))]
-        app.bind_keys([
-            KeyBinding::new("ctrl-q", Quit, None),
-            KeyBinding::new("ctrl-1", TopTopic, None),
-            KeyBinding::new("ctrl-2", BestTopic, None),
-            KeyBinding::new("ctrl-3", NewTopic, None),
-            KeyBinding::new("ctrl-4", AskTopic, None),
-            KeyBinding::new("ctrl-5", ShowTopic, None),
-            KeyBinding::new("ctrl-6", JobTopic, None),
+            KeyBinding::new("secondary-q", Quit, None),
+            KeyBinding::new("secondary-1", TopTopic, None),
+            KeyBinding::new("secondary-2", BestTopic, None),
+            KeyBinding::new("secondary-3", NewTopic, None),
+            KeyBinding::new("secondary-4", AskTopic, None),
+            KeyBinding::new("secondary-5", ShowTopic, None),
+            KeyBinding::new("secondary-6", JobTopic, None),
         ]);
 
         // Add menu items
-        app.set_menus([
-            Menu::new("☰").items([MenuItem::action("⏻  Quit", Quit)]),
-            Menu::new("Topics").items([
-                MenuItem::action("🔝  Top", TopTopic),
-                MenuItem::action("⭐  Best", BestTopic),
-                MenuItem::action("🆕  New", NewTopic),
-                MenuItem::separator(),
-                MenuItem::action("❓  Ask", AskTopic),
-                MenuItem::action("📺  Show", ShowTopic),
-                MenuItem::action("💼  Job", JobTopic),
-            ]),
-        ]);
+        app.set_menus(build_menus(&TopTopic));
 
         app.on_window_closed(|app, _window_id| {
             app.quit();
