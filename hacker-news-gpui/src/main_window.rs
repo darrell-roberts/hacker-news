@@ -124,7 +124,7 @@ impl MainWindow {
         let header = Header::new(window, app);
         let content = ContentView::new(window, app);
         let footer = FooterView::new(window, app, content.clone());
-        let title_bar = TitleBar::new(window, app);
+        let title_bar = TitleBar::new(window, app, "Hacker News Dashboard".into());
 
         let font_size = app.global::<Config>().font_size;
 

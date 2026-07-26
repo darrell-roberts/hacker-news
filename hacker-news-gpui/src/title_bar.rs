@@ -1,18 +1,23 @@
 //! Title bar.
-use crate::{common::hover_element, theme::Theme};
+use crate::{common::brighten, theme::Theme};
 use gpui::{
-    AnyElement, App, Div, Entity, Hsla, MouseButton, OwnedMenu, Render, SharedString,
-    StyleRefinement, Window, anchored, deferred, div, prelude::*, px, rems,
+    AnyElement, App, Div, Entity, Fill, FontWeight, MouseButton, OwnedMenu, OwnedMenuItem, Render,
+    SharedString, StyleRefinement, Window, anchored, deferred, div, prelude::*, px, rems,
+    solid_background,
 };
 
 pub struct TitleBar {
     opened_menu: Option<SharedString>,
+    title: SharedString,
 }
 
 impl TitleBar {
     /// Create a new titlebar with title, minimize, maximize and close controls.
-    pub fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
-        app.new(|_cx| Self { opened_menu: None })
+    pub fn new(_window: &mut Window, app: &mut App, title: SharedString) -> Entity<Self> {
+        app.new(|_cx| Self {
+            opened_menu: None,
+            title,
+        })
     }
 
     fn render_menus(
@@ -84,88 +89,102 @@ impl TitleBar {
     }
 }
 
+fn render_menu_item<'a>(
+    window: &'a Window,
+    theme: Theme,
+    menu_item: &'a OwnedMenuItem,
+    title_bar_entity: Entity<TitleBar>,
+) -> AnyElement {
+    match menu_item {
+        gpui::OwnedMenuItem::Separator => div()
+            .w_full()
+            .h(px(1.0))
+            .mt_1()
+            .mb_1()
+            .bg(theme.border())
+            .into_any(),
+
+        gpui::OwnedMenuItem::Submenu(owned_menu) => div()
+            .p_1()
+            .child(owned_menu.name.clone())
+            .children(owned_menu.items.iter().map(|menu_item| {
+                render_menu_item(window, theme, menu_item, title_bar_entity.clone())
+            }))
+            .into_any(),
+
+        gpui::OwnedMenuItem::SystemMenu(owned_os_menu) => {
+            div().p_1().child(owned_os_menu.name.clone()).into_any()
+        }
+
+        gpui::OwnedMenuItem::Action {
+            name,
+            action,
+            os_action: _,
+            checked,
+            disabled,
+        } => {
+            // Look up the keystroke bound to this
+            // action so we can display it like the
+            // native macOS menu does.
+            let keystroke = window
+                .bindings_for_action(action.as_ref())
+                .last()
+                .map(|binding| {
+                    binding
+                        .keystrokes()
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                });
+            let action = action.boxed_clone();
+            let title_bar_entity = title_bar_entity.clone();
+
+            div()
+                .id(name.clone())
+                .flex()
+                .flex_row()
+                .p_1()
+                .w_full()
+                .justify_between()
+                .gap_4()
+                .when(*checked, |this| this.font_weight(FontWeight::BOLD))
+                .child(name.to_string())
+                .when_some(keystroke, |this, keystroke| {
+                    this.child(
+                        div()
+                            .text_color(gpui::Rgba {
+                                a: 0.6,
+                                ..theme.text_color()
+                            })
+                            .child(keystroke),
+                    )
+                })
+                .cursor_pointer()
+                .hover(hover_element(theme))
+                .when(!disabled, |this| {
+                    this.on_click(move |_event, window, app| {
+                        window.dispatch_action(action.boxed_clone(), app);
+                        title_bar_entity.update(app, |title_bar, cx| {
+                            title_bar.opened_menu = None;
+                            cx.notify()
+                        })
+                    })
+                })
+                .into_any()
+        }
+    }
+}
+
 fn render_menu_items<'a>(
     window: &'a Window,
     theme: Theme,
     menu: &'a OwnedMenu,
     title_bar_entity: Entity<TitleBar>,
 ) -> impl Iterator<Item = AnyElement> + 'a {
-    menu.items.iter().map(move |menu_item| {
-        match menu_item {
-            gpui::OwnedMenuItem::Separator => div()
-                .w_full()
-                .h(px(1.0))
-                .mt_1()
-                .mb_1()
-                .bg(theme.border())
-                .into_any(),
-
-            gpui::OwnedMenuItem::Submenu(owned_menu) => {
-                div().p_1().child(owned_menu.name.clone()).into_any()
-            }
-
-            gpui::OwnedMenuItem::SystemMenu(owned_os_menu) => {
-                div().p_1().child(owned_os_menu.name.clone()).into_any()
-            }
-
-            gpui::OwnedMenuItem::Action {
-                name,
-                action,
-                os_action: _,
-                checked: _,
-                disabled,
-            } => {
-                // Look up the keystroke bound to this
-                // action so we can display it like the
-                // native macOS menu does.
-                let keystroke = window
-                    .bindings_for_action(action.as_ref())
-                    .last()
-                    .map(|binding| {
-                        binding
-                            .keystrokes()
-                            .iter()
-                            .map(ToString::to_string)
-                            .collect::<Vec<_>>()
-                            .join(" ")
-                    });
-                let action = action.boxed_clone();
-                let title_bar_entity = title_bar_entity.clone();
-
-                div()
-                    .id(name.clone())
-                    .flex()
-                    .flex_row()
-                    .p_1()
-                    .w_full()
-                    .justify_between()
-                    .gap_4()
-                    .child(name.to_string())
-                    .when_some(keystroke, |this, keystroke| {
-                        this.child(
-                            div()
-                                .text_color(gpui::Rgba {
-                                    a: 0.6,
-                                    ..theme.text_color()
-                                })
-                                .child(keystroke),
-                        )
-                    })
-                    .cursor_pointer()
-                    .hover(hover_element(theme))
-                    .when(!disabled, |this| {
-                        this.on_click(move |_event, window, app| {
-                            window.dispatch_action(action.boxed_clone(), app);
-                            title_bar_entity.update(app, |title_bar, cx| {
-                                title_bar.opened_menu = None;
-                                cx.notify()
-                            })
-                        })
-                    })
-                    .into_any()
-            }
-        }
-    })
+    menu.items
+        .iter()
+        .map(move |menu_item| render_menu_item(window, theme, menu_item, title_bar_entity.clone()))
 }
 
 fn popover(theme: Theme) -> gpui::Stateful<Div> {
@@ -232,7 +251,8 @@ impl Render for TitleBar {
                             window.zoom_window();
                         }
                         window.start_window_move();
-                    }),
+                    })
+                    .child(self.title.clone()),
             )
             .when(!is_macos, |this| {
                 this.child(
@@ -278,9 +298,11 @@ fn window_control(hover: impl Fn(StyleRefinement) -> StyleRefinement) -> Div {
         .hover(hover)
 }
 
-fn brighten(color: Hsla, amount: f32) -> Hsla {
-    Hsla {
-        l: (color.l + amount).clamp(0.0, 1.0),
-        ..color
+fn hover_element(theme: Theme) -> impl Fn(StyleRefinement) -> StyleRefinement {
+    move |style| {
+        style
+            .bg(Fill::Color(solid_background(theme.hover())))
+            .shadow_md()
+            .rounded_md()
     }
 }

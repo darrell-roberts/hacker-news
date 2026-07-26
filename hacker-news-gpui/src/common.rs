@@ -2,8 +2,8 @@
 use chrono::{DateTime, Utc};
 use futures::{StreamExt as _, TryStreamExt as _};
 use gpui::{
-    App, AppContext, AsyncApp, Entity, Fill, Image, SharedString, StyleRefinement, Styled as _,
-    http_client::Url, solid_background,
+    App, AppContext, AsyncApp, Entity, Fill, Hsla, Image, SharedString, StyleRefinement,
+    Styled as _, http_client::Url, solid_background,
 };
 use gpui_tokio::Tokio;
 use log::error;
@@ -153,5 +153,13 @@ pub fn update_url(app: &mut App, url: Option<SharedString>) {
 
     if url != current_url.0 {
         app.set_global(UrlHover(url));
+    }
+}
+
+/// Brighten color
+pub fn brighten(color: Hsla, amount: f32) -> Hsla {
+    Hsla {
+        l: (color.l + amount).clamp(0.0, 1.0),
+        ..color
     }
 }
