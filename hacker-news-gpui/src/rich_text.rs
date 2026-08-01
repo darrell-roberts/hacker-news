@@ -103,7 +103,11 @@ fn code(theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: SharedString::new("Courier"),
+            family: SharedString::new(if cfg!(target_os = "linux") {
+                "DejaVu Sans Mono"
+            } else {
+                "Menlo"
+            }),
             features: Default::default(),
             fallbacks: None,
             weight: Default::default(),
