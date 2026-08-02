@@ -2,8 +2,8 @@
 use chrono::{DateTime, Utc};
 use futures::{StreamExt as _, TryStreamExt as _};
 use gpui::{
-    App, AppContext, AsyncApp, Entity, Fill, Hsla, Image, SharedString, StyleRefinement,
-    Styled as _, http_client::Url, solid_background,
+    App, AppContext, AsyncApp, Entity, Hsla, Image, SharedString, StyleRefinement, Styled as _,
+    http_client::Url,
 };
 use gpui_tokio::Tokio;
 use log::error;
@@ -136,12 +136,7 @@ fn port_string(parsed_url: &Url) -> Cow<'_, str> {
 }
 
 pub fn hover_element(theme: Theme) -> impl Fn(StyleRefinement) -> StyleRefinement {
-    move |style| {
-        style
-            .bg(Fill::Color(solid_background(theme.hover())))
-            .shadow_md()
-            .rounded_md()
-    }
+    move |style| style.text_color(brighten(theme.text_color().into(), 0.2))
 }
 
 pub fn save_config(config: Config) -> impl Future<Output = Result<(), anyhow::Error>> {
