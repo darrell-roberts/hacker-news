@@ -238,6 +238,24 @@ impl ArticleView {
             });
         }
     }
+
+    fn rank_change_col(&self, theme: Theme) -> gpui::Div {
+        div()
+            .flex()
+            .italic()
+            .text_size(rems(0.75))
+            .w(rems(0.75))
+            .when(
+                self.order_change.is_positive() && self.order_change > 0,
+                |div| div.text_color(theme.text_increasing()),
+            )
+            .when(self.order_change.is_negative(), |div| {
+                div.text_color(theme.text_decreasing())
+            })
+            .justify_end()
+            .items_center()
+            .child(self.order_change_label.clone())
+    }
 }
 
 impl Render for ArticleView {
@@ -253,22 +271,6 @@ impl Render for ArticleView {
             .viewing_article_id
             .map(|id| id == self.id)
             .unwrap_or(false);
-
-        let rank_change_col = div()
-            .flex()
-            .italic()
-            .text_size(rems(0.75))
-            .w(rems(0.75))
-            .when(
-                self.order_change.is_positive() && self.order_change > 0,
-                |div| div.text_color(theme.text_increasing()),
-            )
-            .when(self.order_change.is_negative(), |div| {
-                div.text_color(theme.text_decreasing())
-            })
-            .justify_end()
-            .items_center()
-            .child(self.order_change_label.clone());
 
         let article_entity = cx.entity();
 
@@ -321,12 +323,12 @@ impl Render for ArticleView {
                         };
                     })
                     .on_hover(move |hover, _window, app| {
-                        if !hover {
-                            update_url(app, None);
-                        } else {
-                            let url = article_entity.read(app).url.clone();
-                            update_url(app, url);
-                        }
+                        update_url(
+                            app,
+                            hover
+                                .then(|| article_entity.read(app).url.clone())
+                                .flatten(),
+                        )
                     })
                     .hover(hover_element(theme)),
             )
@@ -366,7 +368,7 @@ impl Render for ArticleView {
                     div()
                         .flex()
                         .flex_row()
-                        .children([rank_change_col, title_col]),
+                        .children([self.rank_change_col(theme), title_col]),
                 ),
             )
     }
