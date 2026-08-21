@@ -1,25 +1,20 @@
 [package]
 name = "hacker-news-search"
 version = "0.1.0"
-license.workspace = true
 edition.workspace = true
-
-[features]
-trace = ["tracing"]
+license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-async-stream = "0.3"
-futures = "0.3"
-futures-core = "0.3"
-futures-util = "0.3"
+chrono.workspace = true
+futures.workspace = true
 hacker-news-api.workspace = true
-html-sanitizer.workspace = true
 log.workspace = true
 serde.workspace = true
-tantivy = "0.25"
+tantivy = "0.26"
 thiserror = "2"
 tokio.workspace = true
-
-chrono.workspace = true
 tracing = { version = "0.1", optional = true }
+
+[features]
+trace = ["tracing"]

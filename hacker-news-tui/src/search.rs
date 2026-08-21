@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::Style,
     text::{Line, Span},
-    widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget, block::Title},
+    widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget},
 };
 use std::sync::{Arc, RwLock};
 use tui_input::Input;
@@ -142,7 +142,7 @@ impl StatefulWidget for SearchWidget {
         .block(
             Block::bordered()
                 .border_type(BorderType::Thick)
-                .title(Title::from("Search")),
+                .title("Search"),
         )
         .style(top_header_style())
         .render(search_area, buf);

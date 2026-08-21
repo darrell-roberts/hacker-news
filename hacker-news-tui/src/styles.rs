@@ -1,5 +1,5 @@
 //! Re-usable styles
-use ratatui::style::{Color, Style, Stylize as _};
+use ratatui::style::{Color, Style};
 
 /// An item is selected
 pub fn selected_style() -> Style {

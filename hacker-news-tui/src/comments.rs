@@ -9,7 +9,7 @@ use log::error;
 use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Constraint, Layout, Rect, Size},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, BorderType, Padding, Paragraph, StatefulWidget, Widget, Wrap},
 };

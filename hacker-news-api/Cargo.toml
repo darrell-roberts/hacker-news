@@ -4,28 +4,26 @@ version = "0.1.0"
 edition = "2021"
 license.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-[features]
-trace = ["tracing"]
-
 [dependencies]
 anyhow.workspace = true
-async-stream = "0.3"
 bytes = "1"
-futures-core = "0.3"
-futures-util = "0.3"
+futures.workspace = true
 log.workspace = true
+reqwest = {
+  version = "0.12",
+  features = [
+    "gzip",
+    "json",
+    "rustls-tls",
+    "stream",
+  ]
+}
 serde.workspace = true
 serde_json.workspace = true
 thiserror = "2"
-
+tokio = { version = "1", features = ["macros", "sync"] }
 tracing = { version = "0.1", optional = true }
 
-futures = "0.3"
-reqwest = { version = "0.12", features = [
-  "json",
-  "stream",
-  "gzip",
-  "rustls-tls",
-] }
-tokio = { version = "1", features = ["macros", "sync"] }
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[features]
+trace = ["tracing"]

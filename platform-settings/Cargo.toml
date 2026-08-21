@@ -9,8 +9,8 @@ futures = "0.3"
 log.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
-gio = "0.21"
-glib = "0.21"
+gio.workspace = true
+glib.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 anyhow.workspace = true

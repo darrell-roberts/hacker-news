@@ -15,10 +15,10 @@ build: check
 test:
     cargo test
 
-taplo_fmt *args='':
-    rg --files -g 'Cargo.toml' -g 'taplo.toml' | sort -u | xargs taplo fmt {{ args }}
+toml_format *args='':
+    rg --files -g 'Cargo.toml' | sort -u | xargs tombi fmt {{ args }}
 
-fmt: taplo_fmt
+fmt: toml_format
     cargo fmt
 
 linux-debian: build

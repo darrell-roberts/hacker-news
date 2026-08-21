@@ -3,8 +3,9 @@ use crate::{
     HackerNewsFields, ITEM_TYPE, SearchContext, SearchError, SearchResult,
     api::{Comment, Story},
 };
-use futures::{SinkExt, Stream, StreamExt, TryFutureExt, TryStreamExt, channel::mpsc};
-use futures_util::stream::FuturesUnordered;
+use futures::{
+    SinkExt, Stream, StreamExt, TryFutureExt, TryStreamExt, channel::mpsc, stream::FuturesUnordered,
+};
 use hacker_news_api::{ApiClient, ArticleType, Item, ItemEventData};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
