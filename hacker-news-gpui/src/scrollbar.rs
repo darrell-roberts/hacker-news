@@ -137,12 +137,9 @@ impl Render for Scrollbar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme: Theme = window.appearance().into();
 
-        let scrollbar_entity = cx.entity();
-
-        let entity_for_track = scrollbar_entity.clone();
-        let entity_for_move = scrollbar_entity.clone();
-        let entity_for_up = scrollbar_entity.clone();
-        let entity_for_down = scrollbar_entity.clone();
+        if !self.is_scrollable() {
+            return div().into_any();
+        }
 
         div()
             .id(self.id.clone())
@@ -151,7 +148,6 @@ impl Render for Scrollbar {
             .h_full()
             .bg(theme.surface())
             .rounded(TRACK_BORDER_RADIUS)
-            .when(!self.is_scrollable(), |div| div.invisible())
             .child(
                 div()
                     .id("scrollbar-track")
@@ -159,10 +155,10 @@ impl Render for Scrollbar {
                     .h_full()
                     .relative()
                     // Click on track to jump to position
-                    .on_mouse_down(
-                        MouseButton::Left,
+                    .on_mouse_down(MouseButton::Left, {
+                        let scrollbar_entity = cx.entity();
                         move |event: &MouseDownEvent, _window: &mut Window, app: &mut App| {
-                            entity_for_track.update(app, |scrollbar, cx| {
+                            scrollbar_entity.update(app, |scrollbar, cx| {
                                 let bounds = scrollbar.scroll_handle.bounds();
                                 let track_height = bounds.size.height;
                                 if track_height <= px(0.0) {
@@ -181,30 +177,32 @@ impl Render for Scrollbar {
                                 });
                                 cx.notify();
                             });
-                        },
-                    )
-                    .on_mouse_move(
+                        }
+                    })
+                    .on_mouse_move({
+                        let scrollbar_entity = cx.entity();
                         move |event: &MouseMoveEvent, _window: &mut Window, app: &mut App| {
-                            entity_for_move.update(app, |scrollbar, cx| {
+                            scrollbar_entity.update(app, |scrollbar, cx| {
                                 scrollbar.handle_drag_move(event, cx);
                             });
-                        },
-                    )
-                    .on_mouse_up(
-                        MouseButton::Left,
+                        }
+                    })
+                    .on_mouse_up(MouseButton::Left, {
+                        let scrollbar_entity = cx.entity();
                         move |_event: &MouseUpEvent, _window: &mut Window, app: &mut App| {
-                            entity_for_up.update(app, |scrollbar, cx| {
+                            scrollbar_entity.update(app, |scrollbar, cx| {
                                 scrollbar.handle_drag_end(cx);
                             });
-                        },
-                    )
+                        }
+                    })
                     .child(thumb_element(
                         self.visible_fraction(),
                         self.scroll_fraction(),
                         theme,
-                        entity_for_down,
+                        cx.entity(),
                     )),
             )
+            .into_any()
     }
 }
 
