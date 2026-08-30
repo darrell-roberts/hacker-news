@@ -35,6 +35,7 @@ impl Render for Tooltip {
         let online = self.content_entity.read(cx).online;
         div()
             .bg(black())
+            .opacity(0.70)
             .text_color(white())
             .rounded(rems(0.75))
             .p_1()
