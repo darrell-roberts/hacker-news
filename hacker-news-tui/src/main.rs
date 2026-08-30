@@ -1,14 +1,12 @@
 //! A hacker news reader for the terminal.
 
-use std::error::Error;
-
 use crate::{app::App, config::load_config};
 use color_eyre::eyre::Context;
-
 use hacker_news_config::init_logger;
 #[cfg(target_family = "unix")]
 use hacker_news_config::limits::check_nofiles_limit;
 use log::{debug, error};
+use std::error::Error;
 
 mod app;
 mod articles;

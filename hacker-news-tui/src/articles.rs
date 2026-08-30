@@ -1,4 +1,5 @@
 //! Articles list widget.
+use crate::styles::selected_style;
 use hacker_news_api::ArticleType;
 use hacker_news_search::api::{AgeLabel as _, Story};
 use ratatui::{
@@ -10,8 +11,6 @@ use ratatui::{
         Block, List, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget,
     },
 };
-
-use crate::styles::selected_style;
 
 #[derive(Default)]
 pub struct ArticlesState {

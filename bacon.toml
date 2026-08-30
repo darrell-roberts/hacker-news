@@ -1,8 +1,8 @@
 # This is a configuration file for the bacon tool
 #
 # Complete help on configuration: https://dystroy.org/bacon/config/
-# 
-# You may check the current default at
+#
+#  You may check the current default at
 #   https://github.com/Canop/bacon/blob/main/defaults/default-bacon.toml
 
 default_job = "check"
@@ -76,7 +76,7 @@ need_stdout = false
 [jobs.doc-open]
 command = ["cargo", "doc", "--color", "always", "--no-deps", "--open"]
 need_stdout = false
-on_success = "back"                                                    # so that we don't open the browser at each change
+on_success = "back"  # so that we don't open the browser at each change
 
 # You can run your application and have the result displayed in bacon,
 # if it makes sense for this crate.
@@ -130,4 +130,4 @@ allow_warnings = true
 # should go in your personal global prefs.toml file instead.
 [keybindings]
 # alt-m = "job:my-job"
-c = "job:clippy-all" # comment this to have 'c' run clippy on only the default target
+# c = "job:clippy-all"  # comment this to have 'c' run clippy on only the default target

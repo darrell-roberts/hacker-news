@@ -9,3 +9,4 @@ repo/
 *.flatpak
 cargo-sources.json
 .DS_Store
+.op/

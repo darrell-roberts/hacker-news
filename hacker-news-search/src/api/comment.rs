@@ -4,7 +4,7 @@ use crate::{ITEM_RANK, ITEM_TIME, SearchContext, SearchError, SearchResult};
 use std::{ops::Bound, time::SystemTime};
 use tantivy::{
     Order, Searcher, Term,
-    collector::{Count, MultiCollector, TopDocs},
+    collector::{Count, MultiCollector, TopDocs, sort_key::SortByStaticFastValue},
     query::{BooleanQuery, Occur, Query, RangeQuery, TermQuery},
     schema::IndexRecordOption,
 };
@@ -170,9 +170,11 @@ impl SearchContext {
 
         let mut multi_collector = MultiCollector::new();
 
-        let top_docs = TopDocs::with_limit(limit).and_offset(offset);
-
-        let docs_handle = multi_collector.add_collector(top_docs);
+        let docs_handle = multi_collector.add_collector(
+            TopDocs::with_limit(limit)
+                .and_offset(offset)
+                .order_by(SortByStaticFastValue::<u64>::for_field(ITEM_RANK)),
+        );
         let count_handle = multi_collector.add_collector(Count);
 
         let mut multi_fruit = searcher.search(&query, &multi_collector)?;
@@ -217,14 +219,13 @@ impl SearchContext {
 
     /// Get a single comment.
     fn comment(&self, searcher: &Searcher, comment_id: u64) -> SearchResult<Comment> {
-        let top_docs = TopDocs::with_limit(1);
         let parent_query = TermQuery::new(
             Term::from_field_u64(self.fields.id, comment_id),
             IndexRecordOption::Basic,
         );
 
         let (_score, doc_address) = searcher
-            .search(&parent_query, &top_docs)?
+            .search(&parent_query, &TopDocs::with_limit(1).order_by_score())?
             .into_iter()
             .next()
             .ok_or_else(|| SearchError::MissingDoc)?;

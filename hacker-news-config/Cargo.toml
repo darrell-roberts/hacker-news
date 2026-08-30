@@ -1,13 +1,13 @@
 [package]
 name = "hacker-news-config"
 version = "0.1.0"
-license.workspace = true
 edition.workspace = true
+license.workspace = true
 
 [dependencies]
 anyhow.workspace = true
 app_dirs2.workspace = true
-flexi_logger.workspace = true
+flexi_logger = "0.31"
 hacker-news-api.workspace = true
 hacker-news-search.workspace = true
 rmp-serde = "1.3"

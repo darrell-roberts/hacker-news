@@ -76,10 +76,14 @@ impl SearchContext {
         };
 
         let searcher = self.searcher();
-        let top_docs = TopDocs::with_limit(limit).and_offset(offset);
 
         searcher
-            .search(query, &top_docs)?
+            .search(
+                query,
+                &TopDocs::with_limit(limit)
+                    .and_offset(offset)
+                    .order_by_score(),
+            )?
             .into_iter()
             .map(|(_, doc_address)| self.to_story(searcher.doc(doc_address)?))
             .collect::<Result<Vec<_>, _>>()
@@ -92,14 +96,13 @@ impl SearchContext {
 
     pub fn story_doc(&self, story_id: u64) -> SearchResult<TantivyDocument> {
         let searcher = self.searcher();
-        let top_docs = TopDocs::with_limit(1);
         let story_query: Box<dyn Query> = Box::new(TermQuery::new(
             Term::from_field_u64(self.fields.id, story_id),
             IndexRecordOption::Basic,
         ));
 
         let (_score, doc_address) = searcher
-            .search(&story_query, &top_docs)?
+            .search(&story_query, &TopDocs::with_limit(1).order_by_score())?
             .into_iter()
             .next()
             .ok_or_else(|| SearchError::MissingDoc)?;
