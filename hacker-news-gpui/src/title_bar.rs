@@ -259,23 +259,27 @@ impl Render for TitleBar {
                     div()
                         .flex()
                         .gap_2()
-                        .child(
-                            /* minimize button */
-                            window_control(button_hover).child("−").id("min").on_click(
-                                |_, window, _cx| {
-                                    window.minimize_window();
-                                },
-                            ),
-                        )
-                        .child(
-                            /* maximize button */
-                            window_control(button_hover)
-                                .child(if window.is_maximized() { "❐" } else { "□" })
-                                .id("max")
-                                .on_click(|_, window, _| {
-                                    window.zoom_window();
-                                }),
-                        )
+                        .when(window.window_controls().minimize, |this| {
+                            this.child(
+                                /* minimize button */
+                                window_control(button_hover).child("−").id("min").on_click(
+                                    |_, window, _cx| {
+                                        window.minimize_window();
+                                    },
+                                ),
+                            )
+                        })
+                        .when(window.window_controls().maximize, |this| {
+                            this.child(
+                                /* maximize button */
+                                window_control(button_hover)
+                                    .child(if window.is_maximized() { "❐" } else { "□" })
+                                    .id("max")
+                                    .on_click(|_, window, _| {
+                                        window.zoom_window();
+                                    }),
+                            )
+                        })
                         .child(
                             /* close button */
                             window_control(button_hover)

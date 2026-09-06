@@ -102,7 +102,7 @@ impl Render for ContentView {
                                 if *hover {
                                     window.focus(&focus_handle, cx);
                                 } else {
-                                    window.blur()
+                                    window.blur(cx)
                                 }
                             })
                             .h_full()
@@ -172,7 +172,7 @@ impl Render for ContentView {
                                 if *hover {
                                     window.focus(&focus_handle, cx);
                                 } else {
-                                    window.blur();
+                                    window.blur(cx);
                                 }
                             })
                             .h_full()

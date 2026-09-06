@@ -99,7 +99,7 @@ impl ContentView {
     /// # Returns
     ///
     /// Returns an [`Entity<ContentView>`] representing the newly created content view.
-    pub fn new(_window: &mut Window, app: &mut App) -> Entity<Self> {
+    pub fn new(window: &mut Window, app: &mut App) -> Entity<Self> {
         let articles_focus_handle = app.focus_handle();
         let comments_focus_handle = app.focus_handle();
 
@@ -250,6 +250,10 @@ impl ContentView {
             })
             .detach();
 
+            // Set the article pane width to %30 of the initial window size.
+            let width = window.bounds().size.width;
+            let articles_width = width * 0.3;
+
             Self {
                 list_state,
                 articles: Default::default(),
@@ -260,7 +264,7 @@ impl ContentView {
                 article_comment_counts: Default::default(),
                 background_refresh_count: 0,
                 comment_entities: Vec::new(),
-                articles_width: px(800.0),
+                articles_width,
                 is_dragging_divider: false,
                 divider_drag_offset: px(0.0),
                 fetching_comments: false,
