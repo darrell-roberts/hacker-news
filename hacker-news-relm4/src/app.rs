@@ -71,6 +71,7 @@ impl Component for AppModel {
     type CommandOutput = ();
 
     view! {
+        #[name = "window"]
         gtk::Window {
             set_default_width: 1024,
             set_default_height: 1024,
@@ -237,6 +238,23 @@ impl Component for AppModel {
         let comments_box = model.comments.widget();
 
         let widgets = view_output!();
+
+        let window = widgets.window.clone();
+
+        let style_manager = adw::StyleManager::default();
+        window.add_css_class(if style_manager.is_dark() {
+            "dark"
+        } else {
+            "light"
+        });
+        style_manager.connect_dark_notify(move |style_manager| {
+            window.add_css_class(if style_manager.is_dark() {
+                "dark"
+            } else {
+                "light"
+            });
+        });
+
         ComponentParts { model, widgets }
     }
 
