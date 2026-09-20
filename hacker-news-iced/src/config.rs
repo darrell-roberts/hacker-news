@@ -48,7 +48,7 @@ pub async fn save_config(config: Config) -> anyhow::Result<()> {
 
 /// Load application configuration.
 pub fn load_config() -> anyhow::Result<Config> {
-    let index_config = hacker_news_config::load_config(INDEX_CONFIG)?;
+    let index_config = hacker_news_config::index_config()?;
     let gui_config = hacker_news_config::load_config(CONFIG_FILE)?;
 
     Ok(Config {

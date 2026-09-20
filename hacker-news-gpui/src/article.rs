@@ -1,10 +1,11 @@
 //! Article view.
 use crate::{
-    common::{COMMENT_IMAGE, hover_element, parse_date, update_url, url_punycode},
+    common::{COMMENT_IMAGE, hover_element, update_url, url_punycode},
     content::{ContentEvent, ContentView},
     rich_text::{ViewStyledText, parse_layout},
     theme::Theme,
 };
+use friendly_duration::parse_friendly_age;
 use gpui::{
     Animation, AnimationExt, AppContext, AsyncApp, Entity, Fill, ImageSource, SharedString,
     StyleRefinement, Window, div, img, prelude::*, pulsating_between, quadratic, rems, rgb,
@@ -94,7 +95,7 @@ impl ArticleView {
                     format!("{order_change}").into()
                 },
                 order_change,
-                age: parse_date(item.time).unwrap_or_default().into(),
+                age: parse_friendly_age(item.time).unwrap_or_default().into(),
                 comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
                 // rank: format!("{rank}").into(),
                 comment_ids: Arc::new(item.kids),
