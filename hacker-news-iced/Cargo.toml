@@ -51,6 +51,7 @@ path = "src/main.rs"
 anyhow.workspace = true
 chrono.workspace = true
 chrono-tz.workspace = true
+friendly-duration.workspace = true
 hacker-news-api.workspace = true
 hacker-news-config.workspace = true
 hacker-news-search.workspace = true
