@@ -3,6 +3,7 @@ use crate::{
     HackerNewsFields, ITEM_TYPE, SearchContext, SearchError, SearchResult,
     api::{Comment, Story},
 };
+use anyhow::Context;
 use futures::{
     SinkExt, Stream, StreamExt, TryFutureExt, TryStreamExt, channel::mpsc, stream::FuturesUnordered,
 };
@@ -160,6 +161,7 @@ impl<'a> WriteContext<'a> {
         Ok(ts)
     }
 }
+
 /// Yield a stream of comments for the given comment_ids.
 #[cfg_attr(feature = "trace", instrument(skip_all))]
 fn comment_stream(
@@ -332,9 +334,9 @@ pub async fn rebuild_index(
 
     writer_context.commit()?;
 
-    let g = ctx.read().unwrap();
-    g.refresh_reader()?;
-    document_stats(&g, start_time.elapsed(), category_type)
+    let search_context = ctx.read().unwrap();
+    search_context.refresh_reader()?;
+    document_stats(&search_context, start_time.elapsed(), category_type)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -574,7 +576,7 @@ pub fn document_stats(
         build_time,
         built_on: SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap()
+            .context("System time before UNIX epoch")?
             .as_secs(),
         category,
     })
