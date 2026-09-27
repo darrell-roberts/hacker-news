@@ -50,6 +50,28 @@ pub struct ArticleSelection {
     pub viewing_article_total: usize,
 }
 
+impl ArticleSelection {
+    /// Article selection as the menu actions.
+    fn as_menu_actions(&self) -> [&dyn Action; 2] {
+        [
+            match self.viewing_article_type {
+                ArticleType::New => &NewTopic,
+                ArticleType::Best => &BestTopic,
+                ArticleType::Top => &TopTopic,
+                ArticleType::Ask => &AskTopic,
+                ArticleType::Show => &ShowTopic,
+                ArticleType::Job => &JobTopic,
+            },
+            match self.viewing_article_total {
+                25 => &ArticleLimit25,
+                50 => &ArticleLimit50,
+                75 => &ArticleLimit75,
+                _ => unreachable!("only 25, 50, 75"),
+            },
+        ]
+    }
+}
+
 impl Global for ArticleSelection {}
 
 /// Global state of url hover.
@@ -64,17 +86,31 @@ pub struct Config {
 
 impl Global for Config {}
 
-fn build_menus(action: &impl Action) -> impl IntoIterator<Item = Menu> {
+fn build_menus(
+    selected_topic: &dyn Action,
+    selected_limit: &dyn Action,
+) -> impl IntoIterator<Item = Menu> {
     [Menu::new("☰").items([
         MenuItem::submenu(Menu::new("Topics").items([
-            MenuItem::action("🔝  Top", TopTopic).checked(TopTopic.partial_eq(action)),
-            MenuItem::action("⭐  Best", BestTopic).checked(BestTopic.partial_eq(action)),
-            MenuItem::action("🆕  New", NewTopic).checked(NewTopic.partial_eq(action)),
+            MenuItem::action("🔝  Top", TopTopic).checked(TopTopic.partial_eq(selected_topic)),
+            MenuItem::action("⭐  Best", BestTopic).checked(BestTopic.partial_eq(selected_topic)),
+            MenuItem::action("🆕  New", NewTopic).checked(NewTopic.partial_eq(selected_topic)),
             MenuItem::separator(),
-            MenuItem::action("❓  Ask", AskTopic).checked(AskTopic.partial_eq(action)),
-            MenuItem::action("📺  Show", ShowTopic).checked(ShowTopic.partial_eq(action)),
-            MenuItem::action("💼  Job", JobTopic).checked(JobTopic.partial_eq(action)),
+            MenuItem::action("❓  Ask", AskTopic).checked(AskTopic.partial_eq(selected_topic)),
+            MenuItem::action("📺  Show", ShowTopic).checked(ShowTopic.partial_eq(selected_topic)),
+            MenuItem::action("💼  Job", JobTopic).checked(JobTopic.partial_eq(selected_topic)),
         ])),
+        MenuItem::Separator,
+        MenuItem::Submenu(
+            Menu::new("Limit").items([
+                MenuItem::action("25", ArticleLimit25)
+                    .checked(ArticleLimit25.partial_eq(selected_limit)),
+                MenuItem::action("50", ArticleLimit50)
+                    .checked(ArticleLimit50.partial_eq(selected_limit)),
+                MenuItem::action("75", ArticleLimit75)
+                    .checked(ArticleLimit75.partial_eq(selected_limit)),
+            ]),
+        ),
         MenuItem::Separator,
         MenuItem::action("⏻  Quit", Quit),
     ])]
@@ -108,41 +144,63 @@ fn main() -> anyhow::Result<()> {
 
         // Add menu action handlers.
         app.on_action(quit);
-        app.on_action(|action: &TopTopic, app| {
+        app.on_action(|_: &TopTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::Top;
             });
-            app.set_menus(build_menus(action));
+            update_menus(app);
         });
-        app.on_action(|action: &BestTopic, app| {
+        app.on_action(|_: &BestTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::Best;
             });
-            app.set_menus(build_menus(action));
+            update_menus(app);
         });
-        app.on_action(|action: &NewTopic, app| {
+        app.on_action(|_: &NewTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::New;
             });
-            app.set_menus(build_menus(action));
+            update_menus(app);
         });
-        app.on_action(|action: &AskTopic, app| {
+        app.on_action(|_: &AskTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::Ask;
             });
-            app.set_menus(build_menus(action));
+            update_menus(app);
         });
-        app.on_action(|action: &ShowTopic, app| {
+        app.on_action(|_: &ShowTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::Show;
             });
-            app.set_menus(build_menus(action));
+            update_menus(app);
         });
-        app.on_action(|action: &JobTopic, app| {
+        app.on_action(|_: &JobTopic, app| {
             app.update_global(|state: &mut ArticleSelection, _cx| {
                 state.viewing_article_type = ArticleType::Job;
             });
-            app.set_menus(build_menus(action));
+            update_menus(app);
+        });
+
+        // Limits
+        app.on_action(|_: &ArticleLimit25, app| {
+            app.update_global(|state: &mut ArticleSelection, _cx| {
+                state.viewing_article_total = 25;
+            });
+            update_menus(app);
+        });
+
+        app.on_action(|_: &ArticleLimit50, app| {
+            app.update_global(|state: &mut ArticleSelection, _cx| {
+                state.viewing_article_total = 50;
+            });
+            update_menus(app);
+        });
+
+        app.on_action(|_: &ArticleLimit75, app| {
+            app.update_global(|state: &mut ArticleSelection, _cx| {
+                state.viewing_article_total = 75;
+            });
+            update_menus(app);
         });
 
         // Bind hot keys to the actions. The menu items automatically display
@@ -158,7 +216,7 @@ fn main() -> anyhow::Result<()> {
         ]);
 
         // Add menu items
-        app.set_menus(build_menus(&TopTopic));
+        app.set_menus(build_menus(&TopTopic, &ArticleLimit50));
 
         app.on_window_closed(|app, _window_id| {
             app.quit();
@@ -222,7 +280,16 @@ fn main() -> anyhow::Result<()> {
 actions!(
     set_menus,
     [
-        Quit, TopTopic, BestTopic, NewTopic, AskTopic, ShowTopic, JobTopic
+        Quit,
+        TopTopic,
+        BestTopic,
+        NewTopic,
+        AskTopic,
+        ShowTopic,
+        JobTopic,
+        ArticleLimit25,
+        ArticleLimit50,
+        ArticleLimit75,
     ]
 );
 
@@ -230,4 +297,12 @@ actions!(
 fn quit(_: &Quit, cx: &mut App) {
     info!("Gracefully quitting the application...");
     cx.quit();
+}
+
+// After updating the article selection state rebuild the main menu and
+// set checked selection for actions.
+fn update_menus(app: &mut App) {
+    let state = app.global::<ArticleSelection>();
+    let [selected_topic, selected_limit] = state.as_menu_actions();
+    app.set_menus(build_menus(selected_topic, selected_limit));
 }
