@@ -197,22 +197,7 @@ impl ArticleState {
                                     widget::container(
                                         Row::new()
                                             .push({
-                                                let has_rust = story.title.split(' ').any(|word| {
-                                                    word == "Rust"
-                                                        || (word.starts_with("Rust")
-                                                            && word.len() == 5
-                                                            && word
-                                                                .chars()
-                                                                .last()
-                                                                .map(|c| {
-                                                                    matches!(
-                                                                        c,
-                                                                        ',' | '.' | ':' | '?' | '!'
-                                                                    )
-                                                                })
-                                                                .unwrap_or(false))
-                                                });
-                                                has_rust.then(|| {
+                                                story.title.split(' ').any(is_rust).then(|| {
                                                     widget::container(
                                                         widget::image(&self.rust_image)
                                                             .content_fit(iced::ContentFit::Contain),
@@ -589,6 +574,18 @@ impl ArticleState {
             Err(err) => error_task(err),
         }
     }
+}
+
+// Check if the word Rust shows up in this text.
+fn is_rust(word: &str) -> bool {
+    word == "Rust"
+        || (word.starts_with("Rust")
+            && word.len() == 5
+            && word
+                .chars()
+                .last()
+                .map(|c| matches!(c, ',' | '.' | ':' | '?' | '!'))
+                .unwrap_or(false))
 }
 
 fn clear_index_story_task(story_id: u64) -> Task<AppMsg> {

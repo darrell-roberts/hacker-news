@@ -81,10 +81,11 @@ impl ApiClient {
 
     /// Make firebase api call.
     #[cfg_attr(feature = "trace", instrument(skip_all))]
-    async fn call(&self, limit: usize, api: &str) -> Result<Vec<Item>> {
-        let mut ids = self
+    async fn call(&self, limit: usize, api: &'static str) -> Result<Vec<Item>> {
+        let ids = self
             .client
             .get(format!("{}/{api}", Self::API_END_POINT))
+            .query(&[("orderBy", "$key"), ("limitToLast", &format!("{limit}"))])
             .send()
             // .inspect_err(|err| {
             //     dbg!(err);
@@ -95,8 +96,6 @@ impl ApiClient {
             // })
             .and_then(|resp| resp.json::<Vec<u64>>())
             .await?;
-
-        ids.truncate(limit);
         self.items(&ids).try_collect().await
     }
 
