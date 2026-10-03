@@ -275,17 +275,21 @@ fn collect_elements(
 
 /// Pushes a new layout entry or extends the last one if it is the same variant,
 /// reducing fragmentation from many small adjacent segments of the same style.
-fn push_or_merge(layout: &mut Vec<TextLayout>, ctor: fn(usize) -> TextLayout, len: usize) {
+fn push_or_merge(
+    layout: &mut Vec<TextLayout>,
+    mk_text_layout: fn(usize) -> TextLayout,
+    len: usize,
+) {
     // Check if the last entry is the same variant so we can merge.
     if let Some(last) = layout.last_mut() {
-        // Build a dummy to compare discriminants.
-        let candidate = ctor(0);
+        // Build an empty text layout.
+        let candidate = mk_text_layout(0);
         if std::mem::discriminant(last) == std::mem::discriminant(&candidate) {
-            *last = ctor(last.len() + len);
+            *last = mk_text_layout(last.len() + len);
             return;
         }
     }
-    layout.push(ctor(len));
+    layout.push(mk_text_layout(len));
 }
 
 /// Represents the different text formatting styles used in comment body layout.
@@ -356,11 +360,11 @@ pub fn url_ranges(layouts: &[TextLayout]) -> Vec<Range<usize>> {
     let mut ranges = Vec::new();
     let mut total_chars = 0;
     for layout in layouts {
-        let n = layout.len();
+        let layout_len = layout.len();
         if matches!(layout, TextLayout::Link(_)) {
-            ranges.push(total_chars..(total_chars + n));
+            ranges.push(total_chars..(total_chars + layout_len));
         }
-        total_chars += n;
+        total_chars += layout_len;
     }
     ranges
 }

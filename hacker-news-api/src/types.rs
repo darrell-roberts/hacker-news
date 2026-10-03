@@ -117,6 +117,18 @@ impl ArticleType {
             ArticleType::Job => "Job",
         }
     }
+
+    /// As the resource name for a the api path.
+    pub(crate) fn as_path(&self) -> &'static str {
+        match self {
+            ArticleType::New => "newstories.json",
+            ArticleType::Best => "beststories.json",
+            ArticleType::Top => "topstories.json",
+            ArticleType::Ask => "askstories.json",
+            ArticleType::Show => "showstories.json",
+            ArticleType::Job => "jobstories.json",
+        }
+    }
 }
 
 impl FromStr for ArticleType {

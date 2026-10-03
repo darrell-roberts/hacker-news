@@ -33,7 +33,7 @@ impl FooterView {
     ///
     /// # Arguments
     ///
-    /// * `_cx` - A mutable reference to the Window context.
+    /// * `_window` - A mutable reference to the Window context.
     /// * `app` - A mutable reference to the App.
     /// * `content_entity` - An Entity representing the ContentView.
     ///
@@ -41,7 +41,7 @@ impl FooterView {
     ///
     /// Returns an Entity of FooterView.
     pub fn new(
-        _cx: &mut Window,
+        _window: &mut Window,
         app: &mut App,
         content_entity: Entity<ContentView>,
     ) -> Entity<Self> {

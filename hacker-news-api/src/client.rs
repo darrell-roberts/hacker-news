@@ -187,14 +187,7 @@ impl ApiClient {
         article_type: ArticleType,
         sender: Sender<StoriesEventData>,
     ) -> Result<()> {
-        let path = match article_type {
-            ArticleType::New => "newstories.json",
-            ArticleType::Best => "beststories.json",
-            ArticleType::Top => "topstories.json",
-            ArticleType::Ask => "askstories.json",
-            ArticleType::Show => "showstories.json",
-            ArticleType::Job => "jobstories.json",
-        };
+        let path = article_type.as_path();
         let mut stream = self
             .event_source::<StoriesEventData>(format!("{}/{path}", Self::API_END_POINT))
             .await?;
