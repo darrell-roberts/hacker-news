@@ -93,7 +93,7 @@ impl ContentView {
     ///
     /// # Arguments
     ///
-    /// * `_window` - A mutable reference to the window instance.
+    /// * `window` - A mutable reference to the window instance.
     /// * `app` - A mutable reference to the application instance.
     ///
     /// # Returns
