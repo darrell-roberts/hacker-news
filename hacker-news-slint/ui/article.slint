@@ -1,0 +1,41 @@
+// Article data model and component.
+import { HorizontalBox, VerticalBox } from "std-widgets.slint";
+
+export struct ArticleData { title: string, author: string, age: string }
+
+export component Article inherits FlexboxLayout {
+    in property <string> title;
+    in property <string> author;
+    in property <string> age;
+    in property <int> rank;
+
+    padding: 4px;
+    flex-direction: column;
+
+    FlexboxLayout {
+        flex-direction: row;
+        spacing: 2px;
+
+        Text {
+            text: (rank + 1) + ":";
+        }
+
+        Text {
+            text: title;
+            font-weight: FontWeight.bold;
+        }
+
+        Text {
+            text: "by " + author;
+            font-italic: true;
+        }
+    }
+
+    FlexboxLayout {
+        flex-direction: row;
+
+        Text {
+            text: age;
+        }
+    }
+}

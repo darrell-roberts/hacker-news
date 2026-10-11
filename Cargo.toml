@@ -1,12 +1,14 @@
 [workspace]
 resolver = "2"
-members = ["friendly-duration",
+members = [
+  "friendly-duration",
   "hacker-news-api",
   "hacker-news-config",
   "hacker-news-gpui",
   "hacker-news-iced",
   "hacker-news-relm4",
   "hacker-news-search",
+  "hacker-news-slint",
   "hacker-news-tui",
   "html-sanitizer",
   "platform-settings",

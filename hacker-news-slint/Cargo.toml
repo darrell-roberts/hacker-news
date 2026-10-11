@@ -1,0 +1,22 @@
+[package]
+name = "hacker-news-slint"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+friendly-duration.workspace = true
+futures.workspace = true
+hacker-news-api.workspace = true
+hacker-news-config.workspace = true
+log.workspace = true
+slint = "1.18.1"
+tokio.workspace = true
+
+[build-dependencies]
+slint-build = "1.18.1"
+
+[profile.release]
+lto = true
+codegen-units = 1

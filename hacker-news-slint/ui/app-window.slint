@@ -1,0 +1,46 @@
+// The main application window.
+import {
+    Button,
+    VerticalBox,
+    HorizontalBox,
+    ScrollView,
+    ListView,
+} from "std-widgets.slint";
+import { Article, ArticleData } from "article.slint";
+
+export component AppWindow inherits Window {
+    in property <[ArticleData]> articles;
+
+    VerticalLayout {
+        alignment: stretch;
+
+        Text {
+            text: "Total articles: " + articles.length;
+            height: 2rem;
+        }
+
+        FlexboxLayout {
+            flex-direction: row;
+            flex-wrap: no-wrap;
+
+            ListView {
+                width: parent.width / 2;
+
+                for article[index] in articles: Article {
+                    title: article.title;
+                    author: article.author;
+                    age: article.age;
+                    rank: index;
+                }
+            }
+
+            FlexboxLayout {
+                flex-direction: column;
+
+                Text {
+                    text: "This would be a comment";
+                }
+            }
+        }
+    }
+}
