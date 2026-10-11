@@ -17,7 +17,7 @@ use bytes::Bytes;
 use futures::{
     future, stream::FuturesOrdered, FutureExt as _, TryFutureExt, TryStream, TryStreamExt,
 };
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use reqwest::{header, IntoUrl};
 use serde::Deserialize;
 use std::{
@@ -85,7 +85,10 @@ impl ApiClient {
         let ids = self
             .client
             .get(format!("{}/{api}", Self::API_END_POINT))
-            .query(&[("orderBy", "$key"), ("limitToLast", &format!("{limit}"))])
+            .query(&[
+                ("orderBy", "\"$key\""),
+                ("limitToFirst", &format!("{limit}")),
+            ])
             .send()
             // .inspect_err(|err| {
             //     dbg!(err);
@@ -163,6 +166,7 @@ impl ApiClient {
     fn event_source<EventData>(
         &self,
         url: impl IntoUrl,
+        limit: usize,
     ) -> impl Future<
         Output = reqwest::Result<impl TryStream<Ok = Option<EventData>, Error = anyhow::Error>>,
     >
@@ -172,6 +176,10 @@ impl ApiClient {
         self.client
             .get(url)
             .header(header::ACCEPT, "text/event-stream")
+            .query(&[
+                ("orderBy", "\"$key\""),
+                ("limitToFirst", &format!("{limit}")),
+            ])
             .send()
             .map_ok(|response| {
                 response
@@ -185,11 +193,12 @@ impl ApiClient {
     pub async fn articles_list_stream(
         &self,
         article_type: ArticleType,
+        limit: usize,
         sender: Sender<StoriesEventData>,
     ) -> Result<()> {
         let path = article_type.as_path();
         let mut stream = self
-            .event_source::<StoriesEventData>(format!("{}/{path}", Self::API_END_POINT))
+            .event_source::<StoriesEventData>(format!("{}/{path}", Self::API_END_POINT), limit)
             .await?;
 
         while let Some(event) = stream.try_next().await? {
@@ -203,7 +212,10 @@ impl ApiClient {
     /// Subscribe to updates to a story via server side event sourcing.
     pub async fn item_stream(&self, story_id: u64, sender: Sender<ItemEventData>) -> Result<()> {
         let mut stream = self
-            .event_source::<ItemEventData>(format!("{}/item/{story_id}.json", Self::API_END_POINT))
+            .event_source::<ItemEventData>(
+                format!("{}/item/{story_id}.json", Self::API_END_POINT),
+                1,
+            )
             .await?;
 
         while let Some(event) = stream.try_next().await? {
@@ -228,6 +240,8 @@ where
         .then(|| lines.next())?
         .filter(|data| data.starts_with(b"data: "))
         .and_then(|data| {
+            #[cfg(debug_assertions)]
+            debug!("Event: {}", String::from_utf8_lossy(data));
             serde_json::from_slice::<EventData>(&data[6..])
                 .with_context(|| {
                     format!(
@@ -244,6 +258,7 @@ where
 /// channel and a task handle for consuming events and canceling the task.
 pub fn subscribe_to_article_list(
     article_type: ArticleType,
+    limit: usize,
 ) -> (Receiver<StoriesEventData>, JoinHandle<()>) {
     let (tx, rx) = mpsc::channel(100);
 
@@ -251,7 +266,10 @@ pub fn subscribe_to_article_list(
         loop {
             match ApiClient::new() {
                 Ok(client) => {
-                    if let Err(err) = client.articles_list_stream(article_type, tx.clone()).await {
+                    if let Err(err) = client
+                        .articles_list_stream(article_type, limit, tx.clone())
+                        .await
+                    {
                         warn!("Event stream for {article_type:?} severed {err}");
                         // The task running this may have been dropped/cancelled. As a result we don't
                         // need to restart this event subscription.

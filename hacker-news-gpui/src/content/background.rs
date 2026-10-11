@@ -203,14 +203,11 @@ pub(super) fn start_background_article_list_subscription(
     let client = app.read_global(|client: &ApiClientState, _app| client.0.clone());
 
     gpui_tokio::Tokio::spawn(app, async move {
-        let (mut rx, handle) = subscribe_to_article_list(viewing_article_type);
+        let (mut rx, handle) =
+            subscribe_to_article_list(viewing_article_type, viewing_article_total);
 
         while let Some(event) = rx.recv().await {
-            let article_ids = event
-                .data
-                .into_iter()
-                .take(viewing_article_total)
-                .collect::<Vec<_>>();
+            let article_ids = event.data.into_iter().collect::<Vec<_>>();
 
             let result = client
                 .items(&article_ids)
