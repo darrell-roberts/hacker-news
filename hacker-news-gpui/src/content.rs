@@ -15,7 +15,7 @@ use gpui::{
 use gpui_tokio::JoinError;
 use hacker_news_api::{ArticleType, Item};
 use log::{error, info};
-use std::{collections::HashMap, f32};
+use std::collections::HashMap;
 
 mod background;
 mod render;
