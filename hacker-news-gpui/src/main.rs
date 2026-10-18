@@ -86,6 +86,10 @@ pub struct Config {
 
 impl Global for Config {}
 
+pub struct DefaultFont(String);
+
+impl Global for DefaultFont {}
+
 fn build_menus(
     selected_topic: &dyn Action,
     selected_limit: &dyn Action,
@@ -139,6 +143,8 @@ fn main() -> anyhow::Result<()> {
         });
         app.set_global(UrlHover(None));
         app.set_global(config);
+
+        app.set_global(DefaultFont(default_system_font()));
 
         app.activate(true);
 
@@ -305,4 +311,19 @@ fn update_menus(app: &mut App) {
     let state = app.global::<ArticleSelection>();
     let [selected_topic, selected_limit] = state.as_menu_actions();
     app.set_menus(build_menus(selected_topic, selected_limit));
+}
+
+#[cfg(target_os = "linux")]
+fn default_system_font() -> String {
+    let initial_font = platform_settings::initial_font_name();
+    if initial_font.is_empty() {
+        ".SystemUIFont".into()
+    } else {
+        initial_font
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn default_system_font() -> String {
+    ".SystemUIFont".into()
 }

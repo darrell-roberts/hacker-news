@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["friendly-duration",
+members = [
+  "friendly-duration",
   "hacker-news-api",
   "hacker-news-config",
   "hacker-news-gpui",
@@ -29,10 +30,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["full"] }
 
+friendly-duration.path = "friendly-duration"
 hacker-news-api.path = "hacker-news-api"
 hacker-news-config.path = "hacker-news-config"
 hacker-news-search.path = "hacker-news-search"
 html-sanitizer.path = "html-sanitizer"
-
-[workspace.dependencies.friendly-duration]
-path = "friendly-duration"
+platform-settings.path = "platform-settings"

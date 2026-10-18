@@ -1,6 +1,6 @@
 //! Main Window.
 use crate::{
-    Config, content::ContentView, footer::FooterView, header::Header, theme::Theme,
+    Config, DefaultFont, content::ContentView, footer::FooterView, header::Header, theme::Theme,
     title_bar::TitleBar,
 };
 use gpui::{
@@ -109,6 +109,7 @@ pub struct MainWindow {
     content: Entity<ContentView>,
     footer: Entity<FooterView>,
     base_font_size: Pixels,
+    base_font_name: SharedString,
     title_bar: Entity<TitleBar>,
 }
 
@@ -134,6 +135,8 @@ impl MainWindow {
                 app.refresh_windows();
             })
             .detach();
+
+        let base_font_name = app.global::<DefaultFont>().0.clone().into();
 
         app.new(move |cx| {
             // Listen to font size increase/decrease key bindings.
@@ -171,6 +174,7 @@ impl MainWindow {
                 content,
                 footer,
                 base_font_size: px(font_size),
+                base_font_name,
             }
         })
     }
@@ -182,7 +186,7 @@ impl Render for MainWindow {
 
         div()
             .id("main_window")
-            .font_family(".SystemUIFont")
+            .font_family(self.base_font_name.clone())
             .text_size(self.base_font_size)
             .text_color(theme.text_color())
             .flex()
