@@ -3391,6 +3391,7 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
+ "platform-settings",
  "serde",
  "tokio",
  "tracing",

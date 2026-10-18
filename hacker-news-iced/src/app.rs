@@ -116,6 +116,26 @@ pub enum AppMsg {
     Back,
     #[cfg_attr(not(target_os = "linux"), expect(unused))]
     SystemFontScale(f32),
+    SystemFont(String),
+}
+
+impl From<platform_settings::SettingChange> for AppMsg {
+    fn from(change: platform_settings::SettingChange) -> Self {
+        match change {
+            platform_settings::SettingChange::Theme(theme) => AppMsg::ChangeTheme(to_theme(theme)),
+            platform_settings::SettingChange::FontScale(scale) => {
+                AppMsg::SystemFontScale(scale as f32)
+            }
+            platform_settings::SettingChange::FontName(name) => AppMsg::SystemFont(name),
+        }
+    }
+}
+
+pub(crate) fn to_theme(theme: platform_settings::Theme) -> iced::Theme {
+    match theme {
+        platform_settings::Theme::Dark => Theme::Dark,
+        platform_settings::Theme::Light => Theme::Light,
+    }
 }
 
 pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
@@ -432,6 +452,10 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                 Task::done(FooterMsg::Scale(app.scale)).map(AppMsg::Footer),
                 save_task(app),
             ])
+        }
+        AppMsg::SystemFont(font_name) => {
+            log::info!("Received new font name: {font_name}");
+            Task::none()
         }
     }
 }

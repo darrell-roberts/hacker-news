@@ -2,6 +2,8 @@ use anyhow::Context;
 use app::{App, AppMsg, PaneState, ScrollBy, update, view};
 use articles::{ArticleMsg, ArticleState};
 use footer::FooterState;
+#[cfg(target_os = "linux")]
+use futures::StreamExt;
 use hacker_news_api::ArticleType;
 #[cfg(target_family = "unix")]
 use hacker_news_config::limits::check_nofiles_limit;
@@ -36,10 +38,6 @@ mod config;
 mod footer;
 mod full_search;
 mod header;
-#[cfg(target_os = "linux")]
-mod linux;
-#[cfg(target_os = "macos")]
-pub mod macos;
 mod nav_history;
 mod richtext;
 #[cfg(feature = "trace")]
@@ -104,7 +102,9 @@ fn start() -> anyhow::Result<()> {
                 resize_events().map(|(_id, size)| AppMsg::WindowResize(size)),
                 story_handle_watcher,
                 #[cfg(target_os = "linux")]
-                Subscription::run(linux::listen_to_system_changes),
+                Subscription::run(|| {
+                    platform_settings::listen_to_system_changes().map(AppMsg::from)
+                }),
             ])
         })
         .window(window::Settings {
@@ -148,7 +148,7 @@ fn create_app(search_context: Arc<RwLock<SearchContext>>) -> App {
                 #[cfg(not(target_os = "linux"))]
                 scale: 1.,
                 #[cfg(target_os = "linux")]
-                scale: linux::initial_font_scale(),
+                scale: platform_settings::initial_font_scale() as f32,
                 header: HeaderState {
                     search_context: search_context.clone(),
                     article_count: 75,
@@ -162,7 +162,7 @@ fn create_app(search_context: Arc<RwLock<SearchContext>>) -> App {
                     #[cfg(not(target_os = "linux"))]
                     scale: 1.,
                     #[cfg(target_os = "linux")]
-                    scale: linux::initial_font_scale(),
+                    scale: platform_settings::initial_font_scale() as f32,
                     viewing_index: ArticleType::Top,
                     index_stats: HashMap::new(),
                     index_progress: None,
@@ -184,14 +184,16 @@ fn create_app(search_context: Arc<RwLock<SearchContext>>) -> App {
     {
         use log::info;
 
-        app.scale = linux::initial_font_scale();
+        app.scale = platform_settings::initial_font_scale() as f32;
         app.footer.scale = app.scale;
         info!("Setting scale to {} from system font scale", app.scale);
-        app.theme = linux::initial_theme();
+        app.theme = app::to_theme(platform_settings::initial_theme());
     }
     #[cfg(target_os = "macos")]
     {
-        app.theme = macos::initial_theme().unwrap_or(Theme::Light);
+        app.theme = platform_settings::initial_theme()
+            .map(to_theme)
+            .unwrap_or(Theme::Light);
     }
     app
 }
