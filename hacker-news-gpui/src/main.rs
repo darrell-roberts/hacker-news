@@ -86,6 +86,14 @@ pub struct Config {
 
 impl Global for Config {}
 
+#[derive(Debug)]
+pub struct DefaultFonts {
+    system_ui: SharedString,
+    monospace: SharedString,
+}
+
+impl Global for DefaultFonts {}
+
 fn build_menus(
     selected_topic: &dyn Action,
     selected_limit: &dyn Action,
@@ -139,6 +147,8 @@ fn main() -> anyhow::Result<()> {
         });
         app.set_global(UrlHover(None));
         app.set_global(config);
+
+        app.set_global(default_system_fonts());
 
         app.activate(true);
 
@@ -305,4 +315,34 @@ fn update_menus(app: &mut App) {
     let state = app.global::<ArticleSelection>();
     let [selected_topic, selected_limit] = state.as_menu_actions();
     app.set_menus(build_menus(selected_topic, selected_limit));
+}
+
+#[cfg(target_os = "linux")]
+fn default_system_fonts() -> DefaultFonts {
+    use platform_settings::SystemFonts;
+
+    let SystemFonts {
+        default_ui,
+        monospace,
+    } = platform_settings::system_fonts();
+
+    let system_ui: SharedString = default_ui
+        .map(|fd| fd.family_name.into())
+        .unwrap_or_else(|| ".SystemUIFont".into());
+    let monospace: SharedString = monospace
+        .map(|fd| fd.family_name.into())
+        .unwrap_or_else(|| ".ZedMono".into());
+
+    DefaultFonts {
+        system_ui,
+        monospace,
+    }
+}
+
+#[cfg(not(target_os = "linux"))]
+fn default_system_font() -> DefaultFonts {
+    DefaultFonts {
+        system_ui: ".SystemUIFont".into(),
+        monospace: ".ZedMono".into(),
+    }
 }

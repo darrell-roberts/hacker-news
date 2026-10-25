@@ -1,5 +1,6 @@
 //! Render comment
 use crate::{
+    DefaultFonts,
     article::ArticleView,
     common::{COMMENT_IMAGE, comment_entities, hover_element, update_url},
     rich_text::{ParsedStyledText, TextLayout, parse_layout, rich_text_runs, url_ranges},
@@ -83,10 +84,13 @@ impl CommentView {
     /// Returns a `gpui::Div` element containing the rendered comment text area UI.
     fn render_text_area(
         &self,
+        cx: &gpui::Context<Self>,
         theme: Theme,
         comment_entity: Entity<CommentView>,
     ) -> impl IntoElement {
         let link_ranges = url_ranges(&self.text_layout);
+        let fonts = cx.global::<DefaultFonts>();
+
         div()
             .id("comment_text")
             .p_1()
@@ -94,7 +98,7 @@ impl CommentView {
                 InteractiveText::new(
                     "comment_text",
                     StyledText::new(self.text.clone())
-                        .with_runs(rich_text_runs(theme, &self.text_layout).collect()),
+                        .with_runs(rich_text_runs(fonts, theme, &self.text_layout).collect()),
                 )
                 .on_hover({
                     let comment_entity = comment_entity.clone();
@@ -256,7 +260,7 @@ impl Render for CommentView {
             .w_full()
             .mb_2()
             .shadow_md()
-            .child(self.render_text_area(theme, comment_entity.clone()))
+            .child(self.render_text_area(cx, theme, comment_entity.clone()))
             .child(self.render_comment_footer(theme, comment_ids, comment_entity.clone()))
             .when(!self.children.is_empty(), |el| {
                 el.child(

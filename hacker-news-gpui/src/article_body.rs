@@ -1,5 +1,6 @@
 //! View for the article body text
 use crate::{
+    DefaultFonts,
     rich_text::{ViewStyledText, rich_text_runs, url_ranges},
     theme::Theme,
 };
@@ -38,10 +39,11 @@ impl Render for ArticleBodyView {
     fn render(
         &mut self,
         window: &mut gpui::Window,
-        _cx: &mut gpui::Context<Self>,
+        cx: &mut gpui::Context<Self>,
     ) -> impl gpui::IntoElement {
         let theme: Theme = window.appearance().into();
         let view_styled_text = self.article_text.clone();
+        let fonts = cx.global::<DefaultFonts>();
 
         gpui::div()
             .mb_2()
@@ -53,8 +55,9 @@ impl Render for ArticleBodyView {
                 gpui::div().p_1().child(
                     InteractiveText::new(
                         "article_body",
-                        StyledText::new(view_styled_text.text.clone())
-                            .with_runs(rich_text_runs(theme, &view_styled_text.layout).collect()),
+                        StyledText::new(view_styled_text.text.clone()).with_runs(
+                            rich_text_runs(fonts, theme, &view_styled_text.layout).collect(),
+                        ),
                     )
                     .on_click(
                         url_ranges(&view_styled_text.layout),

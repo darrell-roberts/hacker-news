@@ -18,10 +18,12 @@ pub enum Theme {
 }
 
 /// System setting change.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum SettingChange {
     /// System theme changed
     Theme(Theme),
     /// System font scale changed
     FontScale(f64),
+    /// Default system font selection changed
+    FontName(String),
 }

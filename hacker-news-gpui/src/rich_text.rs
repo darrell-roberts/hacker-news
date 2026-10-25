@@ -1,5 +1,5 @@
 //! Convert parsed hacker news rich text into gpui TextRun.
-use crate::{common::url_punycode, theme::Theme};
+use crate::{DefaultFonts, common::url_punycode, theme::Theme};
 use gpui::{Font, FontWeight, SharedString, TextRun, UnderlineStyle, px};
 use html_sanitizer::{Element, parse_elements};
 use std::{borrow::Cow, ops::Range};
@@ -15,11 +15,11 @@ use std::{borrow::Cow, ops::Range};
 /// # Returns:
 ///
 ///   A `TextRun` configured for normal text.
-fn normal(theme: Theme, len: usize) -> TextRun {
+fn normal(fonts: &DefaultFonts, theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: SharedString::new(".SystemUIFont"),
+            family: fonts.system_ui.clone(),
             features: Default::default(),
             fallbacks: None,
             weight: Default::default(),
@@ -43,11 +43,11 @@ fn normal(theme: Theme, len: usize) -> TextRun {
 /// # Returns:
 ///
 ///   A `TextRun` configured for italic text.
-fn italic(theme: Theme, len: usize) -> TextRun {
+fn italic(fonts: &DefaultFonts, theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: SharedString::new(".SystemUIFont"),
+            family: fonts.system_ui.clone(),
             features: Default::default(),
             fallbacks: None,
             weight: Default::default(),
@@ -71,11 +71,11 @@ fn italic(theme: Theme, len: usize) -> TextRun {
 /// # Returns:
 ///
 ///   A `TextRun` configured for bold text.
-fn bold(theme: Theme, len: usize) -> TextRun {
+fn bold(fonts: &DefaultFonts, theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: SharedString::new(".SystemUIFont"),
+            family: fonts.system_ui.clone(),
             features: Default::default(),
             fallbacks: None,
             weight: FontWeight::BOLD,
@@ -99,15 +99,11 @@ fn bold(theme: Theme, len: usize) -> TextRun {
 /// # Returns:
 ///
 ///   A `TextRun` configured for code text.
-fn code(theme: Theme, len: usize) -> TextRun {
+fn code(fonts: &DefaultFonts, theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: SharedString::new(if cfg!(target_os = "linux") {
-                "DejaVu Sans Mono"
-            } else {
-                "Menlo"
-            }),
+            family: fonts.monospace.clone(),
             features: Default::default(),
             fallbacks: None,
             weight: Default::default(),
@@ -131,11 +127,11 @@ fn code(theme: Theme, len: usize) -> TextRun {
 /// # Returns:
 ///
 ///   A `TextRun` configured for link text.
-fn link(theme: Theme, len: usize) -> TextRun {
+fn link(fonts: &DefaultFonts, theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: SharedString::new(".SystemUIFont"),
+            family: fonts.system_ui.clone(),
             features: Default::default(),
             fallbacks: None,
             weight: FontWeight::default(),
@@ -333,16 +329,17 @@ impl TextLayout {
 /// # Returns
 ///
 ///   An iterator of `TextRun` items corresponding to the styled text segments.
-pub fn rich_text_runs(
+pub fn rich_text_runs<'a>(
+    fonts: &'a DefaultFonts,
     theme: Theme,
-    layout: &[TextLayout],
-) -> impl Iterator<Item = TextRun> + use<'_> {
+    layout: &'a [TextLayout],
+) -> impl Iterator<Item = TextRun> + use<'a> {
     layout.iter().map(move |element| match element {
-        TextLayout::Normal(n) => normal(theme, *n),
-        TextLayout::Bold(n) => bold(theme, *n),
-        TextLayout::Italic(n) => italic(theme, *n),
-        TextLayout::Link(n) => link(theme, *n),
-        TextLayout::Code(n) => code(theme, *n),
+        TextLayout::Normal(n) => normal(fonts, theme, *n),
+        TextLayout::Bold(n) => bold(fonts, theme, *n),
+        TextLayout::Italic(n) => italic(fonts, theme, *n),
+        TextLayout::Link(n) => link(fonts, theme, *n),
+        TextLayout::Code(n) => code(fonts, theme, *n),
     })
 }
 
