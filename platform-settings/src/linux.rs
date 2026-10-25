@@ -12,12 +12,17 @@ const KEY_COLOR_SCHEME: &str = "color-scheme";
 const KEY_FONT_NAME: &str = "font-name";
 const KEY_MONOSPACE_FONT_NAME: &str = "monospace-font-name";
 
+pub struct FontData {
+    pub family_name: String,
+    pub size: Option<u8>,
+}
+
 /// System fonts.
 pub struct SystemFonts {
     /// UI font.
-    pub default_ui: String,
+    pub default_ui: Option<FontData>,
     /// Monspace font.
-    pub monospace: String,
+    pub monospace: Option<FontData>,
 }
 
 /// Listen to GSettings changes.
@@ -102,7 +107,79 @@ pub fn system_fonts() -> SystemFonts {
     let gsettings = Settings::new(GNOME_INTERFACE_SCHEMA_ID);
 
     SystemFonts {
-        default_ui: gsettings.get(KEY_FONT_NAME),
-        monospace: gsettings.get(KEY_MONOSPACE_FONT_NAME),
+        default_ui: parse_font(&gsettings.get::<String>(KEY_FONT_NAME)),
+        monospace: parse_font(&gsettings.get::<String>(KEY_MONOSPACE_FONT_NAME)),
+    }
+}
+
+const STYLE_WORDS: &[&str] = &[
+    "Thin",
+    "Ultra-Light",
+    "Extra-Light",
+    "Light",
+    "Semi-Light",
+    "Book",
+    "Regular",
+    "Medium",
+    "Semi-Bold",
+    "Bold",
+    "Ultra-Bold",
+    "Extra-Bold",
+    "Heavy",
+    "Black",
+    "Italic",
+    "Oblique",
+    "Roman",
+    "Small-Caps",
+    "Condensed",
+    "Semi-Condensed",
+    "Expanded",
+    "Semi-Expanded",
+];
+
+fn parse_font(font_data: &str) -> Option<FontData> {
+    let mut size = None;
+    let mut words = font_data.split_whitespace().collect::<Vec<_>>();
+
+    // Size is the last word.
+    if words.len() > 1
+        && let Ok(font_size) = words[words.len() - 1].parse::<u8>()
+    {
+        size = Some(font_size);
+        words.pop();
+    }
+
+    // Strip out styles if any.
+    while words.len() > 1 {
+        let w = words[words.len() - 1];
+        if STYLE_WORDS.iter().any(|k| k.eq_ignore_ascii_case(w)) {
+            words.pop();
+        } else {
+            break;
+        }
+    }
+
+    Some(FontData {
+        family_name: words.join(" "),
+        size,
+    })
+}
+
+#[cfg(test)]
+mod test {
+    use super::parse_font;
+
+    #[test]
+    fn test_font_parse() {
+        let test_font = "Noto Sans 12";
+
+        let font_data = parse_font(test_font).expect("Parse failed");
+        assert_eq!(font_data.family_name, "Noto Sans");
+        assert_eq!(font_data.size, Some(12));
+
+        let test_font = "Hack 12";
+        let font_data = parse_font(test_font).expect("Parse failed");
+        assert_eq!(font_data.family_name, "Hack");
+        assert_eq!(font_data.size, Some(12));
     }
 }

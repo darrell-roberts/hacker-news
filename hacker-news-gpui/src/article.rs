@@ -7,9 +7,8 @@ use crate::{
 };
 use friendly_duration::parse_friendly_age;
 use gpui::{
-    Animation, AnimationExt, AppContext, AsyncApp, Entity, Fill, FontWeight, ImageSource,
-    SharedString, StyleRefinement, Window, div, img, prelude::*, pulsating_between, quadratic,
-    rems, rgb,
+    Animation, AnimationExt, AppContext, AsyncApp, Entity, Fill, ImageSource, SharedString,
+    StyleRefinement, Window, div, img, prelude::*, pulsating_between, quadratic, rems, rgb,
 };
 use hacker_news_api::Item;
 use std::{rc::Rc, sync::Arc, time::Duration};
@@ -315,7 +314,6 @@ impl Render for ArticleView {
                     .id("title")
                     .p_1()
                     .w_full()
-                    .font_weight(FontWeight::BOLD)
                     .child(self.title.clone())
                     .cursor_pointer()
                     .on_click(move |event, window, app| {

@@ -148,10 +148,6 @@ fn render_menu_item<'a>(
                 .w_full()
                 .justify_between()
                 .gap_4()
-                // On ubuntu my default Noto does not work for bold
-                .when(cfg!(target_os = "linux"), |this| {
-                    this.font_family("DejaVu Sans")
-                })
                 .when(*checked, |this| this.font_weight(FontWeight::BOLD))
                 .child(name.to_string())
                 .when_some(keystroke, |this, keystroke| {

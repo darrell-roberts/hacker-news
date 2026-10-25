@@ -86,6 +86,7 @@ pub struct Config {
 
 impl Global for Config {}
 
+#[derive(Debug)]
 pub struct DefaultFonts {
     system_ui: SharedString,
     monospace: SharedString,
@@ -325,9 +326,16 @@ fn default_system_fonts() -> DefaultFonts {
         monospace,
     } = platform_settings::system_fonts();
 
+    let system_ui: SharedString = default_ui
+        .map(|fd| fd.family_name.into())
+        .unwrap_or_else(|| ".SystemUIFont".into());
+    let monospace: SharedString = monospace
+        .map(|fd| fd.family_name.into())
+        .unwrap_or_else(|| ".ZedMono".into());
+
     DefaultFonts {
-        system_ui: default_ui.into(),
-        monospace: monospace.into(),
+        system_ui,
+        monospace,
     }
 }
 
@@ -335,6 +343,6 @@ fn default_system_fonts() -> DefaultFonts {
 fn default_system_font() -> DefaultFonts {
     DefaultFonts {
         system_ui: ".SystemUIFont".into(),
-        monospace: "Menlo".into(),
+        monospace: ".ZedMono".into(),
     }
 }
