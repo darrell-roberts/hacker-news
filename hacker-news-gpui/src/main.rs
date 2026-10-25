@@ -86,9 +86,12 @@ pub struct Config {
 
 impl Global for Config {}
 
-pub struct DefaultFont(String);
+pub struct DefaultFonts {
+    system_ui: SharedString,
+    monospace: SharedString,
+}
 
-impl Global for DefaultFont {}
+impl Global for DefaultFonts {}
 
 fn build_menus(
     selected_topic: &dyn Action,
@@ -144,7 +147,7 @@ fn main() -> anyhow::Result<()> {
         app.set_global(UrlHover(None));
         app.set_global(config);
 
-        app.set_global(DefaultFont(default_system_font()));
+        app.set_global(default_system_fonts());
 
         app.activate(true);
 
@@ -314,16 +317,24 @@ fn update_menus(app: &mut App) {
 }
 
 #[cfg(target_os = "linux")]
-fn default_system_font() -> String {
-    let initial_font = platform_settings::initial_font_name();
-    if initial_font.is_empty() {
-        ".SystemUIFont".into()
-    } else {
-        initial_font
+fn default_system_fonts() -> DefaultFonts {
+    use platform_settings::SystemFonts;
+
+    let SystemFonts {
+        default_ui,
+        monospace,
+    } = platform_settings::system_fonts();
+
+    DefaultFonts {
+        system_ui: default_ui.into(),
+        monospace: monospace.into(),
     }
 }
 
 #[cfg(not(target_os = "linux"))]
-fn default_system_font() -> String {
-    ".SystemUIFont".into()
+fn default_system_font() -> DefaultFonts {
+    DefaultFonts {
+        system_ui: ".SystemUIFont".into(),
+        monospace: "Menlo".into(),
+    }
 }

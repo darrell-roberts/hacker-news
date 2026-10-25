@@ -17,7 +17,9 @@ use bytes::Bytes;
 use futures::{
     future, stream::FuturesOrdered, FutureExt as _, TryFutureExt, TryStream, TryStreamExt,
 };
-use log::{debug, error, info, warn};
+#[cfg(debug_assertions)]
+use log::debug;
+use log::{error, info, warn};
 use reqwest::{header, IntoUrl};
 use serde::Deserialize;
 use std::{
@@ -125,7 +127,7 @@ impl ApiClient {
             .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
             .send()
             .and_then(|result| result.json::<Item>())
-            .map_err(anyhow::Error::new)
+            .map_err(Into::into)
     }
 
     /// Get multiple ids by item id.

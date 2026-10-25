@@ -10,6 +10,15 @@ const GNOME_INTERFACE_SCHEMA_ID: &str = "org.gnome.desktop.interface";
 const KEY_TEXT_SCALING_FACTOR: &str = "text-scaling-factor";
 const KEY_COLOR_SCHEME: &str = "color-scheme";
 const KEY_FONT_NAME: &str = "font-name";
+const KEY_MONOSPACE_FONT_NAME: &str = "monospace-font-name";
+
+/// System fonts.
+pub struct SystemFonts {
+    /// UI font.
+    pub default_ui: String,
+    /// Monspace font.
+    pub monospace: String,
+}
 
 /// Listen to GSettings changes.
 pub fn listen_to_system_changes() -> impl Stream<Item = SettingChange> {
@@ -88,7 +97,12 @@ fn theme(color_scheme: &str) -> Theme {
     }
 }
 
-/// Get the system default font.
-pub fn initial_font_name() -> String {
-    Settings::new(GNOME_INTERFACE_SCHEMA_ID).get::<String>(KEY_FONT_NAME)
+/// Get user system font settings from gsettings.
+pub fn system_fonts() -> SystemFonts {
+    let gsettings = Settings::new(GNOME_INTERFACE_SCHEMA_ID);
+
+    SystemFonts {
+        default_ui: gsettings.get(KEY_FONT_NAME),
+        monospace: gsettings.get(KEY_MONOSPACE_FONT_NAME),
+    }
 }

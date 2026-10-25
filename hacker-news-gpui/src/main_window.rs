@@ -1,6 +1,6 @@
 //! Main Window.
 use crate::{
-    Config, DefaultFont, content::ContentView, footer::FooterView, header::Header, theme::Theme,
+    Config, DefaultFonts, content::ContentView, footer::FooterView, header::Header, theme::Theme,
     title_bar::TitleBar,
 };
 use gpui::{
@@ -136,7 +136,7 @@ impl MainWindow {
             })
             .detach();
 
-        let base_font_name = app.global::<DefaultFont>().0.clone().into();
+        let base_font_name = app.global::<DefaultFonts>().system_ui.clone();
 
         app.new(move |cx| {
             // Listen to font size increase/decrease key bindings.
