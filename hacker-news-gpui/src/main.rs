@@ -228,13 +228,13 @@ fn main() -> anyhow::Result<()> {
         // Bind hot keys to the actions. The menu items automatically display
         // the matching keystroke for any action that has a binding.
         app.bind_keys([
-            KeyBinding::new("secondary-q", Quit, None),
-            KeyBinding::new("secondary-1", TopTopic, None),
-            KeyBinding::new("secondary-2", BestTopic, None),
-            KeyBinding::new("secondary-3", NewTopic, None),
-            KeyBinding::new("secondary-4", AskTopic, None),
-            KeyBinding::new("secondary-5", ShowTopic, None),
-            KeyBinding::new("secondary-6", JobTopic, None),
+            KeyBinding::load("secondary-q", Box::new(Quit), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-1", Box::new(TopTopic), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-2", Box::new(BestTopic), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-3", Box::new(NewTopic), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-4", Box::new(AskTopic), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-5", Box::new(ShowTopic), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-6", Box::new(JobTopic), None, false, None, app).unwrap(),
         ]);
 
         // Add menu items

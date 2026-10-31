@@ -1,9 +1,9 @@
 //! Title bar.
 use crate::{common::brighten, theme::Theme};
 use gpui::{
-    AnyElement, App, Div, Entity, Fill, FontWeight, MouseButton, OwnedMenu, OwnedMenuItem, Render,
-    SharedString, StyleRefinement, Window, anchored, deferred, div, prelude::*, px, rems,
-    solid_background,
+    AnyElement, App, Div, Entity, Fill, FontWeight, MouseButton, OperatingSystem, OwnedMenu,
+    OwnedMenuItem, Render, SharedString, StyleRefinement, Window, anchored, deferred, div,
+    prelude::*, px, rems, solid_background,
 };
 
 pub struct TitleBar {
@@ -49,6 +49,8 @@ impl TitleBar {
             .as_ref()
             .is_some_and(|name| name == &menu_name);
 
+        let operating_system = cx.platform_info().os;
+
         div()
             .id(menu.name.clone())
             .cursor_pointer()
@@ -80,6 +82,7 @@ impl TitleBar {
                                         theme,
                                         menu,
                                         title_bar_entity,
+                                        operating_system,
                                     )),
                             ),
                     )
@@ -94,6 +97,7 @@ fn render_menu_item<'a>(
     theme: Theme,
     menu_item: &'a OwnedMenuItem,
     title_bar_entity: Entity<TitleBar>,
+    operating_system: OperatingSystem,
 ) -> AnyElement {
     match menu_item {
         gpui::OwnedMenuItem::Separator => div()
@@ -108,7 +112,13 @@ fn render_menu_item<'a>(
             .p_1()
             .child(owned_menu.name.clone())
             .children(owned_menu.items.iter().map(|menu_item| {
-                render_menu_item(window, theme, menu_item, title_bar_entity.clone())
+                render_menu_item(
+                    window,
+                    theme,
+                    menu_item,
+                    title_bar_entity.clone(),
+                    operating_system,
+                )
             }))
             .into_any(),
 
@@ -133,7 +143,7 @@ fn render_menu_item<'a>(
                     binding
                         .keystrokes()
                         .iter()
-                        .map(ToString::to_string)
+                        .map(|key_stroke| key_stroke.display(operating_system).to_string())
                         .collect::<Vec<_>>()
                         .join(" ")
                 });
@@ -181,10 +191,17 @@ fn render_menu_items<'a>(
     theme: Theme,
     menu: &'a OwnedMenu,
     title_bar_entity: Entity<TitleBar>,
+    operating_system: OperatingSystem,
 ) -> impl Iterator<Item = AnyElement> + 'a {
-    menu.items
-        .iter()
-        .map(move |menu_item| render_menu_item(window, theme, menu_item, title_bar_entity.clone()))
+    menu.items.iter().map(move |menu_item| {
+        render_menu_item(
+            window,
+            theme,
+            menu_item,
+            title_bar_entity.clone(),
+            operating_system,
+        )
+    })
 }
 
 fn popover(theme: Theme) -> gpui::Stateful<Div> {
