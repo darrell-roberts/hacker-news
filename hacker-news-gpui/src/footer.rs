@@ -1,6 +1,6 @@
 //! The footer view.
 use crate::{
-    ArticleSelection, UrlHover,
+    ArticleSelection, DefaultFonts, UrlHover,
     content::{ContentEvent, ContentView},
 };
 use chrono::Local;
@@ -25,6 +25,8 @@ pub struct FooterView {
     total_refreshes: SharedString,
     /// Any error message to display, if present.
     error: Option<SharedString>,
+    // Font information
+    font_data: SharedString,
 }
 
 impl FooterView {
@@ -49,6 +51,13 @@ impl FooterView {
             cx.observe_global::<ArticleSelection>(move |footer: &mut FooterView, cx| {
                 footer.status_line = "Fetching...".into();
                 cx.notify()
+            })
+            .detach();
+
+            cx.observe_global::<DefaultFonts>(move |footer: &mut FooterView, cx| {
+                let fonts = cx.global::<DefaultFonts>();
+                footer.font_data = Self::font_info(fonts);
+                cx.notify();
             })
             .detach();
 
@@ -97,8 +106,17 @@ impl FooterView {
                 online: true,
                 total_refreshes: Default::default(),
                 error: None,
+                font_data: Self::font_info(cx.global::<DefaultFonts>()),
             }
         })
+    }
+
+    fn font_info(default_fonts: &DefaultFonts) -> SharedString {
+        format!(
+            "({}/{})",
+            default_fonts.system_ui.family_name, default_fonts.system_ui.size
+        )
+        .into()
     }
 }
 
@@ -133,6 +151,7 @@ impl Render for FooterView {
                     .justify_between()
                     .ml_1()
                     .child(self.status_line.clone())
+                    .child(self.font_data.clone())
                     .child(
                         div()
                             .flex()

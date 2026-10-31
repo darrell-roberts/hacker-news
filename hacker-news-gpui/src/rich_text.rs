@@ -19,7 +19,7 @@ fn normal(fonts: &DefaultFonts, theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: fonts.system_ui.clone(),
+            family: fonts.system_ui.family_name.clone(),
             features: Default::default(),
             fallbacks: None,
             weight: Default::default(),
@@ -47,7 +47,7 @@ fn italic(fonts: &DefaultFonts, theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: fonts.system_ui.clone(),
+            family: fonts.system_ui.family_name.clone(),
             features: Default::default(),
             fallbacks: None,
             weight: Default::default(),
@@ -75,7 +75,7 @@ fn bold(fonts: &DefaultFonts, theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: fonts.system_ui.clone(),
+            family: fonts.system_ui.family_name.clone(),
             features: Default::default(),
             fallbacks: None,
             weight: FontWeight::BOLD,
@@ -103,7 +103,7 @@ fn code(fonts: &DefaultFonts, theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: fonts.monospace.clone(),
+            family: fonts.monospace.family_name.clone(),
             features: Default::default(),
             fallbacks: None,
             weight: Default::default(),
@@ -131,7 +131,7 @@ fn link(fonts: &DefaultFonts, theme: Theme, len: usize) -> TextRun {
     TextRun {
         len,
         font: Font {
-            family: fonts.system_ui.clone(),
+            family: fonts.system_ui.family_name.clone(),
             features: Default::default(),
             fallbacks: None,
             weight: FontWeight::default(),

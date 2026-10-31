@@ -1,14 +1,16 @@
 //! Simple hacker news view.
 use crate::{common::save_config, main_window::WindowResize};
 use gpui::{
-    Action, App, BorrowAppContext, Bounds, Global, KeyBinding, Menu, MenuItem, SharedString,
-    WindowBounds, WindowDecorations, WindowKind, WindowOptions, actions, point, px, size,
+    Action, App, BorrowAppContext, Bounds, Global, KeyBinding, Menu, MenuItem, Pixels,
+    SharedString, WindowBounds, WindowDecorations, WindowKind, WindowOptions, actions, point, px,
+    size,
 };
 use gpui_platform::application;
 use gpui_tokio::Tokio;
 use hacker_news_api::{ApiClient, ArticleType};
 use hacker_news_config::{init_logger, load_config};
 use log::{error, info};
+use platform_settings::FontData;
 use serde::{Deserialize, Serialize};
 use std::{ops::Deref, sync::Arc};
 
@@ -87,9 +89,26 @@ pub struct Config {
 impl Global for Config {}
 
 #[derive(Debug)]
+/// A font selection
+pub struct Font {
+    family_name: SharedString,
+    size: Pixels,
+}
+
+impl From<FontData> for Font {
+    fn from(font: FontData) -> Self {
+        Self {
+            family_name: font.family_name.into(),
+            size: font.size.map(f32::from).unwrap_or_else(|| 12.0).into(),
+        }
+    }
+}
+
+#[derive(Debug)]
+/// User defined system fonts
 pub struct DefaultFonts {
-    system_ui: SharedString,
-    monospace: SharedString,
+    system_ui: Font,
+    monospace: Font,
 }
 
 impl Global for DefaultFonts {}
@@ -127,13 +146,7 @@ fn build_menus(
 fn main() -> anyhow::Result<()> {
     init_logger("hacker-news-dashboard")?;
 
-    let config = match load_config::<Config>(CONFIG_FILE) {
-        Ok(config) => config,
-        Err(_) => {
-            info!("No config");
-            Config { font_size: 15.0 }
-        }
-    };
+    let config = load_config::<Config>(CONFIG_FILE).ok();
 
     let client = Arc::new(hacker_news_api::ApiClient::new()?);
 
@@ -146,10 +159,9 @@ fn main() -> anyhow::Result<()> {
             viewing_article_total: 50,
         });
         app.set_global(UrlHover(None));
-        app.set_global(config);
 
-        app.set_global(default_system_fonts());
-
+        app.set_global(default_system_fonts(config.as_ref()));
+        app.set_global(config.unwrap_or(Config { font_size: 12.0 }));
         app.activate(true);
 
         // Add menu action handlers.
@@ -216,13 +228,13 @@ fn main() -> anyhow::Result<()> {
         // Bind hot keys to the actions. The menu items automatically display
         // the matching keystroke for any action that has a binding.
         app.bind_keys([
-            KeyBinding::new("secondary-q", Quit, None),
-            KeyBinding::new("secondary-1", TopTopic, None),
-            KeyBinding::new("secondary-2", BestTopic, None),
-            KeyBinding::new("secondary-3", NewTopic, None),
-            KeyBinding::new("secondary-4", AskTopic, None),
-            KeyBinding::new("secondary-5", ShowTopic, None),
-            KeyBinding::new("secondary-6", JobTopic, None),
+            KeyBinding::load("secondary-q", Box::new(Quit), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-1", Box::new(TopTopic), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-2", Box::new(BestTopic), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-3", Box::new(NewTopic), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-4", Box::new(AskTopic), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-5", Box::new(ShowTopic), None, false, None, app).unwrap(),
+            KeyBinding::load("secondary-6", Box::new(JobTopic), None, false, None, app).unwrap(),
         ]);
 
         // Add menu items
@@ -318,7 +330,7 @@ fn update_menus(app: &mut App) {
 }
 
 #[cfg(target_os = "linux")]
-fn default_system_fonts() -> DefaultFonts {
+fn default_system_fonts(config: Option<&Config>) -> DefaultFonts {
     use platform_settings::SystemFonts;
 
     let SystemFonts {
@@ -326,12 +338,22 @@ fn default_system_fonts() -> DefaultFonts {
         monospace,
     } = platform_settings::system_fonts();
 
-    let system_ui: SharedString = default_ui
-        .map(|fd| fd.family_name.into())
-        .unwrap_or_else(|| ".SystemUIFont".into());
-    let monospace: SharedString = monospace
-        .map(|fd| fd.family_name.into())
-        .unwrap_or_else(|| ".ZedMono".into());
+    let default_font_size = 12.0.into();
+
+    let mut system_ui = default_ui.map(Into::into).unwrap_or_else(|| Font {
+        family_name: ".SystemUIFont".into(),
+        size: default_font_size,
+    });
+
+    let mut monospace = monospace.map(Into::into).unwrap_or_else(|| Font {
+        family_name: ".ZedMono".into(),
+        size: default_font_size,
+    });
+
+    if let Some(user_font_size) = config.map(|c| c.font_size) {
+        system_ui.size = user_font_size.into();
+        monospace.size = user_font_size.into();
+    }
 
     DefaultFonts {
         system_ui,
