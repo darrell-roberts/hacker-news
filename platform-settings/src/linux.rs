@@ -1,29 +1,16 @@
 //! Linux specific settings.
 //!
 //! Uses gsettings to get Gnome desktop interface settings.
-use crate::{SettingChange, Theme};
+use crate::{FontData, SettingChange, SystemFonts, Theme};
 use futures::{Stream, channel::mpsc};
 use gio::{Settings, prelude::*};
-use log::{error, info};
+use log::{error, info, warn};
 
 const GNOME_INTERFACE_SCHEMA_ID: &str = "org.gnome.desktop.interface";
 const KEY_TEXT_SCALING_FACTOR: &str = "text-scaling-factor";
 const KEY_COLOR_SCHEME: &str = "color-scheme";
 const KEY_FONT_NAME: &str = "font-name";
 const KEY_MONOSPACE_FONT_NAME: &str = "monospace-font-name";
-
-pub struct FontData {
-    pub family_name: String,
-    pub size: Option<u8>,
-}
-
-/// System fonts.
-pub struct SystemFonts {
-    /// UI font.
-    pub default_ui: Option<FontData>,
-    /// Monspace font.
-    pub monospace: Option<FontData>,
-}
 
 /// Listen to GSettings changes.
 pub fn listen_to_system_changes() -> impl Stream<Item = SettingChange> {
@@ -61,10 +48,39 @@ pub fn listen_to_system_changes() -> impl Stream<Item = SettingChange> {
             let _handler = settings.connect_changed(Some(KEY_FONT_NAME), {
                 let tx = tx.clone();
                 move |settings, font_name| {
-                    let font_selection = settings.get::<String>(font_name);
+                    let font_selection = parse_font(&settings.get::<String>(font_name));
 
-                    if let Err(err) = tx.unbounded_send(SettingChange::FontName(font_selection)) {
-                        error!("Failed to send the system font change: {err}");
+                    match font_selection {
+                        Some(font_selection) => {
+                            if let Err(err) =
+                                tx.unbounded_send(SettingChange::SystemUIFont(font_selection))
+                            {
+                                error!("Failed to send the system font change: {err}");
+                            }
+                        }
+                        None => {
+                            warn!("Failed to parse new font selection: {font_name}");
+                        }
+                    }
+                }
+            });
+
+            let _handler = settings.connect_changed(Some(KEY_MONOSPACE_FONT_NAME), {
+                let tx = tx.clone();
+                move |settings, font_name| {
+                    let font_selection = parse_font(&settings.get::<String>(font_name));
+
+                    match font_selection {
+                        Some(font_selection) => {
+                            if let Err(err) = tx
+                                .unbounded_send(SettingChange::SystemMonospaceFont(font_selection))
+                            {
+                                error!("Failed to send the system font change: {err}");
+                            }
+                        }
+                        None => {
+                            warn!("Failed to parse new font selection: {font_name}");
+                        }
                     }
                 }
             });
