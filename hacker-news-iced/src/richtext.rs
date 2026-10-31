@@ -6,7 +6,7 @@ use iced::{
     Color,
     widget::{span, text::Span},
 };
-use std::ops::Not;
+use std::str::MatchIndices;
 
 /// Render a simplified html string into `Span`s for a `RichText` widget.
 pub fn render_rich_text<'a>(
@@ -160,10 +160,9 @@ fn split_search<Link>(
 /// Yield multiple spans from a single str reference.
 pub struct SearchSpanIter<'a, 'b, Link> {
     last_index: usize,
-    search: Option<&'b str>,
     text: &'a str,
-    matcher: Option<Box<dyn Iterator<Item = (usize, &'a str)> + 'a>>,
-    finished: bool,
+    search_len: usize,
+    matcher: Option<MatchIndices<'a, &'b str>>,
     next_match: Option<Span<'a, Link>>,
 }
 
@@ -171,10 +170,9 @@ impl<'a, 'b, Link> SearchSpanIter<'a, 'b, Link> {
     pub fn new(text: &'a str, search: Option<&'b str>) -> Self {
         Self {
             last_index: 0,
-            search,
+            search_len: search.map_or(0, str::len),
             text,
-            matcher: None,
-            finished: false,
+            matcher: search.map(|s| text.match_indices(s)),
             next_match: None,
         }
     }
@@ -184,50 +182,28 @@ impl<'a, 'b: 'a, Link> Iterator for SearchSpanIter<'a, 'b, Link> {
     type Item = Span<'a, Link>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.finished {
-            return None;
-        }
-
         if let Some(s) = self.next_match.take() {
             return Some(s);
         }
 
-        match self.search {
-            Some(search) => {
-                if self.matcher.is_none() {
-                    self.matcher = Some(Box::new(self.text.match_indices(search)));
-                }
+        if let Some((index, matched)) = self.matcher.as_mut().and_then(|m| m.next()) {
+            let before = &self.text[self.last_index..index];
+            self.last_index = index + self.search_len;
 
-                if let Some((index, matched)) = self.matcher.as_mut()?.next() {
-                    let (unmatched, _) = self.text.split_at(index);
+            let hit = span(matched)
+                .color(Color::BLACK)
+                .background(Color::from_rgb8(255, 255, 0));
 
-                    let segment: Option<Span<'a, Link>> = unmatched
-                        .is_empty()
-                        .not()
-                        .then(|| span(&unmatched[self.last_index..]));
-
-                    let next_match = Some(
-                        span(matched)
-                            .color(Color::BLACK)
-                            .background(Color::from_rgb8(255, 255, 0)),
-                    );
-                    self.last_index = index + search.len();
-
-                    if segment.is_some() {
-                        self.next_match = next_match;
-                        segment
-                    } else {
-                        next_match
-                    }
-                } else {
-                    self.finished = true;
-                    Some(span(&self.text[self.last_index..]))
-                }
+            if before.is_empty() {
+                Some(hit)
+            } else {
+                self.next_match = Some(hit);
+                Some(span(before))
             }
-            None => {
-                self.finished = true;
-                Some(span(self.text))
-            }
+        } else {
+            let rest = &self.text[self.last_index..];
+            self.last_index = self.text.len();
+            (!rest.is_empty()).then(|| span(rest))
         }
     }
 }
