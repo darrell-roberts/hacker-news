@@ -43,8 +43,8 @@ mod richtext;
 #[cfg(feature = "trace")]
 mod tracing;
 
-const ROBOTO_FONT: Font = Font::with_name("Roboto");
-const ROBOTO_MONO: Font = Font::with_name("Roboto Mono");
+static ROBOTO_FONT: Font = Font::with_name("Roboto");
+static ROBOTO_MONO: Font = Font::with_name("Roboto Mono");
 
 fn start() -> anyhow::Result<()> {
     let _ = api_client();
