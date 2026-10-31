@@ -25,5 +25,24 @@ pub enum SettingChange {
     /// System font scale changed
     FontScale(f64),
     /// Default system font selection changed
-    FontName(String),
+    SystemUIFont(FontData),
+    /// Default system monospace font selection changed
+    SystemMonospaceFont(FontData),
+}
+
+/// System font data.
+#[derive(Debug, Clone)]
+pub struct FontData {
+    /// Family name for the default UI font.
+    pub family_name: String,
+    /// Size if defined.
+    pub size: Option<u8>,
+}
+
+/// System fonts.
+pub struct SystemFonts {
+    /// UI font.
+    pub default_ui: Option<FontData>,
+    /// Monspace font.
+    pub monospace: Option<FontData>,
 }

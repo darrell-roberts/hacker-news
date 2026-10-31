@@ -117,6 +117,7 @@ pub enum AppMsg {
     #[cfg_attr(not(target_os = "linux"), expect(unused))]
     SystemFontScale(f32),
     SystemFont(String),
+    SystemMonospaceFont(String),
 }
 
 impl From<platform_settings::SettingChange> for AppMsg {
@@ -126,7 +127,12 @@ impl From<platform_settings::SettingChange> for AppMsg {
             platform_settings::SettingChange::FontScale(scale) => {
                 AppMsg::SystemFontScale(scale as f32)
             }
-            platform_settings::SettingChange::FontName(name) => AppMsg::SystemFont(name),
+            platform_settings::SettingChange::SystemUIFont(font_data) => {
+                AppMsg::SystemFont(font_data.family_name)
+            }
+            platform_settings::SettingChange::SystemMonospaceFont(font_data) => {
+                AppMsg::SystemMonospaceFont(font_data.family_name)
+            }
         }
     }
 }
@@ -457,6 +463,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             log::info!("Received new font name: {font_name}");
             Task::none()
         }
+        AppMsg::SystemMonospaceFont(_font_name) => Task::none(),
     }
 }
 
