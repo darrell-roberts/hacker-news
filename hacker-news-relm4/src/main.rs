@@ -2,13 +2,13 @@ use crate::app::AppModel;
 use hacker_news_config::{IndexConfig, index_config, init_logger, search_context};
 use hacker_news_search::SearchContext;
 use relm4::RelmApp;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 mod app;
 
 pub struct Config {
     index_config: IndexConfig,
-    search_context: Arc<RwLock<SearchContext>>,
+    search_context: Arc<SearchContext>,
 }
 
 fn main() -> anyhow::Result<()> {

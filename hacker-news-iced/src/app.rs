@@ -32,10 +32,7 @@ use iced::{
     },
 };
 use log::error;
-use std::{
-    mem,
-    sync::{Arc, RwLock},
-};
+use std::{mem, sync::Arc};
 
 /// Application state.
 pub struct App {
@@ -54,7 +51,7 @@ pub struct App {
     /// Pane grid
     pub panes: pane_grid::State<PaneState>,
     /// Search context.
-    pub search_context: Arc<RwLock<SearchContext>>,
+    pub search_context: Arc<SearchContext>,
     /// Pane with focus
     pub focused_pane: Option<widget::pane_grid::Pane>,
     /// Navigation history.
@@ -399,8 +396,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
             if update_history {
                 app.history.push(last_content.into_history_element());
             }
-            let mut g = app.search_context.write().unwrap();
-            match g.activate_index(category) {
+            match app.search_context.activate_index(category) {
                 Ok(_) => Task::batch([
                     Task::done(FooterMsg::CurrentIndex(category)).map(AppMsg::Footer),
                     Task::done(ArticleMsg::TopStories(count)).map(AppMsg::Articles),

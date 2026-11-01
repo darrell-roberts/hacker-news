@@ -13,7 +13,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, BorderType, Padding, Paragraph, StatefulWidget, Widget, Wrap},
 };
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use tui_scrollview::{ScrollViewState, ScrollbarVisibility};
 
 #[cfg(test)]
@@ -40,14 +40,14 @@ pub struct CommentState {
 }
 
 impl CommentState {
-    pub fn page_forward(&mut self, search_context: Arc<RwLock<SearchContext>>) {
+    pub fn page_forward(&mut self, search_context: Arc<SearchContext>) {
         self.viewing = None;
         self.update_offset(self.offset.saturating_add(10));
         self.update_comments(search_context);
         self.scroll_view_state.scroll_to_top();
     }
 
-    pub fn page_back(&mut self, search_context: Arc<RwLock<SearchContext>>) {
+    pub fn page_back(&mut self, search_context: Arc<SearchContext>) {
         self.viewing = None;
         self.update_offset(self.offset.saturating_sub(10));
         self.update_comments(search_context);
@@ -59,11 +59,8 @@ impl CommentState {
         }
     }
 
-    fn update_comments(&mut self, search_context: Arc<RwLock<SearchContext>>) {
-        let result = search_context
-            .read()
-            .unwrap()
-            .comments(self.parent_id, 10, self.offset);
+    fn update_comments(&mut self, search_context: Arc<SearchContext>) {
+        let result = search_context.comments(self.parent_id, 10, self.offset);
         match result {
             Ok((comments, total_comments)) => {
                 self.comments = comments;

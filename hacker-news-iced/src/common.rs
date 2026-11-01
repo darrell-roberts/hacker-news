@@ -13,7 +13,6 @@ use iced::{
         tooltip::Position,
     },
 };
-use std::sync::{Arc, RwLock};
 
 /// Create a tooltip with a common hover tooltip message style.
 pub fn tooltip<'a, Message>(
@@ -114,9 +113,8 @@ pub fn error_task(err: impl ToString) -> Task<AppMsg> {
 }
 
 /// Task to open comment with full parent thread.
-pub fn show_thread(search_context: Arc<RwLock<SearchContext>>, comment_id: u64) -> Task<AppMsg> {
-    let g = search_context.read().unwrap();
-    match g.parents(comment_id) {
+pub fn show_thread(search_context: &SearchContext, comment_id: u64) -> Task<AppMsg> {
+    match search_context.parents(comment_id) {
         Ok(CommentStack { comments, story }) => {
             let story_id = story.id;
             Task::done(AppMsg::OpenComment {

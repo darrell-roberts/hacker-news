@@ -6,10 +6,7 @@ use crate::{
 use anyhow::Context;
 use hacker_news_api::ArticleType;
 use hacker_news_search::{SearchContext, api::CommentStack};
-use std::{
-    fmt::Display,
-    sync::{Arc, RwLock},
-};
+use std::{fmt::Display, sync::Arc};
 
 /// Type of content to render in the content pane.
 pub enum Content {
@@ -74,7 +71,7 @@ where
 
     /// Restore state from a history item.
     fn from_history(
-        search_context: Arc<RwLock<SearchContext>>,
+        search_context: Arc<SearchContext>,
         item: Self::HistoryItem,
     ) -> anyhow::Result<(ArticleType, Self)>;
 
@@ -96,7 +93,7 @@ impl HistoryElement {
     /// Convert self into [`Content`].
     pub fn into_content(
         self,
-        search_context: Arc<RwLock<SearchContext>>,
+        search_context: Arc<SearchContext>,
     ) -> anyhow::Result<(ArticleType, Content)> {
         Ok(match self {
             HistoryElement::Comment(comment_history) => {
@@ -110,7 +107,7 @@ impl HistoryElement {
                 (index, Content::Search(search_state))
             }
             HistoryElement::Empty(index) => {
-                search_context.write().unwrap().activate_index(index)?;
+                search_context.activate_index(index)?;
                 (index, Content::Empty(index))
             }
         })
@@ -145,16 +142,14 @@ impl History for CommentState {
     type HistoryItem = CommentHistory;
 
     fn from_history(
-        search_context: Arc<RwLock<SearchContext>>,
+        search_context: Arc<SearchContext>,
         item: Self::HistoryItem,
     ) -> anyhow::Result<(ArticleType, Self)> {
-        let ctx = search_context.clone();
-        let mut sc = ctx.write().unwrap();
-        if sc.active_category() != item.category {
+        if search_context.active_category() != item.category {
             log::debug!("Switching active index to {}", item.category);
-            sc.activate_index(item.category)?;
+            search_context.activate_index(item.category)?;
         }
-        let (mut comments, total_comments) = sc
+        let (mut comments, total_comments) = search_context
             .comments(item.parent_id, 10, item.offset)
             .with_context(|| {
                 format!(
@@ -168,7 +163,7 @@ impl History for CommentState {
                 let CommentStack {
                     comments: mut comment_stack,
                     ..
-                } = sc.parents(viewing_id)?;
+                } = search_context.parents(viewing_id)?;
                 // Take the last comment which is the first comment.
                 comments = comment_stack.pop().map(|c| vec![c]).unwrap_or_default();
 
@@ -185,7 +180,7 @@ impl History for CommentState {
             None => Vec::new(),
         };
 
-        let article = sc.story(item.story_id)?;
+        let article = search_context.story(item.story_id)?;
 
         Ok((
             item.category,
@@ -214,7 +209,7 @@ impl History for CommentState {
             page: self.page,
             parent_id: self.parent_id,
             active_comment_id: self.active_comment_id,
-            category: self.search_context.read().unwrap().active_category(),
+            category: self.search_context.active_category(),
         }
     }
 }
@@ -231,19 +226,17 @@ impl History for FullSearchState {
     type HistoryItem = SearchHistory;
 
     fn from_history(
-        search_context: Arc<RwLock<SearchContext>>,
+        search_context: Arc<SearchContext>,
         item: Self::HistoryItem,
     ) -> anyhow::Result<(ArticleType, Self)> {
-        let ctx = search_context.clone();
-        let mut sc = ctx.write().unwrap();
-        if sc.active_category() != item.category {
+        if search_context.active_category() != item.category {
             log::debug!("Switching active index to {}", item.category);
-            sc.activate_index(item.category)?;
+            search_context.activate_index(item.category)?;
         }
         let (search_results, full_count) = match &item.search {
-            SearchCriteria::Query(s) => sc.search_all_comments(s, 10, item.offset)?,
+            SearchCriteria::Query(s) => search_context.search_all_comments(s, 10, item.offset)?,
             SearchCriteria::StoryId { story_id, beyond } => {
-                sc.story_comments_by_date(*story_id, *beyond, 10, item.offset)?
+                search_context.story_comments_by_date(*story_id, *beyond, 10, item.offset)?
             }
         };
 
@@ -264,7 +257,7 @@ impl History for FullSearchState {
             search: self.search,
             offset: self.offset,
             page: self.page,
-            category: self.search_context.read().unwrap().active_category(),
+            category: self.search_context.active_category(),
         }
     }
 }

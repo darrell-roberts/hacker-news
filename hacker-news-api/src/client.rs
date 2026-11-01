@@ -168,27 +168,31 @@ impl ApiClient {
     fn event_source<EventData>(
         &self,
         url: impl IntoUrl,
-        limit: usize,
+        limit: Option<usize>,
     ) -> impl Future<
         Output = reqwest::Result<impl TryStream<Ok = Option<EventData>, Error = anyhow::Error>>,
     >
     where
         EventData: for<'a> Deserialize<'a>,
     {
-        self.client
+        let mut request_builder = self
+            .client
             .get(url)
-            .header(header::ACCEPT, "text/event-stream")
-            .query(&[
+            .header(header::ACCEPT, "text/event-stream");
+
+        if let Some(limit) = limit {
+            request_builder = request_builder.query(&[
                 ("orderBy", "\"$key\""),
                 ("limitToFirst", &format!("{limit}")),
-            ])
-            .send()
-            .map_ok(|response| {
-                response
-                    .bytes_stream()
-                    .map_ok(parse_event)
-                    .map_err(anyhow::Error::new)
-            })
+            ]);
+        }
+
+        request_builder.send().map_ok(|response| {
+            response
+                .bytes_stream()
+                .map_ok(parse_event)
+                .map_err(anyhow::Error::new)
+        })
     }
 
     /// Top stories event-source stream.
@@ -200,7 +204,10 @@ impl ApiClient {
     ) -> Result<()> {
         let path = article_type.as_path();
         let mut stream = self
-            .event_source::<StoriesEventData>(format!("{}/{path}", Self::API_END_POINT), limit)
+            .event_source::<StoriesEventData>(
+                format!("{}/{path}", Self::API_END_POINT),
+                Some(limit),
+            )
             .await?;
 
         while let Some(event) = stream.try_next().await? {
@@ -216,7 +223,7 @@ impl ApiClient {
         let mut stream = self
             .event_source::<ItemEventData>(
                 format!("{}/item/{story_id}.json", Self::API_END_POINT),
-                1,
+                None,
             )
             .await?;
 

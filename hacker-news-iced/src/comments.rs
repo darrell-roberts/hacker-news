@@ -19,7 +19,7 @@ use iced::{
         self, Column, Container, button, container, scrollable::AbsoluteOffset, text::Shaping,
     },
 };
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 #[derive(Debug)]
 /// A navigation stack element.
@@ -48,7 +48,7 @@ impl NavStack {
 
 /// Comment state
 pub struct CommentState {
-    pub search_context: Arc<RwLock<SearchContext>>,
+    pub search_context: Arc<SearchContext>,
     /// Article this comment belongs to
     pub article: Story,
     /// parent comments.
@@ -383,8 +383,7 @@ impl CommentState {
                         self.page = 1;
                     }
                 }
-                let g = self.search_context.read().unwrap();
-                let fetch_task = match g.comments(parent_id, 10, self.offset) {
+                let fetch_task = match self.search_context.comments(parent_id, 10, self.offset) {
                     Ok((comments, full_count)) => {
                         self.full_count = full_count;
                         self.comments = comments;
@@ -450,8 +449,12 @@ impl CommentState {
                     }
 
                     self.search = Some(search.clone());
-                    let g = self.search_context.read().unwrap();
-                    match g.search_comments(&search, self.article.id, 10, self.offset) {
+                    match self.search_context.search_comments(
+                        &search,
+                        self.article.id,
+                        10,
+                        self.offset,
+                    ) {
                         Ok((comments, count)) => {
                             self.comments = comments;
                             self.full_count = count;
@@ -557,7 +560,7 @@ impl CommentState {
                 Task::none()
             }
             CommentMsg::ShowThread(comment_id) => {
-                common::show_thread(self.search_context.clone(), comment_id)
+                common::show_thread(&self.search_context, comment_id)
             }
         }
     }
