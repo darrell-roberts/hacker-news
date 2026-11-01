@@ -14,7 +14,7 @@ use std::{
     convert::identity,
     future::ready,
     mem,
-    sync::{Arc, OnceLock, RwLock},
+    sync::{Arc, OnceLock},
     time::{Duration, Instant, SystemTime},
 };
 use tantivy::{IndexWriter, TantivyDocument, Term};
@@ -151,7 +151,7 @@ impl<'a> WriteContext<'a> {
     }
 
     /// Delete all documents from the active index.
-    fn delete_all_docs(&mut self) -> SearchResult<u64> {
+    fn delete_all_docs(&self) -> SearchResult<u64> {
         Ok(self.writer.delete_all_documents()?)
     }
 
@@ -309,14 +309,14 @@ async fn write_items(
 
 #[cfg_attr(feature = "trace", instrument(skip(ctx)))]
 pub async fn rebuild_index(
-    ctx: Arc<RwLock<SearchContext>>,
+    ctx: Arc<SearchContext>,
     category_type: ArticleType,
     progress_tx: mpsc::Sender<RebuildProgress>,
 ) -> SearchResult<IndexStats> {
     let start_time = Instant::now();
     info!("Creating index for {category_type}");
 
-    let mut writer_context = ctx.read().unwrap().writer_context()?;
+    let mut writer_context = ctx.writer_context()?;
     writer_context.delete_all_docs()?;
 
     let (tx, rx) = channel::<ItemRef>(100);
@@ -334,9 +334,8 @@ pub async fn rebuild_index(
 
     writer_context.commit()?;
 
-    let search_context = ctx.read().unwrap();
-    search_context.refresh_reader()?;
-    document_stats(&search_context, start_time.elapsed(), category_type)
+    ctx.refresh_reader()?;
+    document_stats(&ctx, start_time.elapsed(), category_type)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -346,10 +345,7 @@ pub enum RebuildProgress {
     Completed,
 }
 
-pub async fn update_story(
-    ctx: Arc<RwLock<SearchContext>>,
-    story: Story,
-) -> SearchResult<Option<Story>> {
+pub async fn update_story(ctx: Arc<SearchContext>, story: Story) -> SearchResult<Option<Story>> {
     let api = api_client();
     let latest = api.item(story.id).await?;
     let story_id = story.id;
@@ -360,12 +356,11 @@ pub async fn update_story(
             latest.descendants.unwrap_or_default()
         );
 
-        let writer_context = ctx.read().unwrap().writer_context()?;
+        let writer_context = ctx.writer_context()?;
         rebuild_story(api, writer_context, &story, latest).await?;
         info!("Rebuilt story {story_id}");
-        let g = ctx.read().unwrap();
-        g.refresh_reader()?;
-        Some(g.story(story_id)?)
+        ctx.refresh_reader()?;
+        Some(ctx.story(story_id)?)
     } else {
         None
     })
@@ -394,7 +389,7 @@ async fn rebuild_story(
 /// Handles story server side event subscription and relays story updates
 /// when necessary to the UI.
 async fn handle_story_events(
-    ctx: Arc<RwLock<SearchContext>>,
+    ctx: Arc<SearchContext>,
     client: Arc<ApiClient>,
     story: Story,
     mut ui_tx: mpsc::Sender<Story>,
@@ -421,14 +416,13 @@ async fn handle_story_events(
 
         // We'll rebuild this story if either the number of comments or score has changed.
         if latest_descendants != current_story.descendants || latest.score != current_story.score {
-            let writer_context = ctx.read().unwrap().writer_context()?;
+            let writer_context = ctx.writer_context()?;
             match rebuild_story(client.clone(), writer_context, &current_story, latest).await {
                 Ok(_) => {
                     current_story.descendants = latest_descendants;
                     let new_story = {
-                        let g = ctx.read().unwrap();
-                        g.refresh_reader()?;
-                        g.story(story_id)?
+                        ctx.refresh_reader()?;
+                        ctx.story(story_id)?
                     };
                     current_story.descendants = new_story.descendants;
                     current_story.score = new_story.score;
@@ -450,7 +444,7 @@ async fn handle_story_events(
 }
 
 async fn handle_comment_events(
-    ctx: Arc<RwLock<SearchContext>>,
+    ctx: Arc<SearchContext>,
     client: Arc<ApiClient>,
     comment: Comment,
     mut ui_tx: mpsc::Sender<Comment>,
@@ -469,8 +463,9 @@ async fn handle_comment_events(
             send_comments(&client, story_id, child_ids, tx_comment.clone()).await;
         });
 
-        let mut writer_context = ctx.read().unwrap().writer_context()?;
+        let mut writer_context = ctx.writer_context()?;
         write_items(rx_comment, &mut writer_context).await?;
+        drop(writer_context);
 
         result.await?;
 
@@ -489,10 +484,7 @@ pub struct WatchState<const N: usize, EventData> {
     pub receiver: mpsc::Receiver<EventData>,
 }
 
-pub fn watch_story(
-    ctx: Arc<RwLock<SearchContext>>,
-    story: Story,
-) -> SearchResult<WatchState<2, Story>> {
+pub fn watch_story(ctx: Arc<SearchContext>, story: Story) -> SearchResult<WatchState<2, Story>> {
     let client = api_client();
     let (tx, rx) = channel(10);
     let (ui_tx, ui_rx) = mpsc::channel::<Story>(10);
@@ -521,7 +513,7 @@ pub fn watch_story(
 }
 
 pub fn watch_comment(
-    ctx: Arc<RwLock<SearchContext>>,
+    ctx: Arc<SearchContext>,
     comment: Comment,
 ) -> SearchResult<WatchState<2, Comment>> {
     let client = api_client();
@@ -553,7 +545,7 @@ pub fn document_stats(
     build_time: Duration,
     category: ArticleType,
 ) -> SearchResult<IndexStats> {
-    let searcher = if ctx.active_index == category {
+    let searcher = if ctx.active_category() == category {
         ctx.searcher()
     } else {
         ctx.indices.get_index(category).reader()?.searcher()

@@ -16,7 +16,7 @@ use iced::{
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 pub const CONFIG_FILE: &str = "config_gui.dat";
@@ -58,7 +58,7 @@ pub fn load_config() -> anyhow::Result<Config> {
 }
 
 impl Config {
-    pub fn into_app(self, search_context: Arc<RwLock<SearchContext>>) -> App {
+    pub fn into_app(self, search_context: Arc<SearchContext>) -> App {
         let config = self;
         let index_stats = HashMap::from_iter(
             config

@@ -16,12 +16,12 @@ use iced::{
     Color, Element, Length, Shadow, Task, border, padding,
     widget::{self, text::Shaping, tooltip::Position},
 };
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 pub struct FullSearchState {
     pub search: SearchCriteria,
     pub search_results: Vec<Comment>,
-    pub search_context: Arc<RwLock<SearchContext>>,
+    pub search_context: Arc<SearchContext>,
     pub offset: usize,
     pub page: usize,
     pub full_count: usize,
@@ -29,7 +29,7 @@ pub struct FullSearchState {
 
 impl FullSearchState {
     /// Create a new full search state.
-    pub fn new(search_context: Arc<RwLock<SearchContext>>, search: SearchCriteria) -> Self {
+    pub fn new(search_context: Arc<SearchContext>, search: SearchCriteria) -> Self {
         Self {
             search,
             search_results: Vec::new(),
@@ -193,8 +193,10 @@ impl FullSearchState {
                     }
 
                     self.search = SearchCriteria::Query(search.clone());
-                    let g = self.search_context.read().unwrap();
-                    match g.search_all_comments(&search, 10, self.offset) {
+                    match self
+                        .search_context
+                        .search_all_comments(&search, 10, self.offset)
+                    {
                         Ok((comments, count)) => {
                             self.search_results = comments;
                             self.full_count = count;
@@ -224,7 +226,7 @@ impl FullSearchState {
                 self.paginate_task()
             }
             FullSearchMsg::ShowThread(comment_id) => {
-                common::show_thread(self.search_context.clone(), comment_id)
+                common::show_thread(&self.search_context, comment_id)
             }
             FullSearchMsg::JumpPage(page) => {
                 self.page = page;
@@ -238,12 +240,10 @@ impl FullSearchState {
             }
             FullSearchMsg::StoryByTime { story_id, beyond } => {
                 self.search = SearchCriteria::StoryId { story_id, beyond };
-                match self.search_context.read().unwrap().story_comments_by_date(
-                    story_id,
-                    beyond,
-                    10,
-                    self.offset,
-                ) {
+                match self
+                    .search_context
+                    .story_comments_by_date(story_id, beyond, 10, self.offset)
+                {
                     Ok((comments, total_comments)) => {
                         self.search_results = comments;
                         self.full_count = total_comments;
@@ -254,9 +254,9 @@ impl FullSearchState {
             }
             FullSearchMsg::OpenComment(comment_id) => {
                 let open_comments_task = || {
-                    let g = self.search_context.read().unwrap();
-                    let CommentStack { story, comments } = g.parents(comment_id)?;
-                    let comment = g.get_comment(comment_id)?;
+                    let CommentStack { story, comments } =
+                        self.search_context.parents(comment_id)?;
+                    let comment = self.search_context.get_comment(comment_id)?;
                     let task = Task::done(AppMsg::OpenComment {
                         article: story,
                         parent_id: comment_id,

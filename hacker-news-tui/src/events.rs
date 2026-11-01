@@ -6,7 +6,7 @@ use log::error;
 use ratatui::crossterm::event;
 use std::{
     sync::{
-        Arc, RwLock,
+        Arc,
         mpsc::{Receiver, RecvError, Sender, channel},
     },
     thread,
@@ -71,11 +71,7 @@ impl EventManager {
     }
 
     /// Spawn a tokio task that will emit rebuild index events
-    pub fn rebuild_index(
-        &self,
-        search_context: Arc<RwLock<SearchContext>>,
-        article_type: ArticleType,
-    ) {
+    pub fn rebuild_index(&self, search_context: Arc<SearchContext>, article_type: ArticleType) {
         let (tx, mut rx) = futures::channel::mpsc::channel::<RebuildProgress>(100);
 
         let sender = self.sender.clone();
@@ -94,7 +90,7 @@ impl EventManager {
     }
 
     /// Update a single story.
-    pub fn update_story(&self, search_context: Arc<RwLock<SearchContext>>, story: Story) {
+    pub fn update_story(&self, search_context: Arc<SearchContext>, story: Story) {
         let tx = self.sender.clone();
         tokio::spawn(async move {
             let result = update_story(search_context, story).await;
@@ -113,7 +109,7 @@ impl EventManager {
 }
 
 async fn rebuild(
-    search_context: Arc<RwLock<SearchContext>>,
+    search_context: Arc<SearchContext>,
     tx_progress: futures::channel::mpsc::Sender<RebuildProgress>,
     tx_result: Sender<AppEvent>,
     article_type: ArticleType,

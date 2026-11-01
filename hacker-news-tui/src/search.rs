@@ -12,7 +12,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, BorderType, Paragraph, StatefulWidget, Widget},
 };
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use tui_input::Input;
 use tui_scrollview::ScrollViewState;
 
@@ -39,14 +39,14 @@ pub struct SearchState {
 }
 
 impl SearchState {
-    pub fn page_forward(&mut self, search_context: Arc<RwLock<SearchContext>>) {
+    pub fn page_forward(&mut self, search_context: Arc<SearchContext>) {
         self.viewing = None;
         self.update_offset(self.offset.saturating_add(10));
         self.update_comments(search_context);
         self.scroll_view_state.scroll_to_top();
     }
 
-    pub fn page_back(&mut self, search_context: Arc<RwLock<SearchContext>>) {
+    pub fn page_back(&mut self, search_context: Arc<SearchContext>) {
         self.viewing = None;
         self.update_offset(self.offset.saturating_sub(10));
         self.update_comments(search_context);
@@ -58,8 +58,8 @@ impl SearchState {
         }
     }
 
-    fn update_comments(&mut self, search_context: Arc<RwLock<SearchContext>>) {
-        let result = search_context.read().unwrap().search_all_comments(
+    fn update_comments(&mut self, search_context: Arc<SearchContext>) {
+        let result = search_context.search_all_comments(
             self.search.as_deref().unwrap_or_default(),
             10,
             self.offset,

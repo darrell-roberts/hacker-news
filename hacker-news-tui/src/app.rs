@@ -25,10 +25,7 @@ use ratatui::{
     },
     layout::Position,
 };
-use std::{
-    ops::Not as _,
-    sync::{Arc, RwLock},
-};
+use std::{ops::Not as _, sync::Arc};
 use tui_input::backend::crossterm::EventHandler;
 
 /// Active view
@@ -52,7 +49,7 @@ pub struct App {
     event_manager: EventManager,
     /// Is the application running?
     running: bool,
-    pub search_context: Arc<RwLock<SearchContext>>,
+    pub search_context: Arc<SearchContext>,
     pub rebuild_progress: Option<IndexRebuildState>,
     pub viewing_state: Option<Viewing>,
     pub config: Config,
@@ -66,7 +63,7 @@ impl App {
         let _ = api_client();
 
         let search_context = search_context()?;
-        let stories = search_context.read().unwrap().top_stories(75, 0)?;
+        let stories = search_context.top_stories(75, 0)?;
 
         let articles_state = ArticlesState {
             list_state: ListState::default().with_selected(stories.is_empty().not().then_some(0)),
@@ -134,7 +131,7 @@ impl App {
                 self.handle_rebuild_progress(rebuild_progress)
             }
             AppEvent::IndexingCompleted(index_stats) => {
-                let top_stories = self.search_context.read().unwrap().top_stories(75, 0);
+                let top_stories = self.search_context.top_stories(75, 0);
                 match top_stories {
                     Ok(stories) => {
                         if !stories.is_empty() {
@@ -217,7 +214,7 @@ impl App {
                             }
                             KeyCode::Enter => {
                                 let search = search_state.input.value_and_reset();
-                                match self.search_context.read().unwrap().search_all_comments(
+                                match self.search_context.search_all_comments(
                                     &search,
                                     10,
                                     search_state.offset,
@@ -348,8 +345,6 @@ impl App {
                                 loop {
                                     let (comments, total_comments) = self
                                         .search_context
-                                        .read()
-                                        .unwrap()
                                         .comments(parent_id, 10, current_offset)
                                         .unwrap();
 
@@ -482,7 +477,7 @@ impl App {
                             state.offset = 0;
                             state.viewing = None;
                             state.scroll_view_state.scroll_to_top();
-                            let comments = self.search_context.read().unwrap().comments(
+                            let comments = self.search_context.comments(
                                 state.parent_id,
                                 state.limit,
                                 state.offset,
@@ -508,11 +503,7 @@ impl App {
                             .and_then(|id| self.articles_state.stories.get(id))
                             .map(|story| story.id)
                         {
-                            let comments =
-                                self.search_context
-                                    .read()
-                                    .unwrap()
-                                    .comments(selected_item, 10, 0);
+                            let comments = self.search_context.comments(selected_item, 10, 0);
 
                             match comments {
                                 Ok((comments, total)) => {
@@ -644,7 +635,7 @@ impl App {
                         .and_then(|index| search_state.comments.get(index))
                         .map(|comment| (comment.id, comment.parent_id))
                 {
-                    let result = self.search_context.read().unwrap().parents(comment_id);
+                    let result = self.search_context.parents(comment_id);
                     match result {
                         Ok(stack) => {
                             let child_stack = || {
@@ -669,8 +660,6 @@ impl App {
                             loop {
                                 let (comments, total_comments) = self
                                     .search_context
-                                    .read()
-                                    .unwrap()
                                     .comments(comment_parent_id, 10, current_offset)
                                     .unwrap();
                                 let viewing =
@@ -734,11 +723,9 @@ impl App {
 
     fn update_stories(&mut self) {
         self.search_context
-            .write()
-            .unwrap()
             .activate_index(self.articles_state.article_type)
             .unwrap();
-        match self.search_context.read().unwrap().top_stories(75, 0) {
+        match self.search_context.top_stories(75, 0) {
             Ok(stories) => {
                 self.articles_state.stories = stories;
                 self.articles_state.list_state.select(Some(0));

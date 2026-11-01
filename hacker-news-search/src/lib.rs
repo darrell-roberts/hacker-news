@@ -1,7 +1,7 @@
 //! Search document storage and retrieval.
 use hacker_news_api::ArticleType;
 use log::info;
-use std::{fs::create_dir_all, path::Path};
+use std::{fs::create_dir_all, path::Path, sync::RwLock};
 use tantivy::{
     Index, IndexReader, Searcher, TantivyError,
     directory::{MmapDirectory, error::OpenDirectoryError},
@@ -103,10 +103,10 @@ pub enum SearchError {
 type SearchResult<T> = Result<T, SearchError>;
 
 pub struct SearchContext {
-    reader: IndexReader,
+    reader: RwLock<IndexReader>,
     schema: Schema,
     indices: HackerNewsIndices,
-    active_index: ArticleType,
+    active_index: RwLock<ArticleType>,
     fields: HackerNewsFields,
 }
 
@@ -138,55 +138,61 @@ impl SearchContext {
     pub fn new(index_path: &Path, active_index: ArticleType) -> SearchResult<Self> {
         let (schema, fields) = document_schema();
         let indices = create_indices(index_path, &schema)?;
-        let reader = indices.get_index(active_index).reader()?;
+        let reader = RwLock::new(indices.get_index(active_index).reader()?);
 
         Ok(SearchContext {
             reader,
-            active_index,
+            active_index: RwLock::new(active_index),
             indices,
             schema,
             fields,
         })
     }
 
-    pub fn activate_index(&mut self, active_index: ArticleType) -> SearchResult<()> {
-        self.active_index = active_index;
-        self.reader = self.indices.get_index(active_index).reader()?;
+    pub fn activate_index(&self, active_index: ArticleType) -> SearchResult<()> {
+        let mut guard = self.active_index.write().unwrap();
+        *guard = active_index;
+        let mut guard = self.reader.write().unwrap();
+        *guard = self.indices.get_index(active_index).reader()?;
         Ok(())
     }
 
     pub fn searcher(&self) -> Searcher {
-        self.reader.searcher()
+        self.reader.read().unwrap().searcher()
     }
 
     pub fn query_parser(&self) -> QueryParser {
         let title = self.fields.title;
         let body = self.fields.body;
 
-        QueryParser::for_index(self.indices.get_index(self.active_index), vec![title, body])
+        QueryParser::for_index(
+            self.indices.get_index(self.active_category()),
+            vec![title, body],
+        )
     }
 
     /// Get the active index category.
     pub fn active_category(&self) -> ArticleType {
-        self.active_index
+        *self.active_index.read().unwrap()
     }
 
     /// Get the total number of documents in the active index.
     pub fn doc_count(&self) -> u64 {
-        self.reader.searcher().num_docs()
+        self.reader.read().unwrap().searcher().num_docs()
     }
 
     pub fn writer_context(&self) -> SearchResult<WriteContext<'static>> {
-        let index = self.indices.get_index(self.active_index);
+        let active_category = self.active_category();
+        let index = self.indices.get_index(active_category);
         WriteContext::new(
             self.fields,
             index.writer(50_000_000)?,
-            self.active_index.as_str(),
+            active_category.as_str(),
         )
     }
 
     pub fn refresh_reader(&self) -> SearchResult<()> {
-        Ok(self.reader.reload()?)
+        Ok(self.reader.read().unwrap().reload()?)
     }
 }
 

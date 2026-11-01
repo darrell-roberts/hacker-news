@@ -13,13 +13,10 @@ use iced::{
     futures::channel::mpsc,
     widget::{self, Column, button, container, row, text},
 };
-use std::{
-    ops::Not,
-    sync::{Arc, RwLock},
-};
+use std::{ops::Not, sync::Arc};
 
 pub struct HeaderState {
-    pub search_context: Arc<RwLock<SearchContext>>,
+    pub search_context: Arc<SearchContext>,
     pub article_count: usize,
     pub article_type: ArticleType,
     pub building_index: bool,
@@ -28,7 +25,7 @@ pub struct HeaderState {
 
 impl HeaderState {
     /// Create a new Header state.
-    pub fn new(search_context: Arc<RwLock<SearchContext>>) -> Self {
+    pub fn new(search_context: Arc<SearchContext>) -> Self {
         Self {
             search_context,
             article_count: 0,

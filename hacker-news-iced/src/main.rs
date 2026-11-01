@@ -21,12 +21,7 @@ use iced::{
 };
 use log::error;
 use nav_history::Content;
-use std::{
-    cell::RefCell,
-    collections::HashMap,
-    sync::{Arc, RwLock},
-    time::Duration,
-};
+use std::{cell::RefCell, collections::HashMap, sync::Arc, time::Duration};
 
 use crate::config::load_config;
 
@@ -133,7 +128,7 @@ fn start() -> anyhow::Result<()> {
         .context("Failed to run UI")
 }
 
-fn create_app(search_context: Arc<RwLock<SearchContext>>) -> App {
+fn create_app(search_context: Arc<SearchContext>) -> App {
     let mut app = load_config()
         .map(|config| config.into_app(search_context.clone()))
         .unwrap_or_else(|err| {

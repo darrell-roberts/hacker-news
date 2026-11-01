@@ -1,8 +1,5 @@
 //! Configuration for client apps.
-use std::{
-    path::PathBuf,
-    sync::{Arc, RwLock},
-};
+use std::{path::PathBuf, sync::Arc};
 
 use anyhow::Context as _;
 use app_dirs2::{AppDataType, AppInfo, get_app_dir, get_app_root};
@@ -85,7 +82,7 @@ pub fn init_logger(base_name: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub fn search_context() -> anyhow::Result<Arc<RwLock<SearchContext>>> {
+pub fn search_context() -> anyhow::Result<Arc<SearchContext>> {
     let index_dir = get_app_dir(
         app_dirs2::AppDataType::UserData,
         &APP_INFO,
@@ -94,10 +91,7 @@ pub fn search_context() -> anyhow::Result<Arc<RwLock<SearchContext>>> {
 
     // info!("Reading index dir {index_dir:?}");
 
-    let search_context = Arc::new(RwLock::new(SearchContext::new(
-        &index_dir,
-        ArticleType::Top,
-    )?));
+    let search_context = Arc::new(SearchContext::new(&index_dir, ArticleType::Top)?);
 
     Ok(search_context)
 }

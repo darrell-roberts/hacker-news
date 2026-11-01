@@ -21,7 +21,7 @@ use relm4::{
     prelude::FactoryVecDeque,
     *,
 };
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 mod articles;
 mod comments;
@@ -31,7 +31,7 @@ pub struct AppModel {
     header: Controller<HeaderModel>,
     articles: FactoryVecDeque<ArticleModel>,
     comments: FactoryVecDeque<CommentModel>,
-    search_context: Arc<RwLock<SearchContext>>,
+    search_context: Arc<SearchContext>,
     updating: bool,
     total_stories: usize,
     progress_received: usize,
@@ -267,16 +267,17 @@ impl Component for AppModel {
     ) {
         match message {
             AppMsg::Fetch => {
-                let result = self.search_context.read().unwrap().top_stories(75, 0);
+                let result = self.search_context.top_stories(75, 0);
                 match result {
                     Ok(top_stories) => {
                         self.articles.guard().clear();
                         self.articles.extend(top_stories);
-                        if let Some(stats) =
-                            self.index_config.index_stats.iter().copied().find(|stat| {
-                                stat.category
-                                    == self.search_context.read().unwrap().active_category()
-                            })
+                        if let Some(stats) = self
+                            .index_config
+                            .index_stats
+                            .iter()
+                            .copied()
+                            .find(|stat| stat.category == self.search_context.active_category())
                         {
                             sender.input(AppMsg::IndexStatus(stats));
                         }
@@ -290,11 +291,7 @@ impl Component for AppModel {
                 widgets.comment_scroll.vadjustment().set_value(0.0);
                 widgets.article_scroll.vadjustment().set_value(0.0);
                 self.comments.guard().clear();
-                self.search_context
-                    .write()
-                    .unwrap()
-                    .activate_index(ty)
-                    .unwrap();
+                self.search_context.activate_index(ty).unwrap();
                 self.active_comment_id = 0;
                 self.comment_page = 0;
                 self.comment_page_offset = 0;
@@ -314,11 +311,9 @@ impl Component for AppModel {
                     self.comment_page_offset = 0
                 }
 
-                let comments =
-                    self.search_context
-                        .read()
-                        .unwrap()
-                        .comments(id, 10, self.comment_page_offset);
+                let comments = self
+                    .search_context
+                    .comments(id, 10, self.comment_page_offset);
 
                 match comments {
                     Ok((comments, total)) => {
@@ -390,7 +385,7 @@ impl Component for AppModel {
                 sender.input(AppMsg::OpenComment(self.active_comment_id, false));
             }
             AppMsg::Refresh => {
-                let category = self.search_context.read().unwrap().active_category();
+                let category = self.search_context.active_category();
                 let (tx, mut rx) = mpsc::channel::<RebuildProgress>(100);
                 let fut = rebuild_index(self.search_context.clone(), category, tx);
                 let sender_copy = sender.clone();

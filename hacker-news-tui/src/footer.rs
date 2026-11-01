@@ -68,7 +68,7 @@ impl<'a> Widget for FooterWidget<'a> {
                 }
                 .render(url, buf);
 
-                let active_index = self.app.search_context.read().unwrap().active_category();
+                let active_index = self.app.search_context.active_category();
 
                 if let Some(stats) = self
                     .app
