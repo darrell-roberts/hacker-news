@@ -102,12 +102,16 @@ pub enum SearchError {
 /// Search result with SearchError.
 type SearchResult<T> = Result<T, SearchError>;
 
+struct ActiveIndex {
+    reader: IndexReader,
+    active_index: ArticleType,
+}
+
 pub struct SearchContext {
-    reader: RwLock<IndexReader>,
     schema: Schema,
     indices: HackerNewsIndices,
-    active_index: RwLock<ArticleType>,
     fields: HackerNewsFields,
+    active: RwLock<ActiveIndex>,
 }
 
 fn create_indices(base_path: &Path, schema: &Schema) -> SearchResult<HackerNewsIndices> {
@@ -138,11 +142,15 @@ impl SearchContext {
     pub fn new(index_path: &Path, active_index: ArticleType) -> SearchResult<Self> {
         let (schema, fields) = document_schema();
         let indices = create_indices(index_path, &schema)?;
-        let reader = RwLock::new(indices.get_index(active_index).reader()?);
+        let reader = indices.get_index(active_index).reader()?;
+
+        let active = RwLock::new(ActiveIndex {
+            reader,
+            active_index,
+        });
 
         Ok(SearchContext {
-            reader,
-            active_index: RwLock::new(active_index),
+            active,
             indices,
             schema,
             fields,
@@ -150,15 +158,17 @@ impl SearchContext {
     }
 
     pub fn activate_index(&self, active_index: ArticleType) -> SearchResult<()> {
-        let mut guard = self.active_index.write().unwrap();
-        *guard = active_index;
-        let mut guard = self.reader.write().unwrap();
-        *guard = self.indices.get_index(active_index).reader()?;
+        let mut guard = self.active.write().unwrap();
+        let reader = self.indices.get_index(active_index).reader()?;
+        *guard = ActiveIndex {
+            reader,
+            active_index,
+        };
         Ok(())
     }
 
     pub fn searcher(&self) -> Searcher {
-        self.reader.read().unwrap().searcher()
+        self.active.read().unwrap().reader.searcher()
     }
 
     pub fn query_parser(&self) -> QueryParser {
@@ -173,12 +183,12 @@ impl SearchContext {
 
     /// Get the active index category.
     pub fn active_category(&self) -> ArticleType {
-        *self.active_index.read().unwrap()
+        self.active.read().unwrap().active_index
     }
 
     /// Get the total number of documents in the active index.
     pub fn doc_count(&self) -> u64 {
-        self.reader.read().unwrap().searcher().num_docs()
+        self.active.read().unwrap().reader.searcher().num_docs()
     }
 
     pub fn writer_context(&self) -> SearchResult<WriteContext<'static>> {
@@ -192,7 +202,7 @@ impl SearchContext {
     }
 
     pub fn refresh_reader(&self) -> SearchResult<()> {
-        Ok(self.reader.read().unwrap().reload()?)
+        Ok(self.active.read().unwrap().reader.reload()?)
     }
 }
 
