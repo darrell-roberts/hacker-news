@@ -7,7 +7,6 @@ use gpui::{
     App, AppContext, Div, Entity, MouseButton, Pixels, ResizeEdge, SharedString, Stateful, Window,
     div, prelude::*, px,
 };
-use platform_settings::FontData;
 
 pub struct WindowResize {
     inner: Entity<MainWindow>,
@@ -198,8 +197,8 @@ fn subscribe_to_system_font_changes(app: &mut App) {
 
     #[derive(Debug)]
     enum FontType {
-        SystemUi(FontData),
-        Monospace(FontData),
+        SystemUi(platform_settings::FontData),
+        Monospace(platform_settings::FontData),
         Scale(f64),
     }
     let (mut tx, mut rx) = channel::<FontType>(10);

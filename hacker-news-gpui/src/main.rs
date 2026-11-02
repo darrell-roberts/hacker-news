@@ -362,9 +362,15 @@ fn default_system_fonts(config: Option<&Config>) -> DefaultFonts {
 }
 
 #[cfg(not(target_os = "linux"))]
-fn default_system_font() -> DefaultFonts {
+fn default_system_fonts(config: Option<&Config>) -> DefaultFonts {
     DefaultFonts {
-        system_ui: ".SystemUIFont".into(),
-        monospace: ".ZedMono".into(),
+        system_ui: Font {
+            family_name: ".SystemUIFont".into(),
+            size: config.map(|c| c.font_size).unwrap_or(14.0).into(),
+        },
+        monospace: Font {
+            family_name: ".ZedMono".into(),
+            size: config.map(|c| c.font_size).unwrap_or(14.0).into(),
+        },
     }
 }
