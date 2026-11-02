@@ -186,9 +186,10 @@ fn create_app(search_context: Arc<SearchContext>) -> App {
     }
     #[cfg(target_os = "macos")]
     {
-        app.theme = platform_settings::initial_theme()
-            .map(to_theme)
-            .unwrap_or(Theme::Light);
+        app.theme = match platform_settings::initial_theme() {
+            platform_settings::Theme::Dark => Theme::Dark,
+            platform_settings::Theme::Light => Theme::Light,
+        };
     }
     app
 }

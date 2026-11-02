@@ -58,12 +58,12 @@ hacker-news-config.workspace = true
 html-sanitizer.workspace = true
 idna = "1"
 log.workspace = true
+platform-settings.workspace = true
 serde.workspace = true
 tokio.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gpui_linux = { git = "https://github.com/zed-industries/zed.git" }
-platform-settings.workspace = true
 
 [target.'cfg(target_os = "macos")'.dependencies]
 gpui_macos = { git = "https://github.com/zed-industries/zed.git" }
