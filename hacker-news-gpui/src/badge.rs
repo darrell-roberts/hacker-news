@@ -1,7 +1,10 @@
 //! Standalone Badge Component (inspired by gpui-kit)
+use std::time::Duration;
+
 use gpui::{
-    AnyElement, App, ClickEvent, IntoElement, ParentElement, Refineable as _, RenderOnce, Rgba,
-    SharedString, StyleRefinement, Styled, Window, div, prelude::*, rems, rgb,
+    Animation, AnimationExt, AnyElement, App, ClickEvent, IntoElement, ParentElement,
+    Refineable as _, RenderOnce, Rgba, SharedString, StyleRefinement, Styled, Window, div,
+    ease_in_out, prelude::*, rems, rgb,
 };
 
 type BadgeClicked = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
@@ -110,7 +113,12 @@ impl RenderOnce for Badge {
                             el.cursor_pointer()
                                 .on_click(move |event, window, app| cb(event, window, app))
                         })
-                        .child(count_label),
+                        .child(count_label.clone())
+                        .with_animation(
+                            count_label,
+                            Animation::new(Duration::from_secs(1)).with_easing(ease_in_out),
+                            |badge, delta| badge.opacity(delta),
+                        ),
                 )
             })
     }

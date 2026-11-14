@@ -66,13 +66,15 @@ pub(super) fn start_background_subscriptions(
         entity_view.article_sender.replace(tx.clone());
     });
 
-    let last_unread_count = {
+    let find_article_entity = {
         let entity_content = entity_content.clone();
         move |cx: &AsyncApp, id| {
             cx.read_entity(&entity_content, |content, cx| {
-                content.articles.iter().find_map(|article| {
-                    (article.read(cx).id == id).then(|| article.read(cx).unread_count)
-                })
+                content
+                    .articles
+                    .iter()
+                    .find(move |article| article.read(cx).id == id)
+                    .cloned()
             })
         }
     };
@@ -134,16 +136,35 @@ pub(super) fn start_background_subscriptions(
                                 0
                             };
 
-                            let unread_count = last_unread_count(app, article.id).unwrap_or(0)
-                                + comment_count_changed;
+                            match find_article_entity(app, article.id) {
+                                Some(article_entity) => {
+                                    if comment_count_changed != 0 {
+                                        article_entity.update(app, |article_view, cx| {
+                                            article_view.unread_count += comment_count_changed;
+                                            article_view.unread_count_label = Some(
+                                                format!("{}", article_view.unread_count).into(),
+                                            );
+                                            article_view.comment_count = article
+                                                .descendants
+                                                .filter(|&n| n > 0)
+                                                .map(|n| format!("{n}").into());
+                                            cx.notify();
+                                        });
+                                    }
+                                    if order_change != 0 {
+                                        article_entity.update(app, |article, cx| {
+                                            article.order_change = order_change;
+                                            article.order_change_label =
+                                                format!("{order_change}").into();
+                                            cx.notify();
+                                        })
+                                    }
 
-                            ArticleView::new(
-                                app,
-                                entity_content.clone(),
-                                article,
-                                order_change,
-                                unread_count,
-                            )
+                                    article_entity
+                                }
+
+                                None => ArticleView::new(app, entity_content.clone(), article),
+                            }
                         })
                         .collect::<Vec<_>>();
 

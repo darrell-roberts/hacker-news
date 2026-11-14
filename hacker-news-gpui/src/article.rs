@@ -25,9 +25,9 @@ pub struct ArticleView {
     /// The URL of the article, if available.
     url: Option<SharedString>,
     /// The label indicating the change in article order/rank.
-    order_change_label: SharedString,
+    pub order_change_label: SharedString,
     /// The change in article order/rank.
-    order_change: i64,
+    pub order_change: i64,
     /// The age of the article, formatted as a string.
     pub age: SharedString,
     /// The image source for the comment icon.
@@ -41,12 +41,12 @@ pub struct ArticleView {
     /// Whether the comments are currently loading.
     pub loading_comments: bool,
     /// The delta in comment count since the last update, if available.
-    comment_count_changed: Option<SharedString>,
+    pub unread_count_label: Option<SharedString>,
     /// Article id
     pub id: u64,
     /// Article body.
     pub article_text: Option<Rc<ViewStyledText>>,
-    /// Total unread count while idling.
+    /// Unread comment count while idling.
     pub unread_count: i64,
 }
 
@@ -69,19 +69,8 @@ impl ArticleView {
         app: &mut AsyncApp,
         content_entity: Entity<ContentView>,
         item: Item,
-        order_change: i64,
-        unread_count: i64,
     ) -> Entity<Self> {
         app.new(|_cx| {
-            let changed = if unread_count.is_negative() {
-                Some(format!("{unread_count}"))
-            } else if unread_count > 0 {
-                Some(format!("+{unread_count}"))
-            } else {
-                None
-            }
-            .map(Into::into);
-
             Self {
                 title: item.title.unwrap_or_default().into(),
                 author: format!("by {}", item.by.clone()).into(),
@@ -91,19 +80,15 @@ impl ArticleView {
                     .map(|n| format!("{n}"))
                     .map(Into::into),
                 url: item.url.as_deref().map(url_punycode).map(Into::into),
-                order_change_label: if order_change == 0 {
-                    Default::default()
-                } else {
-                    format!("{order_change}").into()
-                },
-                order_change,
+                order_change_label: Default::default(),
+                order_change: 0,
                 age: parse_friendly_age(item.time).unwrap_or_default().into(),
                 comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
                 // rank: format!("{rank}").into(),
                 comment_ids: Arc::new(item.kids),
                 content_entity,
                 loading_comments: false,
-                comment_count_changed: changed,
+                unread_count_label: None,
                 id: item.id,
                 article_text: item
                     .text
@@ -111,7 +96,7 @@ impl ArticleView {
                     .map(parse_layout)
                     .map(Into::into)
                     .map(Rc::new),
-                unread_count,
+                unread_count: 0,
             }
         })
     }
@@ -175,7 +160,9 @@ impl ArticleView {
 
             article_entity.update(app, |article_view: &mut ArticleView, cx| {
                 article_view.loading_comments = true;
-                article_view.comment_count_changed = None;
+                // Reset the unread count once comments are opened.
+                article_view.unread_count_label = None;
+                article_view.unread_count = 0;
                 cx.notify();
             });
 
@@ -290,7 +277,7 @@ impl Render for ArticleView {
 
         Badge::new()
             .ring_color(theme.surface())
-            .count(self.comment_count_changed.clone())
+            .count(self.unread_count_label.clone())
             .on_click(self.fetch_comments_call_back(cx.entity()))
             .child(
                 div()
