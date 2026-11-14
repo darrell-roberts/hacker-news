@@ -2,7 +2,7 @@
 use super::{ContentEvent, ContentView};
 use crate::{ApiClientState, ArticleSelection, article::ArticleView};
 use futures::{SinkExt, StreamExt, TryStreamExt as _, channel};
-use gpui::{App, AppContext, Context, Entity};
+use gpui::{App, AppContext, AsyncApp, Context, Entity};
 use gpui_tokio::JoinError;
 use hacker_news_api::{ArticleType, Item, subscribe_to_article_list};
 use log::{error, info};
@@ -66,6 +66,17 @@ pub(super) fn start_background_subscriptions(
         entity_view.article_sender.replace(tx.clone());
     });
 
+    let last_unread_count = {
+        let entity_content = entity_content.clone();
+        move |cx: &AsyncApp, id| {
+            cx.read_entity(&entity_content, |content, cx| {
+                content.articles.iter().find_map(|article| {
+                    (article.read(cx).id == id).then(|| article.read(cx).unread_count)
+                })
+            })
+        }
+    };
+
     app.spawn(async move |app| {
         while let Some(items) = rx.next().await {
             match items {
@@ -123,13 +134,15 @@ pub(super) fn start_background_subscriptions(
                                 0
                             };
 
+                            let unread_count = last_unread_count(app, article.id).unwrap_or(0)
+                                + comment_count_changed;
+
                             ArticleView::new(
                                 app,
                                 entity_content.clone(),
                                 article,
                                 order_change,
-                                // index + 1,
-                                comment_count_changed,
+                                unread_count,
                             )
                         })
                         .collect::<Vec<_>>();

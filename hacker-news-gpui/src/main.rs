@@ -16,6 +16,7 @@ use std::{ops::Deref, sync::Arc};
 
 mod article;
 mod article_body;
+pub mod badge;
 mod comment;
 mod common;
 mod content;
