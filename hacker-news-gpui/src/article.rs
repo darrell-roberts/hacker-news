@@ -1,5 +1,6 @@
 //! Article view.
 use crate::{
+    badge::Badge,
     common::{COMMENT_IMAGE, hover_element, update_url, url_punycode},
     content::{ContentEvent, ContentView},
     rich_text::{ViewStyledText, parse_layout},
@@ -7,8 +8,8 @@ use crate::{
 };
 use friendly_duration::parse_friendly_age;
 use gpui::{
-    Animation, AnimationExt, AppContext, AsyncApp, Entity, Fill, ImageSource, SharedString,
-    StyleRefinement, Window, div, img, prelude::*, pulsating_between, quadratic, rems, rgb,
+    Animation, AnimationExt, AppContext, AsyncApp, Entity, ImageSource, SharedString,
+    StyleRefinement, Window, div, img, prelude::*, pulsating_between, rems,
 };
 use hacker_news_api::Item;
 use std::{rc::Rc, sync::Arc, time::Duration};
@@ -45,6 +46,8 @@ pub struct ArticleView {
     pub id: u64,
     /// Article body.
     pub article_text: Option<Rc<ViewStyledText>>,
+    /// Total unread count while idling.
+    pub unread_count: i64,
 }
 
 impl ArticleView {
@@ -67,14 +70,13 @@ impl ArticleView {
         content_entity: Entity<ContentView>,
         item: Item,
         order_change: i64,
-        // rank: usize,
-        comment_count_changed: i64,
+        unread_count: i64,
     ) -> Entity<Self> {
-        let article_entity = app.new(|_cx| {
-            let changed = if comment_count_changed.is_negative() {
-                Some(format!("{comment_count_changed}"))
-            } else if comment_count_changed > 0 {
-                Some(format!("+{comment_count_changed}"))
+        app.new(|_cx| {
+            let changed = if unread_count.is_negative() {
+                Some(format!("{unread_count}"))
+            } else if unread_count > 0 {
+                Some(format!("+{unread_count}"))
             } else {
                 None
             }
@@ -109,68 +111,9 @@ impl ArticleView {
                     .map(parse_layout)
                     .map(Into::into)
                     .map(Rc::new),
+                unread_count,
             }
-        });
-
-        // Set a timer to allow the comment count to return
-        // after the the animation has completed.
-        if comment_count_changed != 0 {
-            let article_entity = article_entity.clone();
-            app.spawn(async move |app: &mut AsyncApp| {
-                app.background_executor()
-                    .timer(Duration::from_secs(5))
-                    .await;
-                article_entity.update(app, |article: &mut ArticleView, cx| {
-                    article.comment_count_changed = None;
-                    cx.notify();
-                });
-            })
-            .detach();
-        }
-
-        article_entity
-    }
-
-    /// Render the comments cell when we have a new total comments delta.
-    ///
-    /// # Arguments
-    ///
-    /// * `div` - The div element to render the new comments cell into.
-    /// * `new_comments_added` - The shared string representing the number of new comments added.
-    ///
-    /// # Returns
-    ///
-    /// Returns a [`gpui::Stateful<gpui::Div>`] containing the rendered new comments cell.
-    fn render_new_comments_cell(
-        &self,
-        div: gpui::Stateful<gpui::Div>,
-        new_comments_added: &SharedString,
-        article_entity: Entity<ArticleView>,
-    ) -> gpui::Stateful<gpui::Div> {
-        div.cursor_pointer()
-            .on_click(self.fetch_comments_call_back(article_entity))
-            .flex()
-            .flex_row()
-            .child(
-                gpui::div()
-                    .flex()
-                    .flex_row()
-                    .child(
-                        gpui::div()
-                            .bg(Fill::Color(rgb(0xFF69B4).into()))
-                            .text_align(gpui::TextAlign::Center)
-                            .rounded(rems(0.25))
-                            .px(rems(0.1))
-                            .text_size(rems(0.75))
-                            .child(new_comments_added.clone())
-                            .with_animation(
-                                "comment-count-changed-fade",
-                                Animation::new(Duration::from_secs(5)).with_easing(quadratic),
-                                |el, n| el.opacity(1.0 - n),
-                            ),
-                    )
-                    .child(gpui::div().child(img(self.comment_image.clone()))),
-            )
+        })
     }
 
     /// Render the comments cell. This shows the total number of comments next
@@ -230,8 +173,10 @@ impl ArticleView {
         move |_, _, app| {
             let article_entity = article_entity.clone();
 
-            article_entity.update(app, |article_view: &mut ArticleView, _cx| {
+            article_entity.update(app, |article_view: &mut ArticleView, cx| {
                 article_view.loading_comments = true;
+                article_view.comment_count_changed = None;
+                cx.notify();
             });
 
             content_entity.update(app, |_content_view: &mut ContentView, cx| {
@@ -273,14 +218,9 @@ impl Render for ArticleView {
             .map(|id| id == self.id)
             .unwrap_or(false);
 
-        let article_entity = cx.entity();
-
         let comments_col = div().id("comments").map(|div| {
-            if let Some(new_comments_added) = self.comment_count_changed.as_ref() {
-                self.render_new_comments_cell(div, new_comments_added, article_entity)
-                    .into_any()
-            } else if let Some(comments) = self.comment_count.as_ref() {
-                self.render_comments_cell(hover_element(theme), article_entity, div, comments)
+            if let Some(comments) = self.comment_count.as_ref() {
+                self.render_comments_cell(hover_element(theme), cx.entity(), div, comments)
                     .into_any()
             } else if self.article_text.is_some() {
                 // The article has a body but no comments. In place of the comment count
@@ -288,7 +228,7 @@ impl Render for ArticleView {
                 div.id("text-open")
                     .cursor_pointer()
                     .hover(hover_element(theme))
-                    .on_click(self.fetch_comments_call_back(article_entity))
+                    .on_click(self.fetch_comments_call_back(cx.entity()))
                     .text_align(gpui::TextAlign::Center)
                     .rounded_md()
                     .child("*")
@@ -299,10 +239,9 @@ impl Render for ArticleView {
         });
 
         let url = self.url.clone();
-        let article_entity = cx.entity();
 
         let load_comments_cb = (self.article_text.is_some() && url.is_none())
-            .then(|| self.fetch_comments_call_back(article_entity.clone()));
+            .then(|| self.fetch_comments_call_back(cx.entity()));
 
         let title_col = div()
             .flex()
@@ -323,13 +262,16 @@ impl Render for ArticleView {
                             cb(event, window, app);
                         };
                     })
-                    .on_hover(move |hover, _window, app| {
-                        update_url(
-                            app,
-                            hover
-                                .then(|| article_entity.read(app).url.clone())
-                                .flatten(),
-                        )
+                    .on_hover({
+                        let article_entity = cx.entity();
+                        move |hover, _window, app| {
+                            update_url(
+                                app,
+                                hover
+                                    .then(|| article_entity.read(app).url.clone())
+                                    .flatten(),
+                            )
+                        }
                     })
                     .hover(hover_element(theme)),
             )
@@ -346,31 +288,37 @@ impl Render for ArticleView {
                     .gap_x(rems(0.1)),
             );
 
-        div()
-            .flex()
-            .flex_row()
-            .rounded_md()
-            .shadow_md()
-            .bg(theme.surface())
-            .border_1()
-            .mr_1()
-            .border_color(theme.border())
-            .when(self.order_change > 2, |div| {
-                div.text_color(theme.text_increasing())
-            })
-            .when(self.order_change < -2, |div| {
-                div.text_color(theme.text_decreasing())
-            })
-            .when(viewing_article, |div| {
-                div.border_color(theme.comment_border()).border_4()
-            })
+        Badge::new()
+            .ring_color(theme.surface())
+            .count(self.comment_count_changed.clone())
+            .on_click(self.fetch_comments_call_back(cx.entity()))
             .child(
-                div().overflow_hidden().child(
-                    div()
-                        .flex()
-                        .flex_row()
-                        .children([self.rank_change_col(theme), title_col]),
-                ),
+                div()
+                    .flex()
+                    .flex_row()
+                    .rounded_md()
+                    .shadow_md()
+                    .bg(theme.surface())
+                    .border_1()
+                    .mr_1()
+                    .border_color(theme.border())
+                    .when(self.order_change > 2, |div| {
+                        div.text_color(theme.text_increasing())
+                    })
+                    .when(self.order_change < -2, |div| {
+                        div.text_color(theme.text_decreasing())
+                    })
+                    .when(viewing_article, |div| {
+                        div.border_color(theme.comment_border()).border_4()
+                    })
+                    .child(
+                        div().overflow_hidden().child(
+                            div()
+                                .flex()
+                                .flex_row()
+                                .children([self.rank_change_col(theme), title_col]),
+                        ),
+                    ),
             )
     }
 }
