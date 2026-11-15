@@ -4,7 +4,7 @@ use crate::{
     full_search::{FullSearchState, SearchCriteria},
 };
 use anyhow::Context;
-use hacker_news_api::ArticleType;
+use hacker_news_api::{ArticleType, ItemKey};
 use hacker_news_search::{SearchContext, api::CommentStack};
 use std::{fmt::Display, sync::Arc};
 
@@ -29,7 +29,7 @@ impl Content {
     }
 
     /// Get the active story to show for this content.
-    pub fn active_story(&self) -> Option<u64> {
+    pub fn active_story(&self) -> Option<ItemKey> {
         match self {
             Content::Comment(comment_state) => Some(comment_state.article.id),
             Content::Search(full_search_state) => match &full_search_state.search {
@@ -128,13 +128,13 @@ impl From<SearchHistory> for HistoryElement {
 
 /// History for the comment state.
 pub struct CommentHistory {
-    story_id: u64,
+    story_id: ItemKey,
     search: Option<String>,
     oneline: bool,
     offset: usize,
     page: usize,
-    parent_id: u64,
-    active_comment_id: Option<u64>,
+    parent_id: ItemKey,
+    active_comment_id: Option<ItemKey>,
     category: ArticleType,
 }
 

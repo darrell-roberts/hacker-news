@@ -9,6 +9,7 @@ use crate::{
     richtext::SearchSpanIter,
 };
 use friendly_duration::parse_friendly_age;
+use hacker_news_api::ItemKey;
 use hacker_news_search::{SearchContext, WatchState, api::Story, update_story, watch_story};
 use iced::{
     Background, Color, Element, Length, Shadow, Task, Theme,
@@ -55,19 +56,19 @@ pub struct ArticleState {
     /// Viewing articles
     pub articles: Vec<Story>,
     /// Visited item ids.
-    pub visited: HashSet<u64>,
+    pub visited: HashSet<ItemKey>,
     /// Search
     pub search: Option<String>,
     /// Item comments are being viewed.
-    pub viewing_item: Option<u64>,
+    pub viewing_item: Option<ItemKey>,
     /// How many articles to fetch.
     pub article_limit: usize,
     /// Handles for watch stories.
-    pub watch_handles: HashMap<u64, WatchHandles>,
+    pub watch_handles: HashMap<ItemKey, WatchHandles>,
     /// Number of changes that have occurred to a watched story.
-    pub watch_changes: HashMap<u64, WatchChange>,
+    pub watch_changes: HashMap<ItemKey, WatchChange>,
     /// Stories being index.
-    pub indexing_stories: Vec<u64>,
+    pub indexing_stories: Vec<ItemKey>,
     /// Filter articles being watched.
     pub filter_watching: bool,
     /// Handle to static rust image.
@@ -93,7 +94,7 @@ impl ArticleState {
     }
 
     /// Set visited set.
-    pub fn visited(mut self, visited: HashSet<u64>) -> Self {
+    pub fn visited(mut self, visited: HashSet<ItemKey>) -> Self {
         self.visited = visited;
         self
     }
@@ -110,14 +111,14 @@ pub enum ArticleMsg {
     TopStories(usize),
     Receive(Vec<Story>),
     Search(String),
-    ViewingItem(u64),
+    ViewingItem(ItemKey),
     UpdateStory(Story),
     WatchStory(Story),
-    UnWatchStory(u64),
+    UnWatchStory(ItemKey),
     StoryUpdated(Story),
     RemoveWatches,
-    OpenNew { story_id: u64, beyond: u64 },
-    ClearIndexStory(u64),
+    OpenNew { story_id: ItemKey, beyond: u64 },
+    ClearIndexStory(ItemKey),
     CheckHandles,
     ToggleWatchFilter,
     StoryClicked(Story),
@@ -586,6 +587,6 @@ fn is_rust(word: &str) -> bool {
                 .unwrap_or(false))
 }
 
-fn clear_index_story_task(story_id: u64) -> Task<AppMsg> {
+fn clear_index_story_task(story_id: ItemKey) -> Task<AppMsg> {
     Task::done(ArticleMsg::ClearIndexStory(story_id)).map(AppMsg::Articles)
 }

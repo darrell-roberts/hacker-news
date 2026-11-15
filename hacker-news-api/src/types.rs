@@ -6,15 +6,39 @@ use std::{
     str::FromStr,
 };
 
+#[derive(
+    Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug, Deserialize, Serialize, Default,
+)]
+#[serde(transparent)]
+pub struct ItemKey(u64);
+
+impl Display for ItemKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<u64> for ItemKey {
+    fn from(value: u64) -> Self {
+        ItemKey(value)
+    }
+}
+
+impl From<ItemKey> for u64 {
+    fn from(value: ItemKey) -> Self {
+        value.0
+    }
+}
+
 /// Hacker news item.
 ///
 /// [`https://github.com/HackerNews/API`]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Item {
     /// The item's unique id.
-    pub id: u64,
+    pub id: ItemKey,
     #[serde(default)]
-    pub kids: Vec<u64>,
+    pub kids: Vec<ItemKey>,
     /// The comment, story or poll text. HTML.
     pub text: Option<String>,
     /// The URL of the story.
@@ -38,7 +62,7 @@ pub struct Item {
     /// The type of item. One of "job", "story", "comment", "poll", or "pollopt".
     pub ty: String,
     /// The comment's parent: either another comment or the relevant story.
-    pub parent: Option<u64>,
+    pub parent: Option<ItemKey>,
     /// In the case of stories or polls, the total comment count.
     pub descendants: Option<u64>,
 }
@@ -58,7 +82,7 @@ pub struct User {
 #[derive(Deserialize, Debug)]
 pub struct StoriesEventData {
     pub path: String,
-    pub data: Vec<u64>,
+    pub data: Vec<ItemKey>,
 }
 
 #[derive(Deserialize, Debug)]

@@ -7,7 +7,7 @@ use anyhow::Context;
 use futures::{
     SinkExt, Stream, StreamExt, TryFutureExt, TryStreamExt, channel::mpsc, stream::FuturesUnordered,
 };
-use hacker_news_api::{ApiClient, ArticleType, Item, ItemEventData};
+use hacker_news_api::{ApiClient, ArticleType, Item, ItemEventData, ItemKey};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -48,7 +48,7 @@ pub struct IndexStats {
 }
 
 struct CommentRef {
-    story_id: u64,
+    story_id: ItemKey,
     comment: Item,
     rank: u64,
 }
@@ -99,13 +99,13 @@ impl<'a> WriteContext<'a> {
             })
     }
 
-    fn write_doc(&self, item: &Item, rank: u64, story_id: Option<u64>) -> SearchResult<()> {
+    fn write_doc(&self, item: &Item, rank: u64, story_id: Option<ItemKey>) -> SearchResult<()> {
         let mut doc = TantivyDocument::new();
 
         doc.add_u64(self.fields.rank, rank);
-        doc.add_u64(self.fields.id, item.id);
+        doc.add_u64(self.fields.id, item.id.into());
         if let Some(id) = item.parent {
-            doc.add_u64(self.fields.parent_id, id);
+            doc.add_u64(self.fields.parent_id, id.into());
         }
         if let Some(t) = item.title.as_deref() {
             doc.add_text(self.fields.title, t);
@@ -124,7 +124,7 @@ impl<'a> WriteContext<'a> {
         }
 
         if let Some(id) = story_id {
-            doc.add_u64(self.fields.story_id, id);
+            doc.add_u64(self.fields.story_id, id.into());
         }
 
         if item.ty == "story" {
@@ -135,7 +135,7 @@ impl<'a> WriteContext<'a> {
         doc.add_u64(self.fields.time, item.time);
 
         for id in &item.kids {
-            doc.add_u64(self.fields.kids, *id);
+            doc.add_u64(self.fields.kids, (*id).into());
         }
 
         self.writer.add_document(doc)?;
@@ -145,9 +145,9 @@ impl<'a> WriteContext<'a> {
     /// Delete a story and all it's child comments.
     fn delete_story(&self, story: &Story) {
         self.writer
-            .delete_term(Term::from_field_u64(self.fields.id, story.id));
+            .delete_term(Term::from_field_u64(self.fields.id, story.id.into()));
         self.writer
-            .delete_term(Term::from_field_u64(self.fields.story_id, story.id));
+            .delete_term(Term::from_field_u64(self.fields.story_id, story.id.into()));
     }
 
     /// Delete all documents from the active index.
@@ -166,8 +166,8 @@ impl<'a> WriteContext<'a> {
 #[cfg_attr(feature = "trace", instrument(skip_all))]
 fn comment_stream(
     client: &ApiClient,
-    story_id: u64,
-    comment_ids: &[u64],
+    story_id: ItemKey,
+    comment_ids: &[ItemKey],
 ) -> impl Stream<Item = CommentRef> {
     client
         .items(comment_ids)
@@ -188,8 +188,8 @@ fn comment_stream(
 #[cfg_attr(feature = "trace", instrument(skip_all))]
 async fn send_comments(
     client: &ApiClient,
-    story_id: u64,
-    comment_ids: Vec<u64>,
+    story_id: ItemKey,
+    comment_ids: Vec<ItemKey>,
     tx: Sender<ItemRef>,
 ) {
     let mut comment_stack = comment_stream(client, story_id, &comment_ids)
@@ -215,7 +215,7 @@ async fn send_comments(
 
 /// Get the story and nested comments from the firebase REST api and send each
 /// document to the index writer channel.
-#[cfg_attr(feature = "trace", instrument(skip_all, fields(story_id = story.id)))]
+#[cfg_attr(feature = "trace", instrument(skip_all, fields(story_id = u64::from(story.id))))]
 async fn collect_story(client: Arc<ApiClient>, tx: Sender<ItemRef>, mut story: Item, rank: u64) {
     let story_id = story.id;
     debug!("Collecting comments for story_id {story_id}");

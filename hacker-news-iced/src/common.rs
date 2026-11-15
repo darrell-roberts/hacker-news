@@ -1,5 +1,6 @@
 //! Common UI elements used by multiple views.
 use crate::{app::AppMsg, footer::FooterMsg};
+use hacker_news_api::ItemKey;
 use hacker_news_search::{SearchContext, api::CommentStack};
 use iced::{
     Background, Color, Element, Font, Length, Point, Rectangle, Renderer, Task, Theme,
@@ -113,7 +114,7 @@ pub fn error_task(err: impl ToString) -> Task<AppMsg> {
 }
 
 /// Task to open comment with full parent thread.
-pub fn show_thread(search_context: &SearchContext, comment_id: u64) -> Task<AppMsg> {
+pub fn show_thread(search_context: &SearchContext, comment_id: ItemKey) -> Task<AppMsg> {
     match search_context.parents(comment_id) {
         Ok(CommentStack { comments, story }) => {
             let story_id = story.id;

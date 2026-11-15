@@ -13,7 +13,7 @@ use gpui::{
     prelude::*, px,
 };
 use gpui_tokio::JoinError;
-use hacker_news_api::{ArticleType, Item};
+use hacker_news_api::{ArticleType, Item, ItemKey};
 use log::{error, info};
 use std::collections::HashMap;
 
@@ -28,10 +28,10 @@ pub struct ContentView {
     list_state: ListState,
     /// Tracks the ranking of each article so that if it moves up
     /// or down we can show by how much.
-    article_ranks: HashMap<u64, usize>,
+    ranking_map: HashMap<ItemKey, usize>,
     /// Tracks the number of comments for an article so that when it
     /// changes we can show a visual indicator.
-    article_comment_counts: HashMap<u64, u64>,
+    article_comment_counts: HashMap<ItemKey, u64>,
     /// Subscription to server side events is online.
     pub online: bool,
     /// Handle to the background task that updates articles.
@@ -67,7 +67,7 @@ pub struct ContentView {
     /// Viewing Article text
     article_body_view: Option<Entity<ArticleBodyView>>,
     /// Viewing article id.
-    pub viewing_article_id: Option<u64>,
+    pub viewing_article_id: Option<ItemKey>,
 }
 
 /// Events emitted by the ContentView to signal UI updates or errors.
@@ -138,6 +138,7 @@ impl ContentView {
                 ContentEvent::OpenComments(article_entity) => {
                     content_view.fetching_comments = true;
                     let id = article_entity.read(cx).id;
+                    info!("Opening comments for {id}");
                     let article_entity = article_entity.clone();
                     let comment_ids = article_entity.read(cx).comment_ids.clone();
 
@@ -227,7 +228,7 @@ impl ContentView {
             cx.observe_global::<ArticleSelection>(move |content_view, cx| {
                 let selection = *cx.global::<ArticleSelection>();
                 // Reset ranks when we change selection.
-                content_view.article_ranks.clear();
+                content_view.ranking_map.clear();
                 // Remove viewing article body.
                 content_view.article_body_view = None;
                 content_view.articles_scroll_handle.scroll_to_top_of_item(0);
@@ -257,7 +258,7 @@ impl ContentView {
             Self {
                 list_state,
                 articles: Default::default(),
-                article_ranks: Default::default(),
+                ranking_map: Default::default(),
                 online: false,
                 background_task: None,
                 article_sender: None,
@@ -289,16 +290,15 @@ impl ContentView {
     }
 
     /// Compute the ranking order change for the item.
-    pub fn order_change(&self, id: u64, index: usize) -> i64 {
-        match self.article_ranks.get(&id) {
-            Some(rank) => (*rank as i64) - (index as i64),
-            None => 0,
-        }
+    pub fn order_change(&self, key: ItemKey, index: usize) -> Option<i64> {
+        self.ranking_map
+            .get(&key)
+            .map(|rank| (*rank as i64) - (index as i64))
     }
 
     /// Compute the comment count change.
-    pub fn comment_count_change(&self, id: u64, current_comment_count: i64) -> i64 {
-        let last_comment_count = self.article_comment_counts.get(&id).cloned().unwrap_or(0) as i64;
+    pub fn comment_count_change(&self, key: ItemKey, current_comment_count: i64) -> i64 {
+        let last_comment_count = self.article_comment_counts.get(&key).cloned().unwrap_or(0) as i64;
         if self.background_refresh_count > 0 {
             if last_comment_count > 0 && current_comment_count > 0 {
                 current_comment_count - last_comment_count

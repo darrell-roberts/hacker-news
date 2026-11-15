@@ -1,6 +1,7 @@
 //! Search API for user comments.
 use super::{Comment, Story};
 use crate::{ITEM_RANK, ITEM_TIME, SearchContext, SearchError, SearchResult};
+use hacker_news_api::ItemKey;
 use std::{ops::Bound, time::SystemTime};
 use tantivy::{
     Order, Searcher, Term,
@@ -13,12 +14,12 @@ impl SearchContext {
     /// Lookup comments by parent_id with limit pagination offset.
     pub fn comments(
         &self,
-        parent_id: u64,
+        parent_id: ItemKey,
         limit: usize,
         offset: usize,
     ) -> SearchResult<(Vec<Comment>, usize)> {
         let query = TermQuery::new(
-            Term::from_field_u64(self.fields.parent_id, parent_id),
+            Term::from_field_u64(self.fields.parent_id, parent_id.into()),
             IndexRecordOption::Basic,
         );
 
@@ -45,7 +46,7 @@ impl SearchContext {
 
     pub fn story_comments_by_date(
         &self,
-        story_id: u64,
+        story_id: ItemKey,
         beyond: Option<u64>,
         limit: usize,
         offset: usize,
@@ -53,7 +54,7 @@ impl SearchContext {
         let searcher = self.searcher();
 
         let by_story = TermQuery::new(
-            Term::from_field_u64(self.fields.story_id, story_id),
+            Term::from_field_u64(self.fields.story_id, story_id.into()),
             IndexRecordOption::Basic,
         );
 
@@ -96,9 +97,9 @@ impl SearchContext {
         Ok((comments, count))
     }
 
-    pub fn last_comment_age(&self, story_id: u64) -> SearchResult<Option<u64>> {
+    pub fn last_comment_age(&self, story_id: ItemKey) -> SearchResult<Option<u64>> {
         let by_story = TermQuery::new(
-            Term::from_field_u64(self.fields.story_id, story_id),
+            Term::from_field_u64(self.fields.story_id, story_id.into()),
             IndexRecordOption::Basic,
         );
         let top_docs = TopDocs::with_limit(1).order_by_u64_field(ITEM_TIME, Order::Desc);
@@ -119,12 +120,12 @@ impl SearchContext {
     pub fn search_comments(
         &self,
         search: &str,
-        story_id: u64,
+        story_id: ItemKey,
         limit: usize,
         offset: usize,
     ) -> SearchResult<(Vec<Comment>, usize)> {
         let story_term = Box::new(TermQuery::new(
-            Term::from_field_u64(self.fields.story_id, story_id),
+            Term::from_field_u64(self.fields.story_id, story_id.into()),
             IndexRecordOption::Basic,
         ));
 
@@ -190,7 +191,7 @@ impl SearchContext {
     }
 
     /// Build a comment stack by walking up the tree of nested comments.
-    pub fn parents(&self, comment_id: u64) -> SearchResult<CommentStack> {
+    pub fn parents(&self, comment_id: ItemKey) -> SearchResult<CommentStack> {
         let searcher = self.searcher();
 
         let comment = self.comment(&searcher, comment_id)?;
@@ -212,15 +213,15 @@ impl SearchContext {
     }
 
     /// Get a single comment.
-    pub fn get_comment(&self, comment_id: u64) -> SearchResult<Comment> {
+    pub fn get_comment(&self, comment_id: ItemKey) -> SearchResult<Comment> {
         let searcher = self.searcher();
         self.comment(&searcher, comment_id)
     }
 
     /// Get a single comment.
-    fn comment(&self, searcher: &Searcher, comment_id: u64) -> SearchResult<Comment> {
+    fn comment(&self, searcher: &Searcher, comment_id: ItemKey) -> SearchResult<Comment> {
         let parent_query = TermQuery::new(
-            Term::from_field_u64(self.fields.id, comment_id),
+            Term::from_field_u64(self.fields.id, comment_id.into()),
             IndexRecordOption::Basic,
         );
 

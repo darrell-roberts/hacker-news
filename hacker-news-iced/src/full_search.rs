@@ -8,6 +8,7 @@ use crate::{
     richtext::render_rich_text,
 };
 use friendly_duration::parse_friendly_age;
+use hacker_news_api::ItemKey;
 use hacker_news_search::{
     SearchContext, SearchError,
     api::{Comment, CommentStack},
@@ -44,7 +45,10 @@ impl FullSearchState {
 #[derive(Clone)]
 pub enum SearchCriteria {
     Query(String),
-    StoryId { story_id: u64, beyond: Option<u64> },
+    StoryId {
+        story_id: ItemKey,
+        beyond: Option<u64>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -53,10 +57,13 @@ pub enum FullSearchMsg {
     CloseSearch,
     Forward,
     Back,
-    ShowThread(u64),
+    ShowThread(ItemKey),
     JumpPage(usize),
-    StoryByTime { story_id: u64, beyond: Option<u64> },
-    OpenComment(u64),
+    StoryByTime {
+        story_id: ItemKey,
+        beyond: Option<u64>,
+    },
+    OpenComment(ItemKey),
 }
 
 impl FullSearchState {

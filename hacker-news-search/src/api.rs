@@ -4,6 +4,7 @@ use crate::{
     SearchError, SearchResult,
 };
 use chrono::{DateTime, Utc};
+use hacker_news_api::ItemKey;
 use std::collections::HashMap;
 use tantivy::{
     Document, TantivyDocument,
@@ -42,7 +43,7 @@ pub trait AgeLabel {
 /// Hacker news story
 pub struct Story {
     /// Id
-    pub id: u64,
+    pub id: ItemKey,
     /// Title
     pub title: String,
     /// Body
@@ -73,7 +74,7 @@ impl AgeLabel for Story {
 /// Hacker news comment
 pub struct Comment {
     /// Id
-    pub id: u64,
+    pub id: ItemKey,
     /// Body
     pub body: String,
     /// By
@@ -81,11 +82,11 @@ pub struct Comment {
     /// Time posted
     pub time: u64,
     /// Kids
-    pub kids: Vec<u64>,
+    pub kids: Vec<ItemKey>,
     /// Parent story
-    pub story_id: u64,
+    pub story_id: ItemKey,
     /// Parent comment or story
-    pub parent_id: u64,
+    pub parent_id: ItemKey,
     /// Rank
     pub rank: u64,
 }
@@ -104,6 +105,7 @@ impl SearchContext {
             id: fields
                 .remove(ITEM_ID)
                 .and_then(u64_value)
+                .map(ItemKey::from)
                 .ok_or_else(|| missing_field(ITEM_ID))?,
             title: fields
                 .remove(ITEM_TITLE)
@@ -142,6 +144,7 @@ impl SearchContext {
             id: fields
                 .remove(ITEM_ID)
                 .and_then(u64_value)
+                .map(ItemKey::from)
                 .ok_or_else(|| missing_field(ITEM_ID))?,
             body: fields
                 .remove(ITEM_BODY)
@@ -155,14 +158,20 @@ impl SearchContext {
                 .remove(ITEM_TIME)
                 .and_then(u64_value)
                 .ok_or_else(|| missing_field(ITEM_TIME))?,
-            kids: fields.remove(ITEM_KIDS).map(u64_values).unwrap_or_default(),
+            kids: fields
+                .remove(ITEM_KIDS)
+                .map(u64_values)
+                .map(|v| v.into_iter().map(ItemKey::from).collect())
+                .unwrap_or_default(),
             story_id: fields
                 .remove(ITEM_STORY_ID)
                 .and_then(u64_value)
+                .map(ItemKey::from)
                 .ok_or_else(|| missing_field(ITEM_STORY_ID))?,
             parent_id: fields
                 .remove(ITEM_PARENT_ID)
                 .and_then(u64_value)
+                .map(ItemKey::from)
                 .ok_or_else(|| missing_field(ITEM_PARENT_ID))?,
             rank: fields
                 .remove(ITEM_RANK)

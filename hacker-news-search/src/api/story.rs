@@ -1,6 +1,7 @@
 //! Search API for top stories.
 use super::Story;
 use crate::{ITEM_RANK, SearchContext, SearchError, SearchResult};
+use hacker_news_api::ItemKey;
 use std::sync::OnceLock;
 use tantivy::{
     Order, TantivyDocument, Term,
@@ -90,14 +91,14 @@ impl SearchContext {
     }
 
     /// Lookup a single story.
-    pub fn story(&self, story_id: u64) -> SearchResult<Story> {
+    pub fn story(&self, story_id: ItemKey) -> SearchResult<Story> {
         self.to_story(self.story_doc(story_id)?)
     }
 
-    pub fn story_doc(&self, story_id: u64) -> SearchResult<TantivyDocument> {
+    pub fn story_doc(&self, story_id: ItemKey) -> SearchResult<TantivyDocument> {
         let searcher = self.searcher();
         let story_query: Box<dyn Query> = Box::new(TermQuery::new(
-            Term::from_field_u64(self.fields.id, story_id),
+            Term::from_field_u64(self.fields.id, story_id.into()),
             IndexRecordOption::Basic,
         ));
 

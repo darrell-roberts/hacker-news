@@ -1,5 +1,6 @@
 //! Comment model and factory component.
 use friendly_duration::parse_friendly_age;
+use hacker_news_api::ItemKey;
 use hacker_news_search::api::Comment;
 use relm4::{
     gtk::{
@@ -23,7 +24,7 @@ pub struct CommentModel {
 
 #[derive(Debug)]
 pub enum CommentOutMsg {
-    OpenComment(u64),
+    OpenComment(ItemKey),
 }
 
 #[derive(Debug)]

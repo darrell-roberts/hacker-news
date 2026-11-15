@@ -11,7 +11,7 @@ use gpui::{
     Animation, AnimationExt, AppContext, AsyncApp, Entity, ImageSource, SharedString,
     StyleRefinement, Window, div, img, prelude::*, pulsating_between, rems,
 };
-use hacker_news_api::Item;
+use hacker_news_api::{Item, ItemKey};
 use std::{rc::Rc, sync::Arc, time::Duration};
 
 // An article view is rendered for each article item.
@@ -35,7 +35,7 @@ pub struct ArticleView {
     // The rank of the article, formatted as a string.
     // rank: SharedString,
     /// The IDs of the comments for this article.
-    pub comment_ids: Arc<Vec<u64>>,
+    pub comment_ids: Arc<Vec<ItemKey>>,
     /// The entity representing the content view associated with this article.
     pub content_entity: Entity<ContentView>,
     /// Whether the comments are currently loading.
@@ -43,7 +43,7 @@ pub struct ArticleView {
     /// The delta in comment count since the last update, if available.
     unread_count_label: Option<SharedString>,
     /// Article id
-    pub id: u64,
+    pub id: ItemKey,
     /// Article body.
     pub article_text: Option<Rc<ViewStyledText>>,
     /// Unread comment count while idling.
@@ -228,7 +228,7 @@ impl ArticleView {
             .content_entity
             .read_with(cx, |content, _| content.order_change(item.id, index));
 
-        if order_change != 0 {
+        if let Some(order_change) = order_change {
             self.order_change = order_change;
             self.order_change_label = format!("{order_change}").into();
             view_updated |= true;
