@@ -101,71 +101,28 @@ pub(super) fn start_background_subscriptions(
                     let viewing_article_included =
                         items.iter().any(|item| Some(item.id) == viewing_id);
 
-                    // Create an ArticleView for each item.
+                    // Create or update an ArticleView for each item.
                     let views = items
                         .into_iter()
                         .enumerate()
-                        .map(|(index, article)| {
-                            let order_change = app.read_entity(&entity_content, |content, _app| {
-                                match content.article_ranks.get(&article.id) {
-                                    Some(rank) => (*rank as i64) - (index as i64),
-                                    None => 0,
-                                }
-                            });
-
-                            let last_comment_count =
-                                app.read_entity(&entity_content, |content, _app| {
-                                    content.article_comment_counts.get(&article.id).cloned()
-                                });
-
-                            let background_refresh_count = app
-                                .read_entity(&entity_content, |content, _app| {
-                                    content.background_refresh_count
-                                });
-
-                            let comment_count_changed: i64 = if background_refresh_count > 0 {
-                                let last_comment_count = last_comment_count.unwrap_or(0) as i64;
-                                let current_comment_count = article.descendants.unwrap_or(0) as i64;
-
-                                if last_comment_count > 0 && current_comment_count > 0 {
-                                    current_comment_count - last_comment_count
-                                } else {
-                                    0
-                                }
-                            } else {
-                                0
-                            };
-
-                            match find_article_entity(app, article.id) {
+                        .map(
+                            |(index, article)| match find_article_entity(app, article.id) {
                                 Some(article_entity) => {
-                                    if comment_count_changed != 0 {
-                                        article_entity.update(app, |article_view, cx| {
-                                            article_view.unread_count += comment_count_changed;
-                                            article_view.unread_count_label = Some(
-                                                format!("{}", article_view.unread_count).into(),
-                                            );
-                                            article_view.comment_count = article
-                                                .descendants
-                                                .filter(|&n| n > 0)
-                                                .map(|n| format!("{n}").into());
+                                    article_entity.update(app, |article_view, cx| {
+                                        let view_updated =
+                                            article_view.update_from_item(cx, article, index);
+
+                                        if view_updated {
                                             cx.notify();
-                                        });
-                                    }
-                                    if order_change != 0 {
-                                        article_entity.update(app, |article, cx| {
-                                            article.order_change = order_change;
-                                            article.order_change_label =
-                                                format!("{order_change}").into();
-                                            cx.notify();
-                                        })
-                                    }
+                                        }
+                                    });
 
                                     article_entity
                                 }
 
                                 None => ArticleView::new(app, entity_content.clone(), article),
-                            }
-                        })
+                            },
+                        )
                         .collect::<Vec<_>>();
 
                     app.update_entity(&entity_content, |content, cx| {
