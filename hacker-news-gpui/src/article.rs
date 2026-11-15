@@ -21,13 +21,13 @@ pub struct ArticleView {
     /// The author of the article, formatted as "by {author}".
     pub author: SharedString,
     /// The number of comments on the article, if available.
-    pub comment_count: Option<SharedString>,
+    comment_count: Option<SharedString>,
     /// The URL of the article, if available.
     url: Option<SharedString>,
     /// The label indicating the change in article order/rank.
-    pub order_change_label: SharedString,
+    order_change_label: SharedString,
     /// The change in article order/rank.
-    pub order_change: i64,
+    order_change: i64,
     /// The age of the article, formatted as a string.
     pub age: SharedString,
     /// The image source for the comment icon.
@@ -41,13 +41,13 @@ pub struct ArticleView {
     /// Whether the comments are currently loading.
     pub loading_comments: bool,
     /// The delta in comment count since the last update, if available.
-    pub unread_count_label: Option<SharedString>,
+    unread_count_label: Option<SharedString>,
     /// Article id
     pub id: u64,
     /// Article body.
     pub article_text: Option<Rc<ViewStyledText>>,
     /// Unread comment count while idling.
-    pub unread_count: i64,
+    unread_count: usize,
 }
 
 impl ArticleView {
@@ -188,6 +188,58 @@ impl ArticleView {
             .justify_end()
             .items_center()
             .child(self.order_change_label.clone())
+    }
+
+    /// Update the unread comment count.
+    fn update_unread_count(&mut self, unread_count: usize) {
+        self.unread_count = unread_count;
+        if self.unread_count == 0 {
+            self.unread_count_label = None;
+        } else {
+            self.unread_count_label = Some(format!("{}", self.unread_count).into());
+        }
+    }
+
+    /// Update the view from updated item.
+    pub fn update_from_item(&mut self, cx: &mut Context<Self>, item: Item, index: usize) -> bool {
+        let mut view_updated = false;
+
+        let comment_count_change = self
+            .content_entity
+            .read(cx)
+            .comment_count_change(item.id, item.descendants.unwrap_or(0) as i64);
+
+        if comment_count_change != 0 {
+            // Update unread count notification badge.
+            let unread_count = i64::try_from(self.unread_count)
+                .unwrap_or(0)
+                .saturating_add(comment_count_change);
+            self.update_unread_count(usize::try_from(unread_count).unwrap_or(0));
+
+            self.comment_count = item
+                .descendants
+                .filter(|&n| n > 0)
+                .map(|n| format!("{n}").into());
+
+            view_updated |= true;
+        }
+
+        let order_change = self
+            .content_entity
+            .read_with(cx, |content, _| content.order_change(item.id, index));
+
+        if order_change != 0 {
+            self.order_change = order_change;
+            self.order_change_label = format!("{order_change}").into();
+            view_updated |= true;
+        }
+
+        if Some(self.title.as_ref()) != item.title.as_deref() {
+            self.title = item.title.unwrap_or_default().into();
+            view_updated |= true;
+        }
+
+        view_updated
     }
 }
 

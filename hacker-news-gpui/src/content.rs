@@ -287,6 +287,28 @@ impl ContentView {
         });
         entity_content
     }
+
+    /// Compute the ranking order change for the item.
+    pub fn order_change(&self, id: u64, index: usize) -> i64 {
+        match self.article_ranks.get(&id) {
+            Some(rank) => (*rank as i64) - (index as i64),
+            None => 0,
+        }
+    }
+
+    /// Compute the comment count change.
+    pub fn comment_count_change(&self, id: u64, current_comment_count: i64) -> i64 {
+        let last_comment_count = self.article_comment_counts.get(&id).cloned().unwrap_or(0) as i64;
+        if self.background_refresh_count > 0 {
+            if last_comment_count > 0 && current_comment_count > 0 {
+                current_comment_count - last_comment_count
+            } else {
+                0
+            }
+        } else {
+            0
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
