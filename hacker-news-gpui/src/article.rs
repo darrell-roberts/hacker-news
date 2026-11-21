@@ -25,7 +25,7 @@ pub struct ArticleView {
     /// The URL of the article, if available.
     url: Option<SharedString>,
     /// The label indicating the change in article order/rank.
-    order_change_label: SharedString,
+    order_change_label: Option<SharedString>,
     /// The change in article order/rank.
     order_change: i64,
     /// The age of the article, formatted as a string.
@@ -80,7 +80,7 @@ impl ArticleView {
                     .map(|n| format!("{n}"))
                     .map(Into::into),
                 url: item.url.as_deref().map(url_punycode).map(Into::into),
-                order_change_label: Default::default(),
+                order_change_label: None,
                 order_change: 0,
                 age: parse_friendly_age(item.time).unwrap_or_default().into(),
                 comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
@@ -161,8 +161,7 @@ impl ArticleView {
             article_entity.update(app, |article_view: &mut ArticleView, cx| {
                 article_view.loading_comments = true;
                 // Reset the unread count once comments are opened.
-                article_view.unread_count_label = None;
-                article_view.unread_count = 0;
+                article_view.update_unread_count(0);
                 cx.notify();
             });
 
@@ -180,24 +179,23 @@ impl ArticleView {
             .w(rems(0.75))
             .when(
                 self.order_change.is_positive() && self.order_change > 0,
-                |div| div.text_color(theme.text_increasing()),
+                |this| this.text_color(theme.text_increasing()),
             )
-            .when(self.order_change.is_negative(), |div| {
-                div.text_color(theme.text_decreasing())
+            .when(self.order_change.is_negative(), |this| {
+                this.text_color(theme.text_decreasing())
             })
             .justify_end()
             .items_center()
-            .child(self.order_change_label.clone())
+            .when_some(self.order_change_label.as_ref(), |this, order_change| {
+                this.child(order_change.clone())
+            })
     }
 
     /// Update the unread comment count.
     fn update_unread_count(&mut self, unread_count: usize) {
         self.unread_count = unread_count;
-        if self.unread_count == 0 {
-            self.unread_count_label = None;
-        } else {
-            self.unread_count_label = Some(format!("{}", self.unread_count).into());
-        }
+        self.unread_count_label =
+            (unread_count != 0).then(|| format!("{}", self.unread_count).into());
     }
 
     /// Update the view from updated item.
@@ -216,6 +214,17 @@ impl ArticleView {
                 .saturating_add(comment_count_change);
             self.update_unread_count(usize::try_from(unread_count).unwrap_or(0));
 
+            // Show the label for 2 seconds.
+            cx.spawn(async |this, cx| {
+                cx.background_executor().timer(Duration::from_secs(4)).await;
+                this.update(cx, |this, cx| {
+                    this.unread_count_label = None;
+                    cx.notify();
+                })
+                .ok();
+            })
+            .detach();
+
             self.comment_count = item
                 .descendants
                 .filter(|&n| n > 0)
@@ -230,7 +239,7 @@ impl ArticleView {
 
         if let Some(order_change) = order_change {
             self.order_change = order_change;
-            self.order_change_label = format!("{order_change}").into();
+            self.order_change_label = (order_change != 0).then(|| format!("{order_change}").into());
             view_updated |= true;
         }
 
