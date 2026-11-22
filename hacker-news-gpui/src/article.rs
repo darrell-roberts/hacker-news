@@ -32,8 +32,6 @@ pub struct ArticleView {
     pub age: SharedString,
     /// The image source for the comment icon.
     comment_image: ImageSource,
-    // The rank of the article, formatted as a string.
-    // rank: SharedString,
     /// The IDs of the comments for this article.
     pub comment_ids: Arc<Vec<ItemKey>>,
     /// The entity representing the content view associated with this article.
@@ -67,34 +65,31 @@ impl ArticleView {
         content_entity: Entity<ContentView>,
         item: Item,
     ) -> Entity<Self> {
-        app.new(|_cx| {
-            Self {
-                title: item.title.unwrap_or_default().into(),
-                author: format!("by {}", item.by.clone()).into(),
-                comment_count: item
-                    .descendants
-                    .filter(|&n| n > 0)
-                    .map(|n| format!("{n}"))
-                    .map(Into::into),
-                url: item.url.as_deref().map(url_punycode).map(Into::into),
-                order_change_label: None,
-                order_change: 0,
-                age: parse_friendly_age(item.time).unwrap_or_default().into(),
-                comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
-                // rank: format!("{rank}").into(),
-                comment_ids: Arc::new(item.kids),
-                content_entity,
-                loading_comments: false,
-                unread_count_label: None,
-                id: item.id,
-                article_text: item
-                    .text
-                    .as_deref()
-                    .map(parse_layout)
-                    .map(Into::into)
-                    .map(Rc::new),
-                unread_count: 0,
-            }
+        app.new(|_cx| Self {
+            title: item.title.unwrap_or_default().into(),
+            author: format!("by {}", item.by.clone()).into(),
+            comment_count: item
+                .descendants
+                .filter(|&n| n > 0)
+                .map(|n| format!("{n}"))
+                .map(Into::into),
+            url: item.url.as_deref().map(url_punycode).map(Into::into),
+            order_change_label: None,
+            order_change: 0,
+            age: parse_friendly_age(item.time).unwrap_or_default().into(),
+            comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
+            comment_ids: Arc::new(item.kids),
+            content_entity,
+            loading_comments: false,
+            unread_count_label: None,
+            id: item.id,
+            article_text: item
+                .text
+                .as_deref()
+                .map(parse_layout)
+                .map(Into::into)
+                .map(Rc::new),
+            unread_count: 0,
         })
     }
 
@@ -176,8 +171,18 @@ impl ArticleView {
     }
 
     /// Update the view from updated item.
-    pub fn update_from_item(&mut self, cx: &mut Context<Self>, item: Item, index: usize) -> bool {
-        let mut view_updated = false;
+    pub fn update_from_item(&mut self, cx: &mut Context<Self>, item: Item, index: usize) {
+        if self.comment_ids.len() != item.kids.len() {
+            self.comment_ids = Arc::new(item.kids);
+        }
+
+        self.age = parse_friendly_age(item.time).unwrap_or_default().into();
+        self.article_text = item
+            .text
+            .as_deref()
+            .map(parse_layout)
+            .map(Into::into)
+            .map(Rc::new);
 
         let comment_count_change = self
             .content_entity
@@ -191,23 +196,10 @@ impl ArticleView {
                 .saturating_add(comment_count_change);
             self.update_unread_count(usize::try_from(unread_count).unwrap_or(0));
 
-            // // Show the label for 4 seconds.
-            // cx.spawn(async |this, cx| {
-            //     cx.background_executor().timer(Duration::from_secs(4)).await;
-            //     this.update(cx, |this, cx| {
-            //         this.unread_count_label = None;
-            //         cx.notify();
-            //     })
-            //     .ok();
-            // })
-            // .detach();
-
             self.comment_count = item
                 .descendants
                 .filter(|&n| n > 0)
                 .map(|n| format!("{n}").into());
-
-            view_updated |= true;
         }
 
         let order_change = self
@@ -233,16 +225,11 @@ impl ArticleView {
                 })
                 .detach();
             }
-
-            view_updated |= true;
         }
 
         if Some(self.title.as_ref()) != item.title.as_deref() {
             self.title = item.title.unwrap_or_default().into();
-            view_updated |= true;
         }
-
-        view_updated
     }
 
     fn render_title(&mut self, cx: &mut Context<'_, Self>, theme: Theme) -> gpui::Div {

@@ -68,8 +68,6 @@ pub async fn comment_entities(
         .inspect_err(|err| error!("Failed to spawn task to fetch comments: {err}"))
         .unwrap_or_default();
 
-    log::info!("Fetched {} comments", comment_items.len());
-
     comment_items
         .into_iter()
         .map(|comment| CommentView::new(app, comment, article_entity.clone()))
