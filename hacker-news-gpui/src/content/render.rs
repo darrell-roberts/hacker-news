@@ -1,6 +1,6 @@
 //! Render implementation for content view.
 use super::ContentView;
-use crate::theme::Theme;
+use crate::{common::brighten, theme::Theme};
 use gpui::{
     App, AppContext, DefiniteLength, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent,
     Window, div, prelude::*, px, rems,
@@ -230,19 +230,18 @@ impl ContentView {
 
         el.child(
             div()
+                .flex()
+                .flex_col()
                 .bg(theme.bg())
                 .rounded_tl_md()
                 .pb_2()
                 .child(
                     div()
-                        .flex()
-                        .flex_grow(1.0)
-                        .flex_row()
                         .text_size(rems(0.75))
                         .bg(theme.comment_border())
                         .rounded_tl_md()
-                        .child(div().pl_1().child("[X]"))
                         .cursor_pointer()
+                        .hover(|style| style.bg(brighten(theme.comment_border().into(), 0.2)))
                         .id("close-comments")
                         .on_click(move |_event, _window, app| {
                             // Clear any open comments for another article
@@ -252,7 +251,8 @@ impl ContentView {
                                 content_view.article_body_view = None;
                                 cx.notify();
                             });
-                        }),
+                        })
+                        .child(""),
                 )
                 .when_some(self.article_body_view.as_ref(), |div, view_styled_text| {
                     div.child(view_styled_text.clone())
