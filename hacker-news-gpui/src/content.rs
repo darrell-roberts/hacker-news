@@ -138,7 +138,6 @@ impl ContentView {
                 ContentEvent::OpenComments(article_entity) => {
                     content_view.fetching_comments = true;
                     let id = article_entity.read(cx).id;
-                    info!("Opening comments for {id}");
                     let article_entity = article_entity.clone();
                     let comment_ids = article_entity.read(cx).comment_ids.clone();
 

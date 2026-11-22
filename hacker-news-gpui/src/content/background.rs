@@ -108,12 +108,8 @@ pub(super) fn start_background_subscriptions(
                         .map(|(index, item)| match find_article_entity(app, item.id) {
                             Some(article_entity) => {
                                 article_entity.update(app, |article_view, cx| {
-                                    let view_updated =
-                                        article_view.update_from_item(cx, item, index);
-
-                                    if view_updated {
-                                        cx.notify();
-                                    }
+                                    article_view.update_from_item(cx, item, index);
+                                    cx.notify();
                                 });
 
                                 article_entity
