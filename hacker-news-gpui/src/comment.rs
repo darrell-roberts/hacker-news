@@ -2,7 +2,7 @@
 use crate::{
     DefaultFonts,
     article::ArticleView,
-    common::{COMMENT_IMAGE, comment_entities, hover_element, update_url},
+    common::{COMMENT_IMAGE, brighten, comment_entities, hover_element, update_url},
     rich_text::{ParsedStyledText, TextLayout, parse_layout, rich_text_runs, url_ranges},
     theme::Theme,
 };
@@ -263,7 +263,7 @@ impl Render for CommentView {
             .child(self.render_text_area(cx, theme, comment_entity.clone()))
             .child(self.render_comment_footer(theme, comment_ids, comment_entity.clone()))
             .when(!self.children.is_empty(), |el| {
-                el.child(
+                el.bg(theme.bg_selected()).child(
                     div()
                         .bg(theme.bg())
                         .ml_1()
@@ -275,19 +275,19 @@ impl Render for CommentView {
                         .child(
                             div()
                                 .bg(theme.comment_border())
-                                .flex()
-                                .flex_grow(1.0)
-                                .flex_row()
                                 .rounded_tl_md()
                                 .text_size(rems(0.75))
-                                .child(div().pl_1().child("[X]"))
+                                .hover(|style| {
+                                    style.bg(brighten(theme.comment_border().into(), 0.2))
+                                })
                                 .cursor_pointer()
                                 .id("close-comments")
                                 .on_click(move |_event, _window, app| {
                                     comment_entity.update(app, |comment_view, _cx| {
                                         comment_view.children.clear();
                                     });
-                                }),
+                                })
+                                .child(""),
                         )
                         .children(self.children.clone()),
                 )

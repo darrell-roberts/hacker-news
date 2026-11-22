@@ -279,6 +279,12 @@ impl ArticleView {
                     .id("title")
                     .pl_1()
                     .w_full()
+                    .when(self.order_change > 2, |div| {
+                        div.text_color(theme.text_increasing())
+                    })
+                    .when(self.order_change < -2, |div| {
+                        div.text_color(theme.text_decreasing())
+                    })
                     .child(self.title.clone())
                     .cursor_pointer()
                     .on_click(move |event, window, app| {
@@ -339,15 +345,7 @@ impl Render for ArticleView {
             // .border_1()
             .mr_1()
             .border_color(theme.border())
-            .when(self.order_change > 2, |div| {
-                div.text_color(theme.text_increasing())
-            })
-            .when(self.order_change < -2, |div| {
-                div.text_color(theme.text_decreasing())
-            })
-            .when(viewing_article, |div| {
-                div.border_color(theme.comment_border()).border_4()
-            })
+            .when(viewing_article, |div| div.bg(theme.bg_selected()))
             .when_some(self.order_change_label.as_ref(), |this, label| {
                 this.child(
                     Badge::indicator(label.clone())
