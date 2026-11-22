@@ -1,6 +1,6 @@
 //! Article view.
 use crate::{
-    badge::Badge,
+    badge::{Badge, Location},
     common::{COMMENT_IMAGE, hover_element, update_url, url_punycode},
     content::{ContentEvent, ContentView},
     rich_text::{ViewStyledText, parse_layout},
@@ -9,9 +9,9 @@ use crate::{
 use friendly_duration::parse_friendly_age;
 use gpui::{
     Animation, AnimationExt, AppContext, AsyncApp, Entity, ImageSource, SharedString,
-    StyleRefinement, Window, div, img, prelude::*, pulsating_between, rems,
+    StyleRefinement, Window, div, green, img, prelude::*, pulsating_between, rems, rgb,
 };
-use hacker_news_api::Item;
+use hacker_news_api::{Item, ItemKey};
 use std::{rc::Rc, sync::Arc, time::Duration};
 
 // An article view is rendered for each article item.
@@ -25,7 +25,7 @@ pub struct ArticleView {
     /// The URL of the article, if available.
     url: Option<SharedString>,
     /// The label indicating the change in article order/rank.
-    order_change_label: SharedString,
+    order_change_label: Option<SharedString>,
     /// The change in article order/rank.
     order_change: i64,
     /// The age of the article, formatted as a string.
@@ -35,7 +35,7 @@ pub struct ArticleView {
     // The rank of the article, formatted as a string.
     // rank: SharedString,
     /// The IDs of the comments for this article.
-    pub comment_ids: Arc<Vec<u64>>,
+    pub comment_ids: Arc<Vec<ItemKey>>,
     /// The entity representing the content view associated with this article.
     pub content_entity: Entity<ContentView>,
     /// Whether the comments are currently loading.
@@ -43,7 +43,7 @@ pub struct ArticleView {
     /// The delta in comment count since the last update, if available.
     unread_count_label: Option<SharedString>,
     /// Article id
-    pub id: u64,
+    pub id: ItemKey,
     /// Article body.
     pub article_text: Option<Rc<ViewStyledText>>,
     /// Unread comment count while idling.
@@ -58,9 +58,6 @@ impl ArticleView {
     /// * `app` - The mutable reference to the async application context.
     /// * `content_entity` - The entity representing the content view.
     /// * `item` - The Hacker News article item to render.
-    /// * `order_change` - The change in article order/rank.
-    /// * `rank` - The current rank of the article.
-    /// * `comment_count_changed` - The delta in comment count since last update.
     ///
     /// # Returns
     ///
@@ -80,7 +77,7 @@ impl ArticleView {
                     .map(|n| format!("{n}"))
                     .map(Into::into),
                 url: item.url.as_deref().map(url_punycode).map(Into::into),
-                order_change_label: Default::default(),
+                order_change_label: None,
                 order_change: 0,
                 age: parse_friendly_age(item.time).unwrap_or_default().into(),
                 comment_image: ImageSource::Image(Arc::clone(&COMMENT_IMAGE)),
@@ -161,8 +158,7 @@ impl ArticleView {
             article_entity.update(app, |article_view: &mut ArticleView, cx| {
                 article_view.loading_comments = true;
                 // Reset the unread count once comments are opened.
-                article_view.unread_count_label = None;
-                article_view.unread_count = 0;
+                article_view.update_unread_count(0);
                 cx.notify();
             });
 
@@ -172,32 +168,11 @@ impl ArticleView {
         }
     }
 
-    fn rank_change_col(&self, theme: Theme) -> gpui::Div {
-        div()
-            .flex()
-            .italic()
-            .text_size(rems(0.75))
-            .w(rems(0.75))
-            .when(
-                self.order_change.is_positive() && self.order_change > 0,
-                |div| div.text_color(theme.text_increasing()),
-            )
-            .when(self.order_change.is_negative(), |div| {
-                div.text_color(theme.text_decreasing())
-            })
-            .justify_end()
-            .items_center()
-            .child(self.order_change_label.clone())
-    }
-
     /// Update the unread comment count.
     fn update_unread_count(&mut self, unread_count: usize) {
         self.unread_count = unread_count;
-        if self.unread_count == 0 {
-            self.unread_count_label = None;
-        } else {
-            self.unread_count_label = Some(format!("{}", self.unread_count).into());
-        }
+        self.unread_count_label =
+            (unread_count != 0).then(|| format!("{}", self.unread_count).into());
     }
 
     /// Update the view from updated item.
@@ -216,6 +191,17 @@ impl ArticleView {
                 .saturating_add(comment_count_change);
             self.update_unread_count(usize::try_from(unread_count).unwrap_or(0));
 
+            // // Show the label for 4 seconds.
+            // cx.spawn(async |this, cx| {
+            //     cx.background_executor().timer(Duration::from_secs(4)).await;
+            //     this.update(cx, |this, cx| {
+            //         this.unread_count_label = None;
+            //         cx.notify();
+            //     })
+            //     .ok();
+            // })
+            // .detach();
+
             self.comment_count = item
                 .descendants
                 .filter(|&n| n > 0)
@@ -228,9 +214,26 @@ impl ArticleView {
             .content_entity
             .read_with(cx, |content, _| content.order_change(item.id, index));
 
-        if order_change != 0 {
+        if let Some(order_change) = order_change {
             self.order_change = order_change;
-            self.order_change_label = format!("{order_change}").into();
+            self.order_change_label = (order_change != 0).then(|| {
+                format!("{}{order_change}", if order_change > 0 { "+" } else { "" }).into()
+            });
+
+            if order_change != 0 {
+                // Show the label for 4 seconds.
+                cx.spawn(async |this, cx| {
+                    cx.background_executor().timer(Duration::from_secs(4)).await;
+                    this.update(cx, |this, cx| {
+                        this.order_change_label = None;
+                        this.order_change = 0;
+                        cx.notify();
+                    })
+                    .ok();
+                })
+                .detach();
+            }
+
             view_updated |= true;
         }
 
@@ -241,22 +244,8 @@ impl ArticleView {
 
         view_updated
     }
-}
 
-impl Render for ArticleView {
-    fn render(
-        &mut self,
-        window: &mut Window,
-        cx: &mut gpui::Context<Self>,
-    ) -> impl gpui::IntoElement {
-        let theme: Theme = window.appearance().into();
-        let viewing_article = self
-            .content_entity
-            .read(cx)
-            .viewing_article_id
-            .map(|id| id == self.id)
-            .unwrap_or(false);
-
+    fn render_title(&mut self, cx: &mut Context<'_, Self>, theme: Theme) -> gpui::Div {
         let comments_col = div().id("comments").map(|div| {
             if let Some(comments) = self.comment_count.as_ref() {
                 self.render_comments_cell(hover_element(theme), cx.entity(), div, comments)
@@ -278,11 +267,9 @@ impl Render for ArticleView {
         });
 
         let url = self.url.clone();
-
         let load_comments_cb = (self.article_text.is_some() && url.is_none())
             .then(|| self.fetch_comments_call_back(cx.entity()));
-
-        let title_col = div()
+        div()
             .flex()
             .flex_col()
             .flex_1()
@@ -290,7 +277,7 @@ impl Render for ArticleView {
             .child(
                 div()
                     .id("title")
-                    .p_1()
+                    .pl_1()
                     .w_full()
                     .child(self.title.clone())
                     .cursor_pointer()
@@ -318,46 +305,69 @@ impl Render for ArticleView {
                 div()
                     .flex()
                     .flex_row()
-                    .p_1()
+                    .pl_1()
                     .italic()
                     .text_size(rems(0.75))
                     .child(self.author.clone())
                     .child(self.age.clone())
                     .child(comments_col)
                     .gap_x(rems(0.1)),
-            );
-
-        Badge::new()
-            .ring_color(theme.surface())
-            .count(self.unread_count_label.clone())
-            .on_click(self.fetch_comments_call_back(cx.entity()))
-            .child(
-                div()
-                    .flex()
-                    .flex_row()
-                    .rounded_md()
-                    .shadow_md()
-                    .bg(theme.surface())
-                    .border_1()
-                    .mr_1()
-                    .border_color(theme.border())
-                    .when(self.order_change > 2, |div| {
-                        div.text_color(theme.text_increasing())
-                    })
-                    .when(self.order_change < -2, |div| {
-                        div.text_color(theme.text_decreasing())
-                    })
-                    .when(viewing_article, |div| {
-                        div.border_color(theme.comment_border()).border_4()
-                    })
-                    .child(
-                        div().overflow_hidden().child(
-                            div()
-                                .flex()
-                                .flex_row()
-                                .children([self.rank_change_col(theme), title_col]),
-                        ),
-                    ),
             )
+    }
+}
+
+impl Render for ArticleView {
+    fn render(
+        &mut self,
+        window: &mut Window,
+        cx: &mut gpui::Context<Self>,
+    ) -> impl gpui::IntoElement {
+        let theme: Theme = window.appearance().into();
+        let viewing_article = self
+            .content_entity
+            .read(cx)
+            .viewing_article_id
+            .map(|id| id == self.id)
+            .unwrap_or(false);
+
+        div()
+            .flex()
+            .flex_row()
+            .rounded_md()
+            .shadow_md()
+            .bg(theme.surface())
+            // .border_1()
+            .mr_1()
+            .border_color(theme.border())
+            .when(self.order_change > 2, |div| {
+                div.text_color(theme.text_increasing())
+            })
+            .when(self.order_change < -2, |div| {
+                div.text_color(theme.text_decreasing())
+            })
+            .when(viewing_article, |div| {
+                div.border_color(theme.comment_border()).border_4()
+            })
+            .when_some(self.order_change_label.as_ref(), |this, label| {
+                this.child(
+                    Badge::indicator(label.clone())
+                        .location(Location::TopLeft)
+                        .color(if self.order_change > 0 {
+                            green().into()
+                        } else {
+                            rgb(0xEF4444)
+                        })
+                        .ring_color(theme.surface()),
+                )
+            })
+            .when_some(self.unread_count_label.as_ref(), |this, label| {
+                this.child(
+                    Badge::indicator(label.clone())
+                        .location(Location::TopRight)
+                        .ring_color(theme.surface())
+                        .animate(true),
+                )
+            })
+            .child(self.render_title(cx, theme))
     }
 }

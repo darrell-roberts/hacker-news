@@ -9,6 +9,7 @@ use crate::{
     richtext::render_rich_text,
 };
 use friendly_duration::parse_friendly_age;
+use hacker_news_api::ItemKey;
 use hacker_news_search::{
     SearchContext,
     api::{Comment, Story},
@@ -66,15 +67,15 @@ pub struct CommentState {
     /// Total number of documents.
     pub full_count: usize,
     /// Parent id being viewed.
-    pub parent_id: u64,
+    pub parent_id: ItemKey,
     /// Active comment
-    pub active_comment_id: Option<u64>,
+    pub active_comment_id: Option<ItemKey>,
 }
 
 #[derive(Debug, Clone)]
 pub enum CommentMsg {
     FetchComments {
-        parent_id: u64,
+        parent_id: ItemKey,
         parent_comment: Option<Comment>,
         scroll_to: Option<AbsoluteOffset>,
     },
@@ -86,10 +87,10 @@ pub enum CommentMsg {
     Forward,
     Back,
     JumpPage(usize),
-    Close(u64),
+    Close(ItemKey),
     ScrollOffset(AbsoluteOffset),
-    Activate(u64),
-    ShowThread(u64),
+    Activate(ItemKey),
+    ShowThread(ItemKey),
 }
 
 impl CommentState {
@@ -526,7 +527,7 @@ impl CommentState {
                     .last()
                     .map(|c| match c.comment.as_ref() {
                         Some(c) => c.parent_id,
-                        None => 0,
+                        None => ItemKey::from(0),
                     })
                     .unwrap_or_default();
 

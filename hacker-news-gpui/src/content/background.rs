@@ -87,7 +87,7 @@ pub(super) fn start_background_subscriptions(
                         content_view.viewing_article_id
                     });
 
-                    let current_ranking_map = items
+                    let new_ranking_map = items
                         .iter()
                         .enumerate()
                         .map(|(index, item)| (item.id, index))
@@ -105,25 +105,23 @@ pub(super) fn start_background_subscriptions(
                     let views = items
                         .into_iter()
                         .enumerate()
-                        .map(
-                            |(index, article)| match find_article_entity(app, article.id) {
-                                Some(article_entity) => {
-                                    article_entity.update(app, |article_view, cx| {
-                                        let view_updated =
-                                            article_view.update_from_item(cx, article, index);
+                        .map(|(index, item)| match find_article_entity(app, item.id) {
+                            Some(article_entity) => {
+                                article_entity.update(app, |article_view, cx| {
+                                    let view_updated =
+                                        article_view.update_from_item(cx, item, index);
 
-                                        if view_updated {
-                                            cx.notify();
-                                        }
-                                    });
+                                    if view_updated {
+                                        cx.notify();
+                                    }
+                                });
 
-                                    article_entity
-                                }
+                                article_entity
+                            }
 
-                                None => ArticleView::new(app, entity_content.clone(), article),
-                            },
-                        )
-                        .collect::<Vec<_>>();
+                            None => ArticleView::new(app, entity_content.clone(), item),
+                        })
+                        .collect();
 
                     app.update_entity(&entity_content, |content, cx| {
                         if !viewing_article_included {
@@ -132,7 +130,7 @@ pub(super) fn start_background_subscriptions(
 
                         content.articles = views;
                         content.list_state.reset(content.articles.len());
-                        content.article_ranks = current_ranking_map;
+                        content.ranking_map = new_ranking_map;
                         content.article_comment_counts = current_comment_counts;
                         content.background_refresh_count += 1;
                         cx.emit(ContentEvent::TotalArticles(content.articles.len()));
@@ -205,7 +203,7 @@ pub(super) fn start_background_article_list_subscription(
                 .try_collect::<Vec<_>>()
                 .await
                 .map_err(|err| {
-                    BackGroundError::EventFailed(format!("Failed to fetch updated items: {err}"))
+                    BackGroundError::EventFailed(format!("Failed to fetch updated items: {err:#}"))
                 });
 
             if let Err(err) = tx.send(result).await {

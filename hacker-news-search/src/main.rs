@@ -1,5 +1,5 @@
 #![expect(dead_code, unused_variables)]
-use hacker_news_api::ArticleType;
+use hacker_news_api::{ArticleType, ItemKey};
 use hacker_news_search::SearchContext;
 use std::{
     fs::exists,
@@ -35,7 +35,7 @@ async fn create() -> anyhow::Result<()> {
 
 fn comments() -> anyhow::Result<()> {
     let ctx = SearchContext::new(Path::new(INDEX_PATH), ArticleType::Top)?;
-    dbg!(ctx.comments(42344002, 10, 0)?);
+    dbg!(ctx.comments(ItemKey::from(42344002), 10, 0)?);
     Ok(())
 }
 

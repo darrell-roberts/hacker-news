@@ -7,6 +7,7 @@ use crate::{
     nav_history::Content,
     theme,
 };
+use hacker_news_api::ItemKey;
 use hacker_news_config::{INDEX_CONFIG, IndexConfig};
 use hacker_news_search::SearchContext;
 use iced::{
@@ -24,7 +25,7 @@ pub const CONFIG_FILE: &str = "config_gui.dat";
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GuiConfig {
     pub scale: f32,
-    pub visited: HashSet<u64>,
+    pub visited: HashSet<ItemKey>,
     pub theme: String,
     pub window_size: (f32, f32),
 }

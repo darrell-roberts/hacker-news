@@ -10,7 +10,7 @@
 //! required to do most operations.
 use crate::{
     types::{Item, ItemEventData, ResultExt, StoriesEventData, User},
-    ArticleType,
+    ArticleType, ItemKey,
 };
 use anyhow::{Context as _, Result};
 use bytes::Bytes;
@@ -99,7 +99,7 @@ impl ApiClient {
             //     info!("Using http version {:?}", result.version());
             //     info!("Headers: {:?}", result.headers())
             // })
-            .and_then(|resp| resp.json::<Vec<u64>>())
+            .and_then(|resp| resp.json::<Vec<ItemKey>>())
             .await?;
         self.items(&ids).try_collect().await
     }
@@ -122,7 +122,7 @@ impl ApiClient {
 
     /// Get a single item via item id.
     #[cfg_attr(feature = "trace", instrument(skip_all))]
-    pub fn item(&self, id: u64) -> impl Future<Output = Result<Item>> + use<'_> {
+    pub fn item(&self, id: ItemKey) -> impl Future<Output = Result<Item>> + use<'_> {
         self.client
             .get(format!("{}/item/{id}.json", Self::API_END_POINT,))
             .send()
@@ -132,7 +132,7 @@ impl ApiClient {
 
     /// Get multiple ids by item id.
     #[cfg_attr(feature = "trace", instrument(skip_all))]
-    pub fn items(&self, ids: &[u64]) -> impl TryStream<Ok = Item, Error = anyhow::Error> {
+    pub fn items(&self, ids: &[ItemKey]) -> impl TryStream<Ok = Item, Error = anyhow::Error> {
         // The firebase api only provides the option to get each item one by
         // one.
         ids.iter()
@@ -219,7 +219,11 @@ impl ApiClient {
     }
 
     /// Subscribe to updates to a story via server side event sourcing.
-    pub async fn item_stream(&self, story_id: u64, sender: Sender<ItemEventData>) -> Result<()> {
+    pub async fn item_stream(
+        &self,
+        story_id: ItemKey,
+        sender: Sender<ItemEventData>,
+    ) -> Result<()> {
         let mut stream = self
             .event_source::<ItemEventData>(
                 format!("{}/item/{story_id}.json", Self::API_END_POINT),

@@ -1,5 +1,6 @@
 //! Article model and factory component.
 use friendly_duration::parse_friendly_age;
+use hacker_news_api::ItemKey;
 use hacker_news_search::api::Story;
 use html_sanitizer::escape_html;
 use relm4::{gtk::prelude::*, prelude::FactoryComponent, *};
@@ -15,7 +16,7 @@ pub struct ArticleModel {
 
 #[derive(Debug)]
 pub enum ArticleOutMsg {
-    OpenComment(u64),
+    OpenComment(ItemKey),
 }
 
 #[derive(Debug)]

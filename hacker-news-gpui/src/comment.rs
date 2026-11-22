@@ -13,7 +13,7 @@ use gpui::{
     StatefulInteractiveElement, StyleRefinement, Styled, StyledText, Window, div, img,
     prelude::FluentBuilder as _, pulsating_between, rems,
 };
-use hacker_news_api::Item;
+use hacker_news_api::{Item, ItemKey};
 use std::{sync::Arc, time::Duration};
 
 /// Comment view with state.
@@ -25,7 +25,7 @@ pub struct CommentView {
     /// The entities representing the child comments for this comment.
     children: Vec<Entity<CommentView>>,
     /// The ids of child comments.
-    comment_child_ids: Arc<Vec<u64>>,
+    comment_child_ids: Arc<Vec<ItemKey>>,
     /// The image source for the comment icon.
     comment_image: ImageSource,
     /// The number of comments on the comment, if available.
@@ -41,7 +41,7 @@ pub struct CommentView {
     /// Any urls that are in the comment body.
     urls: Vec<SharedString>,
     /// Comment id.
-    id: u64,
+    id: ItemKey,
 }
 
 impl CommentView {
@@ -145,7 +145,7 @@ impl CommentView {
     fn render_comment_footer(
         &self,
         theme: Theme,
-        comment_ids: Arc<Vec<u64>>,
+        comment_ids: Arc<Vec<ItemKey>>,
         comment_entity: Entity<CommentView>,
     ) -> gpui::Div {
         let id = self.id;
@@ -189,7 +189,7 @@ impl CommentView {
     /// Returns a `gpui::Div` element containing the child comments UI.
     fn render_child_comments(
         &self,
-        comment_ids: Arc<Vec<u64>>,
+        comment_ids: Arc<Vec<ItemKey>>,
         comment_entity: Entity<CommentView>,
         el: gpui::Div,
         hover: impl Fn(StyleRefinement) -> StyleRefinement,

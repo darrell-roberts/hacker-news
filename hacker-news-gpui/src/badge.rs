@@ -1,11 +1,10 @@
-//! Standalone Badge Component (inspired by gpui-kit)
-use std::time::Duration;
-
+//! Badge Component
 use gpui::{
     Animation, AnimationExt, AnyElement, App, ClickEvent, IntoElement, ParentElement,
     Refineable as _, RenderOnce, Rgba, SharedString, StyleRefinement, Styled, Window, div,
     ease_in_out, prelude::*, rems, rgb,
 };
+use std::time::Duration;
 
 type BadgeClicked = Box<dyn Fn(&ClickEvent, &mut Window, &mut App) + 'static>;
 
@@ -18,6 +17,15 @@ pub struct Badge {
     border_color: Option<Rgba>,
     on_click: Option<BadgeClicked>,
     children: Vec<AnyElement>,
+    location: Location,
+    animate: bool,
+}
+
+#[derive(Copy, Clone, Default)]
+pub enum Location {
+    #[default]
+    TopRight,
+    TopLeft,
 }
 
 impl Badge {
@@ -30,7 +38,13 @@ impl Badge {
             border_color: None,
             on_click: None,
             children: Vec::new(),
+            location: Default::default(),
+            animate: false,
         }
+    }
+
+    pub fn indicator(count: SharedString) -> Self {
+        Self::new().count(Some(count))
     }
 
     pub fn count(mut self, count: Option<SharedString>) -> Self {
@@ -60,6 +74,16 @@ impl Badge {
         self.on_click = Some(Box::new(on_click));
         self
     }
+
+    pub fn location(mut self, location: Location) -> Self {
+        self.location = location;
+        self
+    }
+
+    pub fn animate(mut self, animate: bool) -> Self {
+        self.animate = animate;
+        self
+    }
 }
 
 impl Default for Badge {
@@ -82,44 +106,69 @@ impl Styled for Badge {
 
 impl RenderOnce for Badge {
     fn render(self, _window: &mut Window, _cx: &mut App) -> impl IntoElement {
-        let mut container = div().relative();
-        container.style().refine(&self.style);
+        let Some(count_label) = self.count else {
+            return if self.children.is_empty() {
+                div().into_any_element()
+            } else {
+                let mut container = div().relative();
+                container.style().refine(&self.style);
+                container.children(self.children).into_any_element()
+            };
+        };
 
-        container
-            .children(self.children)
-            .when_some(self.count, |parent, count_label| {
-                parent.child(
-                    div()
-                        .id("badge")
-                        .absolute()
-                        .top(rems(-0.35))
-                        .right(rems(0.5))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .h(rems(1.0))
-                        .min_w(rems(1.0))
-                        .px(rems(0.35))
-                        .rounded_full()
-                        .bg(self.color)
-                        .text_color(self.text_color)
-                        .text_size(rems(0.65))
-                        .font_weight(gpui::FontWeight::BOLD)
-                        .shadow_sm()
-                        .when_some(self.border_color, |el, border| {
-                            el.border_1().border_color(border)
-                        })
-                        .when_some(self.on_click, |el, cb| {
-                            el.cursor_pointer()
-                                .on_click(move |event, window, app| cb(event, window, app))
-                        })
-                        .child(count_label.clone())
-                        .with_animation(
-                            count_label,
-                            Animation::new(Duration::from_secs(1)).with_easing(ease_in_out),
-                            |badge, delta| badge.opacity(delta),
-                        ),
-                )
+        let badge_element = div()
+            .id("badge")
+            .absolute()
+            .top(rems(-0.35))
+            .map(|this| match self.location {
+                Location::TopRight => this.right(rems(0.5)),
+                Location::TopLeft => this.left(rems(0.5)),
             })
+            .flex()
+            .items_center()
+            .justify_center()
+            .h(rems(1.0))
+            .min_w(rems(1.0))
+            .px(rems(0.35))
+            .rounded_full()
+            .bg(self.color)
+            .text_color(self.text_color)
+            .text_size(rems(0.65))
+            .font_weight(gpui::FontWeight::BOLD)
+            .shadow_sm()
+            .when_some(self.border_color, |el, border| {
+                el.border_1().border_color(border)
+            })
+            .when_some(self.on_click, |el, cb| {
+                el.cursor_pointer()
+                    .on_click(move |event, window, app| cb(event, window, app))
+            })
+            .child(count_label.clone());
+
+        let badge_element = if self.animate {
+            badge_element
+                .with_animation(
+                    count_label,
+                    Animation::new(Duration::from_secs(4)).with_easing(ease_in_out),
+                    |badge, delta| badge.opacity(delta),
+                )
+                .into_any_element()
+        } else {
+            badge_element.into_any_element()
+        };
+
+        if self.children.is_empty() {
+            // Standalone mode: Return the absolute element directly.
+            // It will position itself relative to the parent.
+            badge_element.into_any_element()
+        } else {
+            // Wrapper mode: Wrap children in a relative container
+            let mut container = div().relative();
+            container.style().refine(&self.style);
+            container
+                .children(self.children)
+                .child(badge_element)
+                .into_any_element()
+        }
     }
 }

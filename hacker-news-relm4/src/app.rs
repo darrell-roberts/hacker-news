@@ -5,7 +5,7 @@ use chrono::DateTime;
 use chrono_tz::America::New_York;
 use comments::CommentModel;
 use futures::{StreamExt, channel::mpsc};
-use hacker_news_api::ArticleType;
+use hacker_news_api::{ArticleType, ItemKey};
 use hacker_news_config::IndexConfig;
 use hacker_news_search::{IndexStats, RebuildProgress, SearchContext, rebuild_index};
 use header::HeaderModel;
@@ -39,12 +39,12 @@ pub struct AppModel {
     comment_page_offset: usize,
     comment_page: u8,
     total_comment_pages: u8,
-    active_comment_id: u64,
+    active_comment_id: ItemKey,
     index_config: IndexConfig,
 }
 
 pub struct CommentStackElement {
-    id: u64,
+    id: ItemKey,
     comment_page_offset: usize,
     comment_page: u8,
     total_comment_pages: u8,
@@ -54,7 +54,7 @@ pub struct CommentStackElement {
 pub enum AppMsg {
     Fetch,
     Change(ArticleType),
-    OpenComment(u64, bool),
+    OpenComment(ItemKey, bool),
     CloseComment,
     Refresh,
     Progress(RebuildProgress),
@@ -226,7 +226,7 @@ impl Component for AppModel {
             progress_received: 0,
             comment_stack: Vec::new(),
             comment_page_offset: 0,
-            active_comment_id: 0,
+            active_comment_id: Default::default(),
             comment_page: 0,
             total_comment_pages: 0,
             index_config: init.index_config,
@@ -292,7 +292,7 @@ impl Component for AppModel {
                 widgets.article_scroll.vadjustment().set_value(0.0);
                 self.comments.guard().clear();
                 self.search_context.activate_index(ty).unwrap();
-                self.active_comment_id = 0;
+                self.active_comment_id = Default::default();
                 self.comment_page = 0;
                 self.comment_page_offset = 0;
                 self.total_comment_pages = 0;

@@ -10,7 +10,7 @@ use crate::{
     header::{self, HeaderMsg, HeaderState},
     nav_history::{Content, History, HistoryElement},
 };
-use hacker_news_api::ArticleType;
+use hacker_news_api::{ArticleType, ItemKey};
 use hacker_news_config::IndexConfig;
 use hacker_news_search::{
     SearchContext,
@@ -84,7 +84,7 @@ pub enum AppMsg {
     Comments(comments::CommentMsg),
     OpenComment {
         article: Story,
-        parent_id: u64,
+        parent_id: ItemKey,
         comment_stack: Vec<Comment>,
     },
     OpenLink {
@@ -184,7 +184,7 @@ pub fn update(app: &mut App, message: AppMsg) -> Task<AppMsg> {
                     page: 1,
                     offset: 0,
                     full_count: 0,
-                    parent_id: 0,
+                    parent_id: Default::default(),
                     active_comment_id: None,
                 })),
             );

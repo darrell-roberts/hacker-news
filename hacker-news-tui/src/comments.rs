@@ -1,5 +1,6 @@
 //! Comments view widget.
 use crate::styles::{selected_style, top_header_style};
+use hacker_news_api::ItemKey;
 use hacker_news_search::{
     SearchContext,
     api::{AgeLabel, Comment},
@@ -21,14 +22,14 @@ mod comments_test;
 
 #[derive(Default, Debug)]
 pub struct CommentStack {
-    pub parent_id: u64,
+    pub parent_id: ItemKey,
     pub offset: usize,
     pub scroll_view_state: ScrollViewState,
 }
 
 #[derive(Default)]
 pub struct CommentState {
-    pub parent_id: u64,
+    pub parent_id: ItemKey,
     pub limit: usize,
     pub offset: usize,
     pub viewing: Option<usize>,

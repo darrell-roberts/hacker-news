@@ -9,6 +9,7 @@ use gpui::{
     http_client::Url,
 };
 use gpui_tokio::Tokio;
+use hacker_news_api::ItemKey;
 use log::error;
 use std::{
     borrow::Cow,
@@ -38,7 +39,7 @@ pub static COMMENT_IMAGE: LazyLock<Arc<Image>> = LazyLock::new(|| {
 pub async fn comment_entities(
     app: &mut AsyncApp,
     article_entity: Entity<ArticleView>,
-    comment_ids: &[u64],
+    comment_ids: &[ItemKey],
 ) -> Vec<Entity<CommentView>> {
     let content_entity = app.read_entity(&article_entity, |article_view, _cx| {
         article_view.content_entity.clone()
@@ -66,6 +67,8 @@ pub async fn comment_entities(
         .await
         .inspect_err(|err| error!("Failed to spawn task to fetch comments: {err}"))
         .unwrap_or_default();
+
+    log::info!("Fetched {} comments", comment_items.len());
 
     comment_items
         .into_iter()
