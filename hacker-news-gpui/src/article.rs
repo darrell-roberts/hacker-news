@@ -200,6 +200,17 @@ impl ArticleView {
                 .descendants
                 .filter(|&n| n > 0)
                 .map(|n| format!("{n}").into());
+
+            // Show the label for 5 seconds.
+            cx.spawn(async |this, cx| {
+                cx.background_executor().timer(Duration::from_secs(5)).await;
+                this.update(cx, |this, cx| {
+                    this.unread_count_label = None;
+                    cx.notify();
+                })
+                .ok();
+            })
+            .detach();
         }
 
         let order_change = self

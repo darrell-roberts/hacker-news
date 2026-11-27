@@ -7,7 +7,7 @@ check:
     cargo clippy
 
 build: check
-    cargo build --release --bin hacker-news-dashboard
+    cargo build --release --locked --bin hacker-news-dashboard
 
 linux-debian: build
     mkdir -p dist
